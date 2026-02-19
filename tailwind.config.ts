@@ -52,6 +52,12 @@ export default {
         "hero-overlay": "hsl(var(--hero-overlay))",
         "badge-success": "hsl(var(--badge-success))",
         "badge-success-foreground": "hsl(var(--badge-success-foreground))",
+        "hon-green": "hsl(var(--hon-green))",
+        "hon-green-light": "hsl(var(--hon-green-light))",
+        "hon-green-dark": "hsl(var(--hon-green-dark))",
+        "hon-green-pale": "hsl(var(--hon-green-pale))",
+        "section-light": "hsl(var(--section-light))",
+        "section-mid": "hsl(var(--section-mid))",
       },
       borderRadius: {
         lg: "var(--radius)",
