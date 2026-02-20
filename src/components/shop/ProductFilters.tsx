@@ -46,7 +46,6 @@ const ProductFilters = ({
             className="transition-all"
           >
             {cat.name}
-            <span className="ml-1 text-xs opacity-70">({cat.count})</span>
           </Button>
         ))}
       </div>
