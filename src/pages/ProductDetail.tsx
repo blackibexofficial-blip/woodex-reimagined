@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   Star,
-  ShoppingCart,
+  ShoppingBag,
   Heart,
   Share2,
   Truck,
@@ -29,8 +29,10 @@ import {
   Minus,
   Plus,
   ChevronLeft,
+  CheckCircle,
 } from "lucide-react";
-import { getProductById, products, categories } from "@/data/products";
+import { getProductById, products, categories, formatPKR } from "@/data/products";
+import { useQuote } from "@/contexts/QuoteContext";
 
 const ProductDetail = () => {
   const { productId } = useParams<{ productId: string }>();
@@ -39,6 +41,23 @@ const ProductDetail = () => {
   
   const [selectedColor, setSelectedColor] = useState(product?.colors[0]);
   const [quantity, setQuantity] = useState(1);
+  const [addedToQuote, setAddedToQuote] = useState(false);
+  const { addItem } = useQuote();
+
+  const handleAddToQuote = () => {
+    if (!product) return;
+    addItem({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      quantity,
+      color: selectedColor?.name,
+      image: product.images[0],
+    });
+    setAddedToQuote(true);
+    setTimeout(() => setAddedToQuote(false), 2500);
+  };
 
   if (!product) {
     return (
@@ -158,11 +177,11 @@ const ProductDetail = () => {
 
               {/* Price */}
               <div className="flex items-baseline gap-3">
-                <span className="text-4xl font-bold">AED {product.price.toLocaleString()}</span>
+                <span className="text-4xl font-bold">{formatPKR(product.price)}</span>
                 {product.originalPrice && (
                   <>
                     <span className="text-xl text-muted-foreground line-through">
-                      AED {product.originalPrice.toLocaleString()}
+                      {formatPKR(product.originalPrice)}
                     </span>
                     <Badge variant="destructive">Save {discount}%</Badge>
                   </>
@@ -215,9 +234,17 @@ const ProductDetail = () => {
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button size="lg" className="flex-1" disabled={!product.inStock}>
-                  <ShoppingCart className="h-5 w-5 mr-2" />
-                  {product.inStock ? "Add to Quote Request" : "Out of Stock"}
+                <Button
+                  size="lg"
+                  className={`flex-1 ${addedToQuote ? "bg-hon-green-dark" : "bg-accent hover:bg-hon-green-dark"} text-accent-foreground`}
+                  disabled={!product.inStock}
+                  onClick={handleAddToQuote}
+                >
+                  {addedToQuote ? (
+                    <><CheckCircle className="h-5 w-5 mr-2" />Added to Quote Basket!</>
+                  ) : (
+                    <><ShoppingBag className="h-5 w-5 mr-2" />{product.inStock ? "Add to Quote Basket" : "Out of Stock"}</>
+                  )}
                 </Button>
                 <Button size="lg" variant="outline">
                   <Heart className="h-5 w-5 mr-2" />

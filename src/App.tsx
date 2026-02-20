@@ -3,49 +3,59 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { QuoteProvider } from "@/contexts/QuoteContext";
 import Index from "./pages/Index";
 import Shop from "./pages/Shop";
 import ProductDetail from "./pages/ProductDetail";
 import RoomPackages from "./pages/RoomPackages";
 import VirtualShowroom from "./pages/VirtualShowroom";
 import Series from "./pages/Series";
+import SeriesDetail from "./pages/SeriesDetail";
 import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
 import Services from "./pages/Services";
 import B2B from "./pages/B2B";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Quotation from "./pages/Quotation";
+import Showrooms from "./pages/Showrooms";
+import Materials from "./pages/Materials";
+import Warranty from "./pages/Warranty";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/shop" element={<Shop />} />
-          <Route path="/shop/:productId" element={<ProductDetail />} />
-          <Route path="/room-packages" element={<RoomPackages />} />
-          <Route path="/virtual-showroom" element={<VirtualShowroom />} />
-          <Route path="/series" element={<Series />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/b2b" element={<B2B />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/quotation" element={<Quotation />} />
-          <Route path="/showrooms" element={<Contact />} />
-          <Route path="/materials" element={<Contact />} />
-          <Route path="/warranty" element={<Contact />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <QuoteProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/shop/:productId" element={<ProductDetail />} />
+            <Route path="/room-packages" element={<RoomPackages />} />
+            <Route path="/virtual-showroom" element={<VirtualShowroom />} />
+            <Route path="/series" element={<Series />} />
+            <Route path="/series/:seriesId" element={<SeriesDetail />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:projectId" element={<ProjectDetail />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/b2b" element={<B2B />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/quotation" element={<Quotation />} />
+            <Route path="/showrooms" element={<Showrooms />} />
+            <Route path="/materials" element={<Materials />} />
+            <Route path="/warranty" element={<Warranty />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QuoteProvider>
   </QueryClientProvider>
 );
 
