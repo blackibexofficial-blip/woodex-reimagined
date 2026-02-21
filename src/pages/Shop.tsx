@@ -81,6 +81,10 @@ const Shop = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
+    const label = getCategoryLabel();
+    document.title = label === "All Products" 
+      ? "Shop Office & Home Furniture — WOODEX Pakistan" 
+      : `${label} — Shop WOODEX Pakistan`;
     if (selectedCategory === "all") {
       searchParams.delete("category");
     } else {
