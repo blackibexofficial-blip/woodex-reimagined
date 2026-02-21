@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Building2, Users, TrendingUp, HeadphonesIcon, CheckCircle2, ArrowRight, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,10 @@ const tiers = [
 ];
 
 const B2B = () => {
+  useEffect(() => {
+    document.title = "B2B Partner Program — WOODEX Pakistan | Volume Pricing & Corporate Solutions";
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />

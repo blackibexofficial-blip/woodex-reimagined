@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Play, Armchair, Users, BarChart3, Box, Sofa, Monitor, RotateCcw, Palette, Maximize } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,10 @@ const features = [
 ];
 
 const VirtualShowroom = () => {
+  useEffect(() => {
+    document.title = "Virtual Showroom — WOODEX Pakistan | 3D Room Configurator";
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />

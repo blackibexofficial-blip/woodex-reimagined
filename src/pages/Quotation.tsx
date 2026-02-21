@@ -1,12 +1,17 @@
-import { useState } from "react";
-import { CheckCircle, Clock, Shield, Users, Headphones, Star } from "lucide-react";
+import { useState, useRef } from "react";
+import { Link } from "react-router-dom";
+import { CheckCircle, Clock, Shield, Users, Headphones, Star, Trash2, Minus, Plus, Printer, ShoppingBag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useQuote } from "@/contexts/QuoteContext";
+import { formatPKR } from "@/data/products";
+import { useEffect } from "react";
 
 const benefits = [
   { icon: Clock, title: "24-Hour Response", description: "Receive detailed quotes within one business day" },
@@ -22,11 +27,21 @@ const testimonials = [
 
 const Quotation = () => {
   const [submitted, setSubmitted] = useState(false);
+  const { items, removeItem, updateQuantity, totalPrice, totalItems } = useQuote();
+  const printRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.title = "Get E-Quotation — WOODEX Pakistan | Free Quote Request";
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 5000);
+  };
+
+  const handlePrintQuote = () => {
+    window.print();
   };
 
   return (
@@ -62,6 +77,63 @@ const Quotation = () => {
             </div>
           </div>
         </section>
+
+        {/* Quote Basket Items */}
+        {items.length > 0 && (
+          <section className="py-8 bg-section-light border-b" ref={printRef}>
+            <div className="container mx-auto px-4">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <ShoppingBag className="h-5 w-5 text-accent" />
+                  <h2 className="text-xl font-bold">Your Quote Basket ({totalItems} items)</h2>
+                </div>
+                <Button variant="outline" size="sm" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground gap-2" onClick={handlePrintQuote}>
+                  <Printer className="h-4 w-4" />
+                  Print / Download PDF
+                </Button>
+              </div>
+
+              <div className="bg-background border border-border rounded-sm overflow-hidden">
+                <div className="hidden sm:grid grid-cols-12 gap-4 px-5 py-3 bg-section-light text-xs font-bold uppercase tracking-wider text-muted-foreground border-b">
+                  <div className="col-span-5">Product</div>
+                  <div className="col-span-2 text-center">Color</div>
+                  <div className="col-span-2 text-center">Qty</div>
+                  <div className="col-span-2 text-right">Price</div>
+                  <div className="col-span-1"></div>
+                </div>
+                {items.map((item) => (
+                  <div key={item.id} className="grid grid-cols-12 gap-4 px-5 py-4 items-center border-b border-border last:border-b-0">
+                    <div className="col-span-12 sm:col-span-5">
+                      <Link to={`/shop/${item.id}`} className="font-semibold text-sm hover:text-accent transition-colors">{item.name}</Link>
+                      <p className="text-xs text-muted-foreground">{item.category}</p>
+                    </div>
+                    <div className="col-span-4 sm:col-span-2 text-center text-sm text-muted-foreground">{item.color || "—"}</div>
+                    <div className="col-span-4 sm:col-span-2 flex items-center justify-center gap-2">
+                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors">
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors">
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div className="col-span-3 sm:col-span-2 text-right font-semibold text-sm">{formatPKR(item.price * item.quantity)}</div>
+                    <div className="col-span-1 text-right">
+                      <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive transition-colors">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="px-5 py-4 bg-section-light border-t flex items-center justify-between">
+                  <span className="font-bold">Estimated Total</span>
+                  <span className="text-xl font-black text-accent">{formatPKR(totalPrice)}</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">* Final pricing may vary based on customization, delivery location, and quantity discounts.</p>
+            </div>
+          </section>
+        )}
 
         {/* Main Form + Sidebar */}
         <section className="py-16">
@@ -138,6 +210,13 @@ const Quotation = () => {
                       </div>
                     ) : (
                       <form onSubmit={handleSubmit} className="space-y-5">
+                        {items.length > 0 && (
+                          <div className="p-4 bg-hon-green-pale rounded-sm border border-accent/30 mb-2">
+                            <p className="text-sm font-semibold text-accent">
+                              ✓ {totalItems} product{totalItems !== 1 ? "s" : ""} from your quote basket will be included ({formatPKR(totalPrice)} estimated)
+                            </p>
+                          </div>
+                        )}
                         <div className="grid md:grid-cols-2 gap-5">
                           <div className="space-y-1.5">
                             <Label htmlFor="name">Full Name *</Label>
@@ -163,11 +242,16 @@ const Quotation = () => {
                             <Label htmlFor="category">Product Category *</Label>
                             <select id="category" className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm" required>
                               <option value="">Select a category</option>
+                              <option value="executive-tables">Executive Tables</option>
+                              <option value="manager-tables">Manager Tables</option>
+                              <option value="staff-tables">Staff Tables</option>
+                              <option value="meeting-tables">Meeting Tables</option>
                               <option value="chairs">Ergonomic Chairs</option>
-                              <option value="desks">Executive Desks</option>
                               <option value="workstations">Workstations</option>
-                              <option value="tables">Meeting Tables</option>
+                              <option value="cubicle">Cubicle Workstations</option>
+                              <option value="sofas">Office Sofas</option>
                               <option value="storage">Office Storage</option>
+                              <option value="home">Home Furniture</option>
                               <option value="packages">Room Packages</option>
                               <option value="custom">Custom Design</option>
                             </select>
@@ -186,6 +270,8 @@ const Quotation = () => {
                             <option value="islamabad">Islamabad</option>
                             <option value="rawalpindi">Rawalpindi</option>
                             <option value="faisalabad">Faisalabad</option>
+                            <option value="multan">Multan</option>
+                            <option value="peshawar">Peshawar</option>
                             <option value="other">Other</option>
                           </select>
                         </div>

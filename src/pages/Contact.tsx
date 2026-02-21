@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,10 @@ const showrooms = [
 
 const Contact = () => {
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    document.title = "Contact Us — WOODEX Pakistan | Showrooms in Lahore, Karachi, Islamabad";
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

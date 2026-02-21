@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,10 @@ const seriesImages: Record<string, string> = {
 const Series = () => {
   const [activeTab, setActiveTab] = useState("woodex-series");
   const tabProducts = getProductsBySeries(activeTab).slice(0, 4);
+
+  useEffect(() => {
+    document.title = "Furniture Series — WOODEX Pakistan | Ek, Infinity, Woodex & Cubicle Collections";
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">

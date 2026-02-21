@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,10 @@ const categories = ["All", "Corporate", "Tech", "Healthcare", "Education", "Gove
 
 const Projects = () => {
   const [activeCategory, setActiveCategory] = useState("All");
+
+  useEffect(() => {
+    document.title = "Our Projects — WOODEX Pakistan | Portfolio & Case Studies";
+  }, []);
 
   const filtered = activeCategory === "All" ? projects : projects.filter(p => p.category === activeCategory);
 
@@ -94,8 +98,8 @@ const Projects = () => {
                       <span>{project.sqft}</span>
                     </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">{project.description}</p>
-                    <Button variant="ghost" size="sm" className="mt-3 px-0 text-accent hover:text-hon-green-dark hover:bg-transparent">
-                      View Case Study <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                    <Button variant="ghost" size="sm" className="mt-3 px-0 text-accent hover:text-hon-green-dark hover:bg-transparent" asChild>
+                      <Link to={`/projects/${project.id}`}>View Case Study <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
                     </Button>
                   </div>
                 </div>

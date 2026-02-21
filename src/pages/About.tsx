@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Award, Target, Users, Globe, CheckCircle2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,10 @@ const team = [
 
 const About = () => {
   const [activeTab, setActiveTab] = useState("story");
+
+  useEffect(() => {
+    document.title = "About WOODEX — Pakistan's Leading Office Furniture Manufacturer";
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">

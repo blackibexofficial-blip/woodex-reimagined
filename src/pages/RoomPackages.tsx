@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,10 @@ const packages = [
 ];
 
 const RoomPackages = () => {
+  useEffect(() => {
+    document.title = "Room Packages — WOODEX Pakistan | Bundled Office Furniture Solutions";
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />

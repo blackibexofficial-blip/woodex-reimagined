@@ -226,7 +226,7 @@ const ProductDetail = () => {
                   </div>
                   <span className="text-muted-foreground">
                     Total: <span className="font-semibold text-foreground">
-                      AED {(product.price * quantity).toLocaleString()}
+                      {formatPKR(product.price * quantity)}
                     </span>
                   </span>
                 </div>
@@ -265,7 +265,7 @@ const ProductDetail = () => {
                   </div>
                   <div>
                     <p className="font-medium text-sm">Free Delivery</p>
-                    <p className="text-xs text-muted-foreground">Orders over AED 2,000</p>
+                    <p className="text-xs text-muted-foreground">Nationwide across Pakistan</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

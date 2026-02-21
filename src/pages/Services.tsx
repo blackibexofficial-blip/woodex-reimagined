@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Lightbulb, Package, Truck, ClipboardCheck, Headphones, Ruler, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,10 @@ const steps = [
 ];
 
 const Services = () => {
+  useEffect(() => {
+    document.title = "Services — WOODEX Pakistan | Space Planning, Custom Manufacturing & More";
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
