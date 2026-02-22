@@ -11,9 +11,7 @@ import { Search, Grid3X3, LayoutList, SlidersHorizontal, ChevronDown, ChevronRig
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const categoryTree = [
-  {
-    label: "All Products", id: "all", children: [],
-  },
+  { label: "All Products", id: "all", children: [] },
   {
     label: "Office Tables", id: "office-tables",
     children: [
@@ -31,6 +29,9 @@ const categoryTree = [
   { label: "Office Storage", id: "storage", children: [] },
   { label: "Cafe Furniture", id: "cafe", children: [] },
   { label: "Public Sitting", id: "public", children: [] },
+  { label: "Home Office", id: "home-office", children: [] },
+  { label: "Acoustic Furniture", id: "acoustic", children: [] },
+  { label: "Collaborative Furniture", id: "collaborative", children: [] },
   {
     label: "Bedroom Furniture", id: "bedroom",
     children: [
