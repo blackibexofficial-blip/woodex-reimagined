@@ -1,6 +1,60 @@
 import chairImage from "@/assets/chair-product.jpg";
 import deskImage from "@/assets/desk-product.jpg";
 import workstationImage from "@/assets/workstation-product.jpg";
+import executiveDeskImg from "@/assets/product-executive-desk.jpg";
+import managerDeskImg from "@/assets/product-manager-desk.jpg";
+import staffDeskImg from "@/assets/product-staff-desk.jpg";
+import meetingTableImg from "@/assets/product-meeting-table.jpg";
+import receptionImg from "@/assets/product-reception-counter.jpg";
+import officeChairImg from "@/assets/product-office-chair.jpg";
+import workstationImg from "@/assets/product-workstation.jpg";
+import cubicleImg from "@/assets/product-cubicle.jpg";
+import officeSofaImg from "@/assets/product-office-sofa.jpg";
+import storageImg from "@/assets/product-storage.jpg";
+import cafeImg from "@/assets/product-cafe.jpg";
+import bedroomImg from "@/assets/product-bedroom.jpg";
+import livingSofaImg from "@/assets/product-living-sofa.jpg";
+import diningImg from "@/assets/product-dining.jpg";
+import publicSeatingImg from "@/assets/product-public-seating.jpg";
+
+// Category-to-image mapping for unique product photos per category
+const categoryImageMap: Record<string, string[]> = {
+  "executive-tables": [executiveDeskImg, deskImage, executiveDeskImg],
+  "manager-tables": [managerDeskImg, deskImage, managerDeskImg],
+  "staff-tables": [staffDeskImg, deskImage, staffDeskImg],
+  "meeting-tables": [meetingTableImg, deskImage, meetingTableImg],
+  "reception-tables": [receptionImg, deskImage, receptionImg],
+  "chairs": [officeChairImg, chairImage, officeChairImg],
+  "workstations": [workstationImg, workstationImage, workstationImg],
+  "cubicle-workstations": [cubicleImg, workstationImage, cubicleImg],
+  "office-sofas": [officeSofaImg, chairImage, officeSofaImg],
+  "storage": [storageImg, deskImage, storageImg],
+  "cafe": [cafeImg, chairImage, cafeImg],
+  "public": [publicSeatingImg, chairImage, publicSeatingImg],
+  "home-office": [staffDeskImg, deskImage, staffDeskImg],
+  "acoustic": [cubicleImg, workstationImage, cubicleImg],
+  "collaborative": [workstationImg, workstationImage, workstationImg],
+  "bedroom": [bedroomImg, bedroomImg, bedroomImg],
+  "bed-sets": [bedroomImg, bedroomImg, bedroomImg],
+  "bedside-tables": [bedroomImg, deskImage, bedroomImg],
+  "dressing-tables": [bedroomImg, deskImage, bedroomImg],
+  "mirrors": [bedroomImg, bedroomImg, bedroomImg],
+  "bench-settee": [bedroomImg, chairImage, bedroomImg],
+  "living": [livingSofaImg, livingSofaImg, livingSofaImg],
+  "home-sofa": [livingSofaImg, livingSofaImg, livingSofaImg],
+  "center-side-tables": [livingSofaImg, deskImage, livingSofaImg],
+  "coffee-tables": [livingSofaImg, deskImage, livingSofaImg],
+  "console": [livingSofaImg, deskImage, livingSofaImg],
+  "tv-units": [livingSofaImg, deskImage, livingSofaImg],
+  "dining": [diningImg, diningImg, diningImg],
+  "dining-sets": [diningImg, diningImg, diningImg],
+  "dining-chairs": [diningImg, chairImage, diningImg],
+  "dining-tables": [diningImg, deskImage, diningImg],
+};
+
+export const getCategoryImages = (category: string): string[] => {
+  return categoryImageMap[category] || [deskImage, chairImage, workstationImage];
+};
 
 export interface ProductColor {
   name: string;
@@ -2839,6 +2893,13 @@ export const products: Product[] = [
     reviews: 47,
   },
 ];
+
+// Apply category-specific images to all products
+products.forEach((p) => {
+  const catKey = p.subcategory || p.category;
+  const imgs = getCategoryImages(catKey);
+  p.images = [imgs[0], imgs[1], imgs[2], imgs[0]];
+});
 
 // ─── UTILITY FUNCTIONS ───────────────────────────────────────────────────
 export const getProductById = (id: string): Product | undefined => {

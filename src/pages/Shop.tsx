@@ -4,7 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
 import ProductListItem from "@/components/shop/ProductListItem";
-import { products, getProductsByCategory, sortProducts } from "@/data/products";
+import { products, getProductsByCategory, sortProducts, getCategoryImages } from "@/data/products";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Grid3X3, LayoutList, SlidersHorizontal, ChevronDown, ChevronRight } from "lucide-react";
@@ -129,6 +129,10 @@ const Shop = () => {
     return "All Products";
   };
 
+  const getCategoryCount = (catId: string): number => {
+    return getProductsByCategory(catId).length;
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -165,6 +169,9 @@ const Shop = () => {
                             }`}
                           >
                             {cat.label}
+                            <span className="ml-auto text-xs text-muted-foreground font-normal">
+                              {getCategoryCount(cat.id)}
+                            </span>
                           </button>
                           {cat.children.length > 0 && (
                             <button
@@ -189,6 +196,9 @@ const Shop = () => {
                               >
                                 <ChevronRight className="h-3 w-3 flex-shrink-0" />
                                 {child.label}
+                                <span className="ml-auto text-xs text-muted-foreground">
+                                  {getCategoryCount(child.id)}
+                                </span>
                               </button>
                             ))}
                           </div>

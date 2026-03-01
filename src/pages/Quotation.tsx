@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, Clock, Shield, Users, Headphones, Star, Trash2, Minus, Plus, Printer, ShoppingBag } from "lucide-react";
+import { CheckCircle, Clock, Shield, Users, Headphones, Star, Trash2, Minus, Plus, Printer, ShoppingBag, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useQuote } from "@/contexts/QuoteContext";
-import { formatPKR } from "@/data/products";
+import { formatPKR, products } from "@/data/products";
 import { useEffect } from "react";
 
 const benefits = [
@@ -27,8 +27,16 @@ const testimonials = [
 
 const Quotation = () => {
   const [submitted, setSubmitted] = useState(false);
-  const { items, removeItem, updateQuantity, totalPrice, totalItems } = useQuote();
+  const [productSearch, setProductSearch] = useState("");
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const { items, removeItem, updateQuantity, totalPrice, totalItems, addItem } = useQuote();
   const printRef = useRef<HTMLDivElement>(null);
+
+  const searchResults = useMemo(() => {
+    if (!productSearch.trim()) return [];
+    const q = productSearch.toLowerCase();
+    return products.filter(p => p.name.toLowerCase().includes(q) || p.shortDescription.toLowerCase().includes(q)).slice(0, 8);
+  }, [productSearch]);
 
   useEffect(() => {
     document.title = "Get E-Quotation — WOODEX Pakistan | Free Quote Request";
@@ -74,6 +82,50 @@ const Quotation = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Product Search & Add */}
+        <section className="py-6 bg-background border-b">
+          <div className="container mx-auto px-4">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-3 mb-3">
+                <Search className="h-5 w-5 text-accent" />
+                <h2 className="font-bold">Add Products to Quote</h2>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search products by name... (e.g. BALLMER, ergonomic chair)"
+                  value={productSearch}
+                  onChange={(e) => { setProductSearch(e.target.value); setShowProductSearch(true); }}
+                  onFocus={() => setShowProductSearch(true)}
+                  className="pl-10"
+                />
+                {showProductSearch && searchResults.length > 0 && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-background border border-border rounded-sm shadow-lg max-h-80 overflow-y-auto">
+                    {searchResults.map((p) => (
+                      <button
+                        key={p.id}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-section-light transition-colors border-b border-border last:border-b-0"
+                        onClick={() => {
+                          addItem({ id: p.id, name: p.name, category: p.category, price: p.price, image: p.images[0] });
+                          setProductSearch("");
+                          setShowProductSearch(false);
+                        }}
+                      >
+                        <img src={p.images[0]} alt={p.name} className="w-10 h-10 object-cover rounded-sm flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{p.name}</p>
+                          <p className="text-xs text-muted-foreground">{p.subcategory || p.category}</p>
+                        </div>
+                        <span className="text-sm font-bold text-accent flex-shrink-0">{formatPKR(p.price)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </section>

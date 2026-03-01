@@ -105,7 +105,7 @@ const VirtualShowroom = () => {
               {[
                 { icon: Armchair, label: "Executive Chairs", href: "/shop?category=chairs" },
                 { icon: Users, label: "Workstations", href: "/shop?category=workstations" },
-                { icon: BarChart3, label: "Standing Desks", href: "/shop?category=desks" },
+                { icon: BarChart3, label: "Standing Desks", href: "/shop?category=executive-tables" },
                 { icon: Box, label: "Storage", href: "/shop?category=storage" },
                 { icon: Sofa, label: "Lounge", href: "/shop" },
               ].map((cat) => (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Clock, Send, MessageCircle, ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +14,16 @@ const showrooms = [
   { city: "Islamabad", address: "789 Blue Area, F-7, Islamabad", phone: "+92 51 111 WOODEX", hours: "Mon–Sat: 10am–6pm" },
 ];
 
+const faqs = [
+  { q: "How quickly can you deliver?", a: "Standard delivery takes 7-14 business days within major cities. Custom orders may take 3-4 weeks depending on complexity." },
+  { q: "Do you offer installation services?", a: "Yes, free professional assembly and installation is included for all orders within Lahore, Karachi, and Islamabad. Other cities available at nominal charges." },
+  { q: "Can I visit the factory?", a: "Absolutely! We welcome factory visits by appointment. Contact us to schedule a tour of our manufacturing facility in Lahore." },
+  { q: "What payment methods do you accept?", a: "We accept bank transfers, cheques, and cash on delivery for orders within major cities. Corporate clients can set up credit accounts." },
+];
+
 const Contact = () => {
   const [submitted, setSubmitted] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
     document.title = "Contact Us — WOODEX Pakistan | Showrooms in Lahore, Karachi, Islamabad";
@@ -38,8 +46,7 @@ const Contact = () => {
             <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Contact Us</p>
             <h1 className="text-4xl lg:text-5xl font-black mb-3">Get in Touch</h1>
             <p className="text-primary-foreground/75 max-w-xl">
-              Have questions about our products or services? We'd love to hear from you. Send us a message 
-              and we'll respond as soon as possible.
+              Have questions about our products or services? We'd love to hear from you.
             </p>
           </div>
         </section>
@@ -89,7 +96,7 @@ const Contact = () => {
                         <div className="grid md:grid-cols-2 gap-5">
                           <div className="space-y-1.5">
                             <Label htmlFor="name">Full Name *</Label>
-                            <Input id="name" placeholder="John Smith" required />
+                            <Input id="name" placeholder="Muhammad Ali" required />
                           </div>
                           <div className="space-y-1.5">
                             <Label htmlFor="email">Email *</Label>
@@ -122,13 +129,27 @@ const Contact = () => {
           </div>
         </section>
 
+        {/* Google Maps */}
+        <section className="border-t">
+          <div className="w-full h-80 bg-section-mid">
+            <iframe
+              title="WOODEX Head Office Location — Gulberg III, Lahore"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3401.456!2d74.3507!3d31.5204!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDMxJzEzLjQiTiA3NMKwMjEnMDIuNSJF!5e0!3m2!1sen!2spk!4v1234567890"
+              className="w-full h-full border-0"
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        </section>
+
         {/* Showrooms */}
         <section className="py-14 bg-section-light border-t">
           <div className="container mx-auto px-4">
             <div className="text-center mb-10">
               <div className="w-12 h-1 bg-accent mx-auto mb-4" />
               <h2 className="text-3xl font-bold mb-3">Visit Our Showrooms</h2>
-              <p className="text-muted-foreground">Experience our furniture in person at one of our showrooms</p>
+              <p className="text-muted-foreground">Experience our furniture in person</p>
             </div>
             <div className="grid md:grid-cols-3 gap-6">
               {showrooms.map((s) => (
@@ -145,7 +166,46 @@ const Contact = () => {
             </div>
           </div>
         </section>
+
+        {/* FAQ */}
+        <section className="py-14 bg-background border-t">
+          <div className="container mx-auto px-4 max-w-3xl">
+            <div className="text-center mb-10">
+              <div className="w-12 h-1 bg-accent mx-auto mb-5" />
+              <h2 className="text-2xl font-bold mb-2">Frequently Asked Questions</h2>
+            </div>
+            <div className="space-y-3">
+              {faqs.map((faq, i) => (
+                <div key={i} className="border border-border rounded-sm overflow-hidden">
+                  <button
+                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                    className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-section-light transition-colors"
+                  >
+                    <span className="font-semibold text-sm">{faq.q}</span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ml-4 ${openFaq === i ? "rotate-180" : ""}`} />
+                  </button>
+                  {openFaq === i && (
+                    <div className="px-5 pb-4 text-sm text-muted-foreground leading-relaxed border-t border-border bg-section-light">
+                      <div className="pt-3">{faq.a}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
+
+      {/* WhatsApp Floating Button */}
+      <a
+        href="https://wa.me/923001234567?text=Hi%20WOODEX%2C%20I%27m%20interested%20in%20your%20furniture"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-[hsl(142,70%,45%)] hover:bg-[hsl(142,70%,38%)] text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+        aria-label="Chat on WhatsApp"
+      >
+        <MessageCircle className="h-7 w-7" />
+      </a>
 
       <Footer />
     </div>
