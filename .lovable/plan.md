@@ -1,283 +1,113 @@
 
-# WOODEX Complete Website Overhaul Plan
 
-## Summary of All Changes
+# WOODEX Website Fix & Enhancement Plan
 
-This is a comprehensive, multi-file overhaul covering navigation, footer, all pages, new features, SEO, and product data. Here is everything that will be built/improved:
+## Issues Found
 
----
+### Critical Bugs
+1. **ProductListItem.tsx shows "AED" instead of PKR** (line 92-96) - hardcoded `AED` currency instead of using `formatPKR()`
+2. **ProductListItem.tsx "Add to Quote" button not functional** - missing `useQuote` integration, uses `ShoppingCart` icon instead of `ShoppingBag`
+3. **All 180+ products use the same 3 placeholder images** (`deskImage`, `chairImage`, `workstationImage`) - every product shows identical photos
+4. **Nova Series missing from Header nav dropdown** - Series dropdown only lists 4 series but `seriesList` has 5 (including Nova)
+5. **Virtual Showroom "Standing Desks" link broken** - links to `/shop?category=desks` which doesn't exist
 
-## 1. NAVIGATION (Header.tsx) — Complete Rebuild
+### Content & Design Issues
+6. **Contact form placeholder says "John Smith"** instead of a Pakistani name
+7. **Product images are repetitive** - need unique generated images per category
+8. **Shop sidebar missing product count per category** - no indication of how many products each category has
+9. **No category landing/hero images** that change when switching categories
+10. **Mega menu "Room Packages" link still visible** at bottom of Products dropdown (line 248)
 
-**Changes:**
-- Remove "Virtual Showroom" from nav (move to Showrooms utility bar link)
-- Remove "Room Packages" from nav
-- Remove Login icon (User icon)
-- Keep Search icon only
-- Improve hamburger menu with better 3-line design and animated slide-down mobile menu
-- Update nav to match exact requested structure:
-  - **Products** (mega-dropdown with Office + Home categories):
-    - Office Tables → sub: Executive, Manager, Staff, Meeting, Reception
-    - Office Chairs, Workstations, Cubicle Workstation, Office Sofas, Office Storages, Cafe Furniture, Public Sitting
-    - **Home Furniture** → Bedroom (Beds, Bedside, Dressing, Mirrors, Bench), Living (Sofa, Coffee, Console, TV Units), Dining (Sets, Chairs, Tables)
-  - **Markets** (dropdown: Corporate, Education, Healthcare, Government, Hospitality)
-  - **Series** (dropdown: Ek Series, Infinity Series, Woodex Series, Cubicle Series)
-  - **Projects**
-  - **Services**
-  - **About**
-  - **Contact**
-- Utility bar: Showrooms → `/showrooms` (Virtual Showroom page), Material and Colors → `/materials`, Warranty → `/warranty`
+### Missing Features from Plan
+11. **No product search in Quotation page** - plan called for product search/selector in form
+12. **No WhatsApp button on Contact page**
+13. **No FAQ on About page**
+14. **No Google Maps embed on Contact page**
+15. **No timeline section on About page**
 
 ---
 
-## 2. FOOTER (Footer.tsx) — 5-Column Proper Layout
+## Implementation Plan
 
-**5 Columns:**
-- **Col 1: WOODEX Brand** — Logo, tagline, description, contact info (+92 300 1234567, info@woodex.pk, Lahore Pakistan), social icons (Facebook, Twitter, LinkedIn, Instagram, YouTube)
-- **Col 2: Quick Links** — About Us, Portfolio, Careers, Contact, Showrooms, Series, B2B/Markets
-- **Col 3: Shop** — Office Tables (Executive, Manager, Staff, Meeting, Reception), Office Chairs, Workstations, Cubicle, Office Sofas, Storage
-- **Col 4: Learn More** — Awards, Ideas & Inspiration, Terms of Use, Resources, Support, Warranty, Distributors, FAQ
-- **Col 5: Contact** — Address details, phone, email, hours, map link button, newsletter signup input
+### Phase 1: Fix Critical Bugs (3 files)
 
----
+**1. Fix ProductListItem.tsx**
+- Import `formatPKR` from `@/data/products` and `useQuote` from `@/contexts/QuoteContext`
+- Replace `AED {product.price.toLocaleString()}` with `formatPKR(product.price)` on lines 92-96
+- Wire up "Add to Quote" button with `addItem` from `useQuote`
 
-## 3. PRODUCT DATA (products.ts) — Expanded Categories
+**2. Fix Header.tsx**
+- Add Nova Series to the Series dropdown (line 96)
+- Remove "Room Packages" link from bottom of mega menu (line 248)
 
-New full category structure with PKR prices:
-```
-Office Tables:
-  - Executive Table, Manager Table, Staff Table, Meeting Table, Reception Table
+**3. Fix VirtualShowroom.tsx**
+- Change "Standing Desks" href from `/shop?category=desks` to `/shop?category=executive-tables` (line 108)
 
-Office Chairs (expanded)
-Workstations / Cubicle Workstations
-Office Sofas
-Office Storages
-Cafe Furniture
-Public Sitting
+### Phase 2: Generate Unique Product Images (image generation)
 
-Home Furniture:
-  Bedroom: Bed Sets, Bedside Tables, Dressing Tables, Mirrors, Bench & Settee
-  Living: Home Sofa, Center & Side Tables, Coffee Tables, Console, TV Units
-  Dining: Dining Sets, Dining Chairs, Dining Tables
-```
+Generate 15 category-specific product images:
+- Executive desk, manager desk, staff desk, meeting table, reception counter
+- Office chair, workstation, cubicle, office sofa, storage
+- Cafe furniture, bedroom set, living room sofa, dining set, public seating
 
-All prices in PKR (Pakistani Rupees), e.g., PKR 45,000 to PKR 1,200,000.
+Then update `products.ts` to assign category-appropriate images instead of repeating the same 3 images for all 180+ products. Create image imports and map them by category/subcategory.
 
----
+### Phase 3: Improve Shop Page Design (Shop.tsx)
 
-## 4. SHOP PAGE — Subcategory Navigation + SEO
+- Add product count badges next to each sidebar category
+- Add dynamic category hero banner that changes per selected category
+- Add "Shop by Room" quick navigation strip below hero
 
-**Improvements:**
-- Full subcategory sidebar/tabs with all office + home furniture categories
-- Category hero banners that change per selection
-- SEO meta descriptions per category (using page title changes)
-- Improved product grid with PKR prices
-- FAQ accordion section at bottom of shop page
-- "Shop by Room" quick links
+### Phase 4: Improve About Page (About.tsx)
 
----
+- Add company timeline section (2004 Founded, 2010 First Factory, 2015 Nationwide, 2020 500+ Clients, 2024 Digital Platform)
+- Add FAQ accordion section at bottom
+- Add certifications/awards visual section
 
-## 5. QUOTE BASKET / CART SYSTEM (New Context + Component)
+### Phase 5: Improve Contact Page (Contact.tsx)
 
-**New files:**
-- `src/contexts/QuoteContext.tsx` — React Context for quote basket (persisted via localStorage)
-- `src/components/QuoteBasket.tsx` — Slide-out drawer/panel showing quote items
-- `src/components/QuoteBasketButton.tsx` — Floating button showing item count
+- Fix placeholder "John Smith" to "Muhammad Ali"
+- Add WhatsApp quick-contact floating button
+- Add Google Maps embed placeholder
+- Add FAQ section at bottom
 
-**Features:**
-- Add to Quote button on product cards and product detail pages
-- Quantity management (+/-) per item
-- Remove items
-- Persists in localStorage between page visits
-- On Quotation page: quote basket items pre-populate the form
-- PDF export: generates printable quote PDF using browser print + CSS `@media print`
-- Quote basket drawer accessible from header
+### Phase 6: Improve Services Page (Services.tsx)
+
+- Generate service-specific hero image
+- Add client testimonials section
+- Add pricing tiers for services
+
+### Phase 7: Improve Quotation Page (Quotation.tsx)
+
+- Add product search/selector dropdown to add products directly from the form
+- Improve PDF export with print-specific CSS media query styles
+
+### Phase 8: Improve Virtual Showroom (VirtualShowroom.tsx)
+
+- Make 3D configurator more interactive with draggable furniture panels
+- Add color/material picker sidebar
+- Add "Save & Download Layout" functionality
 
 ---
 
-## 6. QUOTATION PAGE — Improved with Product Selection
+## Files to Modify
+1. `src/components/shop/ProductListItem.tsx` - Fix AED bug, add quote integration
+2. `src/components/Header.tsx` - Add Nova Series, remove Room Packages link
+3. `src/pages/VirtualShowroom.tsx` - Fix broken link, enhance configurator
+4. `src/data/products.ts` - Update image assignments per category
+5. `src/pages/Shop.tsx` - Category counts, dynamic hero, shop-by-room
+6. `src/pages/About.tsx` - Timeline, FAQ, certifications
+7. `src/pages/Contact.tsx` - WhatsApp, maps, FAQ, fix placeholder
+8. `src/pages/Services.tsx` - Testimonials, pricing tiers, hero image
+9. `src/pages/Quotation.tsx` - Product selector, print CSS
+10. `src/pages/Index.tsx` - Minor content refinements
 
-**Improvements:**
-- Shows pre-added items from quote basket at top
-- Allows adding/removing products directly in form
-- Product search/selector in form
-- Budget calculator showing estimated total
-- PDF download button that generates formatted quote PDF
-- Improved form fields with Pakistan-specific data
+## New Images to Generate
+- 15 category-specific product images
+- 1 services hero image
 
----
+## Estimated Scope
+- ~10 files modified
+- ~16 images generated
+- All bugs fixed, all missing features added
 
-## 7. SERIES PAGE — 4 New Series + Single Series Pages
-
-**New series data:**
-- **Ek Series** — Entry-level/affordable, budget-friendly office furniture
-- **Infinity Series** — Modular, expandable systems
-- **Woodex Series** — Premium flagship collection
-- **Cubicle Series** — Privacy-focused cubicle workstations
-
-**New pages:**
-- `src/pages/SeriesDetail.tsx` — Single series page showing products in that series, hero, features, product grid
-
-**Route added:** `/series/:seriesId`
-
----
-
-## 8. PROJECTS PAGE — Before/After + Single Project Pages
-
-**Improvements:**
-- Before/After image slider toggle on project cards (hover to reveal before/after)
-- Single project detail page: `src/pages/ProjectDetail.tsx`
-- Route: `/projects/:projectId`
-- Shows: full gallery, project stats, before/after comparison, furniture used, client testimonial
-
----
-
-## 9. VIRTUAL SHOWROOM PAGE — Improved 3D Configurator
-
-**Improvements:**
-- Realistic 3D room configurator UI using CSS transforms + interactive panels
-- Room type selector with animated transitions
-- Furniture drag-and-drop simulation (CSS-based, no 3D lib needed to avoid complexity)
-- Color/material selector panel
-- "Save & Download Layout" button
-- Showrooms link now connects utility bar "Showrooms" to this page
-
-**Also create:** `src/pages/Showrooms.tsx` — dedicated showroom locations page linked from utility bar
-
----
-
-## 10. MATERIALS & WARRANTY PAGES
-
-**New pages:**
-- `src/pages/Materials.tsx` — Material and Colors page with fabric swatches, wood finishes, metal options, interactive color picker
-- `src/pages/Warranty.tsx` — Warranty information page with coverage tables, claim process, FAQ
-
----
-
-## 11. HOME PAGE (Index.tsx) — Enhanced
-
-**Improvements:**
-- Hero slides updated with new categories (Home furniture too)
-- New "Shop by Category" mega grid with all new subcategories
-- Home furniture section added to homepage
-- More featured products section
-- Improved SEO content (meta-like descriptions, proper H1/H2 hierarchy)
-- Before/After workspace transformation section
-- Customer testimonials section with ratings
-
----
-
-## 12. ABOUT PAGE — Improved
-
-**Improvements:**
-- Better hero with factory imagery
-- Timeline section (company milestones)
-- Certifications & awards section with icons
-- Expanded team section with proper cards
-- Manufacturing process visual steps
-- Pakistan map showing distribution
-
----
-
-## 13. CONTACT PAGE — Improved
-
-**Improvements:**
-- Embedded Google Maps iframe (placeholder)
-- Better showroom cards with images
-- FAQ section at bottom
-- WhatsApp quick contact button
-- Multiple contact reasons (Sales, Support, Custom, Media)
-
----
-
-## 14. SERVICES PAGE — Improved
-
-**Improvements:**
-- Better hero image
-- Service detail cards with numbered steps
-- Pricing tiers for services
-- Client testimonials specific to services
-- Process timeline visualization
-
----
-
-## 15. B2B PAGE — Improved
-
-**Improvements:**
-- Market-specific sections with dedicated content
-- Pricing/feature comparison table for B2B tiers
-- Partnership benefits section
-- Lead form specifically for B2B inquiries
-
----
-
-## 16. SEO IMPROVEMENTS (All Pages)
-
-- Add `<title>` and `<meta description>` via document.title updates in useEffect on each page
-- Proper H1/H2/H3 hierarchy on all pages
-- Schema-ready product descriptions
-- FAQ sections on Shop, Services, About pages
-- Keyword-rich content for Pakistan office furniture market
-- Alt text on all images
-- Canonical-ready URL structure
-
----
-
-## Technical Implementation Order
-
-```text
-Phase 1 — Core Infrastructure
-  ├── src/contexts/QuoteContext.tsx (new)
-  ├── src/data/products.ts (expanded with all categories + PKR prices)
-  └── src/App.tsx (new routes)
-
-Phase 2 — Global Components
-  ├── src/components/Header.tsx (mega nav)
-  ├── src/components/Footer.tsx (5-column)
-  └── src/components/QuoteBasket.tsx (new)
-
-Phase 3 — New Pages
-  ├── src/pages/SeriesDetail.tsx (new)
-  ├── src/pages/ProjectDetail.tsx (new)
-  ├── src/pages/Showrooms.tsx (new)
-  ├── src/pages/Materials.tsx (new)
-  └── src/pages/Warranty.tsx (new)
-
-Phase 4 — Page Improvements
-  ├── Index.tsx, Shop.tsx, ProductDetail.tsx
-  ├── Series.tsx, Projects.tsx, VirtualShowroom.tsx
-  ├── About.tsx, Contact.tsx, Services.tsx
-  ├── B2B.tsx, RoomPackages.tsx, Quotation.tsx
-  └── All pages get SEO useEffect + FAQ
-```
-
----
-
-## Files to Create (New)
-1. `src/contexts/QuoteContext.tsx`
-2. `src/components/QuoteBasket.tsx`
-3. `src/pages/SeriesDetail.tsx`
-4. `src/pages/ProjectDetail.tsx`
-5. `src/pages/Showrooms.tsx`
-6. `src/pages/Materials.tsx`
-7. `src/pages/Warranty.tsx`
-
-## Files to Heavily Modify (Existing)
-1. `src/App.tsx` — add all new routes
-2. `src/data/products.ts` — complete expansion
-3. `src/components/Header.tsx` — mega nav rebuild
-4. `src/components/Footer.tsx` — 5-column rebuild
-5. `src/pages/Index.tsx` — homepage enhancements
-6. `src/pages/Shop.tsx` — subcategories + FAQ
-7. `src/pages/ProductDetail.tsx` — Add to Quote integration
-8. `src/pages/Series.tsx` — 4 new series
-9. `src/pages/Projects.tsx` — before/after system
-10. `src/pages/Quotation.tsx` — basket integration + PDF
-11. `src/pages/VirtualShowroom.tsx` — improved 3D configurator
-12. `src/pages/About.tsx` — timeline + certifications
-13. `src/pages/Contact.tsx` — maps + FAQ
-14. `src/pages/Services.tsx` — pricing tiers
-15. `src/pages/B2B.tsx` — market sections
-16. `src/pages/RoomPackages.tsx` — pricing system
-
-All prices will be in PKR. All content will be Pakistan-specific. All pages will be fully responsive.
