@@ -93,6 +93,7 @@ const navItems = [
       { label: "Infinity Series", href: "/series/infinity-series" },
       { label: "Woodex Series", href: "/series/woodex-series" },
       { label: "Cubicle Series", href: "/series/cubicle-series" },
+      { label: "Nova Series", href: "/series/nova-series" },
     ],
   },
   { label: "Projects", href: "/projects" },
@@ -245,7 +246,7 @@ const Header = () => {
                         </div>
                         <div className="border-t mt-5 pt-4 flex justify-between items-center">
                           <Link to="/shop" className="text-sm text-accent font-semibold hover:underline">View All Products →</Link>
-                          <Link to="/room-packages" className="text-sm text-muted-foreground hover:text-accent transition-colors">Room Packages</Link>
+                          <Link to="/virtual-showroom" className="text-sm text-muted-foreground hover:text-accent transition-colors">Virtual Showroom</Link>
                         </div>
                       </div>
                     )}

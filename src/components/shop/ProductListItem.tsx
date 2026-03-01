@@ -2,14 +2,16 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, ShoppingCart, Eye, Check } from "lucide-react";
-import { Product } from "@/data/products";
+import { Star, ShoppingBag, Eye, Check } from "lucide-react";
+import { Product, formatPKR } from "@/data/products";
+import { useQuote } from "@/contexts/QuoteContext";
 
 interface ProductListItemProps {
   product: Product;
 }
 
 const ProductListItem = ({ product }: ProductListItemProps) => {
+  const { addItem } = useQuote();
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
@@ -89,10 +91,10 @@ const ProductListItem = ({ product }: ProductListItemProps) => {
             {/* Price & Actions */}
             <div className="flex items-center justify-between mt-auto pt-4 border-t">
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold">AED {product.price.toLocaleString()}</span>
+                <span className="text-2xl font-bold">{formatPKR(product.price)}</span>
                 {product.originalPrice && (
                   <span className="text-sm text-muted-foreground line-through">
-                    AED {product.originalPrice.toLocaleString()}
+                    {formatPKR(product.originalPrice)}
                   </span>
                 )}
               </div>
@@ -104,8 +106,17 @@ const ProductListItem = ({ product }: ProductListItemProps) => {
                     View Details
                   </Link>
                 </Button>
-                <Button disabled={!product.inStock}>
-                  <ShoppingCart className="h-4 w-4 mr-2" />
+                <Button
+                  disabled={!product.inStock}
+                  onClick={() => addItem({
+                    id: product.id,
+                    name: product.name,
+                    category: product.category,
+                    price: product.price,
+                    image: product.images[0],
+                  })}
+                >
+                  <ShoppingBag className="h-4 w-4 mr-2" />
                   {product.inStock ? "Add to Quote" : "Out of Stock"}
                 </Button>
               </div>

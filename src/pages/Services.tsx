@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Lightbulb, Package, Truck, ClipboardCheck, Headphones, Ruler, CheckCircle2 } from "lucide-react";
+import { Lightbulb, Package, Truck, ClipboardCheck, Headphones, Ruler, CheckCircle2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -43,6 +43,12 @@ const services = [
     description: "Improve employee health and productivity with our certified ergonomic consulting service. We assess workstations and recommend evidence-based solutions.",
     features: ["Certified ergonomists", "Workstation assessments", "Product recommendations", "Employee training", "Health impact reports"],
   },
+];
+
+const testimonials = [
+  { name: "Bilal Ahmed", company: "Allied Bank Limited", text: "WOODEX furnished our 8 new branches across Punjab. Their project management was exceptional — on time, on budget.", rating: 5 },
+  { name: "Dr. Ayesha Siddiqui", company: "Shifa International Hospital", text: "From patient waiting areas to executive offices, WOODEX delivered quality furniture that meets healthcare standards.", rating: 5 },
+  { name: "Hassan Raza", company: "TechVentures Islamabad", text: "Our 200-seat tech office was designed and furnished in just 6 weeks. The ergonomic chairs are a game-changer.", rating: 5 },
 ];
 
 const steps = [
@@ -125,6 +131,33 @@ const Services = () => {
                   </div>
                   <h3 className="font-bold text-lg mb-2">{item.title}</h3>
                   <p className="text-sm text-muted-foreground">{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Client Testimonials */}
+        <section className="py-16 bg-background border-t">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <div className="w-12 h-1 bg-accent mx-auto mb-5" />
+              <h2 className="text-3xl font-bold mb-3">What Our Clients Say</h2>
+              <p className="text-muted-foreground">Trusted by leading organizations across Pakistan</p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              {testimonials.map((t) => (
+                <div key={t.name} className="p-6 border rounded-sm hover:border-accent transition-colors">
+                  <div className="flex gap-0.5 mb-4">
+                    {Array(t.rating).fill(0).map((_, i) => (
+                      <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground italic mb-4 leading-relaxed">"{t.text}"</p>
+                  <div>
+                    <p className="font-bold text-sm">{t.name}</p>
+                    <p className="text-xs text-muted-foreground">{t.company}</p>
+                  </div>
                 </div>
               ))}
             </div>
