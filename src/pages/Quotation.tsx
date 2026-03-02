@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, Clock, Shield, Users, Headphones, Star, Trash2, Minus, Plus, Printer, ShoppingBag, Search } from "lucide-react";
+import { CheckCircle, Clock, Shield, Users, Headphones, Star, Trash2, Minus, Plus, Printer, ShoppingBag, Search, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import Footer from "@/components/Footer";
 import { useQuote } from "@/contexts/QuoteContext";
 import { formatPKR, products } from "@/data/products";
 import { useEffect } from "react";
+import PrintableInvoice from "@/components/quotation/PrintableInvoice";
 
 const benefits = [
   { icon: Clock, title: "24-Hour Response", description: "Receive detailed quotes within one business day" },
@@ -132,7 +133,7 @@ const Quotation = () => {
 
         {/* Quote Basket Items */}
         {items.length > 0 && (
-          <section className="py-8 bg-section-light border-b" ref={printRef}>
+          <section className="py-8 bg-section-light border-b">
             <div className="container mx-auto px-4">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -140,8 +141,8 @@ const Quotation = () => {
                   <h2 className="text-xl font-bold">Your Quote Basket ({totalItems} items)</h2>
                 </div>
                 <Button variant="outline" size="sm" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground gap-2" onClick={handlePrintQuote}>
-                  <Printer className="h-4 w-4" />
-                  Print / Download PDF
+                  <Download className="h-4 w-4" />
+                  Download PDF Quote
                 </Button>
               </div>
 
@@ -361,6 +362,14 @@ const Quotation = () => {
           </div>
         </section>
       </main>
+
+      {/* Printable Invoice — hidden on screen, shown on print */}
+      <PrintableInvoice
+        ref={printRef}
+        items={items}
+        totalPrice={totalPrice}
+        totalItems={totalItems}
+      />
 
       <Footer />
     </div>
