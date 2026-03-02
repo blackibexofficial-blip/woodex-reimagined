@@ -1,53 +1,62 @@
 import { forwardRef } from "react";
 import { QuoteItem } from "@/contexts/QuoteContext";
 import { formatPKR } from "@/data/products";
+import woodexLogo from "@/assets/woodex-logo.png";
+
+export interface ClientInfo {
+  name: string;
+  location: string;
+  contactNumber: string;
+  whatsapp: string;
+}
 
 interface PrintableInvoiceProps {
   items: QuoteItem[];
   totalPrice: number;
   totalItems: number;
   quoteNumber?: string;
+  clientInfo: ClientInfo;
 }
 
 const PrintableInvoice = forwardRef<HTMLDivElement, PrintableInvoiceProps>(
-  ({ items, totalPrice, totalItems, quoteNumber }, ref) => {
+  ({ items, totalPrice, totalItems, quoteNumber, clientInfo }, ref) => {
     const today = new Date();
     const dateStr = today.toLocaleDateString("en-PK", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
-    const qNumber = quoteNumber || `WF-${10000 + Math.floor(Math.random() * 90000)}`;
+    const qNumber = quoteNumber || `WDX-${10000 + Math.floor(Math.random() * 90000)}`;
 
     return (
       <div ref={ref} className="print-invoice hidden print:block">
-        {/* Letterhead */}
+        {/* Letterhead with Logo */}
         <div className="invoice-header">
           <div className="invoice-brand">
-            <h1 className="invoice-logo">
-              <span className="invoice-logo-wood">Wood</span>
-              <span className="invoice-logo-ex">Ex</span>
-              <span className="invoice-logo-sub">Furniture</span>
-            </h1>
+            <img src={woodexLogo} alt="WoodEx Furniture" className="invoice-logo-img" />
           </div>
           <div className="invoice-title-block">
             <h2 className="invoice-title">E-Quotation</h2>
+            <p className="invoice-title-sub">Professional Furniture Solutions</p>
           </div>
         </div>
 
         {/* Company Info Bar */}
         <div className="invoice-info-bar">
-          <span>LG 89 Zainab Tower, Model Town, Link Road, Lahore</span>
+          <span>📍 LG 89 Zainab Tower, Model Town, Link Road, Lahore</span>
           <span>📞 0322 4000768</span>
-          <span>info@woodex.pk</span>
+          <span>✉ info@woodex.pk</span>
+          <span>🌐 www.woodex.pk</span>
         </div>
 
-        {/* Quote Meta */}
+        {/* Client & Quote Meta */}
         <div className="invoice-meta">
           <div className="invoice-meta-left">
-            <p className="invoice-meta-label">Prepared For</p>
-            <p className="invoice-meta-value">___________________________</p>
-            <p className="invoice-meta-sublabel">Company / Client Name</p>
+            <p className="invoice-meta-label">Quotation For</p>
+            <p className="invoice-meta-value">{clientInfo.name}</p>
+            <p className="invoice-meta-detail">📍 {clientInfo.location}</p>
+            <p className="invoice-meta-detail">📞 {clientInfo.contactNumber}</p>
+            <p className="invoice-meta-detail">💬 WhatsApp: {clientInfo.whatsapp}</p>
           </div>
           <div className="invoice-meta-right">
             <table className="invoice-meta-table">
@@ -71,7 +80,7 @@ const PrintableInvoice = forwardRef<HTMLDivElement, PrintableInvoiceProps>(
                   </td>
                 </tr>
                 <tr>
-                  <td className="meta-label">Items</td>
+                  <td className="meta-label">Total Items</td>
                   <td className="meta-value">{totalItems}</td>
                 </tr>
               </tbody>
@@ -102,18 +111,6 @@ const PrintableInvoice = forwardRef<HTMLDivElement, PrintableInvoiceProps>(
                 <td className="col-total">{formatPKR(item.price * item.quantity)}</td>
               </tr>
             ))}
-            {/* Empty rows to fill space if few items */}
-            {items.length < 8 &&
-              Array.from({ length: 8 - items.length }).map((_, i) => (
-                <tr key={`empty-${i}`} className="empty-row">
-                  <td className="col-sr">&nbsp;</td>
-                  <td className="col-item">&nbsp;</td>
-                  <td className="col-desc">&nbsp;</td>
-                  <td className="col-qty">&nbsp;</td>
-                  <td className="col-unit">&nbsp;</td>
-                  <td className="col-total">&nbsp;</td>
-                </tr>
-              ))}
           </tbody>
         </table>
 
@@ -139,12 +136,12 @@ const PrintableInvoice = forwardRef<HTMLDivElement, PrintableInvoiceProps>(
                   <td>{formatPKR(totalPrice)}</td>
                 </tr>
                 <tr>
-                  <td>ADVANCE (35%)</td>
-                  <td>{formatPKR(Math.round(totalPrice * 0.35))}</td>
+                  <td>ADVANCE (75%)</td>
+                  <td>{formatPKR(Math.round(totalPrice * 0.75))}</td>
                 </tr>
                 <tr className="totals-balance">
                   <td>BALANCE DUE</td>
-                  <td>{formatPKR(Math.round(totalPrice * 0.65))}</td>
+                  <td>{formatPKR(Math.round(totalPrice * 0.25))}</td>
                 </tr>
               </tbody>
             </table>
@@ -153,17 +150,22 @@ const PrintableInvoice = forwardRef<HTMLDivElement, PrintableInvoiceProps>(
 
         {/* Footer */}
         <div className="invoice-footer">
-          <div className="invoice-footer-thanks">THANK YOU FOR YOUR BUSINESS!</div>
+          <div className="invoice-footer-thanks">THANK YOU FOR CHOOSING WOODEX!</div>
           <div className="invoice-footer-contact">
-            <span>www.woodex.pk</span>
+            <span>🌐 www.woodex.pk</span>
             <span>•</span>
-            <span>WhatsApp: 0322 4000768</span>
+            <span>📞 0322 4000768</span>
             <span>•</span>
-            <span>Lahore, Pakistan</span>
+            <span>💬 WhatsApp: 0322 4000768</span>
+            <span>•</span>
+            <span>✉ info@woodex.pk</span>
           </div>
           <div className="invoice-footer-terms">
-            Terms: 35% advance with order, balance before delivery. Warranty as per product category.
-            This quotation is valid for 30 days from the date of issue.
+            <strong>Payment Terms:</strong> 75% advance with order confirmation, 25% balance before delivery.
+            Warranty as per product category. This quotation is valid for 30 days from the date of issue.
+          </div>
+          <div className="invoice-footer-brand">
+            WOODEX — Premium Office & Home Furniture | Made in Pakistan
           </div>
         </div>
       </div>

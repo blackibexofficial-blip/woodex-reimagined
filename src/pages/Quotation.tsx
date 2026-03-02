@@ -1,18 +1,19 @@
 import { useState, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, Clock, Shield, Users, Headphones, Star, Trash2, Minus, Plus, Printer, ShoppingBag, Search, Download } from "lucide-react";
+import { CheckCircle, Clock, Shield, Users, Headphones, Star, Trash2, Minus, Plus, ShoppingBag, Search, Download, Send, MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useQuote } from "@/contexts/QuoteContext";
 import { formatPKR, products } from "@/data/products";
 import { useEffect } from "react";
-import PrintableInvoice from "@/components/quotation/PrintableInvoice";
+import PrintableInvoice, { ClientInfo } from "@/components/quotation/PrintableInvoice";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 const benefits = [
   { icon: Clock, title: "24-Hour Response", description: "Receive detailed quotes within one business day" },
@@ -33,6 +34,11 @@ const Quotation = () => {
   const { items, removeItem, updateQuantity, totalPrice, totalItems, addItem } = useQuote();
   const printRef = useRef<HTMLDivElement>(null);
 
+  // Client info state
+  const [clientInfo, setClientInfo] = useState<ClientInfo>({ name: "", location: "", contactNumber: "", whatsapp: "" });
+  const [showClientDialog, setShowClientDialog] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"print" | "email" | "whatsapp" | null>(null);
+
   const searchResults = useMemo(() => {
     if (!productSearch.trim()) return [];
     const q = productSearch.toLowerCase();
@@ -49,8 +55,52 @@ const Quotation = () => {
     setTimeout(() => setSubmitted(false), 5000);
   };
 
-  const handlePrintQuote = () => {
-    window.print();
+  const isClientInfoValid = clientInfo.name.trim() && clientInfo.location.trim() && clientInfo.contactNumber.trim() && clientInfo.whatsapp.trim();
+
+  const requestAction = (action: "print" | "email" | "whatsapp") => {
+    if (items.length === 0) {
+      toast.error("Please add at least one product to your quote basket first.");
+      return;
+    }
+    if (!isClientInfoValid) {
+      setPendingAction(action);
+      setShowClientDialog(true);
+    } else {
+      executeAction(action);
+    }
+  };
+
+  const executeAction = (action: "print" | "email" | "whatsapp") => {
+    if (action === "print") {
+      window.print();
+    } else if (action === "email") {
+      const subject = encodeURIComponent(`WOODEX Quotation Request — ${clientInfo.name}`);
+      const itemsList = items.map((item, i) => `${i + 1}. ${item.name} x${item.quantity} — ${formatPKR(item.price * item.quantity)}`).join("%0A");
+      const body = encodeURIComponent(
+        `Quotation Request\n\nClient: ${clientInfo.name}\nLocation: ${clientInfo.location}\nContact: ${clientInfo.contactNumber}\nWhatsApp: ${clientInfo.whatsapp}\n\nProducts:\n${decodeURIComponent(itemsList)}\n\nEstimated Total: ${formatPKR(totalPrice)}\nAdvance (75%): ${formatPKR(Math.round(totalPrice * 0.75))}\nBalance Due: ${formatPKR(Math.round(totalPrice * 0.25))}\n\nPlease confirm this quotation.`
+      );
+      window.open(`mailto:info@woodex.pk?subject=${subject}&body=${body}`, "_blank");
+      toast.success("Email client opened with quotation details!");
+    } else if (action === "whatsapp") {
+      const itemsList = items.map((item, i) => `${i + 1}. ${item.name} x${item.quantity} — ${formatPKR(item.price * item.quantity)}`).join("\n");
+      const message = encodeURIComponent(
+        `*WOODEX Quotation Request*\n\n*Client:* ${clientInfo.name}\n*Location:* ${clientInfo.location}\n*Contact:* ${clientInfo.contactNumber}\n\n*Products:*\n${itemsList}\n\n*Estimated Total:* ${formatPKR(totalPrice)}\n*Advance (75%):* ${formatPKR(Math.round(totalPrice * 0.75))}\n*Balance Due:* ${formatPKR(Math.round(totalPrice * 0.25))}\n\nPlease confirm this quotation.`
+      );
+      window.open(`https://wa.me/923224000768?text=${message}`, "_blank");
+      toast.success("WhatsApp opened with quotation details!");
+    }
+  };
+
+  const handleClientDialogSubmit = () => {
+    if (!isClientInfoValid) {
+      toast.error("Please fill in all client details.");
+      return;
+    }
+    setShowClientDialog(false);
+    if (pendingAction) {
+      executeAction(pendingAction);
+      setPendingAction(null);
+    }
   };
 
   return (
@@ -131,19 +181,45 @@ const Quotation = () => {
           </div>
         </section>
 
+        {/* Client Info Bar (shown when client info is filled) */}
+        {isClientInfoValid && items.length > 0 && (
+          <section className="py-3 bg-accent/10 border-b">
+            <div className="container mx-auto px-4 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="font-semibold">👤 {clientInfo.name}</span>
+                <span className="text-muted-foreground">📍 {clientInfo.location}</span>
+                <span className="text-muted-foreground">📞 {clientInfo.contactNumber}</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => { setPendingAction(null); setShowClientDialog(true); }}>
+                Edit Client Info
+              </Button>
+            </div>
+          </section>
+        )}
+
         {/* Quote Basket Items */}
         {items.length > 0 && (
           <section className="py-8 bg-section-light border-b">
             <div className="container mx-auto px-4">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                   <ShoppingBag className="h-5 w-5 text-accent" />
                   <h2 className="text-xl font-bold">Your Quote Basket ({totalItems} items)</h2>
                 </div>
-                <Button variant="outline" size="sm" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground gap-2" onClick={handlePrintQuote}>
-                  <Download className="h-4 w-4" />
-                  Download PDF Quote
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground gap-2" onClick={() => requestAction("print")}>
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                  </Button>
+                  <Button variant="outline" size="sm" className="border-green-600 text-green-700 hover:bg-green-600 hover:text-white gap-2" onClick={() => requestAction("whatsapp")}>
+                    <MessageCircle className="h-4 w-4" />
+                    Send WhatsApp
+                  </Button>
+                  <Button variant="outline" size="sm" className="border-blue-600 text-blue-700 hover:bg-blue-600 hover:text-white gap-2" onClick={() => requestAction("email")}>
+                    <Send className="h-4 w-4" />
+                    Send Email
+                  </Button>
+                </div>
               </div>
 
               <div className="bg-background border border-border rounded-sm overflow-hidden">
@@ -178,9 +254,19 @@ const Quotation = () => {
                     </div>
                   </div>
                 ))}
-                <div className="px-5 py-4 bg-section-light border-t flex items-center justify-between">
-                  <span className="font-bold">Estimated Total</span>
-                  <span className="text-xl font-black text-accent">{formatPKR(totalPrice)}</span>
+                <div className="px-5 py-4 bg-section-light border-t">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold">Estimated Total</span>
+                    <span className="text-xl font-black text-accent">{formatPKR(totalPrice)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Advance Payment (75%)</span>
+                    <span className="font-semibold text-foreground">{formatPKR(Math.round(totalPrice * 0.75))}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Balance Due (25%)</span>
+                    <span className="font-semibold text-foreground">{formatPKR(Math.round(totalPrice * 0.25))}</span>
+                  </div>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">* Final pricing may vary based on customization, delivery location, and quantity discounts.</p>
@@ -363,12 +449,44 @@ const Quotation = () => {
         </section>
       </main>
 
+      {/* Client Info Dialog */}
+      <Dialog open={showClientDialog} onOpenChange={setShowClientDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Client Information Required</DialogTitle>
+            <DialogDescription>Please enter client details to include on the quotation.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="client-name">Client / Company Name *</Label>
+              <Input id="client-name" placeholder="Muhammad Ali / XYZ Corp" value={clientInfo.name} onChange={(e) => setClientInfo(prev => ({ ...prev, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="client-location">Location / City *</Label>
+              <Input id="client-location" placeholder="Lahore, Pakistan" value={clientInfo.location} onChange={(e) => setClientInfo(prev => ({ ...prev, location: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="client-contact">Contact Number *</Label>
+              <Input id="client-contact" type="tel" placeholder="+92 300 1234567" value={clientInfo.contactNumber} onChange={(e) => setClientInfo(prev => ({ ...prev, contactNumber: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="client-whatsapp">WhatsApp Number *</Label>
+              <Input id="client-whatsapp" type="tel" placeholder="+92 322 4000768" value={clientInfo.whatsapp} onChange={(e) => setClientInfo(prev => ({ ...prev, whatsapp: e.target.value }))} />
+            </div>
+            <Button onClick={handleClientDialogSubmit} className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground font-semibold">
+              Continue
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Printable Invoice — hidden on screen, shown on print */}
       <PrintableInvoice
         ref={printRef}
         items={items}
         totalPrice={totalPrice}
         totalItems={totalItems}
+        clientInfo={clientInfo}
       />
 
       <Footer />
