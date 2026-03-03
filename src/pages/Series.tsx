@@ -16,6 +16,7 @@ const seriesImages: Record<string, string> = {
   "infinity-series": modernImg,
   "woodex-series": execImg,
   "cubicle-series": modernImg,
+  "nova-series": ecoImg,
 };
 
 const Series = () => {

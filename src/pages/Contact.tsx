@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import slide1 from "@/assets/hero-slide-1.jpg";
 
 const showrooms = [
   { city: "Lahore (HQ)", address: "123 Gulberg III, Main Boulevard, Lahore", phone: "+92 42 111 WOODEX", hours: "Mon–Sat: 9am–7pm" },
@@ -40,14 +41,17 @@ const Contact = () => {
       <Header />
 
       <main className="flex-1">
-        {/* Page Header */}
-        <section className="bg-primary text-primary-foreground py-14">
-          <div className="container mx-auto px-4">
-            <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Contact Us</p>
-            <h1 className="text-4xl lg:text-5xl font-black mb-3">Get in Touch</h1>
-            <p className="text-primary-foreground/75 max-w-xl">
-              Have questions about our products or services? We'd love to hear from you.
-            </p>
+        {/* Page Header with Hero Image */}
+        <section className="relative h-72 overflow-hidden bg-primary">
+          <img src={slide1} alt="WOODEX Office Showroom" className="w-full h-full object-cover opacity-30" />
+          <div className="absolute inset-0 flex items-center">
+            <div className="container mx-auto px-4">
+              <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Contact Us</p>
+              <h1 className="text-4xl lg:text-5xl font-black text-primary-foreground mb-3">Get in Touch</h1>
+              <p className="text-primary-foreground/75 max-w-xl">
+                Have questions about our products or services? We'd love to hear from you.
+              </p>
+            </div>
           </div>
         </section>
 
