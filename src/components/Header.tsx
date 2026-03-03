@@ -98,6 +98,7 @@ const navItems = [
   },
   { label: "Projects", href: "/projects" },
   { label: "Services", href: "/services" },
+  { label: "Blog", href: "/blog" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
 ];
@@ -246,7 +247,10 @@ const Header = () => {
                         </div>
                         <div className="border-t mt-5 pt-4 flex justify-between items-center">
                           <Link to="/shop" className="text-sm text-accent font-semibold hover:underline">View All Products →</Link>
-                          <Link to="/virtual-showroom" className="text-sm text-muted-foreground hover:text-accent transition-colors">Virtual Showroom</Link>
+                          <div className="flex gap-4">
+                            <Link to="/blog" className="text-sm text-muted-foreground hover:text-accent transition-colors">Blog</Link>
+                            <Link to="/virtual-showroom" className="text-sm text-muted-foreground hover:text-accent transition-colors">Virtual Showroom</Link>
+                          </div>
                         </div>
                       </div>
                     )}
