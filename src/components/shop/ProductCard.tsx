@@ -2,23 +2,36 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, Eye, ShoppingBag } from "lucide-react";
+import { Star, Eye, ShoppingBag, ShoppingCart } from "lucide-react";
 import { Product, formatPKR } from "@/data/products";
 import { useQuote } from "@/contexts/QuoteContext";
+import { useCart } from "@/contexts/CartContext";
 
 interface ProductCardProps {
   product: Product;
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
-  const { addItem } = useQuote();
+  const { addItem: addToQuote } = useQuote();
+  const { addItem: addToCart } = useCart();
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
   const handleAddToQuote = (e: React.MouseEvent) => {
     e.preventDefault();
-    addItem({
+    addToQuote({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      image: product.images[0],
+    });
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    addToCart({
       id: product.id,
       name: product.name,
       category: product.category,
@@ -55,7 +68,18 @@ const ProductCard = ({ product }: ProductCardProps) => {
             size="icon"
             className="rounded-full shadow-lg bg-accent hover:bg-hon-green-dark text-accent-foreground"
             disabled={!product.inStock}
+            onClick={handleAddToCart}
+            title="Add to Cart"
+          >
+            <ShoppingCart className="h-5 w-5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="secondary"
+            className="rounded-full shadow-lg"
+            disabled={!product.inStock}
             onClick={handleAddToQuote}
+            title="Add to Quote"
           >
             <ShoppingBag className="h-5 w-5" />
           </Button>
@@ -108,10 +132,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
             size="sm"
             className="bg-accent hover:bg-hon-green-dark text-accent-foreground text-xs px-3"
             disabled={!product.inStock}
-            onClick={handleAddToQuote}
+            onClick={handleAddToCart}
           >
-            <ShoppingBag className="h-3 w-3 mr-1" />
-            Quote
+            <ShoppingCart className="h-3 w-3 mr-1" />
+            Add
           </Button>
         </div>
       </CardContent>

@@ -56,10 +56,14 @@ const officeCategories = [
   { label: "Office Storage", image: storageImg, href: "/shop?category=storage" },
 ];
 
+import bedroomCatImg from "@/assets/category-bedroom.jpg";
+import livingCatImg from "@/assets/category-living.jpg";
+import diningCatImg from "@/assets/category-dining.jpg";
+
 const homeCategories = [
-  { label: "Bedroom", href: "/shop?category=bedroom", description: "Beds, dressing tables, mirrors & more" },
-  { label: "Living Room", href: "/shop?category=living", description: "Sofas, coffee tables, TV units" },
-  { label: "Dining", href: "/shop?category=dining", description: "Complete dining sets & chairs" },
+  { label: "Bedroom", href: "/shop?category=bedroom", description: "Beds, dressing tables, mirrors & more", image: bedroomCatImg },
+  { label: "Living Room", href: "/shop?category=living", description: "Sofas, coffee tables, TV units", image: livingCatImg },
+  { label: "Dining", href: "/shop?category=dining", description: "Complete dining sets & chairs", image: diningCatImg },
 ];
 
 const testimonials = [
@@ -208,13 +212,17 @@ const Index = () => {
             </div>
             <div className="grid md:grid-cols-3 gap-6">
               {homeCategories.map((cat) => (
-                <Link key={cat.label} to={cat.href} className="group p-8 border border-border bg-background rounded-sm hover:border-accent hover:shadow-lg transition-all text-center">
-                  <div className="w-12 h-1 bg-accent mx-auto mb-5 group-hover:w-20 transition-all duration-300" />
-                  <h3 className="font-bold text-2xl mb-3 group-hover:text-accent transition-colors">{cat.label}</h3>
-                  <p className="text-muted-foreground text-sm mb-4">{cat.description}</p>
-                  <span className="text-accent text-sm font-semibold flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    Shop Now <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
+                <Link key={cat.label} to={cat.href} className="group border border-border bg-background rounded-sm hover:border-accent hover:shadow-lg transition-all overflow-hidden">
+                  <div className="aspect-video overflow-hidden">
+                    <img src={cat.image} alt={cat.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  </div>
+                  <div className="p-6 text-center">
+                    <h3 className="font-bold text-2xl mb-2 group-hover:text-accent transition-colors">{cat.label}</h3>
+                    <p className="text-muted-foreground text-sm mb-3">{cat.description}</p>
+                    <span className="text-accent text-sm font-semibold flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Shop Now <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
                 </Link>
               ))}
             </div>

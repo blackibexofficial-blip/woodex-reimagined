@@ -5,19 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import slide1 from "@/assets/hero-slide-1.jpg";
-import slide2 from "@/assets/hero-slide-2.jpg";
-import slide3 from "@/assets/hero-slide-3.jpg";
-import proj1 from "@/assets/project-1.jpg";
-import proj2 from "@/assets/project-2.jpg";
-import proj3 from "@/assets/project-3.jpg";
+import blogErgonomic from "@/assets/blog-ergonomic.jpg";
+import blogHybrid from "@/assets/blog-hybrid-workspace.jpg";
+import blogSustainable from "@/assets/blog-sustainable.jpg";
+import blogColors from "@/assets/blog-office-colors.jpg";
+import blogCaseStudy from "@/assets/blog-case-study.jpg";
+import blogStandingDesk from "@/assets/blog-standing-desk.jpg";
 
 const blogPosts = [
   {
     id: "ergonomic-office-guide-2025",
     title: "The Complete Guide to Ergonomic Office Furniture in 2025",
     excerpt: "Discover how the right office chair and desk setup can reduce back pain, boost productivity, and improve employee wellbeing. Expert tips from WOODEX's certified ergonomists.",
-    image: slide1,
+    image: blogErgonomic,
     category: "Ergonomics",
     author: "Dr. Farah Khan",
     date: "Feb 15, 2025",
@@ -28,7 +28,7 @@ const blogPosts = [
     id: "hybrid-workspace-design",
     title: "Designing Hybrid Workspaces: Furniture That Adapts",
     excerpt: "How Pakistani companies are rethinking office layouts for hybrid work. Modular furniture, hot-desking solutions, and collaborative zones explained.",
-    image: slide2,
+    image: blogHybrid,
     category: "Workspace Design",
     author: "Ahmed Raza",
     date: "Feb 8, 2025",
@@ -38,7 +38,7 @@ const blogPosts = [
     id: "sustainable-furniture-pakistan",
     title: "Sustainable Furniture Manufacturing in Pakistan",
     excerpt: "WOODEX's commitment to eco-friendly production — from FSC-certified wood sourcing to zero-waste manufacturing practices in our Lahore facility.",
-    image: slide3,
+    image: blogSustainable,
     category: "Sustainability",
     author: "Sara Malik",
     date: "Jan 28, 2025",
@@ -48,7 +48,7 @@ const blogPosts = [
     id: "office-color-psychology",
     title: "How Office Colors Affect Productivity: A Research-Backed Guide",
     excerpt: "Blue for focus, green for creativity, and warm tones for collaboration — the science behind choosing the right furniture finishes for your workspace.",
-    image: proj1,
+    image: blogColors,
     category: "Interior Design",
     author: "Hina Javed",
     date: "Jan 20, 2025",
@@ -58,7 +58,7 @@ const blogPosts = [
     id: "corporate-case-study-allied-bank",
     title: "Case Study: Furnishing 8 Allied Bank Branches Across Punjab",
     excerpt: "How WOODEX delivered 200+ workstations, executive suites, and customer service counters across 8 branches in just 6 weeks — on time and on budget.",
-    image: proj2,
+    image: blogCaseStudy,
     category: "Case Study",
     author: "Bilal Ahmed",
     date: "Jan 12, 2025",
@@ -68,7 +68,7 @@ const blogPosts = [
     id: "standing-desk-benefits",
     title: "Standing Desks in Pakistan: Are They Worth the Investment?",
     excerpt: "A comprehensive analysis of sit-stand desks for Pakistani offices — health benefits, ROI calculations, and the best models for different budgets.",
-    image: proj3,
+    image: blogStandingDesk,
     category: "Ergonomics",
     author: "Dr. Farah Khan",
     date: "Jan 5, 2025",
@@ -92,13 +92,16 @@ const Blog = () => {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="bg-primary text-primary-foreground py-12">
-          <div className="container mx-auto px-4">
-            <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Ideas & Inspiration</p>
-            <h1 className="text-4xl lg:text-5xl font-black mb-3">WOODEX Blog</h1>
-            <p className="text-primary-foreground/75 max-w-xl">
-              Expert insights on office design, ergonomics, sustainability, and workspace productivity from Pakistan's leading furniture manufacturer.
-            </p>
+        <section className="relative h-72 overflow-hidden bg-primary">
+          <img src={blogErgonomic} alt="WOODEX Blog" className="w-full h-full object-cover opacity-30" />
+          <div className="absolute inset-0 flex items-center">
+            <div className="container mx-auto px-4">
+              <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Ideas & Inspiration</p>
+              <h1 className="text-4xl lg:text-5xl font-black text-primary-foreground mb-3">WOODEX Blog</h1>
+              <p className="text-primary-foreground/75 max-w-xl">
+                Expert insights on office design, ergonomics, sustainability, and workspace productivity from Pakistan's leading furniture manufacturer.
+              </p>
+            </div>
           </div>
         </section>
 
