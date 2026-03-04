@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import factoryImg from "@/assets/about-factory.jpg";
-import slide1 from "@/assets/hero-slide-1.jpg";
+import aboutHero from "@/assets/about-hero.jpg";
 
 const stats = [
   { icon: Award, number: "20+", label: "Years Experience" },
@@ -68,7 +68,7 @@ const About = () => {
       <main className="flex-1">
         {/* Hero */}
         <section className="relative h-64 lg:h-80 overflow-hidden bg-primary">
-          <img src={slide1} alt="About WOODEX" className="w-full h-full object-cover opacity-40" />
+          <img src={aboutHero} alt="About WOODEX" className="w-full h-full object-cover opacity-40" />
           <div className="absolute inset-0 flex items-center">
             <div className="container mx-auto px-4">
               <p className="text-accent text-sm font-bold uppercase tracking-widest mb-2">Our Story</p>

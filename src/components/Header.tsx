@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Search, FileText, Menu, X, ChevronDown, ShoppingBag } from "lucide-react";
+import { Search, FileText, Menu, X, ChevronDown, ShoppingBag, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuote } from "@/contexts/QuoteContext";
+import { useCart } from "@/contexts/CartContext";
 import QuoteBasket from "@/components/QuoteBasket";
+import CartDrawer from "@/components/CartDrawer";
 
 const megaMenuProducts = {
   office: {
@@ -109,6 +111,7 @@ const Header = () => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const location = useLocation();
   const { totalItems, isOpen, setIsOpen } = useQuote();
+  const cart = useCart();
 
   const isActive = (href: string) =>
     location.pathname === href || location.pathname.startsWith(href + "/");
@@ -293,6 +296,9 @@ const Header = () => {
                     </span>
                   )}
                 </Button>
+
+                {/* Cart Button */}
+                <CartDrawer />
 
                 <Button
                   size="sm"

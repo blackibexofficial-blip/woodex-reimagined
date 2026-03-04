@@ -4,12 +4,12 @@ import { Lightbulb, Package, Truck, ClipboardCheck, Headphones, Ruler, CheckCirc
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import slide1 from "@/assets/hero-slide-1.jpg";
-import slide2 from "@/assets/hero-slide-2.jpg";
-import slide3 from "@/assets/hero-slide-3.jpg";
-import proj1 from "@/assets/project-1.jpg";
-import proj2 from "@/assets/project-2.jpg";
-import proj3 from "@/assets/project-3.jpg";
+import spacePlanningImg from "@/assets/service-space-planning.jpg";
+import customMfgImg from "@/assets/service-custom-manufacturing.jpg";
+import deliveryImg from "@/assets/service-delivery.jpg";
+import projectMgmtImg from "@/assets/service-project-management.jpg";
+import afterSalesImg from "@/assets/service-after-sales.jpg";
+import ergonomicImg from "@/assets/service-ergonomic.jpg";
 
 const services = [
   {
@@ -17,42 +17,42 @@ const services = [
     title: "Space Planning & Design",
     description: "Transform your office with expert space planning. Our design consultants analyze your workflow, team size, and growth plans to create optimal workspace layouts.",
     features: ["On-site consultation", "CAD floor plans", "Ergonomic assessments", "3D visualization", "Space optimization"],
-    image: slide1,
+    image: spacePlanningImg,
   },
   {
     icon: Package,
     title: "Custom Manufacturing",
     description: "Bring your vision to life with our bespoke furniture service. We create custom pieces tailored to your exact specifications, brand identity, and space requirements.",
     features: ["Custom dimensions", "Material selection", "Color matching", "Logo integration", "Brand consistency"],
-    image: slide2,
+    image: customMfgImg,
   },
   {
     icon: Truck,
     title: "Delivery & Installation",
     description: "Professional delivery and installation services ensure your furniture is set up correctly and ready to use. Our expert team handles everything from transportation to assembly.",
     features: ["Nationwide delivery", "Professional assembly", "Debris removal", "Quality inspection", "Warranty activation"],
-    image: slide3,
+    image: deliveryImg,
   },
   {
     icon: ClipboardCheck,
     title: "Project Management",
     description: "Dedicated project managers oversee every aspect of your furniture project, from initial planning to final delivery, ensuring on-time and on-budget completion.",
     features: ["Single point of contact", "Timeline management", "Budget tracking", "Phased delivery", "Progress reporting"],
-    image: proj1,
+    image: projectMgmtImg,
   },
   {
     icon: Headphones,
     title: "After-Sales Support",
     description: "Our commitment doesn't end at delivery. We provide comprehensive after-sales support including warranty service, repairs, and ongoing maintenance.",
     features: ["5-year warranty options", "Fast repair service", "Spare parts availability", "Annual maintenance plans", "Dedicated support line"],
-    image: proj2,
+    image: afterSalesImg,
   },
   {
     icon: Lightbulb,
     title: "Ergonomic Consulting",
     description: "Improve employee health and productivity with our certified ergonomic consulting service. We assess workstations and recommend evidence-based solutions.",
     features: ["Certified ergonomists", "Workstation assessments", "Product recommendations", "Employee training", "Health impact reports"],
-    image: proj3,
+    image: ergonomicImg,
   },
 ];
 
@@ -81,7 +81,7 @@ const Services = () => {
       <main className="flex-1">
         {/* Hero */}
         <section className="relative h-72 overflow-hidden bg-primary">
-          <img src={slide1} alt="Services" className="w-full h-full object-cover opacity-30" />
+          <img src={spacePlanningImg} alt="Services" className="w-full h-full object-cover opacity-30" />
           <div className="absolute inset-0 flex items-center">
             <div className="container mx-auto px-4">
               <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">What We Offer</p>
@@ -100,7 +100,6 @@ const Services = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {services.map((service) => (
                 <div key={service.title} className="group border border-border rounded-sm overflow-hidden hover:border-accent hover:shadow-lg transition-all">
-                  {/* Service Image */}
                   <div className="aspect-video overflow-hidden">
                     <img
                       src={service.image}

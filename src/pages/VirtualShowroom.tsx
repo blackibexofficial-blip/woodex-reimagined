@@ -70,7 +70,11 @@ const VirtualShowroom = () => {
                   visualization before making any commitment.
                 </p>
                 <div className="flex flex-wrap gap-4">
-                  <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground px-8">
+                <Button
+                  size="lg"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground px-8"
+                  onClick={() => document.getElementById("configurator-section")?.scrollIntoView({ behavior: "smooth" })}
+                >
                     Launch 3D Configurator
                   </Button>
                   <Button
@@ -143,7 +147,7 @@ const VirtualShowroom = () => {
         </section>
 
         {/* Enhanced 3D Configurator */}
-        <section className="py-16 bg-background">
+        <section id="configurator-section" className="py-16 bg-background">
           <div className="container mx-auto px-4">
             <div className="text-center mb-8">
               <div className="w-12 h-1 bg-accent mx-auto mb-5" />
@@ -217,8 +221,8 @@ const VirtualShowroom = () => {
                     <p className="text-muted-foreground mb-6 max-w-md">
                       Select furniture from the panel, choose your materials, and visualize your dream workspace.
                     </p>
-                    <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground px-8">
-                      Launch 3D Configurator
+                    <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground px-8" asChild>
+                      <Link to="/shop">Browse Products</Link>
                     </Button>
                   </div>
                 </div>

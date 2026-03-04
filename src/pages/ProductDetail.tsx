@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { getProductById, products, categories, formatPKR } from "@/data/products";
 import { useQuote } from "@/contexts/QuoteContext";
+import { useCart } from "@/contexts/CartContext";
 
 const ProductDetail = () => {
   const { productId } = useParams<{ productId: string }>();
@@ -42,7 +43,9 @@ const ProductDetail = () => {
   const [selectedColor, setSelectedColor] = useState(product?.colors[0]);
   const [quantity, setQuantity] = useState(1);
   const [addedToQuote, setAddedToQuote] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
   const { addItem } = useQuote();
+  const { addItem: addToCart } = useCart();
 
   const handleAddToQuote = () => {
     if (!product) return;
@@ -57,6 +60,21 @@ const ProductDetail = () => {
     });
     setAddedToQuote(true);
     setTimeout(() => setAddedToQuote(false), 2500);
+  };
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    addToCart({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      quantity,
+      color: selectedColor?.name,
+      image: product.images[0],
+    });
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2500);
   };
 
   if (!product) {
@@ -236,14 +254,27 @@ const ProductDetail = () => {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   size="lg"
-                  className={`flex-1 ${addedToQuote ? "bg-hon-green-dark" : "bg-accent hover:bg-hon-green-dark"} text-accent-foreground`}
+                  className={`flex-1 ${addedToCart ? "bg-hon-green-dark" : "bg-accent hover:bg-hon-green-dark"} text-accent-foreground`}
+                  disabled={!product.inStock}
+                  onClick={handleAddToCart}
+                >
+                  {addedToCart ? (
+                    <><CheckCircle className="h-5 w-5 mr-2" />Added to Cart!</>
+                  ) : (
+                    <><ShoppingBag className="h-5 w-5 mr-2" />{product.inStock ? "Add to Cart" : "Out of Stock"}</>
+                  )}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
                   disabled={!product.inStock}
                   onClick={handleAddToQuote}
                 >
                   {addedToQuote ? (
-                    <><CheckCircle className="h-5 w-5 mr-2" />Added to Quote Basket!</>
+                    <><CheckCircle className="h-5 w-5 mr-2" />Added to Quote!</>
                   ) : (
-                    <><ShoppingBag className="h-5 w-5 mr-2" />{product.inStock ? "Add to Quote Basket" : "Out of Stock"}</>
+                    <>Add to Quote</>
                   )}
                 </Button>
                 <Button size="lg" variant="outline">

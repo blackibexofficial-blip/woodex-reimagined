@@ -9,6 +9,7 @@ import ProductCard from "@/components/shop/ProductCard";
 import execImg from "@/assets/series-executive.jpg";
 import modernImg from "@/assets/series-modern.jpg";
 import ecoImg from "@/assets/series-eco.jpg";
+import novaImg from "@/assets/series-nova.jpg";
 import { seriesList, getProductsBySeries } from "@/data/products";
 
 const seriesImages: Record<string, string> = {
@@ -16,7 +17,7 @@ const seriesImages: Record<string, string> = {
   "infinity-series": modernImg,
   "woodex-series": execImg,
   "cubicle-series": modernImg,
-  "nova-series": ecoImg,
+  "nova-series": novaImg,
 };
 
 const Series = () => {
