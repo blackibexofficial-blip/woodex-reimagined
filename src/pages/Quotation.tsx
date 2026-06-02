@@ -1,10 +1,9 @@
 import { useState, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, Clock, Shield, Users, Headphones, Star, Trash2, Minus, Plus, ShoppingBag, Search, Download, Send, MessageCircle } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle, Clock, Shield, Users, Headphones, Trash2, Minus, Plus, ShoppingBag, Search, Download, Send, MessageCircle, FileText, ArrowRight, SlidersHorizontal } from "lucide-react";
+// Card removed — new layout no longer uses it
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -22,10 +21,6 @@ const benefits = [
   { icon: Headphones, title: "Expert Advice", description: "Personalized recommendations for your needs" },
 ];
 
-const testimonials = [
-  { name: "Muhammad Tariq", company: "Tariq & Associates", text: "The quotation process was smooth and the team was very responsive. Excellent service!", rating: 5 },
-  { name: "Sana Qureshi", company: "TechBridge Pvt Ltd", text: "Got our 40-person office furnished within budget. WOODEX made it effortless.", rating: 5 },
-];
 
 const Quotation = () => {
   const [submitted, setSubmitted] = useState(false);
@@ -274,175 +269,149 @@ const Quotation = () => {
           </section>
         )}
 
-        {/* Main Form + Sidebar */}
-        <section className="py-16">
+        {/* ============ 3-STEP PROCESS FLOW ============ */}
+        <section className="py-16 bg-background border-b">
           <div className="container mx-auto px-4">
-            <div className="grid lg:grid-cols-3 gap-10">
-              {/* Sidebar */}
-              <div className="space-y-6">
-                <div className="p-6 bg-section-light rounded-sm border">
-                  <div className="w-10 h-1 bg-accent mb-4" />
-                  <h3 className="font-bold text-lg mb-3">What to Expect</h3>
-                  <div className="space-y-3">
-                    {[
-                      { step: "1", text: "Submit your requirements" },
-                      { step: "2", text: "Expert reviews your needs" },
-                      { step: "3", text: "Receive detailed quote in 24hrs" },
-                      { step: "4", text: "Schedule free consultation" },
-                    ].map((item) => (
-                      <div key={item.step} className="flex gap-3 items-start text-sm">
-                        <div className="w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-bold flex items-center justify-center flex-shrink-0">
-                          {item.step}
-                        </div>
-                        <span className="text-muted-foreground pt-0.5">{item.text}</span>
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-center gap-4 sm:gap-8 flex-wrap">
+                {[
+                  { icon: ShoppingBag, label: "Add to Cart" },
+                  { icon: FileText, label: "Review & Submit", badge: "PKR" },
+                  { icon: Download, label: "Download" },
+                ].map((step, i, arr) => (
+                  <div key={step.label} className="flex items-center gap-4 sm:gap-8">
+                    <div className="flex flex-col items-center text-center">
+                      <div className="relative w-24 h-24 border-2 border-border rounded-sm flex items-center justify-center bg-section-light hover:border-accent transition-colors group">
+                        <step.icon className="h-10 w-10 text-foreground group-hover:text-accent transition-colors" strokeWidth={1.5} />
+                        {step.badge && (
+                          <span className="absolute bottom-2 right-2 text-[8px] font-black text-accent bg-background border border-accent px-1 rounded-sm">
+                            {step.badge}
+                          </span>
+                        )}
                       </div>
-                    ))}
+                      <p className="mt-3 text-xs font-bold uppercase tracking-[0.15em] text-foreground">{step.label}</p>
+                    </div>
+                    {i < arr.length - 1 && (
+                      <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" strokeWidth={2} />
+                    )}
                   </div>
-                </div>
-
-                <div className="p-6 bg-section-light rounded-sm border">
-                  <h3 className="font-bold mb-3">Why WOODEX?</h3>
-                  {[
-                    "20+ years manufacturing experience",
-                    "500+ satisfied corporate clients",
-                    "Nationwide delivery & installation",
-                    "5-year warranty available",
-                    "Custom design service",
-                  ].map((item) => (
-                    <div key={item} className="flex gap-2 items-start text-sm mb-2">
-                      <CheckCircle className="h-4 w-4 text-accent mt-0.5 flex-shrink-0" />
-                      <span className="text-muted-foreground">{item}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Testimonials */}
-                <div className="space-y-3">
-                  {testimonials.map((t) => (
-                    <div key={t.name} className="p-4 bg-background border rounded-sm">
-                      <div className="flex gap-0.5 mb-2">
-                        {Array(t.rating).fill(0).map((_, i) => (
-                          <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                        ))}
-                      </div>
-                      <p className="text-sm text-muted-foreground italic mb-2">"{t.text}"</p>
-                      <p className="text-xs font-bold">{t.name}</p>
-                      <p className="text-xs text-muted-foreground">{t.company}</p>
-                    </div>
-                  ))}
-                </div>
+                ))}
               </div>
 
-              {/* Form */}
-              <div className="lg:col-span-2">
-                <Card className="border shadow-sm">
-                  <CardContent className="pt-8">
-                    {submitted ? (
-                      <div className="text-center py-16">
-                        <div className="w-20 h-20 rounded-full bg-hon-green-pale flex items-center justify-center mx-auto mb-5">
-                          <CheckCircle className="h-10 w-10 text-accent" />
-                        </div>
-                        <h3 className="text-2xl font-bold mb-2">Quote Request Submitted!</h3>
-                        <p className="text-muted-foreground max-w-sm mx-auto">
-                          Thank you! Our team will review your requirements and get back to you within 24 business hours.
-                        </p>
+              <p className="text-center text-sm text-muted-foreground mt-10 max-w-2xl mx-auto leading-relaxed">
+                If you are having difficulties or require product customization, you can always{" "}
+                <Link to="/contact" className="text-accent font-semibold hover:underline">Contact Us</Link>{" "}
+                and our consultant will be in touch and assist you with customized office furniture quotations.
+              </p>
+
+              <div className="text-center mt-7">
+                <Button
+                  size="lg"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 gap-2 uppercase tracking-wider text-xs"
+                  onClick={() => {
+                    document.getElementById("quote-form")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  <ArrowRight className="h-4 w-4" /> Create a Quote!
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============ 3 FEATURE CARDS ============ */}
+        <section className="py-14 bg-section-light border-b">
+          <div className="container mx-auto px-4">
+            <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+              {[
+                { icon: ShoppingBag, title: "Browse Products", desc: "Explore our complete catalog of office furniture and select products that match your requirements." },
+                { icon: SlidersHorizontal, title: "Customize Options", desc: "Configure colors, materials, and dimensions for each product to match your exact specifications." },
+                { icon: Download, title: "Get Your Quote", desc: "Receive a detailed quotation with all specifications and pricing in PKR. Download as PDF instantly." },
+              ].map((card) => (
+                <div key={card.title} className="bg-background p-7 rounded-sm border border-border hover:border-accent hover:shadow-lg transition-all">
+                  <card.icon className="h-7 w-7 text-accent mb-4" strokeWidth={1.75} />
+                  <h3 className="font-bold text-base mb-2">{card.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{card.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ============ READY TO START — FORM + BENEFITS ============ */}
+        <section id="quote-form" className="py-16 bg-background">
+          <div className="container mx-auto px-4">
+            <div className="max-w-6xl mx-auto">
+              <h2 className="text-3xl lg:text-4xl font-bold mb-10">Ready to Start Your Project?</h2>
+
+              <div className="grid lg:grid-cols-5 gap-12">
+                {/* Form — 3 cols */}
+                <div className="lg:col-span-3">
+                  {submitted ? (
+                    <div className="text-center py-16 border border-border rounded-sm bg-section-light">
+                      <div className="w-20 h-20 rounded-full bg-hon-green-pale flex items-center justify-center mx-auto mb-5">
+                        <CheckCircle className="h-10 w-10 text-accent" />
                       </div>
-                    ) : (
-                      <form onSubmit={handleSubmit} className="space-y-5">
-                        {items.length > 0 && (
-                          <div className="p-4 bg-hon-green-pale rounded-sm border border-accent/30 mb-2">
-                            <p className="text-sm font-semibold text-accent">
-                              ✓ {totalItems} product{totalItems !== 1 ? "s" : ""} from your quote basket will be included ({formatPKR(totalPrice)} estimated)
-                            </p>
-                          </div>
-                        )}
-                        <div className="grid md:grid-cols-2 gap-5">
-                          <div className="space-y-1.5">
-                            <Label htmlFor="name">Full Name *</Label>
-                            <Input id="name" placeholder="Muhammad Ali" required />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="company">Company Name *</Label>
-                            <Input id="company" placeholder="Your Company Ltd." required />
-                          </div>
+                      <h3 className="text-2xl font-bold mb-2">Quote Request Submitted!</h3>
+                      <p className="text-muted-foreground max-w-sm mx-auto">
+                        Thank you! Our team will review your requirements and get back to you within 24 business hours.
+                      </p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                      {items.length > 0 && (
+                        <div className="p-4 bg-hon-green-pale rounded-sm border border-accent/30">
+                          <p className="text-sm font-semibold text-accent">
+                            ✓ {totalItems} product{totalItems !== 1 ? "s" : ""} from your quote basket will be included ({formatPKR(totalPrice)} estimated)
+                          </p>
                         </div>
-                        <div className="grid md:grid-cols-2 gap-5">
-                          <div className="space-y-1.5">
-                            <Label htmlFor="email">Email Address *</Label>
-                            <Input id="email" type="email" placeholder="ali@company.com" required />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="phone">Phone Number *</Label>
-                            <Input id="phone" type="tel" placeholder="+92 300 1234567" required />
-                          </div>
-                        </div>
-                        <div className="grid md:grid-cols-2 gap-5">
-                          <div className="space-y-1.5">
-                            <Label htmlFor="category">Product Category *</Label>
-                            <select id="category" className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm" required>
-                              <option value="">Select a category</option>
-                              <option value="executive-tables">Executive Tables</option>
-                              <option value="manager-tables">Manager Tables</option>
-                              <option value="staff-tables">Staff Tables</option>
-                              <option value="meeting-tables">Meeting Tables</option>
-                              <option value="chairs">Ergonomic Chairs</option>
-                              <option value="workstations">Workstations</option>
-                              <option value="cubicle">Cubicle Workstations</option>
-                              <option value="sofas">Office Sofas</option>
-                              <option value="storage">Office Storage</option>
-                              <option value="home">Home Furniture</option>
-                              <option value="packages">Room Packages</option>
-                              <option value="custom">Custom Design</option>
-                            </select>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="quantity">Estimated Quantity</Label>
-                            <Input id="quantity" type="number" placeholder="10" min="1" />
-                          </div>
+                      )}
+                      <div className="grid md:grid-cols-2 gap-5">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="name">Full Name *</Label>
+                          <Input id="name" placeholder="John Doe" required />
                         </div>
                         <div className="space-y-1.5">
-                          <Label htmlFor="city">Delivery City *</Label>
-                          <select id="city" className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm" required>
-                            <option value="">Select city</option>
-                            <option value="lahore">Lahore</option>
-                            <option value="karachi">Karachi</option>
-                            <option value="islamabad">Islamabad</option>
-                            <option value="rawalpindi">Rawalpindi</option>
-                            <option value="faisalabad">Faisalabad</option>
-                            <option value="multan">Multan</option>
-                            <option value="peshawar">Peshawar</option>
-                            <option value="other">Other</option>
-                          </select>
+                          <Label htmlFor="company">Company Name *</Label>
+                          <Input id="company" placeholder="Company Inc." required />
+                        </div>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-5">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="email">Email Address *</Label>
+                          <Input id="email" type="email" placeholder="john@company.com" required />
                         </div>
                         <div className="space-y-1.5">
-                          <Label htmlFor="budget">Budget Range</Label>
-                          <select id="budget" className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
-                            <option value="">Select budget range</option>
-                            <option value="under-500k">Under PKR 500,000</option>
-                            <option value="500k-2m">PKR 500K – 2 Million</option>
-                            <option value="2m-10m">PKR 2M – 10 Million</option>
-                            <option value="over-10m">Over PKR 10 Million</option>
-                          </select>
+                          <Label htmlFor="phone">Phone Number *</Label>
+                          <Input id="phone" type="tel" placeholder="+92 300 1234567" required />
                         </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="message">Project Details *</Label>
-                          <Textarea
-                            id="message"
-                            placeholder="Please describe your requirements, timeline, office size, any specific preferences or brand guidelines..."
-                            className="min-h-[130px]"
-                            required
-                          />
-                        </div>
-                        <Button type="submit" size="lg" className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground font-semibold">
-                          Submit Quote Request
-                        </Button>
-                        <p className="text-xs text-muted-foreground text-center">
-                          By submitting this form, you agree to our privacy policy. No spam, ever.
-                        </p>
-                      </form>
-                    )}
-                  </CardContent>
-                </Card>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="project-type">Project Type *</Label>
+                        <Input id="project-type" placeholder="e.g., New office setup, Office renovation" required />
+                      </div>
+                      <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 gap-2 uppercase tracking-wider text-xs">
+                        <ArrowRight className="h-4 w-4" /> Download Quote!
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        By submitting this form, you agree to our privacy policy. We'll only use your information to provide the requested quotation.
+                      </p>
+                    </form>
+                  )}
+                </div>
+
+                {/* Benefits — 2 cols */}
+                <div className="lg:col-span-2 space-y-7 lg:pl-6 lg:border-l lg:border-border">
+                  {benefits.map((b) => (
+                    <div key={b.title} className="flex gap-4 items-start">
+                      <ArrowRight className="h-5 w-5 text-accent flex-shrink-0 mt-1" strokeWidth={2.5} />
+                      <div>
+                        <h4 className="font-bold text-base mb-1">{b.title}</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{b.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
