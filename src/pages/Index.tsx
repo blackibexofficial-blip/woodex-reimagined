@@ -16,6 +16,8 @@ import FAQSection from "@/components/home/FAQSection";
 import slide1 from "@/assets/hero-slide-1.jpg";
 import slide2 from "@/assets/hero-slide-2.jpg";
 import slide3 from "@/assets/hero-slide-3.jpg";
+import slide4 from "@/assets/hero-slide-4.jpg";
+import slide5 from "@/assets/hero-slide-5.jpg";
 import chairsImg from "@/assets/category-chairs.jpg";
 import desksImg from "@/assets/category-executive.jpg";
 import workstationsImg from "@/assets/category-workstations.jpg";
@@ -29,9 +31,11 @@ import proj2 from "@/assets/project-2.jpg";
 import proj3 from "@/assets/project-3.jpg";
 
 const slides = [
-  { image: slide1, title: "Make Your Space Work", subtitle: "Premium ergonomic workstations for the modern professional", cta: "Explore Workstations", ctaHref: "/shop?category=workstations" },
-  { image: slide2, title: "Tables Designed for Equitable Meetings", subtitle: "Conference solutions that enable inclusive participation in hybrid settings", cta: "View Tables", ctaHref: "/shop?category=meeting-tables" },
-  { image: slide3, title: "Home Furniture Collection", subtitle: "Extend the WOODEX quality to your bedroom, living room, and dining spaces", cta: "Shop Home", ctaHref: "/shop?category=bedroom" },
+  { image: slide1, title: "Design For Your Workspace", subtitle: "From concept to installation — design, manufacture, and deliver", cta: "Shop Now", ctaHref: "/shop?category=workstations" },
+  { image: slide2, title: "Meeting Rooms That Inspire", subtitle: "Conference furniture engineered for collaboration and focus", cta: "Shop Now", ctaHref: "/shop?category=meeting-tables" },
+  { image: slide3, title: "Executive Offices, Crafted", subtitle: "Premium executive desks and seating with timeless presence", cta: "Shop Now", ctaHref: "/shop?category=executive-tables" },
+  { image: slide4, title: "Reception That Welcomes", subtitle: "First impressions built with bespoke reception solutions", cta: "Shop Now", ctaHref: "/shop?category=reception" },
+  { image: slide5, title: "Manager Cabins, Refined", subtitle: "Functional, elegant private offices for leadership teams", cta: "Shop Now", ctaHref: "/shop?category=executive-tables" },
 ];
 
 const officeCategories = [
