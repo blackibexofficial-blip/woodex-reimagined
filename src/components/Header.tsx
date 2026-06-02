@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Search, FileText, Menu, X, ChevronDown, ShoppingBag, ShoppingCart } from "lucide-react";
+import { Search, FileText, Menu, X, ChevronDown, ShoppingBag, ShoppingCart, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuote } from "@/contexts/QuoteContext";
 import { useCart } from "@/contexts/CartContext";
 import QuoteBasket from "@/components/QuoteBasket";
 import CartDrawer from "@/components/CartDrawer";
+import megaOfficeImg from "@/assets/hero-slide-1.jpg";
+import megaHomeImg from "@/assets/hero-slide-3.jpg";
 
 const megaMenuProducts = {
   office: {
@@ -175,26 +177,36 @@ const Header = () => {
                       )}
                     </Link>
 
-                    {/* Mega Menu — Products */}
+                    {/* Mega Menu — Products (wide, with featured imagery) */}
                     {item.megaMenu && activeDropdown === item.label && (
-                      <div className="absolute top-full left-0 w-[640px] bg-background border shadow-xl rounded-sm z-50 p-6">
-                        <div className="grid grid-cols-2 gap-6">
-                          {/* Office */}
-                          <div>
-                            <div className="flex items-center gap-2 mb-4">
-                              <div className="w-6 h-0.5 bg-accent" />
-                              <span className="text-xs font-bold uppercase tracking-widest text-accent">{megaMenuProducts.office.title}</span>
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-[980px] bg-background border shadow-2xl rounded-sm z-50 overflow-hidden">
+                        <div className="grid grid-cols-2">
+                          {/* OFFICE SEGMENT */}
+                          <div className="p-7 bg-background">
+                            <div className="flex items-center gap-2 mb-5">
+                              <div className="w-8 h-0.5 bg-accent" />
+                              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">{megaMenuProducts.office.title}</span>
                             </div>
-                            <div className="grid grid-cols-2 gap-x-4">
+                            <Link to="/shop?segment=office" className="block group mb-5">
+                              <div className="relative aspect-[16/8] overflow-hidden rounded-sm bg-muted">
+                                <img src={megaOfficeImg} alt="Office Furniture" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/20 to-transparent" />
+                                <div className="absolute bottom-3 left-3 right-3 text-primary-foreground">
+                                  <p className="text-[10px] uppercase tracking-widest text-accent font-bold mb-0.5">Featured Collection</p>
+                                  <p className="text-sm font-bold leading-tight">Make Your Workspace Work</p>
+                                </div>
+                              </div>
+                            </Link>
+                            <div className="grid grid-cols-2 gap-x-5 gap-y-1">
                               {megaMenuProducts.office.sections.map((section) => (
                                 <div key={section.heading}>
-                                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{section.heading}</p>
-                                  <ul className="space-y-1">
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.14em] mb-2 border-b border-border pb-1">{section.heading}</p>
+                                  <ul className="space-y-0.5">
                                     {section.links.map((link) => (
                                       <li key={link.label}>
                                         <Link
                                           to={link.href}
-                                          className="block text-sm text-foreground hover:text-accent hover:bg-hon-green-pale px-2 py-1 rounded-sm transition-colors"
+                                          className="block text-[13px] text-foreground hover:text-accent hover:bg-hon-green-pale px-2 py-1 rounded-sm transition-colors"
                                         >
                                           {link.label}
                                         </Link>
@@ -206,22 +218,32 @@ const Header = () => {
                             </div>
                           </div>
 
-                          {/* Home */}
-                          <div className="border-l pl-6">
-                            <div className="flex items-center gap-2 mb-4">
-                              <div className="w-6 h-0.5 bg-accent" />
-                              <span className="text-xs font-bold uppercase tracking-widest text-accent">{megaMenuProducts.home.title}</span>
+                          {/* HOME SEGMENT */}
+                          <div className="p-7 bg-section-light border-l border-border">
+                            <div className="flex items-center gap-2 mb-5">
+                              <div className="w-8 h-0.5 bg-accent" />
+                              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">{megaMenuProducts.home.title}</span>
                             </div>
-                            <div className="grid grid-cols-2 gap-x-4">
-                              {megaMenuProducts.home.sections.slice(0, 2).map((section) => (
+                            <Link to="/shop?segment=home" className="block group mb-5">
+                              <div className="relative aspect-[16/8] overflow-hidden rounded-sm bg-muted">
+                                <img src={megaHomeImg} alt="Home Furniture" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/20 to-transparent" />
+                                <div className="absolute bottom-3 left-3 right-3 text-primary-foreground">
+                                  <p className="text-[10px] uppercase tracking-widest text-accent font-bold mb-0.5">New Arrivals</p>
+                                  <p className="text-sm font-bold leading-tight">WOODEX Home Collection</p>
+                                </div>
+                              </div>
+                            </Link>
+                            <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+                              {megaMenuProducts.home.sections.map((section) => (
                                 <div key={section.heading}>
-                                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{section.heading}</p>
-                                  <ul className="space-y-1">
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.14em] mb-2 border-b border-border pb-1">{section.heading}</p>
+                                  <ul className="space-y-0.5">
                                     {section.links.map((link) => (
                                       <li key={link.label}>
                                         <Link
                                           to={link.href}
-                                          className="block text-sm text-foreground hover:text-accent hover:bg-hon-green-pale px-2 py-1 rounded-sm transition-colors"
+                                          className="block text-[13px] text-foreground hover:text-accent hover:bg-hon-green-pale px-2 py-1 rounded-sm transition-colors"
                                         >
                                           {link.label}
                                         </Link>
@@ -231,28 +253,19 @@ const Header = () => {
                                 </div>
                               ))}
                             </div>
-                            <div className="mt-3">
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Dining</p>
-                              <ul className="space-y-1">
-                                {megaMenuProducts.home.sections[2].links.map((link) => (
-                                  <li key={link.label}>
-                                    <Link
-                                      to={link.href}
-                                      className="block text-sm text-foreground hover:text-accent hover:bg-hon-green-pale px-2 py-1 rounded-sm transition-colors"
-                                    >
-                                      {link.label}
-                                    </Link>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
                           </div>
                         </div>
-                        <div className="border-t mt-5 pt-4 flex justify-between items-center">
-                          <Link to="/shop" className="text-sm text-accent font-semibold hover:underline">View All Products →</Link>
-                          <div className="flex gap-4">
-                            <Link to="/blog" className="text-sm text-muted-foreground hover:text-accent transition-colors">Blog</Link>
-                            <Link to="/virtual-showroom" className="text-sm text-muted-foreground hover:text-accent transition-colors">Virtual Showroom</Link>
+
+                        {/* Footer bar */}
+                        <div className="border-t border-border px-7 py-3 flex justify-between items-center bg-background">
+                          <Link to="/shop" className="text-sm text-accent font-bold hover:underline flex items-center gap-1">
+                            View All Products <ArrowRight className="h-3.5 w-3.5" />
+                          </Link>
+                          <div className="flex gap-5 text-xs">
+                            <Link to="/series" className="text-muted-foreground hover:text-accent transition-colors font-medium">Series</Link>
+                            <Link to="/materials" className="text-muted-foreground hover:text-accent transition-colors font-medium">Materials</Link>
+                            <Link to="/virtual-showroom" className="text-muted-foreground hover:text-accent transition-colors font-medium">Virtual Showroom</Link>
+                            <Link to="/quotation" className="text-accent font-bold hover:underline">Request E-Quote</Link>
                           </div>
                         </div>
                       </div>
