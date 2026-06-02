@@ -92,29 +92,40 @@ const Blog = () => {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="relative h-72 overflow-hidden bg-primary">
+        <section className="relative h-[420px] overflow-hidden bg-primary">
           <img src={blogErgonomic} alt="WOODEX Blog" className="w-full h-full object-cover opacity-30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/85 to-primary/40" />
           <div className="absolute inset-0 flex items-center">
             <div className="container mx-auto px-4">
-              <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Ideas & Inspiration</p>
-              <h1 className="text-4xl lg:text-5xl font-black text-primary-foreground mb-3">WOODEX Blog</h1>
-              <p className="text-primary-foreground/75 max-w-xl">
+              <nav className="text-xs text-primary-foreground/60 mb-4 flex items-center gap-2">
+                <Link to="/" className="hover:text-accent transition-colors">Home</Link>
+                <span>/</span>
+                <span className="text-accent">Blog</span>
+              </nav>
+              <p className="text-accent text-xs font-bold uppercase tracking-[0.25em] mb-3">Ideas & Inspiration</p>
+              <h1 className="text-5xl lg:text-6xl font-black text-primary-foreground mb-4 leading-[1.05]">WOODEX Journal</h1>
+              <p className="text-primary-foreground/80 max-w-2xl text-base lg:text-lg leading-relaxed">
                 Expert insights on office design, ergonomics, sustainability, and workspace productivity from Pakistan's leading furniture manufacturer.
               </p>
+              <div className="flex gap-6 mt-6 text-xs text-primary-foreground/60 uppercase tracking-widest">
+                <span><span className="text-accent font-bold text-base">{blogPosts.length}</span> &nbsp;Articles</span>
+                <span><span className="text-accent font-bold text-base">{categories.length - 1}</span> &nbsp;Categories</span>
+                <span><span className="text-accent font-bold text-base">Weekly</span> &nbsp;Updates</span>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Category Filter */}
-        <section className="py-4 bg-background border-b sticky top-16 z-20">
+        <section className="py-4 bg-background border-b sticky top-16 z-20 shadow-sm">
           <div className="container mx-auto px-4">
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {categories.map((cat) => (
                 <Button
                   key={cat}
                   variant={cat === "All" ? "default" : "outline"}
                   size="sm"
-                  className={cat === "All" ? "bg-accent text-accent-foreground hover:bg-accent/90" : "border-border hover:border-accent hover:text-accent"}
+                  className={cat === "All" ? "bg-accent text-accent-foreground hover:bg-hon-green-dark whitespace-nowrap" : "border-border hover:border-accent hover:text-accent whitespace-nowrap"}
                 >
                   {cat}
                 </Button>
@@ -125,48 +136,73 @@ const Blog = () => {
 
         {/* Featured Post */}
         {featured && (
-          <section className="py-12 bg-background">
+          <section className="py-16 bg-background">
             <div className="container mx-auto px-4">
-              <div className="grid lg:grid-cols-2 gap-8 items-center">
-                <div className="aspect-video rounded-sm overflow-hidden">
-                  <img src={featured.image} alt={featured.title} className="w-full h-full object-cover" />
-                </div>
-                <div>
-                  <Badge className="bg-accent text-accent-foreground mb-3">{featured.category}</Badge>
-                  <h2 className="text-2xl lg:text-3xl font-bold mb-4 leading-tight">{featured.title}</h2>
-                  <p className="text-muted-foreground leading-relaxed mb-5">{featured.excerpt}</p>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
-                    <span className="flex items-center gap-1"><User className="h-3.5 w-3.5" />{featured.author}</span>
-                    <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{featured.date}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{featured.readTime}</span>
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-0.5 bg-accent" />
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Editor's Pick</p>
+              </div>
+              <Link to="#" className="group grid lg:grid-cols-5 gap-10 items-center">
+                <div className="lg:col-span-3 aspect-[16/10] rounded-sm overflow-hidden relative">
+                  <img src={featured.image} alt={featured.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <div className="absolute top-4 left-4">
+                    <Badge className="bg-accent text-accent-foreground shadow-md">{featured.category}</Badge>
                   </div>
-                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                    Read Article <ArrowRight className="h-4 w-4 ml-2" />
+                </div>
+                <div className="lg:col-span-2">
+                  <h2 className="text-3xl lg:text-4xl font-bold mb-5 leading-[1.15] group-hover:text-accent transition-colors">{featured.title}</h2>
+                  <p className="text-muted-foreground leading-relaxed mb-6 text-base">{featured.excerpt}</p>
+                  <div className="flex items-center gap-5 text-xs text-muted-foreground mb-7 pb-7 border-b border-border">
+                    <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-accent" />{featured.author}</span>
+                    <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-accent" />{featured.date}</span>
+                    <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-accent" />{featured.readTime}</span>
+                  </div>
+                  <Button className="bg-accent hover:bg-hon-green-dark text-accent-foreground px-7 group/btn">
+                    Read Full Article <ArrowRight className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
                   </Button>
                 </div>
-              </div>
+              </Link>
             </div>
           </section>
         )}
 
         {/* Posts Grid */}
-        <section className="py-12 bg-section-light border-t">
+        <section className="py-16 bg-section-light border-t">
           <div className="container mx-auto px-4">
-            <h2 className="text-2xl font-bold mb-8">Latest Articles</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-0.5 bg-accent" />
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">From the Journal</p>
+                </div>
+                <h2 className="text-3xl font-bold">Latest Articles</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">Showing {rest.length} of {blogPosts.length} articles</p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-7">
               {rest.map((post) => (
-                <article key={post.id} className="group bg-background border border-border rounded-sm overflow-hidden hover:border-accent hover:shadow-lg transition-all">
-                  <div className="aspect-video overflow-hidden">
-                    <img src={post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  </div>
-                  <div className="p-5">
-                    <Badge variant="outline" className="mb-3 text-accent border-accent">{post.category}</Badge>
-                    <h3 className="font-bold text-lg mb-2 group-hover:text-accent transition-colors leading-snug">{post.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed mb-4 line-clamp-2">{post.excerpt}</p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><User className="h-3 w-3" />{post.author}</span>
-                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{post.date}</span>
+                <article key={post.id} className="group bg-background border border-border rounded-sm overflow-hidden hover:border-accent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                  <div className="aspect-[16/10] overflow-hidden relative">
+                    <img src={post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <div className="absolute top-3 left-3">
+                      <Badge className="bg-background/95 backdrop-blur text-accent border-0 text-[10px] uppercase tracking-wider font-bold">{post.category}</Badge>
                     </div>
+                    <div className="absolute bottom-3 right-3">
+                      <span className="bg-primary/85 backdrop-blur text-primary-foreground text-[10px] px-2.5 py-1 rounded-sm font-semibold flex items-center gap-1">
+                        <Clock className="h-2.5 w-2.5" />{post.readTime}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-6 flex flex-col flex-1">
+                    <h3 className="font-bold text-lg mb-3 group-hover:text-accent transition-colors leading-snug line-clamp-2">{post.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed mb-5 line-clamp-3 flex-1">{post.excerpt}</p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-4 border-t border-border">
+                      <span className="flex items-center gap-1.5"><User className="h-3 w-3 text-accent" />{post.author}</span>
+                      <span className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-accent" />{post.date}</span>
+                    </div>
+                    <span className="mt-4 text-accent text-xs font-bold uppercase tracking-widest flex items-center gap-1 opacity-0 group-hover:opacity-100 -translate-y-1 group-hover:translate-y-0 transition-all">
+                      Read Article <ArrowRight className="h-3 w-3" />
+                    </span>
                   </div>
                 </article>
               ))}
