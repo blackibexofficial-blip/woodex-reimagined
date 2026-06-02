@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle, Clock, Shield, Users, Headphones, Star, Trash2, Minus, Plus, ShoppingBag, Search, Download, Send, MessageCircle, FileText, ArrowRight, SlidersHorizontal } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+// Card removed — new layout no longer uses it
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,10 +22,6 @@ const benefits = [
   { icon: Headphones, title: "Expert Advice", description: "Personalized recommendations for your needs" },
 ];
 
-const testimonials = [
-  { name: "Muhammad Tariq", company: "Tariq & Associates", text: "The quotation process was smooth and the team was very responsive. Excellent service!", rating: 5 },
-  { name: "Sana Qureshi", company: "TechBridge Pvt Ltd", text: "Got our 40-person office furnished within budget. WOODEX made it effortless.", rating: 5 },
-];
 
 const Quotation = () => {
   const [submitted, setSubmitted] = useState(false);
