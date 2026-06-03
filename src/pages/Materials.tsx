@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import materialsHero from "@/assets/materials-hero.jpg";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";

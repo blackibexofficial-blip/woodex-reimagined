@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import projectsHero from "@/assets/projects-hero.jpg";
 import { Link } from "react-router-dom";
 import { ArrowRight, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
