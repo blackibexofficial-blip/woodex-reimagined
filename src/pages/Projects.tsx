@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import projectsHero from "@/assets/projects-hero.jpg";
 import { Link } from "react-router-dom";
 import { ArrowRight, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,8 +39,10 @@ const Projects = () => {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="bg-primary text-primary-foreground py-14">
-          <div className="container mx-auto px-4">
+        <section className="relative bg-primary text-primary-foreground py-20 overflow-hidden">
+          <img src={projectsHero} alt="Our completed office projects" className="absolute inset-0 w-full h-full object-cover opacity-30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/85 to-primary/40" />
+          <div className="container mx-auto px-4 relative">
             <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Portfolio</p>
             <h1 className="text-4xl lg:text-5xl font-black mb-3">Our Projects</h1>
             <p className="text-primary-foreground/75 max-w-xl">
