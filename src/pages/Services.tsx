@@ -1,60 +1,13 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Lightbulb, Package, Truck, ClipboardCheck, Headphones, Ruler, CheckCircle2, Star } from "lucide-react";
+import { ArrowRight, Star, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import spacePlanningImg from "@/assets/service-space-planning.jpg";
-import customMfgImg from "@/assets/service-custom-manufacturing.jpg";
-import deliveryImg from "@/assets/service-delivery.jpg";
-import projectMgmtImg from "@/assets/service-project-management.jpg";
-import afterSalesImg from "@/assets/service-after-sales.jpg";
-import ergonomicImg from "@/assets/service-ergonomic.jpg";
+import { services } from "@/data/services";
+import heroImg from "@/assets/services-main-hero.jpg";
 
-const services = [
-  {
-    icon: Ruler,
-    title: "Space Planning & Design",
-    description: "Transform your office with expert space planning. Our design consultants analyze your workflow, team size, and growth plans to create optimal workspace layouts.",
-    features: ["On-site consultation", "CAD floor plans", "Ergonomic assessments", "3D visualization", "Space optimization"],
-    image: spacePlanningImg,
-  },
-  {
-    icon: Package,
-    title: "Custom Manufacturing",
-    description: "Bring your vision to life with our bespoke furniture service. We create custom pieces tailored to your exact specifications, brand identity, and space requirements.",
-    features: ["Custom dimensions", "Material selection", "Color matching", "Logo integration", "Brand consistency"],
-    image: customMfgImg,
-  },
-  {
-    icon: Truck,
-    title: "Delivery & Installation",
-    description: "Professional delivery and installation services ensure your furniture is set up correctly and ready to use. Our expert team handles everything from transportation to assembly.",
-    features: ["Nationwide delivery", "Professional assembly", "Debris removal", "Quality inspection", "Warranty activation"],
-    image: deliveryImg,
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Project Management",
-    description: "Dedicated project managers oversee every aspect of your furniture project, from initial planning to final delivery, ensuring on-time and on-budget completion.",
-    features: ["Single point of contact", "Timeline management", "Budget tracking", "Phased delivery", "Progress reporting"],
-    image: projectMgmtImg,
-  },
-  {
-    icon: Headphones,
-    title: "After-Sales Support",
-    description: "Our commitment doesn't end at delivery. We provide comprehensive after-sales support including warranty service, repairs, and ongoing maintenance.",
-    features: ["5-year warranty options", "Fast repair service", "Spare parts availability", "Annual maintenance plans", "Dedicated support line"],
-    image: afterSalesImg,
-  },
-  {
-    icon: Lightbulb,
-    title: "Ergonomic Consulting",
-    description: "Improve employee health and productivity with our certified ergonomic consulting service. We assess workstations and recommend evidence-based solutions.",
-    features: ["Certified ergonomists", "Workstation assessments", "Product recommendations", "Employee training", "Health impact reports"],
-    image: ergonomicImg,
-  },
-];
+const WA_PHONE = "923001234567";
 
 const testimonials = [
   { name: "Bilal Ahmed", company: "Allied Bank Limited", text: "WOODEX furnished our 8 new branches across Punjab. Their project management was exceptional — on time, on budget.", rating: 5 },
@@ -62,16 +15,16 @@ const testimonials = [
   { name: "Hassan Raza", company: "TechVentures Islamabad", text: "Our 200-seat tech office was designed and furnished in just 6 weeks. The ergonomic chairs are a game-changer.", rating: 5 },
 ];
 
-const steps = [
-  { step: "01", title: "Consultation", description: "Discuss your needs and workspace vision with our experts" },
-  { step: "02", title: "Design", description: "Create custom layouts and select furniture solutions" },
-  { step: "03", title: "Production", description: "Precision manufacturing with rigorous quality control" },
-  { step: "04", title: "Installation", description: "Professional delivery, assembly, and activation" },
-];
-
 const Services = () => {
   useEffect(() => {
-    document.title = "Services — WOODEX Pakistan | Space Planning, Custom Manufacturing & More";
+    document.title = "Office Furniture Services Pakistan — Design, Manufacture, Install | WOODEX";
+    const meta = document.querySelector('meta[name="description"]') || (() => {
+      const m = document.createElement("meta");
+      m.setAttribute("name", "description");
+      document.head.appendChild(m);
+      return m;
+    })();
+    meta.setAttribute("content", "End-to-end office furniture services in Pakistan: custom design, B2B supply, manufacturing, delivery, space planning, after-sales support & project management.");
   }, []);
 
   return (
@@ -81,7 +34,7 @@ const Services = () => {
       <main className="flex-1">
         {/* Hero */}
         <section className="relative h-72 overflow-hidden bg-primary">
-          <img src={spacePlanningImg} alt="Services" className="w-full h-full object-cover opacity-30" />
+          <img src={heroImg} alt="WOODEX office furniture services" className="w-full h-full object-cover opacity-30" width={1536} height={1024} />
           <div className="absolute inset-0 flex items-center">
             <div className="container mx-auto px-4">
               <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">What We Offer</p>
@@ -94,76 +47,104 @@ const Services = () => {
           </div>
         </section>
 
-        {/* Services Grid with Images */}
-        <section className="py-16">
+        {/* Make Your Space Work — numbered clickable list + large image */}
+        <section className="py-20">
           <div className="container mx-auto px-4">
+            <div className="text-center mb-14">
+              <h2 className="text-3xl lg:text-5xl font-black mb-3">Make Your Space Work</h2>
+              <div className="w-16 h-1 bg-accent mx-auto" />
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center max-w-6xl mx-auto">
+              {/* Left: numbered list */}
+              <div>
+                <p className="text-muted-foreground leading-relaxed mb-8">
+                  From smart interiors to full-scale fitouts, our services cover everything you
+                  need to build a standout commercial space. Discover how our high-quality
+                  furniture can transform your space into a haven of comfort and productivity.
+                </p>
+
+                <ul className="divide-y border-y">
+                  {services.map((s) => (
+                    <li key={s.slug}>
+                      <Link
+                        to={`/services/${s.slug}`}
+                        className="group flex items-center gap-4 py-4 hover:pl-2 transition-all"
+                      >
+                        <span className="w-8 h-8 rounded-full bg-accent text-accent-foreground text-[11px] font-black flex items-center justify-center flex-shrink-0">
+                          {s.number}
+                        </span>
+                        <span className="font-bold text-base flex-1 group-hover:text-accent transition-colors">
+                          {s.shortTitle}
+                        </span>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent group-hover:translate-x-1 transition-all" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Right: large image */}
+              <div className="relative">
+                <img
+                  src={heroImg}
+                  alt="WOODEX corporate office building Pakistan"
+                  className="w-full h-auto rounded-sm shadow-xl"
+                  width={1536}
+                  height={1024}
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Service Cards Grid */}
+        <section className="py-20 bg-section-light border-t border-b">
+          <div className="container mx-auto px-4">
+            <div className="max-w-2xl mx-auto text-center mb-12">
+              <div className="w-12 h-1 bg-accent mx-auto mb-5" />
+              <h2 className="text-3xl lg:text-4xl font-bold mb-3">Explore Every Service</h2>
+              <p className="text-muted-foreground">Click any service to see process, pricing approach and recent case studies.</p>
+            </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {services.map((service) => (
-                <div key={service.title} className="group border border-border rounded-sm overflow-hidden hover:border-accent hover:shadow-lg transition-all">
+              {services.map((s) => (
+                <Link
+                  key={s.slug}
+                  to={`/services/${s.slug}`}
+                  className="group border border-border rounded-sm overflow-hidden bg-background hover:border-accent hover:shadow-lg transition-all"
+                >
                   <div className="aspect-video overflow-hidden">
                     <img
-                      src={service.image}
-                      alt={service.title}
+                      src={s.hero}
+                      alt={s.title}
+                      loading="lazy"
+                      width={1536}
+                      height={1024}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   </div>
                   <div className="p-7">
-                    <div className="w-10 h-10 rounded-sm bg-muted flex items-center justify-center mb-4 group-hover:bg-accent transition-colors">
-                      <service.icon className="h-5 w-5 text-accent group-hover:text-accent-foreground transition-colors" />
-                    </div>
-                    <h3 className="font-bold text-xl mb-3 group-hover:text-accent transition-colors">{service.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed mb-5">{service.description}</p>
-                    <ul className="space-y-2">
-                      {service.features.map((f) => (
-                        <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-accent flex-shrink-0" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
+                    <span className="text-xs font-black text-accent">{s.number}</span>
+                    <h3 className="font-bold text-xl mt-2 mb-3 group-hover:text-accent transition-colors">{s.shortTitle}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed mb-5">{s.tagline}</p>
+                    <span className="inline-flex items-center gap-2 text-sm font-bold text-accent">
+                      Learn more <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                    </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Process Section */}
-        <section className="py-16 bg-section-light border-t border-b">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <div className="w-12 h-1 bg-accent mx-auto mb-5" />
-              <h2 className="text-3xl lg:text-4xl font-bold mb-3">How We Work</h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                Our streamlined process ensures a smooth experience from initial consultation to final installation
-              </p>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {steps.map((item, idx) => (
-                <div key={item.step} className="text-center">
-                  <div className="relative">
-                    <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground font-black text-xl flex items-center justify-center mx-auto mb-4">
-                      {item.step}
-                    </div>
-                    {idx < steps.length - 1 && (
-                      <div className="hidden lg:block absolute top-8 left-[calc(50%+32px)] right-0 h-px bg-border" />
-                    )}
-                  </div>
-                  <h3 className="font-bold text-lg mb-2">{item.title}</h3>
-                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Client Testimonials */}
-        <section className="py-16 bg-background border-t">
+        {/* Testimonials */}
+        <section className="py-20 bg-background">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <div className="w-12 h-1 bg-accent mx-auto mb-5" />
               <h2 className="text-3xl font-bold mb-3">What Our Clients Say</h2>
-              <p className="text-muted-foreground">Trusted by leading organizations across Pakistan</p>
+              <p className="text-muted-foreground">Trusted by leading organisations across Pakistan</p>
             </div>
             <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {testimonials.map((t) => (
@@ -193,10 +174,12 @@ const Services = () => {
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground px-8" asChild>
-                <Link to="/quotation">Get Free Quote</Link>
+                <Link to="/quotation">Request a Quote</Link>
               </Button>
               <Button variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" asChild>
-                <Link to="/contact">Contact Us</Link>
+                <a href={`https://wa.me/${WA_PHONE}?text=Hi%20WOODEX%2C%20I%27m%20interested%20in%20your%20services`} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp Us
+                </a>
               </Button>
             </div>
           </div>
