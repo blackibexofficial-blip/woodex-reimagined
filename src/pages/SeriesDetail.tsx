@@ -7,6 +7,8 @@ import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
 import { seriesList, getProductsBySeries } from "@/data/products";
 import { useEffect } from "react";
+import SeoContentBlock from "@/components/SeoContentBlock";
+import { getSeriesSeo } from "@/data/seoContent";
 import execImg from "@/assets/series-executive.jpg";
 import modernImg from "@/assets/series-modern.jpg";
 import ecoImg from "@/assets/series-eco.jpg";
@@ -22,12 +24,13 @@ const SeriesDetail = () => {
   const { seriesId } = useParams<{ seriesId: string }>();
   const series = seriesList.find((s) => s.id === seriesId);
   const seriesProducts = getProductsBySeries(seriesId || "");
+  const seo = series ? getSeriesSeo(series.id) : undefined;
 
   useEffect(() => {
-    if (series) {
+    if (series && !seo) {
       document.title = `${series.name} — WOODEX Pakistan`;
     }
-  }, [series]);
+  }, [series, seo]);
 
   if (!series) {
     return (
@@ -120,6 +123,15 @@ const SeriesDetail = () => {
             )}
           </div>
         </section>
+
+        {/* SEO + AIO content */}
+        {seo && (
+          <section className="py-14 border-t bg-background">
+            <div className="container mx-auto px-4">
+              <SeoContentBlock seo={seo} path={`/series/${series.id}`} />
+            </div>
+          </section>
+        )}
 
         {/* Other Series */}
         <section className="py-14 bg-section-light border-t">

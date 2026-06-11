@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Grid3X3, LayoutList, SlidersHorizontal, ChevronDown, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SeoContentBlock from "@/components/SeoContentBlock";
+import { getCategorySeo } from "@/data/seoContent";
 
 interface CategoryNode {
   label: string;
@@ -104,16 +106,11 @@ const Shop = () => {
   const [sortBy, setSortBy] = useState("featured");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["office-tables", "bedroom"]);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const seo = getCategorySeo(selectedCategory);
 
   useEffect(() => {
-    const label = getCategoryLabel();
-    document.title = label === "All Products"
-      ? "Shop Office & Home Furniture — WOODEX Pakistan"
-      : `${label} — Shop WOODEX Pakistan`;
-    const meta = document.querySelector('meta[name="description"]');
-    const desc = categoryDescriptions[selectedCategory] || categoryDescriptions["all"];
-    if (meta) meta.setAttribute("content", desc);
+    // SeoContentBlock owns <title>, <meta description>, canonical, JSON-LD.
     if (selectedCategory === "all") {
       searchParams.delete("category");
     } else {
@@ -318,7 +315,7 @@ const Shop = () => {
                 {/* Category description for SEO */}
                 <div className="mb-6">
                   <h2 className="font-bold text-lg mb-1">{getCategoryLabel()}</h2>
-                  <p className="text-sm text-muted-foreground">{categoryDescriptions[selectedCategory] || categoryDescriptions["all"]}</p>
+                  <p className="text-sm text-muted-foreground">{seo.intro}</p>
                   <p className="text-xs text-muted-foreground mt-1">{filteredProducts.length} products</p>
                 </div>
 
@@ -344,27 +341,13 @@ const Shop = () => {
                   </div>
                 )}
 
-                {/* FAQ */}
+                {/* SEO + AIO long-form content + FAQ */}
                 <div className="mt-16 border-t pt-12">
-                  <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
-                  <div className="space-y-3">
-                    {faqs.map((faq, i) => (
-                      <div key={i} className="border border-border rounded-sm overflow-hidden">
-                        <button
-                          onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-section-light transition-colors"
-                        >
-                          <span className="font-semibold text-sm">{faq.q}</span>
-                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ml-4 ${openFaq === i ? "rotate-180" : ""}`} />
-                        </button>
-                        {openFaq === i && (
-                          <div className="px-5 pb-4 text-sm text-muted-foreground leading-relaxed border-t border-border bg-section-light">
-                            <div className="pt-3">{faq.a}</div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  <SeoContentBlock
+                    seo={seo}
+                    path={selectedCategory === "all" ? "/shop" : `/shop?category=${selectedCategory}`}
+                    hideIntro
+                  />
                 </div>
               </div>
             </div>

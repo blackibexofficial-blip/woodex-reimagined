@@ -12,6 +12,8 @@ import modernImg from "@/assets/series-modern.jpg";
 import ecoImg from "@/assets/series-eco.jpg";
 import novaImg from "@/assets/series-nova.jpg";
 import { seriesList, getProductsBySeries } from "@/data/products";
+import SeoContentBlock from "@/components/SeoContentBlock";
+import { getSeriesSeo } from "@/data/seoContent";
 
 const seriesImages: Record<string, string> = {
   "ek-series": ecoImg,
@@ -24,9 +26,12 @@ const seriesImages: Record<string, string> = {
 const Series = () => {
   const [activeTab, setActiveTab] = useState("woodex-series");
   const tabProducts = getProductsBySeries(activeTab).slice(0, 4);
+  const activeSeo = getSeriesSeo(activeTab);
 
   useEffect(() => {
-    document.title = "Furniture Series — WOODEX Pakistan | Ek, Infinity, Woodex & Cubicle Collections";
+    document.title = "Furniture Series in Pakistan — Ek, Infinity, Woodex, Cubicle & Nova | WOODEX";
+    const m = document.querySelector('meta[name="description"]');
+    if (m) m.setAttribute("content", "Explore WOODEX's 5 furniture series in Pakistan: Ek (budget), Infinity (modular), Woodex (premium), Cubicle (privacy), Nova (minimal). Made in Lahore, delivered nationwide.");
   }, []);
 
   return (
@@ -124,6 +129,16 @@ const Series = () => {
             </div>
           </section>
         ))}
+
+        {/* Active series SEO + AIO content */}
+        {activeSeo && (
+          <section className="py-14 border-t bg-background">
+            <div className="container mx-auto px-4">
+              <SeoContentBlock seo={activeSeo} path={`/series#${activeTab}`} />
+            </div>
+          </section>
+        )}
+
 
         {/* All Series Overview */}
         <section className="py-14 bg-section-light border-t">
