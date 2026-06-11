@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Grid3X3, LayoutList, SlidersHorizontal, ChevronDown, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SeoContentBlock from "@/components/SeoContentBlock";
+import { getCategorySeo } from "@/data/seoContent";
 
 interface CategoryNode {
   label: string;
