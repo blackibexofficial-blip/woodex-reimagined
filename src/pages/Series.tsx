@@ -130,6 +130,16 @@ const Series = () => {
           </section>
         ))}
 
+        {/* Active series SEO + AIO content */}
+        {activeSeo && (
+          <section className="py-14 border-t bg-background">
+            <div className="container mx-auto px-4">
+              <SeoContentBlock seo={activeSeo} path={`/series#${activeTab}`} />
+            </div>
+          </section>
+        )}
+
+
         {/* All Series Overview */}
         <section className="py-14 bg-section-light border-t">
           <div className="container mx-auto px-4">
