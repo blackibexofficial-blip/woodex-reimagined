@@ -124,6 +124,15 @@ const SeriesDetail = () => {
           </div>
         </section>
 
+        {/* SEO + AIO content */}
+        {seo && (
+          <section className="py-14 border-t bg-background">
+            <div className="container mx-auto px-4">
+              <SeoContentBlock seo={seo} path={`/series/${series.id}`} />
+            </div>
+          </section>
+        )}
+
         {/* Other Series */}
         <section className="py-14 bg-section-light border-t">
           <div className="container mx-auto px-4">
