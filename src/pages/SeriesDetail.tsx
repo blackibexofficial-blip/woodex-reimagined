@@ -24,12 +24,13 @@ const SeriesDetail = () => {
   const { seriesId } = useParams<{ seriesId: string }>();
   const series = seriesList.find((s) => s.id === seriesId);
   const seriesProducts = getProductsBySeries(seriesId || "");
+  const seo = series ? getSeriesSeo(series.id) : undefined;
 
   useEffect(() => {
-    if (series) {
+    if (series && !seo) {
       document.title = `${series.name} — WOODEX Pakistan`;
     }
-  }, [series]);
+  }, [series, seo]);
 
   if (!series) {
     return (
