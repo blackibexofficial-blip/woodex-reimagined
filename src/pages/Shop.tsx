@@ -106,16 +106,11 @@ const Shop = () => {
   const [sortBy, setSortBy] = useState("featured");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["office-tables", "bedroom"]);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const seo = getCategorySeo(selectedCategory);
 
   useEffect(() => {
-    const label = getCategoryLabel();
-    document.title = label === "All Products"
-      ? "Shop Office & Home Furniture — WOODEX Pakistan"
-      : `${label} — Shop WOODEX Pakistan`;
-    const meta = document.querySelector('meta[name="description"]');
-    const desc = categoryDescriptions[selectedCategory] || categoryDescriptions["all"];
-    if (meta) meta.setAttribute("content", desc);
+    // SeoContentBlock owns <title>, <meta description>, canonical, JSON-LD.
     if (selectedCategory === "all") {
       searchParams.delete("category");
     } else {
