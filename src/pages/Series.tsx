@@ -26,9 +26,12 @@ const seriesImages: Record<string, string> = {
 const Series = () => {
   const [activeTab, setActiveTab] = useState("woodex-series");
   const tabProducts = getProductsBySeries(activeTab).slice(0, 4);
+  const activeSeo = getSeriesSeo(activeTab);
 
   useEffect(() => {
-    document.title = "Furniture Series — WOODEX Pakistan | Ek, Infinity, Woodex & Cubicle Collections";
+    document.title = "Furniture Series in Pakistan — Ek, Infinity, Woodex, Cubicle & Nova | WOODEX";
+    const m = document.querySelector('meta[name="description"]');
+    if (m) m.setAttribute("content", "Explore WOODEX's 5 furniture series in Pakistan: Ek (budget), Infinity (modular), Woodex (premium), Cubicle (privacy), Nova (minimal). Made in Lahore, delivered nationwide.");
   }, []);
 
   return (
