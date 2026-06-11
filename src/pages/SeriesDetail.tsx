@@ -7,6 +7,8 @@ import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
 import { seriesList, getProductsBySeries } from "@/data/products";
 import { useEffect } from "react";
+import SeoContentBlock from "@/components/SeoContentBlock";
+import { getSeriesSeo } from "@/data/seoContent";
 import execImg from "@/assets/series-executive.jpg";
 import modernImg from "@/assets/series-modern.jpg";
 import ecoImg from "@/assets/series-eco.jpg";
