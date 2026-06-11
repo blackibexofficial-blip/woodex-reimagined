@@ -12,6 +12,8 @@ import modernImg from "@/assets/series-modern.jpg";
 import ecoImg from "@/assets/series-eco.jpg";
 import novaImg from "@/assets/series-nova.jpg";
 import { seriesList, getProductsBySeries } from "@/data/products";
+import SeoContentBlock from "@/components/SeoContentBlock";
+import { getSeriesSeo } from "@/data/seoContent";
 
 const seriesImages: Record<string, string> = {
   "ek-series": ecoImg,
