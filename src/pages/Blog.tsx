@@ -74,7 +74,7 @@ const Blog = () => {
                 <div className="w-10 h-0.5 bg-accent" />
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Editor's Pick</p>
               </div>
-              <Link to="#" className="group grid lg:grid-cols-5 gap-10 items-center">
+              <Link to={`/blog/${featured.id}`} className="group grid lg:grid-cols-5 gap-10 items-center">
                 <div className="lg:col-span-3 aspect-[16/10] rounded-sm overflow-hidden relative">
                   <img src={featured.image} alt={featured.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   <div className="absolute top-4 left-4">
@@ -113,7 +113,7 @@ const Blog = () => {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-7">
               {rest.map((post) => (
-                <article key={post.id} className="group bg-background border border-border rounded-sm overflow-hidden hover:border-accent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                <Link to={`/blog/${post.id}`} key={post.id} className="group bg-background border border-border rounded-sm overflow-hidden hover:border-accent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
                   <div className="aspect-[16/10] overflow-hidden relative">
                     <img src={post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                     <div className="absolute top-3 left-3">
@@ -136,7 +136,7 @@ const Blog = () => {
                       Read Article <ArrowRight className="h-3 w-3" />
                     </span>
                   </div>
-                </article>
+                </Link>
               ))}
             </div>
           </div>
