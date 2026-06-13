@@ -5,76 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { blogPosts } from "@/data/blogPosts";
 import blogErgonomic from "@/assets/blog-ergonomic.jpg";
-import blogHybrid from "@/assets/blog-hybrid-workspace.jpg";
-import blogSustainable from "@/assets/blog-sustainable.jpg";
-import blogColors from "@/assets/blog-office-colors.jpg";
-import blogCaseStudy from "@/assets/blog-case-study.jpg";
-import blogStandingDesk from "@/assets/blog-standing-desk.jpg";
-
-const blogPosts = [
-  {
-    id: "ergonomic-office-guide-2025",
-    title: "The Complete Guide to Ergonomic Office Furniture in 2025",
-    excerpt: "Discover how the right office chair and desk setup can reduce back pain, boost productivity, and improve employee wellbeing. Expert tips from WOODEX's certified ergonomists.",
-    image: blogErgonomic,
-    category: "Ergonomics",
-    author: "Dr. Farah Khan",
-    date: "Feb 15, 2025",
-    readTime: "8 min read",
-    featured: true,
-  },
-  {
-    id: "hybrid-workspace-design",
-    title: "Designing Hybrid Workspaces: Furniture That Adapts",
-    excerpt: "How Pakistani companies are rethinking office layouts for hybrid work. Modular furniture, hot-desking solutions, and collaborative zones explained.",
-    image: blogHybrid,
-    category: "Workspace Design",
-    author: "Ahmed Raza",
-    date: "Feb 8, 2025",
-    readTime: "6 min read",
-  },
-  {
-    id: "sustainable-furniture-pakistan",
-    title: "Sustainable Furniture Manufacturing in Pakistan",
-    excerpt: "WOODEX's commitment to eco-friendly production — from FSC-certified wood sourcing to zero-waste manufacturing practices in our Lahore facility.",
-    image: blogSustainable,
-    category: "Sustainability",
-    author: "Sara Malik",
-    date: "Jan 28, 2025",
-    readTime: "5 min read",
-  },
-  {
-    id: "office-color-psychology",
-    title: "How Office Colors Affect Productivity: A Research-Backed Guide",
-    excerpt: "Blue for focus, green for creativity, and warm tones for collaboration — the science behind choosing the right furniture finishes for your workspace.",
-    image: blogColors,
-    category: "Interior Design",
-    author: "Hina Javed",
-    date: "Jan 20, 2025",
-    readTime: "7 min read",
-  },
-  {
-    id: "corporate-case-study-allied-bank",
-    title: "Case Study: Furnishing 8 Allied Bank Branches Across Punjab",
-    excerpt: "How WOODEX delivered 200+ workstations, executive suites, and customer service counters across 8 branches in just 6 weeks — on time and on budget.",
-    image: blogCaseStudy,
-    category: "Case Study",
-    author: "Bilal Ahmed",
-    date: "Jan 12, 2025",
-    readTime: "10 min read",
-  },
-  {
-    id: "standing-desk-benefits",
-    title: "Standing Desks in Pakistan: Are They Worth the Investment?",
-    excerpt: "A comprehensive analysis of sit-stand desks for Pakistani offices — health benefits, ROI calculations, and the best models for different budgets.",
-    image: blogStandingDesk,
-    category: "Ergonomics",
-    author: "Dr. Farah Khan",
-    date: "Jan 5, 2025",
-    readTime: "6 min read",
-  },
-];
 
 const categories = ["All", "Ergonomics", "Workspace Design", "Sustainability", "Interior Design", "Case Study"];
 
@@ -142,7 +74,7 @@ const Blog = () => {
                 <div className="w-10 h-0.5 bg-accent" />
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Editor's Pick</p>
               </div>
-              <Link to="#" className="group grid lg:grid-cols-5 gap-10 items-center">
+              <Link to={`/blog/${featured.id}`} className="group grid lg:grid-cols-5 gap-10 items-center">
                 <div className="lg:col-span-3 aspect-[16/10] rounded-sm overflow-hidden relative">
                   <img src={featured.image} alt={featured.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   <div className="absolute top-4 left-4">
@@ -181,7 +113,7 @@ const Blog = () => {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-7">
               {rest.map((post) => (
-                <article key={post.id} className="group bg-background border border-border rounded-sm overflow-hidden hover:border-accent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                <Link to={`/blog/${post.id}`} key={post.id} className="group bg-background border border-border rounded-sm overflow-hidden hover:border-accent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
                   <div className="aspect-[16/10] overflow-hidden relative">
                     <img src={post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                     <div className="absolute top-3 left-3">
@@ -204,7 +136,7 @@ const Blog = () => {
                       Read Article <ArrowRight className="h-3 w-3" />
                     </span>
                   </div>
-                </article>
+                </Link>
               ))}
             </div>
           </div>
