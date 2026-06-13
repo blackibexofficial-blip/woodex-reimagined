@@ -9,6 +9,16 @@ import heroImg from "@/assets/services-main-hero.jpg";
 
 const WA_PHONE = "923001234567";
 
+// "Make Your Space Work" — curated 6-item showcase mapped to underlying service pages
+const spaceWorkItems = [
+  { num: "01", label: "3D Rendered Floor Plan", slug: "space-planning-design" },
+  { num: "02", label: "Custom Office Furniture", slug: "custom-design" },
+  { num: "03", label: "2D Spatial Planning", slug: "space-planning-design" },
+  { num: "04", label: "Project Management", slug: "project-management" },
+  { num: "05", label: "Interior Designing", slug: "custom-design" },
+  { num: "06", label: "Turnkey Solutions", slug: "b2b-office-solutions" },
+];
+
 const testimonials = [
   { name: "Bilal Ahmed", company: "Allied Bank Limited", text: "WOODEX furnished our 8 new branches across Punjab. Their project management was exceptional — on time, on budget.", rating: 5 },
   { name: "Dr. Ayesha Siddiqui", company: "Shifa International Hospital", text: "From patient waiting areas to executive offices, WOODEX delivered quality furniture that meets healthcare standards.", rating: 5 },
@@ -65,17 +75,17 @@ const Services = () => {
                 </p>
 
                 <ul className="divide-y border-y">
-                  {services.map((s) => (
-                    <li key={s.slug}>
+                  {spaceWorkItems.map((s) => (
+                    <li key={s.num}>
                       <Link
                         to={`/services/${s.slug}`}
                         className="group flex items-center gap-4 py-4 hover:pl-2 transition-all"
                       >
                         <span className="w-8 h-8 rounded-full bg-accent text-accent-foreground text-[11px] font-black flex items-center justify-center flex-shrink-0">
-                          {s.number}
+                          {s.num}
                         </span>
                         <span className="font-bold text-base flex-1 group-hover:text-accent transition-colors">
-                          {s.shortTitle}
+                          {s.label}
                         </span>
                         <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent group-hover:translate-x-1 transition-all" />
                       </Link>
