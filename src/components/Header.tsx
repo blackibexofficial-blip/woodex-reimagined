@@ -105,6 +105,7 @@ const navItems = [
   { label: "Blog", href: "/blog" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
+  { label: "Custom Design", href: "/custom-design" },
 ];
 
 const Header = () => {
