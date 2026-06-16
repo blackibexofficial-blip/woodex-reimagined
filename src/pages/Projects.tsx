@@ -12,8 +12,10 @@ import proj3 from "@/assets/project-3.jpg";
 import proj4 from "@/assets/project-4.jpg";
 import proj5 from "@/assets/project-5.jpg";
 import proj6 from "@/assets/project-6.jpg";
+import projSalon from "@/assets/project-hair-salon.jpg";
 
 const projects = [
+  { id: 7, title: "Gents Grooming Lounge — DHA Lahore", client: "Private Boutique Salon", category: "Hospitality", image: projSalon, location: "DHA Phase 5, Lahore", sqft: "3,500 sq ft", description: "Concept-to-execution turnkey fit-out of a premium men's hair salon — walnut joinery, brass-framed mirrors, deep forest green feature wall, custom barber stations and private grooming alcoves." },
   { id: 1, title: "DHA Corporate Tower", client: "DHA Developers", category: "Corporate", image: proj1, location: "Lahore", sqft: "12,000 sq ft", description: "Complete C-suite office fit-out with custom executive furniture, meeting rooms, and collaborative spaces." },
   { id: 2, title: "TechHub Karachi", client: "TechHub Pakistan", category: "Tech", image: proj2, location: "Karachi", sqft: "8,500 sq ft", description: "Modern open-plan tech office with agile workstations, standing desks, and vibrant breakout areas." },
   { id: 3, title: "Shaukat Khanum Clinic", client: "SKMT Foundation", category: "Healthcare", image: proj3, location: "Islamabad", sqft: "4,200 sq ft", description: "Healthcare-grade furniture for waiting areas, consultation rooms, and staff offices." },

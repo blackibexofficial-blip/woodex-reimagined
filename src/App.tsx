@@ -19,6 +19,7 @@ import ServiceDetail from "./pages/ServiceDetail";
 import B2B from "./pages/B2B";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import CustomDesign from "./pages/CustomDesign";
 import Quotation from "./pages/Quotation";
 import Showrooms from "./pages/Showrooms";
 import Materials from "./pages/Materials";
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/b2b" element={<B2B />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/custom-design" element={<CustomDesign />} />
             <Route path="/quotation" element={<Quotation />} />
             <Route path="/showrooms" element={<Showrooms />} />
             <Route path="/materials" element={<Materials />} />
