@@ -11,6 +11,7 @@ import proj3 from "@/assets/project-3.jpg";
 import proj4 from "@/assets/project-4.jpg";
 import proj5 from "@/assets/project-5.jpg";
 import proj6 from "@/assets/project-6.jpg";
+import projSalon from "@/assets/project-hair-salon.jpg";
 
 const projectsData = [
   {
@@ -125,6 +126,41 @@ const projectsData = [
     solution: "Custom Woodex Series furniture in bespoke finishes matching the hotel's interior design language, with commercial-grade upholstery rated for 100,000 rubs.",
     furnitureUsed: ["Lounge sofas — 8 sets", "Business center desks — 12", "Premium chairs — 40", "Coffee tables — 10", "Reception furniture — 2 sets"],
     testimonial: { text: "The furniture perfectly complements our 5-star brand. Guests frequently compliment the business center setup.", author: "Mr. Hassan Nawaz", role: "General Manager, PC Hotel Lahore" },
+    rating: 5,
+  },
+  {
+    id: "7",
+    title: "Gents Grooming Lounge — DHA Lahore",
+    client: "Private Boutique Salon",
+    category: "Hospitality",
+    image: projSalon,
+    beforeImage: proj6,
+    location: "DHA Phase 5, Lahore",
+    sqft: "3,500 sq ft",
+    year: "2025",
+    employees: "12 stylists",
+    duration: "7 weeks",
+    description:
+      "End-to-end concept-to-execution interior and furniture solution for a premium men's hair salon and grooming lounge in DHA Phase 5, Lahore. WOODEX delivered architectural design, custom joinery, lighting and furnishings across a 3,500 sq ft open-plan space — including a 6-station barber row, two private grooming alcoves, a beard-bar, retail display and a guest waiting lounge.",
+    challenge:
+      "The client wanted a luxury London-meets-Lahore barbershop experience inside a raw 3,500 sq ft commercial unit — no existing interior, no joinery, no MEP. The brief: a moody, masculine, Instagram-worthy space that would also pass commercial water, drainage and ventilation standards for shampoo stations and could open to paying customers within 8 weeks.",
+    solution:
+      "WOODEX took the project from concept to keys. Our designers produced 2D layouts and photoreal 3D renders within 10 days, then ran a turnkey fit-out: walnut wall panelling, polished concrete flooring, brass-framed wall mirrors, Carrara marble grooming counters, deep forest-green feature wall, vintage Edison pendants, and custom-built walnut barber consoles with integrated tool storage. Bespoke leather-and-brass barber chairs were sourced and installed alongside three private grooming alcoves wrapped in walnut veneer.",
+    furnitureUsed: [
+      "Custom walnut barber consoles — 6 units",
+      "Brass-framed wall mirrors — 6 units",
+      "Premium leather barber chairs — 6 units",
+      "Private grooming alcoves — 3 (walnut-clad)",
+      "Carrara marble grooming counters — 18 lm",
+      "Retail display joinery — 1 wall",
+      "Guest lounge sofa & coffee tables — 1 set",
+      "Beard-bar with integrated lighting — 1",
+    ],
+    testimonial: {
+      text: "WOODEX delivered exactly the moody, premium grooming lounge we'd been chasing on Pinterest for two years — and they did it in seven weeks. Every joint, every brass fitting, every light is exactly where it should be.",
+      author: "Mr. Hamza Sheikh",
+      role: "Founder, Gents Grooming Lounge DHA",
+    },
     rating: 5,
   },
 ];
