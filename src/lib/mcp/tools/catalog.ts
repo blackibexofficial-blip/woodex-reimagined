@@ -1,6 +1,9 @@
 import { defineTool, ToolError } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { products, categories, seriesList } from "@/data/products";
+import data from "../data.json";
+const products = data.products as any[];
+const categories = data.categories as any[];
+const seriesList = data.series as any[];
 
 const toProductJson = (p: (typeof products)[number]) => ({
   id: p.id,
