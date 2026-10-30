@@ -28,6 +28,12 @@ final readonly class Money
         }
     }
 
+    /** Alias matching App\Support\Money — the OS's own money type — so the two can be swapped. */
+    public static function ofMinor(int $minor, string $currency = 'PKR'): self
+    {
+        return new self($minor, $currency);
+    }
+
     public static function zero(string $currency = 'PKR'): self
     {
         return new self(0, $currency);

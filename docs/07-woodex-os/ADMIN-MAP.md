@@ -61,7 +61,7 @@ Ordered. Each row is one shippable thing, not a phase.
 
 **Built:** `platform/app/Domain/Commerce/` (Money, CartLine, DiscountRule, ShippingMethod, CartInput, LineTotal, CartTotals, CartCalculator) + 14 fixtures + runner. Run it with `php platform/tests/run.php`.
 
-**Week 1:** T1–T4. **Week 2:** T5–T7. **Week 3:** T8–T10. **Week 4:** T11–T12 → gate.
+**Week 1:** T1–T4 (T1–T3 already built). **Week 2:** T5–T7. **Week 3:** T8–T10. **Week 4:** T11–T12 → gate.
 
 **T1–T2 are code, not a document.** They live in `platform/` and pass: 16 tests, 13,371 assertions, 1,000 generated carts.
 

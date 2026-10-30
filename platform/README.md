@@ -76,7 +76,49 @@ Asserted inside the calculator on every run, and again over 1,000 generated cart
 property test. If a future change breaks it, the calculator throws `LogicException`
 instead of returning a wrong total.
 
-## Next (T3)
+## T3 — catalog schema (done)
 
-Migrations for the eleven catalog tables, models, factories, a seeder — then the Products
-admin screen (T4/T5) and the vertical slice (T11).
+```
+database/migrations/
+  2026_10_28_100000_create_commerce_catalog_tables.php          products, translations,
+                                                                categories, media, pivot
+  2026_10_28_101000_create_commerce_attribute_tables.php        attributes, options, values
+  2026_10_28_102000_create_commerce_variant_inventory_tables.php variants, sources, stock
+app/Domain/Commerce/Models/     11 Eloquent models
+database/factories/             3 factories
+database/seeders/CatalogSeeder.php + data/catalog.json
+                                20 real products from src/data/products.ts, 4 categories,
+                                3 attributes, 3 stock sources, 12 variants
+```
+
+**Verification without a database** — `tests/Schema/SchemaTest.php` reads the migration source
+and enforces the rules that are expensive to break: every table dropped in `down()`, no
+float/decimal columns anywhere, every money bigint named `*_minor`, foreign keys declaring
+their delete behaviour, migrations timestamp-ordered. **It found two real bugs immediately**:
+translation tables had no `timestamps()` (Eloquent would have failed on the first insert), and
+`product_media.variant_id` was declared as a foreign key with no delete behaviour.
+
+`tests/Catalog/CatalogSeedTest.php` validates the seed as data: unique SKUs and slugs, prices
+positive integers, every product pointing at a category that exists, every variant pointing at
+a real product and a real finish option. **It caught a product referencing a category key that
+did not exist** — a failure the seeder would only have hit halfway through `db:seed`.
+
+## Running everything
+
+```bash
+php platform/tests/run.php            # lint all PHP + every suite
+php platform/tests/run.php --lint     # syntax only
+php platform/tests/run.php Money      # one suite
+```
+
+```
+PASS  Lint::allPhpFiles (35 files)
+PASS  CatalogSeedTest::testEveryProductIsValid                    201 assertions
+PASS  SchemaTest::testEveryPlannedCatalogTableIsCreated            13 assertions
+30/30 checks passed · 13793 assertions · 826 ms
+```
+
+## Next (T4)
+
+Admin shell: the Commerce navigation group, permission gates, empty screens — then T5, the
+Products screen with inline price and stock editing.

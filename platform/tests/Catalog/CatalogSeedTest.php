@@ -1,0 +1,176 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Catalog;
+
+use Tests\Support\Assert;
+
+/**
+ * The seed data is a contract: the seeder trusts it, the storefront reads it, and nobody
+ * reviews 20 JSON blocks by eye. These checks are the review.
+ *
+ * They caught their first real problem before any of this ran against a database — a
+ * product pointing at a category key that did not exist, which the seeder would only have
+ * discovered halfway through a `db:seed`.
+ */
+final class CatalogSeedTest
+{
+    /** @var array<string, mixed>|null */
+    private static ?array $data = null;
+
+    private function data(): array
+    {
+        if (self::$data === null) {
+            $path = dirname(__DIR__, 2).'/database/seeders/data/catalog.json';
+            Assert::true(is_file($path), 'catalog seed file exists');
+
+            self::$data = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        }
+
+        return self::$data;
+    }
+
+    public function testItShipsTwentyProductsInFourCategories(): void
+    {
+        $data = $this->data();
+
+        Assert::same(20, count($data['products']), 'product count');
+        Assert::same(4, count($data['categories']), 'root category count');
+        Assert::same('PKR', $data['currency'], 'currency');
+    }
+
+    public function testEveryProductIsValid(): void
+    {
+        $data = $this->data();
+        $categoryKeys = array_column($data['categories'], 'key');
+        $skus = [];
+        $slugs = [];
+
+        foreach ($data['products'] as $product) {
+            $label = $product['sku'].' ('.$product['name'].')';
+
+            Assert::true(! in_array($product['sku'], $skus, true), "{$label}: SKU is unique");
+            Assert::true(! in_array($product['slug'], $slugs, true), "{$label}: slug is unique");
+
+            $skus[] = $product['sku'];
+            $slugs[] = $product['slug'];
+
+            Assert::true($product['price'] > 0, "{$label}: price is positive");
+            Assert::true($product['warranty_months'] > 0, "{$label}: warranty is set");
+            Assert::true($product['lead_time_days'] > 0, "{$label}: lead time is set");
+            Assert::true(
+                in_array($product['category'], $categoryKeys, true),
+                "{$label}: category [{$product['category']}] exists",
+            );
+            Assert::true($product['name'] !== '', "{$label}: has a name");
+            Assert::true(
+                preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $product['slug']) === 1,
+                "{$label}: slug is URL-safe",
+            );
+            Assert::true(
+                $product['compare_at'] === null || $product['compare_at'] > $product['price'],
+                "{$label}: compare-at is above the price when present",
+            );
+            Assert::true(
+                $product['rating'] >= 0 && $product['rating'] <= 5,
+                "{$label}: rating within 0–5",
+            );
+        }
+
+        Assert::same(20, count($skus), 'every product produced a SKU');
+    }
+
+    public function testVariantsOnlyReferenceRealProductsAndOptions(): void
+    {
+        $data = $this->data();
+        $productSkus = array_column($data['products'], 'sku');
+        $finish = null;
+
+        foreach ($data['attributes'] as $attribute) {
+            if ($attribute['code'] === 'finish') {
+                $finish = array_column($attribute['options'], 'label');
+            }
+        }
+
+        Assert::true($finish !== null, 'a finish attribute exists');
+
+        $variantSkus = [];
+
+        foreach ($data['variants'] as $variant) {
+            Assert::true(
+                in_array($variant['product_sku'], $productSkus, true),
+                "variant {$variant['sku']}: parent product exists",
+            );
+            Assert::true(
+                in_array($variant['option_value'], $finish, true),
+                "variant {$variant['sku']}: finish [{$variant['option_value']}] is a real option",
+            );
+            Assert::true(! in_array($variant['sku'], $variantSkus, true), "variant {$variant['sku']}: SKU is unique");
+            Assert::true($variant['stock'] >= 0, "variant {$variant['sku']}: stock is not negative");
+
+            $variantSkus[] = $variant['sku'];
+        }
+
+        Assert::same(12, count($variantSkus), 'twelve variants across four products');
+    }
+
+    public function testAttributesAreUsableByTheStorefront(): void
+    {
+        $data = $this->data();
+        $codes = array_column($data['attributes'], 'code');
+
+        Assert::true(in_array('material', $codes, true), 'material attribute exists');
+        Assert::true(in_array('finish', $codes, true), 'finish attribute exists');
+
+        foreach ($data['attributes'] as $attribute) {
+            if ($attribute['type'] === 'select' || $attribute['type'] === 'swatch') {
+                Assert::true(
+                    count($attribute['options']) > 0,
+                    "attribute [{$attribute['code']}] has options",
+                );
+            }
+
+            $optionCodes = array_column($attribute['options'], 'code');
+            Assert::same(
+                count($optionCodes),
+                count(array_unique($optionCodes)),
+                "attribute [{$attribute['code']}]: option codes are unique",
+            );
+        }
+    }
+
+    public function testStockSourcesMatchTheSeedersAllocationKeys(): void
+    {
+        $data = $this->data();
+        $codes = array_column($data['sources'], 'code');
+
+        // CatalogSeeder allocates stock across exactly these three keys.
+        foreach (['lahore', 'karachi', 'online'] as $required) {
+            Assert::true(in_array($required, $codes, true), "source [{$required}] exists");
+        }
+
+        $priorities = array_column($data['sources'], 'priority');
+        Assert::same(
+            $priorities,
+            array_values(array_unique($priorities)),
+            'source priorities are distinct so allocation is deterministic',
+        );
+    }
+
+    public function testPricesAreWholeRupeesThatBecomeIntegerPaisa(): void
+    {
+        $data = $this->data();
+
+        foreach ($data['products'] as $product) {
+            Assert::true(
+                is_int($product['price']) && $product['price'] > 0,
+                "{$product['sku']}: price is an integer number of rupees, not a float",
+            );
+            Assert::true(
+                $product['price'] * 100 > 0 && is_int($product['price'] * 100),
+                "{$product['sku']}: converts to positive integer paisa",
+            );
+        }
+    }
+}

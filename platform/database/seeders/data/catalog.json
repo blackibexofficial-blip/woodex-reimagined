@@ -1,0 +1,636 @@
+{
+  "version": 1,
+  "generated_from": "src/data/products.ts (live storefront catalog)",
+  "currency": "PKR",
+  "categories": [
+    {
+      "key": "office-tables",
+      "slug": "office-tables",
+      "name": "Office Tables",
+      "children": [
+        "executive-tables",
+        "manager-tables",
+        "meeting-tables"
+      ]
+    },
+    {
+      "key": "chairs",
+      "slug": "chairs",
+      "name": "Chairs",
+      "children": []
+    },
+    {
+      "key": "workstations",
+      "slug": "workstations",
+      "name": "Workstations",
+      "children": [
+        "cubicle-workstations"
+      ]
+    },
+    {
+      "key": "home",
+      "slug": "home-furniture",
+      "name": "Home Furniture",
+      "children": [
+        "bedroom",
+        "living",
+        "dining"
+      ]
+    }
+  ],
+  "attributes": [
+    {
+      "code": "material",
+      "name": "Material",
+      "type": "select",
+      "is_filterable": true,
+      "is_variant": false,
+      "options": [
+        {
+          "code": "38mm-mdf-melamine",
+          "label": "38mm MDF Melamine"
+        },
+        {
+          "code": "walnut-veneer",
+          "label": "Walnut Veneer"
+        },
+        {
+          "code": "premium-walnut-veneer-tempered-glass",
+          "label": "Premium Walnut Veneer + Tempered Glass"
+        },
+        {
+          "code": "mdf-melamine-dark-walnut",
+          "label": "MDF Melamine (Dark Walnut)"
+        },
+        {
+          "code": "mdf-melamine-natural-oak",
+          "label": "MDF Melamine (Natural Oak)"
+        },
+        {
+          "code": "mesh-moltyfoam-seat",
+          "label": "Mesh + MoltyFoam Seat"
+        },
+        {
+          "code": "mesh-back-moltyfoam",
+          "label": "Mesh Back + MoltyFoam"
+        },
+        {
+          "code": "full-mesh",
+          "label": "Full Mesh"
+        }
+      ]
+    },
+    {
+      "code": "finish",
+      "name": "Finish",
+      "type": "swatch",
+      "is_filterable": true,
+      "is_variant": true,
+      "options": [
+        {
+          "code": "natural-oak",
+          "label": "Natural Oak",
+          "hex": "#C8A97E"
+        },
+        {
+          "code": "dark-walnut",
+          "label": "Dark Walnut",
+          "hex": "#5B3A29"
+        },
+        {
+          "code": "matte-black",
+          "label": "Matte Black",
+          "hex": "#1C1C1C"
+        }
+      ]
+    },
+    {
+      "code": "warranty_months",
+      "name": "Warranty",
+      "type": "number",
+      "is_filterable": false,
+      "is_variant": false,
+      "options": []
+    }
+  ],
+  "sources": [
+    {
+      "code": "lahore",
+      "name": "Lahore Warehouse",
+      "city": "Lahore",
+      "priority": 1
+    },
+    {
+      "code": "karachi",
+      "name": "Karachi Warehouse",
+      "city": "Karachi",
+      "priority": 2
+    },
+    {
+      "code": "online",
+      "name": "Online (made to order)",
+      "city": null,
+      "priority": 3
+    }
+  ],
+  "products": [
+    {
+      "sku": "WX-1001",
+      "slug": "ballmer-executive-desk",
+      "category": "office-tables",
+      "subcategory": "executive-tables",
+      "name": "BALLMER Executive Desk",
+      "summary": "Executive desk with side rack, 3 lockable drawers, cable management.",
+      "description": "Executive desk with side rack, 3 lockable drawers, cable management.",
+      "price": 52000,
+      "compare_at": 65000,
+      "material": "38mm MDF Melamine",
+      "frame": "18-gauge MS Steel Powder Coated",
+      "warranty_months": 3,
+      "lead_time_days": 7,
+      "in_stock": true,
+      "featured": true,
+      "rating": 4.7,
+      "review_count": 89,
+      "series": "ek-series"
+    },
+    {
+      "sku": "WX-1002",
+      "slug": "dynasty-executive-desk-set",
+      "category": "office-tables",
+      "subcategory": "executive-tables",
+      "name": "DYNASTY Executive Desk Set",
+      "summary": "3-piece matched set: desk + credenza + bookshelf.",
+      "description": "3-piece matched set: desk + credenza + bookshelf.",
+      "price": 210000,
+      "compare_at": 250000,
+      "material": "Walnut Veneer",
+      "frame": "Powder-coated steel",
+      "warranty_months": 7,
+      "lead_time_days": 7,
+      "in_stock": true,
+      "featured": true,
+      "rating": 4.9,
+      "review_count": 24,
+      "series": "infinity-series"
+    },
+    {
+      "sku": "WX-1003",
+      "slug": "throne-executive-desk",
+      "category": "office-tables",
+      "subcategory": "executive-tables",
+      "name": "THRONE Executive Desk",
+      "summary": "108\\\" flagship desk with glass top, pop-up power, integrated credenza.",
+      "description": "108\\\" flagship desk with glass top, pop-up power, integrated credenza.",
+      "price": 235000,
+      "compare_at": 275000,
+      "material": "Premium Walnut Veneer + Tempered Glass",
+      "frame": "Full Chrome",
+      "warranty_months": 10,
+      "lead_time_days": 7,
+      "in_stock": true,
+      "featured": true,
+      "rating": 5,
+      "review_count": 8,
+      "series": "infinity-series"
+    },
+    {
+      "sku": "WX-1004",
+      "slug": "stride-manager-desk",
+      "category": "office-tables",
+      "subcategory": "manager-tables",
+      "name": "STRIDE Manager Desk",
+      "summary": "Professional manager desk with 3 lockable drawers.",
+      "description": "Professional manager desk with 3 lockable drawers.",
+      "price": 35000,
+      "compare_at": 42000,
+      "material": "MDF Melamine (Dark Walnut)",
+      "frame": "Powder-Coated MS Steel",
+      "warranty_months": 3,
+      "lead_time_days": 7,
+      "in_stock": true,
+      "featured": true,
+      "rating": 4.6,
+      "review_count": 124,
+      "series": "ek-series"
+    },
+    {
+      "sku": "WX-1005",
+      "slug": "drive-manager-desk",
+      "category": "office-tables",
+      "subcategory": "manager-tables",
+      "name": "DRIVE Manager Desk",
+      "summary": "Compact desk with full functionality for smaller cabins.",
+      "description": "Compact desk with full functionality for smaller cabins.",
+      "price": 28000,
+      "compare_at": 35000,
+      "material": "MDF Melamine (Natural Oak)",
+      "frame": "Powder-Coated MS Steel",
+      "warranty_months": 3,
+      "lead_time_days": 7,
+      "in_stock": true,
+      "featured": false,
+      "rating": 4.4,
+      "review_count": 87,
+      "series": "ek-series"
+    },
+    {
+      "sku": "WX-1006",
+      "slug": "freedom-high-back-chair",
+      "category": "chairs",
+      "subcategory": "chairs",
+      "name": "Freedom High Back Chair",
+      "summary": "Flagship ergonomic mesh chair with adjustable lumbar and headrest.",
+      "description": "Flagship ergonomic mesh chair with adjustable lumbar and headrest.",
+      "price": 19500,
+      "compare_at": 24000,
+      "material": "Mesh + MoltyFoam Seat",
+      "frame": "Powder-coated steel",
+      "warranty_months": 5,
+      "lead_time_days": 7,
+      "in_stock": true,
+      "featured": true,
+      "rating": 4.8,
+      "review_count": 156,
+      "series": "woodex-series"
+    },
+    {
+      "sku": "WX-1007",
+      "slug": "swift-high-back-chair",
+      "category": "chairs",
+      "subcategory": "chairs",
+      "name": "Swift High Back Chair",
+      "summary": "Butterfly lumbar mesh chair, top-selling ergonomic option.",
+      "description": "Butterfly lumbar mesh chair, top-selling ergonomic option.",
+      "price": 19500,
+      "compare_at": 24000,
+      "material": "Mesh Back + MoltyFoam",
+      "frame": "Powder-coated steel",
+      "warranty_months": 5,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": true,
+      "rating": 4.7,
+      "review_count": 189,
+      "series": "woodex-series"
+    },
+    {
+      "sku": "WX-1008",
+      "slug": "catalyst-ergonomic-pro-chair",
+      "category": "chairs",
+      "subcategory": "chairs",
+      "name": "CATALYST Ergonomic Pro Chair",
+      "summary": "Full-featured ergonomic chair with every adjustment.",
+      "description": "Full-featured ergonomic chair with every adjustment.",
+      "price": 38000,
+      "compare_at": 45000,
+      "material": "Full Mesh",
+      "frame": "Powder-coated steel",
+      "warranty_months": 7,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": true,
+      "rating": 4.9,
+      "review_count": 56,
+      "series": "woodex-series"
+    },
+    {
+      "sku": "WX-1009",
+      "slug": "mamba-high-back-chair",
+      "category": "chairs",
+      "subcategory": "chairs",
+      "name": "Mamba High Back Chair",
+      "summary": "Split-pad backrest with dual-density foam.",
+      "description": "Split-pad backrest with dual-density foam.",
+      "price": 18000,
+      "compare_at": 22000,
+      "material": "Mesh + Split-Pad",
+      "frame": "Powder-coated steel",
+      "warranty_months": 5,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": false,
+      "rating": 4.6,
+      "review_count": 134,
+      "series": "woodex-series"
+    },
+    {
+      "sku": "WX-1010",
+      "slug": "torino-high-back-chair",
+      "category": "chairs",
+      "subcategory": "chairs",
+      "name": "Torino High Back Chair",
+      "summary": "Chrome-base executive chair with premium MoltyFoam.",
+      "description": "Chrome-base executive chair with premium MoltyFoam.",
+      "price": 20000,
+      "compare_at": 25000,
+      "material": "Mesh Back + Premium MoltyFoam",
+      "frame": "Powder-coated steel",
+      "warranty_months": 5,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": false,
+      "rating": 4.7,
+      "review_count": 112,
+      "series": "woodex-series"
+    },
+    {
+      "sku": "WX-1011",
+      "slug": "link-1-single-workstation",
+      "category": "workstations",
+      "subcategory": "workstations",
+      "name": "LINK-1 Single Workstation",
+      "summary": "Single workstation with fabric partition.",
+      "description": "Single workstation with fabric partition.",
+      "price": 18000,
+      "compare_at": 22000,
+      "material": "MDF Melamine",
+      "frame": "Powder-coated steel",
+      "warranty_months": 3,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": false,
+      "rating": 4.4,
+      "review_count": 89,
+      "series": "ek-series"
+    },
+    {
+      "sku": "WX-1012",
+      "slug": "link-2-face-to-face-workstation",
+      "category": "workstations",
+      "subcategory": "workstations",
+      "name": "LINK-2 Face-to-Face Workstation",
+      "summary": "2-person face-to-face workstation.",
+      "description": "2-person face-to-face workstation.",
+      "price": 32000,
+      "compare_at": 38000,
+      "material": "MDF Melamine",
+      "frame": "Powder-coated steel",
+      "warranty_months": 3,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": false,
+      "rating": 4.5,
+      "review_count": 67,
+      "series": "ek-series"
+    },
+    {
+      "sku": "WX-1013",
+      "slug": "link-4-cluster-workstation",
+      "category": "workstations",
+      "subcategory": "workstations",
+      "name": "LINK-4 Cluster Workstation",
+      "summary": "4-person cross-pattern cluster, most popular config.",
+      "description": "4-person cross-pattern cluster, most popular config.",
+      "price": 58000,
+      "compare_at": 68000,
+      "material": "MDF Melamine",
+      "frame": "Powder-coated steel",
+      "warranty_months": 3,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": true,
+      "rating": 4.7,
+      "review_count": 134,
+      "series": "ek-series"
+    },
+    {
+      "sku": "WX-1014",
+      "slug": "cubicle-2-aluminum-workstation",
+      "category": "workstations",
+      "subcategory": "cubicle-workstations",
+      "name": "CUBICLE-2 Aluminum Workstation",
+      "summary": "2-person aluminum cubicle for call centers.",
+      "description": "2-person aluminum cubicle for call centers.",
+      "price": 28000,
+      "compare_at": 35000,
+      "material": "MDF Melamine",
+      "frame": "Powder-coated steel",
+      "warranty_months": 5,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": false,
+      "rating": 4.5,
+      "review_count": 89,
+      "series": "cubicle-series"
+    },
+    {
+      "sku": "WX-1015",
+      "slug": "cubicle-4-aluminum-workstation",
+      "category": "workstations",
+      "subcategory": "cubicle-workstations",
+      "name": "CUBICLE-4 Aluminum Workstation",
+      "summary": "4-person call center standard cubicle.",
+      "description": "4-person call center standard cubicle.",
+      "price": 55000,
+      "compare_at": 65000,
+      "material": "MDF Melamine",
+      "frame": "Powder-coated steel",
+      "warranty_months": 5,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": true,
+      "rating": 4.7,
+      "review_count": 156,
+      "series": "cubicle-series"
+    },
+    {
+      "sku": "WX-1016",
+      "slug": "royal-king-bed-set",
+      "category": "home",
+      "subcategory": "bed-sets",
+      "name": "Royal King Bed Set",
+      "summary": "Complete king bedroom set — bed, 2 bedsides, dressing table.",
+      "description": "Complete king bedroom set — bed, 2 bedsides, dressing table.",
+      "price": 285000,
+      "compare_at": 320000,
+      "material": "Solid hardwood",
+      "frame": "Powder-coated steel",
+      "warranty_months": 10,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": true,
+      "rating": 4.9,
+      "review_count": 78,
+      "series": "woodex-series"
+    },
+    {
+      "sku": "WX-1017",
+      "slug": "glamour-dressing-table-with-mirror",
+      "category": "home",
+      "subcategory": "dressing-tables",
+      "name": "Glamour Dressing Table with Mirror",
+      "summary": "Elegant dressing table with large mirror and 6 drawers.",
+      "description": "Elegant dressing table with large mirror and 6 drawers.",
+      "price": 65000,
+      "compare_at": null,
+      "material": "MDF Melamine",
+      "frame": "Powder-coated steel",
+      "warranty_months": 5,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": false,
+      "rating": 4.8,
+      "review_count": 54,
+      "series": "woodex-series"
+    },
+    {
+      "sku": "WX-1018",
+      "slug": "comfort-l-shape-home-sofa",
+      "category": "home",
+      "subcategory": "home-sofa",
+      "name": "Comfort L-Shape Home Sofa",
+      "summary": "Large L-shape home sofa in premium fabric.",
+      "description": "Large L-shape home sofa in premium fabric.",
+      "price": 195000,
+      "compare_at": 225000,
+      "material": "MDF Melamine",
+      "frame": "Powder-coated steel",
+      "warranty_months": 7,
+      "lead_time_days": 14,
+      "in_stock": true,
+      "featured": false,
+      "rating": 4.9,
+      "review_count": 62,
+      "series": "woodex-series"
+    },
+    {
+      "sku": "WX-1019",
+      "slug": "titan-executive-desk",
+      "category": "office-tables",
+      "subcategory": "executive-tables",
+      "name": "TITAN Executive Desk",
+      "summary": "Oversized CEO desk with veneer, glass insert, chrome legs.",
+      "description": "Oversized CEO desk with veneer, glass insert, chrome legs.",
+      "price": 155000,
+      "compare_at": 185000,
+      "material": "Natural Walnut Veneer + Glass",
+      "frame": "Chrome-Plated Steel",
+      "warranty_months": 5,
+      "lead_time_days": 10,
+      "in_stock": true,
+      "featured": false,
+      "rating": 4.9,
+      "review_count": 34,
+      "series": "infinity-series"
+    },
+    {
+      "sku": "WX-1020",
+      "slug": "apex-executive-desk",
+      "category": "office-tables",
+      "subcategory": "executive-tables",
+      "name": "APEX Executive Desk",
+      "summary": "L-shaped executive desk with veneer surface and chrome accents.",
+      "description": "L-shaped executive desk with veneer surface and chrome accents.",
+      "price": 138000,
+      "compare_at": 165000,
+      "material": "Dark Oak Veneer",
+      "frame": "Chrome-Plated Steel",
+      "warranty_months": 5,
+      "lead_time_days": 10,
+      "in_stock": true,
+      "featured": false,
+      "rating": 4.8,
+      "review_count": 42,
+      "series": "infinity-series"
+    }
+  ],
+  "variants": [
+    {
+      "sku": "WX-1001-OAK",
+      "product_sku": "WX-1001",
+      "option": "finish",
+      "option_value": "Natural Oak",
+      "price_delta": 0,
+      "stock": 10
+    },
+    {
+      "sku": "WX-1001-WAL",
+      "product_sku": "WX-1001",
+      "option": "finish",
+      "option_value": "Dark Walnut",
+      "price_delta": 3000,
+      "stock": 8
+    },
+    {
+      "sku": "WX-1001-BLK",
+      "product_sku": "WX-1001",
+      "option": "finish",
+      "option_value": "Matte Black",
+      "price_delta": 1500,
+      "stock": 6
+    },
+    {
+      "sku": "WX-1002-OAK",
+      "product_sku": "WX-1002",
+      "option": "finish",
+      "option_value": "Natural Oak",
+      "price_delta": 0,
+      "stock": 10
+    },
+    {
+      "sku": "WX-1002-WAL",
+      "product_sku": "WX-1002",
+      "option": "finish",
+      "option_value": "Dark Walnut",
+      "price_delta": 3000,
+      "stock": 8
+    },
+    {
+      "sku": "WX-1002-BLK",
+      "product_sku": "WX-1002",
+      "option": "finish",
+      "option_value": "Matte Black",
+      "price_delta": 1500,
+      "stock": 6
+    },
+    {
+      "sku": "WX-1003-OAK",
+      "product_sku": "WX-1003",
+      "option": "finish",
+      "option_value": "Natural Oak",
+      "price_delta": 0,
+      "stock": 10
+    },
+    {
+      "sku": "WX-1003-WAL",
+      "product_sku": "WX-1003",
+      "option": "finish",
+      "option_value": "Dark Walnut",
+      "price_delta": 3000,
+      "stock": 8
+    },
+    {
+      "sku": "WX-1003-BLK",
+      "product_sku": "WX-1003",
+      "option": "finish",
+      "option_value": "Matte Black",
+      "price_delta": 1500,
+      "stock": 6
+    },
+    {
+      "sku": "WX-1004-OAK",
+      "product_sku": "WX-1004",
+      "option": "finish",
+      "option_value": "Natural Oak",
+      "price_delta": 0,
+      "stock": 10
+    },
+    {
+      "sku": "WX-1004-WAL",
+      "product_sku": "WX-1004",
+      "option": "finish",
+      "option_value": "Dark Walnut",
+      "price_delta": 3000,
+      "stock": 8
+    },
+    {
+      "sku": "WX-1004-BLK",
+      "product_sku": "WX-1004",
+      "option": "finish",
+      "option_value": "Matte Black",
+      "price_delta": 1500,
+      "stock": 6
+    }
+  ]
+}
