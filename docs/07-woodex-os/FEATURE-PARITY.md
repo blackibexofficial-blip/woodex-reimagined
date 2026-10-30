@@ -46,8 +46,8 @@ Legend — **Have**: what exists in the OS today. **Need**: the smallest additio
 |---|---|
 | **Frontend today** | 227 lines + `data/materials.ts`: 16 materials as local JPG imports, filter by category (wood/laminate/metal/fabric) and brightness. No link to any product. |
 | **Have in OS** | `material` appears in 10 files (theme/asset contexts), **not** as a catalogue concept. |
-| **Need** | `materials` (code, name, family, finish, colour_family, hex, swatch media, care notes, price tier, supplier), `material_variants` for colourways, and a **bridge** `material_id ↔ Bagisto attribute value` so a product's "Natural Oak" is the same record. Filter API (family, colour, finish, brightness). |
-| **Where** | `Domain/Catalog` (the OS-side catalogue the storefront reads); attribute values live in Bagisto. |
+| **Need** | `materials` (code, name, family, finish, colour_family, hex, swatch media, care notes, price tier, supplier), `material_variants` for colourways, and a **bridge** so a product's "Natural Oak" attribute option *is* the material record — one row, two screens. Filter API (family, colour, finish, brightness). |
+| **Where** | `Domain/Commerce` — materials are the visual half of the attribute system (`commerce_attribute_options`). |
 | **Puck block** | `MaterialSwatchGrid`, `MaterialFilter`, `MaterialStory` (editorial + swatches). |
 | **Done when** | An editor adds a material once; it appears on `/materials`, on every product using it, and in the Puck swatch picker — with no code change. |
 
@@ -79,8 +79,8 @@ Legend — **Have**: what exists in the OS today. **Need**: the smallest additio
 |---|---|
 | **Frontend today** | 224 lines: dealer program pitch, "Request B2B Catalog" → `/quotation` toast. Zero capture of the applicant. |
 | **Have in OS** | CRM pipelines + `PipelineStage`, Sales quotes, Accounts. |
-| **Need** | `dealer_applications` (business name, NTN, city, showroom area, volume estimate, documents) as a **CRM deal type** with a review pipeline (applied → verifying → approved → onboarded). On approval: create Bagisto **customer group = Dealer** + price list, and an OS account. |
-| **Where** | Extend `Crm` (pipeline *Dealer Onboarding*); write-through to Bagisto. |
+| **Need** | `dealer_applications` (business name, NTN, city, showroom area, volume estimate, documents) as a **CRM deal type** with a review pipeline (applied → verifying → approved → onboarded). On approval: set `commerce_customer_groups = Dealer`, apply the dealer price list, and open an OS account. |
+| **Where** | Extend `Crm` (pipeline *Dealer Onboarding*); writes `commerce_customers.customer_group_id`. |
 | **Puck block** | `DealerApplicationForm`, `DealerBenefits`, `DealerMap`. |
 | **Done when** | An application is captured, reviewed in admin, and approval grants dealer pricing on the shop automatically. |
 
@@ -101,7 +101,7 @@ Legend — **Have**: what exists in the OS today. **Need**: the smallest additio
 |---|---|
 | **Frontend today** | Marketing page only. "Markets" is a footer link; no market, country or export content exists. |
 | **Have in OS** | Multi-line business (`Interior`, `Furniture`, `Project`), Accounts, Quotes. |
-| **Need** | `markets` (country, region, currency, incoterms, shipping mode, local agent, lead time, compliance notes) + `market_enquiries`. Public market pages (SEO: "WOODEX in Saudi Arabia"), enquiry → CRM. Optionally Bagisto channel per market later. |
+| **Need** | `markets` (country, region, currency, incoterms, shipping mode, local agent, lead time, compliance notes) + `market_enquiries`. Public market pages (SEO: "WOODEX in Saudi Arabia"), enquiry → CRM. Optionally a `commerce_channels` row per market later. |
 | **Where** | `Domain/Markets` (small) + `Crm` for enquiries. |
 | **Puck block** | `MarketGrid`, `MarketHero`, `ExportEnquiry`. |
 | **Done when** | Each target market has an indexable page and its enquiries land in a market pipeline. |
@@ -113,7 +113,7 @@ Legend — **Have**: what exists in the OS today. **Need**: the smallest additio
 | **Frontend today** | 378 lines: a guided multi-step brief (space, style, dimensions, budget, uploads) that ends in a toast. The most wasted page on the site — it collects the richest intent and discards it. |
 | **Have in OS** | `Domain/Projects` (projects, phases, files), Sales quotes, Conversations. |
 | **Need** | Persist the brief: `design_requests` (structured answers JSON, UploadedFile rows, budget band, due date) → auto-create a **Project** in *Intake* stage + a **Quote draft** + a Conversation thread. Designer triage queue in admin. |
-| **Where** | Extend `Projects` + `Sales`; public endpoint under the storefront BFF. |
+| **Where** | Extend `Projects` + `Sales`; public endpoint in the OS's own `routes/storefront.php`. |
 | **Puck block** | `CustomDesignIntro`, `DesignBriefForm` (the existing multi-step component, wired). |
 | **Done when** | A submitted brief appears as a triaged project with the customer's photos attached, and a designer can quote from it without copy-paste. |
 
@@ -123,7 +123,7 @@ Legend — **Have**: what exists in the OS today. **Need**: the smallest additio
 |---|---|
 | **Frontend today** | 466 lines: quote basket in React state, client details, then **"Open email" / "Open WhatsApp"** with a text blob. Nothing is stored; no number; no follow-up. |
 | **Have in OS** | **The strongest asset in the estate**: `CreateQuote`, `ReviseQuote`, `AcceptQuote`, `RaiseAdvanceInvoice`, `RaiseMilestoneInvoice`, `RecordPayment`, `AllocatePayment`, double-entry Accounts, PDF templates, number sequences (`WI-`/`WF-`). |
-| **Need** | The public half: draft quote creation from the storefront basket (rate-limited, captcha, no login required), a **signed shareable link** (`/q/{token}`) with accept/decline, email + WhatsApp delivery, expiry, revision history, and **Convert to order → Bagisto checkout**. |
+| **Need** | The public half: draft quote creation from the storefront basket (rate-limited, captcha, no login required), a **signed shareable link** (`/q/{token}`) with accept/decline, email + WhatsApp delivery, expiry, revision history, and **Convert to order → native checkout**. |
 | **Where** | `Domain/Sales` — expose what already exists; do not rebuild quoting. |
 | **Puck block** | `QuoteBasket`, `QuoteRequestCta`. |
 | **Done when** | A visitor builds a basket, gets a numbered PDF quotation by email, accepts it online, and the salesperson converts it to a paid order. |
@@ -135,18 +135,17 @@ Legend — **Have**: what exists in the OS today. **Need**: the smallest additio
 | Gap | OS work | New tables | Effort |
 |---|---|---|---|
 | Showrooms + appointments | Places module, calendar, CRM hook | 2 | M |
-| Materials & colours | Catalog module + Bagisto attribute bridge | 2–3 | M |
+| Materials & colours | Commerce attribute bridge | 2–3 | M |
 | Warranty | Service sub-module + claims workflow | 2–3 | L |
 | Support cases | Conversations public intake + SLA | 1–2 | M |
-| Distributors | CRM pipeline + Bagisto group sync | 2 | M |
+| Distributors | CRM pipeline + customer-group assignment | 2 | M |
 | FAQ | wire existing `ContentEntry` | 0 | **S** |
 | Markets | small module + enquiry | 2 | S |
 | Custom design | Projects intake + triage | 1–2 | M |
 | E-Quotation | expose existing Sales | 1–2 | M |
 
 **≈ 13–16 tables, 9 admin screens, 9 Puck blocks, ~24 public endpoints.**
-Nothing here duplicates Bagisto: **no carts, prices, stock, payments or orders** are created by these modules — they
-hand off to Bagisto through the BFF.
+Nothing here duplicates the commerce domain: **no carts, prices, stock, payments or orders** are created by these modules — they read `commerce_*` services and hand off to checkout.
 
 ---
 

@@ -1,3 +1,6 @@
+> **Historical record.** The intake decisions below were superseded by `MASTER-PLAN.md` v6.
+> Kept as the method record for how the OS was measured.
+
 # WOODEX OS — Repo Intake Checklist
 
 Use this the moment read access to `woodex420/woodexinterior` exists (or a zip is supplied). The goal is to

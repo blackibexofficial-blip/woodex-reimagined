@@ -1,126 +1,133 @@
-# Week 1 — Kickoff & Gate H0
+# Week 1 — Kickoff
 
-The only week that can invalidate the plan. Everything else can be re-sequenced; this cannot.
-**No UI work starts until H0 passes.**
+One app, so week 1 is not a hosting experiment — it is **foundations plus the first real vertical thread**.
+The week ends with a deployable OS, a commerce schema in place, a money pipeline with failing-then-passing golden
+tests, and a Puck page rendering from JSON.
 
-Owner of the week: **Dev A (commerce)**. Dev B sets up the OS repo/site; Dev C prepares the Puck Studio build pipeline
-(which needs nothing from hosting).
+Owner: **Dev A** (commerce core). Dev B: admin + API skeleton. Dev C: Puck Studio.
 
 ---
 
-## Day 1 — Accounts and access
+## Day 1 — Host facts, then the truth about the account
 
 | # | Task | Done when |
 |---|---|---|
-| 1.1 | hPanel → PHP Configuration → **8.4** for the primary domain *and* the subdomain | `php -v` (via any info script) shows 8.4 |
-| 1.2 | Confirm plan tier and read the real limits: RAM, entry processes, inodes, DB size | Numbers recorded below, replacing the estimates in `HOSTINGER-CAPACITY.md` |
-| 1.3 | Create `shop.woodex.pk` subdomain, own document root | resolves, SSL active |
-| 1.4 | Create **two** MySQL databases + two users (never shared) | `SHOW DATABASES` shows both |
-| 1.5 | SSH check: `ssh -p 65002 uXXXX@<host>` | either works (note it) or definitively unavailable |
-| 1.6 | Record: disk quota, inode count, MySQL `max_connections`, PHP `memory_limit` | filled into the capacity table |
-
-**Recorded plan facts (fill in):**
+| 1.1 | hPanel → PHP Configuration → **8.4** (main domain + staging subdomain) | `phpversion()` reports 8.4 |
+| 1.2 | Read the real limits and **replace every estimate** in `HOSTINGER-CAPACITY.md` §1 | numbers written down |
+| 1.3 | Create the staging subdomain with its own document root | resolves, SSL active |
+| 1.4 | Create **two** databases: `woodex_prod`, `woodex_staging` (never share) | both reachable |
+| 1.5 | SSH check `ssh -p 65002 uXXXX@<host>`; note Composer version | yes/no recorded |
+| 1.6 | Confirm node is absent on the server (expected) | confirmed — builds happen locally/CI |
 
 ```
 plan tier:            __________
-PHP version:          __________
+PHP:                  __________
 memory_limit:         __________
 max_execution_time:   __________
 entry processes:      __________
 inodes quota/used:    __________
 DB size quota:        __________
 SSH:                  yes / no
-composer version:     __________
-node available:       yes / no   (expected: no)
+composer:             __________
+node on server:       yes / no   (expected: no)
 ```
 
 ---
 
-## Day 2 — Bagisto install (H0.1)
+## Day 2 — The money pipeline first (Dev A)
+
+Nothing else in commerce is safe until this exists. Write the tests **before** the implementation.
 
 ```bash
-# On the server (SSH) or via a temporary installer script if SSH is absent
-cd ~/domains/shop.woodex.pk
-composer create-project bagisto/bagisto . "^2.5" \
-  --no-interaction --prefer-dist \
-  --no-scripts          # run scripts separately so an OOM is visible, not silent
-
-COMPOSER_MEMORY_LIMIT=-1 composer run-script post-create-project-cmd
+php artisan make:test Commerce/CartCalculatorTest --unit
+php artisan make:test Commerce/TotalsInvariantTest --unit
 ```
 
-If Composer OOMs, in this order:
-1. `COMPOSER_MEMORY_LIMIT=-1` and `--prefer-dist --no-dev` (dev deps only for the build step).
-2. Build locally (same PHP 8.4 + Composer 2), upload `vendor/` + `bootstrap/cache` by SFTP, run `php artisan migrate` via cron-once.
-3. Last resort: Bagisto on external managed hosting (fallback B).
+Fourteen golden fixtures (`database/fixtures/commerce/totals/*.json`), each an input cart plus an expected totals
+breakdown to the paisa:
 
-**H0.1 passes when:** `/admin/login` renders, `php artisan bagisto:install` (or the web installer) completes, and
-`storage/logs/laravel.log` has no fatal errors.
+```
+01_simple           02_qty_gt_one       03_group_price      04_catalog_rule
+05_cart_rule        06_coupon_capped    07_free_over        08_tax_inclusive
+09_tax_exclusive    10_mixed_tax        11_taxed_shipping   12_partial_refund
+13_currency_switch  14_zero_price_line
+```
 
----
+Plus the invariant property test: 1,000 randomly generated carts must satisfy
+`Σ line_total + shipping + tax = grand_total` with no float in the call path.
 
-## Day 3 — Bagisto smoke (H0.2)
-
-| Test | Command / action | Pass |
-|---|---|---|
-| Create product | admin → Catalog → one simple product, image, PKR price | saved, visible on the default storefront |
-| Create customer | register on the shop | appears in admin |
-| Place order | add to cart → COD checkout | order # created, invoice generated |
-| Memory | `memory_limit = 512M` in the subdomain's PHP config | checkout still completes |
-| Media | upload a 3 MB image | resized, served |
-
-Record peak `memory_get_peak_usage` on the order page; if > 400 MB, set 768 M and note it.
+**Done when:** the fixtures exist, the first one runs red, and `Money` (integer paisa + currency) is merged.
 
 ---
 
-## Day 4 — Two apps, one account (H0.3–H0.4)
-
-| Test | Pass |
-|---|---|
-| OS site live at `admin.woodex.pk` from Git deploy | admin dashboard renders |
-| Both apps reachable simultaneously | two browser tabs, no 508 |
-| Cron: 4 lines, all `--stop-when-empty --max-time=50` | `queue:work` and `schedule:run` for both apps |
-| Load: 3 concurrent checkouts + 10 catalog page loads | p95 < 1.5 s, zero 508/503 |
-| DB size after install | OS + Bagisto < 300 MB |
+## Day 3 — Schema foundation (Dev A + B)
 
 ```bash
-# load probe (from any machine)
-for i in $(seq 1 3); do curl -s -o /dev/null -w "%{http_code} %{time_total}\n" https://shop.woodex.pk/checkout & done; wait
+php artisan make:migration create_commerce_catalog_tables --path=database/migrations/commerce
+php artisan make:migration create_commerce_inventory_tax_tables
 ```
 
----
+Catalog subset for this week only: `commerce_products`, `commerce_product_translations`, `commerce_categories`,
+`commerce_category_translations`, `commerce_product_media`, `commerce_attributes`, `commerce_attribute_options`,
+`commerce_product_attribute_values`, `commerce_product_variants`, `commerce_inventory_sources`,
+`commerce_inventory_items`.
 
-## Day 5 — Go / no-go
+Rules that apply from the first migration:
+- `commerce_` prefix on every table.
+- Money columns `BIGINT` named `*_minor`.
+- Every FK indexed; every slug unique per locale.
+- Factories for every model, from day one.
 
-| Gate | Result |
-|---|---|
-| H0.1 install | ☐ pass ☐ fail |
-| H0.2 admin + order on 512 M | ☐ pass ☐ fail |
-| H0.3 concurrency, no 508 | ☐ pass ☐ fail |
-| H0.4 both apps coexisting | ☐ pass ☐ fail |
-| H0.5 cron drains both queues < 60 s | ☐ pass ☐ fail |
-
-**All five pass → proceed to P1 as planned.**
-**Any fail → invoke `OPEN-QUESTIONS.md` Q1 fallback before week 2.** Do not "try harder" for a second week; the cost of
-the fallback is $10–20/month, the cost of a late discovery is the quarter.
+**Done when:** `migrate:fresh --seed` produces 20 demo products across 4 categories on the staging DB.
 
 ---
 
-## Parallel work that does not depend on H0
+## Day 4 — Puck Studio spike + first API (Dev C + B)
 
-| Dev | Week-1 task | Output |
+| Track | Task | Done when |
 |---|---|---|
-| B | OS repo → `admin.woodex.pk` Git deploy; staging subdomain; `.env` outside web root | deployable OS |
-| B | Freeze the BFF contract: run `openapi.yaml` through a linter, generate the TS client | typed client in the SPA |
-| C | Puck Studio build: `@puckeditor/core` 0.24 into the OS admin, static bundle to `public/studio/` | editor opens on a test page |
-| C | Component inventory vs the 142 pages; pick the first 12 blocks | migration backlog |
-| All | Read `MASTER-PLAN.md` §3 and agree the week-1..4 sequence in one sitting | shared calendar |
+| C | `@puckeditor/core@0.24` mounted at `/admin/studio` behind the OS session | editor opens, drag-drop works |
+| C | `registry.json` v1 with **8 blocks** (hero, rich_text, product_grid, category_tiles, faq, cta, materials_showcase, showroom_map) | editor renders all 8 |
+| C | `Puck\Registry` + `resources/views/puck/blocks/*.blade.php` — 3 blocks implemented | JSON → HTML on a real page |
+| C | `PuckRegistryParityTest` (TS build emits JSON, PHP asserts parity) | test exists, runs in CI |
+| B | `GET /api/storefront/v1/products` + `/products/{slug}` from `CatalogService` | returns seeded data, cached 5 min |
+| B | `AdminNavigation` gains the **Commerce** group (empty screens stubbed) | visible in the admin sidebar |
 
 ---
 
-## Definition of done for the week
+## Day 5 — Gate G0: foundations
 
-- Bagisto: installed, one product, one order, one invoice, on the real account.
-- OS: deployed by Git to its subdomain, cron running, queue draining.
-- A written number for every row in `HOSTINGER-CAPACITY.md` §1 that was previously an estimate.
-- A typed API client in the storefront generated from `openapi.yaml` (45 paths).
-- A go/no-go note committed to the repo.
+| Gate | Pass |
+|---|---|
+| OS deployed by Git to staging, cron running, queue draining | yes |
+| `migrate:fresh --seed` on staging | 20 products, 4 categories |
+| Golden totals harness | 1 red test minimum compiles and runs in CI |
+| Puck: one page saved in Studio, rendered at `/p/hello`, `pages`/`page_blocks` written | yes |
+| API: product list + detail from the OS | 200, cached |
+| Admin navigation shows Commerce group | yes |
+| **Go/no-go note committed** | yes |
+
+**All green → P1 starts Monday with catalog breadth.**
+A miss on the money harness is the only one that stops the week's exit — everything else can slip a day.
+
+---
+
+## Parallel work that does not block G0
+
+| Owner | Task | Output |
+|---|---|---|
+| B | Freeze `openapi.yaml` (48 paths), generate the TypeScript client | typed client in the SPA |
+| B | Media pipeline: upload → 3 sizes + WebP → `public/media`, outside the repo | one image end-to-end |
+| C | Inventory the 142 legacy pages into M0–M7 migration groups | migration backlog |
+| All | Agree the 14 admin screens' wireframe in one sitting | shared screen map |
+
+---
+
+## Week-1 definition of done
+
+- Real hosting numbers replace every estimate.
+- `Money` + `CartCalculator` + 14 fixtures exist and run in CI.
+- 11 commerce tables migrated, seeded, factory-covered.
+- Puck Studio opens, saves JSON, renders Blade, parity test in place.
+- One read-only API endpoint serving real seeded data to the SPA.
+- Deploy to staging is a one-click repeatable action.

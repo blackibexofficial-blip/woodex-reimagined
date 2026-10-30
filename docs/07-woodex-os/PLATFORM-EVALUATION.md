@@ -1,6 +1,10 @@
 # Platform Evaluation — What Should Power WOODEX Commerce?
 
-**Date:** 31 Oct 2026 · **Decision:** WOODEX OS (Laravel) + **Bagisto 2.5** as the commerce core, with the free Bagisto B2B suite for RFQ/quotations.
+> **v6 note (31 Oct 2026):** the owner ruled out running Bagisto as a separate engine. The analysis below stands as the
+> evidence base; its conclusion is now: **build commerce natively inside WOODEX OS using Bagisto as the reference
+> implementation** (feature matrix + MIT-licensed algorithms). See `COMMERCE-IN-OS.md`.
+
+**Date:** 31 Oct 2026 · **Subject:** choosing the commerce engine and where it runs.
 **Analysed commits/versions:** Bagisto `2.5.0` (06 Oct 2026), `bagisto/b2b-ecommerce` branch `3.0`, `bagisto/bagisto-api` (28 Oct 2026), Medusa `v2.22.2` (30 Oct 2026), `medusajs/b2b-starter-medusa`, `bagisto/nextjs-commerce`.
 
 ---
@@ -26,7 +30,7 @@ See [`MASTER-PLAN.md`](./MASTER-PLAN.md) §3 for the full decision matrix.
 
 | Option | Verdict for WOODEX |
 |---|---|
-| **Bagisto 2.5 embedded in WOODEX OS** | ✅ **Recommended.** Same language as the stated direction (Laravel), MIT, complete commerce (catalog → orders → invoices → RMA), and a **free** B2B suite that already models companies, RFQ, quotation negotiation, credit limits and purchase orders — which is exactly WOODEX's quote-first business. |
+| **Bagisto 2.5 feature set absorbed into WOODEX OS (v6 decision)** | ✅ **Chosen.** Same language as the stated direction (Laravel), MIT, complete commerce (catalog → orders → invoices → RMA), and a **free** B2B suite that already models companies, RFQ, quotation negotiation, credit limits and purchase orders — which is exactly WOODEX's quote-first business. |
 | **Medusa v2 + Laravel OS** | ⚠️ Technically superior framework, wrong fit here. It adds a second runtime (Node 22 + Postgres) beside PHP, its B2B quotes/companies are starter-template code you own, and RBAC/SSO are paid Enterprise features. |
 | **Bagisto + Next.js storefront** | ✅ Right long-term frontend answer, but it replaces today's React SPA — treat as Phase 3, not Phase 1. |
 | **Custom Laravel commerce (Filament/Nova)** | ❌ Builds 6–9 months of undifferentiated work before the first order. Only justified if Bagisto is rejected on technical grounds. |

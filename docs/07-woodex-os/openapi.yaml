@@ -38,7 +38,6 @@ tags:
   - name: Support
   - name: Markets
   - name: Design
-  - name: Webhooks
   - name: Admin
 
 security:
@@ -910,7 +909,7 @@ paths:
     post:
       tags: [B2B]
       summary: Apply to become a dealer
-      description: Creates a deal in the Dealer Onboarding pipeline. Approval grants the Bagisto Dealer customer group.
+      description: Creates a deal in the Dealer Onboarding pipeline. Approval sets the commerce customer group to Dealer and applies the dealer price list.
       security: []
       requestBody:
         required: true
@@ -1042,34 +1041,121 @@ paths:
         '200': { description: Brief, project stage and designer notes }
         '404': { description: Unknown token }
 
-  /webhooks/bagisto:
+  /coupons/validate:
     post:
-      tags: [Webhooks]
-      summary: Bagisto -> OS event receiver
-      description: |
-        Signed with HMAC-SHA256 in `X-Bagisto-Signature`. Every event carries `X-Bagisto-Event-Id`, stored in
-        `commerce_events` for idempotency. Handled events: order created/updated, invoice paid, refund created,
-        product updated, customer registered.
+      tags: [Cart]
+      summary: Validate a coupon against a live cart
+      description: Returns the discount the coupon would apply, or the reason it was rejected. Never trusts a client-sent total.
       security: []
-      parameters:
-        - { name: X-Bagisto-Event-Id, in: header, required: true, schema: { type: string, format: uuid } }
-        - { name: X-Bagisto-Signature, in: header, required: true, schema: { type: string } }
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [event, payload]
+              required: [cart_id, code]
               properties:
-                event:
-                  type: string
-                  enum: [order.created, order.updated, invoice.paid, refund.created, product.updated, customer.registered]
-                payload: { type: object, additionalProperties: true }
+                cart_id: { type: string }
+                code: { type: string, maxLength: 40 }
       responses:
-        '202': { description: Accepted for processing by the cron queue }
-        '401': { description: Bad signature }
-        '200': { description: Duplicate event, already processed }
+        '200':
+          description: Validity and effect
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      valid: { type: boolean }
+                      discount_minor: { type: integer, description: Discount in paisa }
+                      reason:
+                        type: string
+                        nullable: true
+                        enum: [expired, usage_limit, min_spend, not_stackable, unknown_code, customer_limit, null]
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /shipping/methods:
+    get:
+      tags: [Cart]
+      summary: Shipping options for a cart and destination
+      security: []
+      parameters:
+        - { name: cart_id, in: query, required: true, schema: { type: string } }
+        - { name: city, in: query, required: false, schema: { type: string } }
+        - { name: postal_code, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: Available methods with rates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code: { type: string, example: flat }
+                        label: { type: string, example: Standard delivery }
+                        rate_minor: { type: integer }
+                        eta_days: { type: integer }
+                        is_cod: { type: boolean }
+
+  /products/{slug}/availability:
+    get:
+      tags: [Catalog]
+      summary: Live stock and lead time for a product
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Slug'
+        - { name: city, in: query, schema: { type: string }, description: Show showroom-specific stock }
+      responses:
+        '200':
+          description: Availability
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      in_stock: { type: boolean }
+                      qty: { type: integer }
+                      lead_time_days: { type: integer }
+                      made_to_order: { type: boolean }
+                      by_source:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            source: { type: string, example: Lahore }
+                            qty: { type: integer }
+
+  /orders:
+    get:
+      tags: [Orders]
+      summary: The signed-in customer's orders
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        '200':
+          description: Orders
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Collection'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Order' }
+        '401': { description: Unauthenticated }
+
 
 components:
   securitySchemes:

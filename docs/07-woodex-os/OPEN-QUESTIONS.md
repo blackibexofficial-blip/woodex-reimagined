@@ -1,96 +1,82 @@
-# Open Questions — v5
+# Open Questions — v6
 
-> **Status: the owner skipped this round (30 Oct 2026). The recommended default for each question is adopted and the
-> plan proceeds on it.** Each answer is reversible until the phase that depends on it begins — Q1 is the only one that
-> must be settled in week 1 (see `WEEK-1-KICKOFF.md`). Reply with a letter at any time and the plan is re-cut.
-
-Six decisions block or reshape week 1. Each is stated as *the choice*, *what it changes*, and *what I assume if
-silent*. The default is the recommendation.
+> **Status: the owner skipped the question round (31 Oct 2026). The recommended default for each is adopted and the
+> plan proceeds on it.** Every default is reversible until the phase that depends on it starts. Reply with a letter
+> and the plan is re-cut — it costs nothing today and more later.
 
 ---
 
-### Q1 — If Bagisto will not run on the shared account, what do we do?
+### Q1 — Who runs the catalog day to day?
 
-Gate H0 (week 1) answers this technically. This is the business decision if it fails.
-
-| Option | Cost | What changes |
-|---|---|---|
-| **A. Upgrade to Hostinger Cloud Startup** | +$10–20/mo | Same account, same hPanel, ~3–4 GB RAM. Least disruption. **Recommended** |
-| B. Bagisto on a cheap managed host, OS stays shared | +$10–20/mo | Two providers, two bills, API sync unchanged |
-| C. Stay shared, launch catalog + quotations only, checkout later | $0 | Loses "complete e-commerce" at launch |
-
-**Default if no answer: A**, and we test it inside H0 so there is no surprise later.
-
----
-
-### Q2 — Where does the team actually run orders?
+This decides how much admin polish goes into P1 versus P5.
 
 | Option | Consequence |
 |---|---|
-| **A. Staff use the Bagisto admin for orders/fulfilment; OS shows a read-only order mirror + the customer 360** | Fastest to launch, no duplicate order UI. **Recommended** |
-| B. Orders are managed in the OS, Bagisto is a hidden engine | Better UX for staff, +4–6 weeks of order UI, more sync surface |
-| C. Both are writable | Rejected — two writers, guaranteed drift |
+| **A. A merchandising staff member adds/edits products, prices, photos in the OS admin** | Admin screens get real polish in P1–P2 (inline edit, bulk actions, image cropping). **Recommended** |
+| B. Devs load everything; staff only view orders | Faster build, but every price change becomes a ticket |
 
-**Default: A.**
+**Default: A.** It changes the product screen's scope, not the architecture.
 
 ---
 
-### Q3 — The 142 existing pages: migrate all, or curate?
+### Q2 — The 142 existing pages: migrate all, or curate?
 
 | Option | Consequence |
 |---|---|
-| **A. Migrate top 30 + all product/category pages; 301 the rest to the nearest parent** | Launch on time, no ranking cliff if redirects are mapped. **Recommended** |
+| **A. Migrate top 30 + all product/category pages; 301 the rest to the nearest parent** | On-time launch, no ranking cliff if the redirect map is reviewed. **Recommended** |
 | B. Migrate all 142 | Adds ~3–4 weeks; many pages are near-duplicates |
 | C. Keep legacy HTML, migrate only new pages | Two builders forever — rejected |
 
-**Default: A**, with a URL-by-URL redirect map reviewed before cutover.
+**Default: A**, with a URL-by-URL redirect map approved before cutover.
 
 ---
 
-### Q4 — Who owns the catalog data during import?
+### Q3 — Who loads the 148 products?
 
 | Option | Consequence |
 |---|---|
-| **A. We import the 148 products from the existing TS arrays into Bagisto CSV, owner reviews once** | One-time, fast, reversible. **Recommended** |
-| B. Sales team re-enters everything in the Bagisto admin | Slow, error-prone, no benefit |
-| C. Keep the TS arrays as truth, sync to Bagisto | Two truths — rejected |
+| **A. We import from the existing TS data into the commerce tables; owner reviews once** | One-time, fast, reversible. **Recommended** |
+| B. Staff re-enter everything in the admin | Slower, error-prone, but the team owns the data from day one |
+| C. Keep the TS arrays as truth and sync | Two truths — rejected |
 
-Also: **variants at launch?** Default is simple products only; configurable (size/finish) added in P4 for the top 20 SKUs.
+**Also: variants at launch?** Default is simple products everywhere + configurable (size × finish) for the top 20 SKUs.
 
-**Default: A + simple products.**
-
----
-
-### Q5 — Payments and KYC
-
-Needed before P2 (week 8): Safepay merchant account status, bank details for manual transfer verification, COD limits
-(per order, per city), and who reconciles transfers daily.
-
-**Default if silent:** bank transfer (manual verification, 24 h SLA) + COD capped at PKR 150,000; gateways flagged off.
+**Default: A + variants for top 20.**
 
 ---
 
-### Q6 — Is week 16 a hard launch or a movable target?
+### Q4 — Payments and KYC
+
+Needed before P2 (week 8): Safepay merchant status, bank details for manual transfer verification, COD limits per
+order and per city, and who reconciles transfers daily.
+
+**Default if silent:** bank transfer (manual verification, 24 h SLA) + COD capped at PKR 150,000; Safepay integrated
+behind a flag and switched on when the merchant account clears.
+
+---
+
+### Q5 — Hard launch date or movable target?
 
 | Option | Consequence |
 |---|---|
-| **A. Hard date** — scope is cut, not the date | Parity items move to P4/P5. **Recommended for a business launch** |
-| B. Soft date — full parity before launch | Realistic completion ~week 24 |
+| **A. Hard date — cut scope, not the date** | Week 20 ships core commerce + all nine surfaces; promotions, RMA depth, multi-currency complete by week 28. **Recommended** |
+| B. Soft date — full feature matrix before launch | Realistic completion ~week 28, everything complete on day one |
 
 **Default: A.**
 
 ---
 
-## Already answered (kept for the record)
+## Already decided (locked by the owner)
 
 | Question | Answer |
 |---|---|
 | Hosting | Hostinger **shared**, no VPS |
-| Commerce engine | **Bagisto** |
-| Page builder | **Puck** |
-| Backend | **Laravel / WOODEX OS** |
+| Bagisto | **Not run as an engine** — feature set absorbed into WOODEX OS |
+| Master admin | WOODEX OS, single application |
+| Page builder | **Puck**, one builder |
+| Backend | **Laravel 13 / PHP 8.4** |
 | Team | 3 developers |
 | Data | Seed only, no Supabase migration |
-| Payments at launch | Bank + COD, gateways in parallel |
-| Catalogue | Simple products, one price |
+| Payments at launch | Bank + COD, gateways behind flags |
+| Catalogue | Simple products, one price; configurable for top SKUs |
 | AI | Autonomous within limits |
