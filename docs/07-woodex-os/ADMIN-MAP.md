@@ -78,7 +78,7 @@ Ordered. Each row is one shippable thing, not a phase.
 
 **T1–T25 are code, not a document.** They live in `platform/` (plus `src/lib/api/` for the storefront) and pass: 414 checks, 16,288 assertions, 1,000 generated carts.
 
-After T12 passes on staging, the remaining work is repetition: the other 10 OS surfaces, 18 more Puck blocks, and the 142-page migration. Every commerce screen now exists. The storefront now has one real dependency on the OS — the catalog API — and every other page still reads the bundled snapshot until its own API exists.
+After T12 passes on staging, the remaining work is repetition: the other 10 OS surfaces, 18 more Puck blocks, and the 142-page migration. Every commerce screen now exists. The storefront now has **six** pages on the catalog API (shop, product, series ×2, quotation, materials) and the rest still read the bundled snapshot until their own endpoint exists — the page-by-page state is in `FRONTEND-API.md` §7, which is the file to trust rather than this sentence.
 
 ---
 

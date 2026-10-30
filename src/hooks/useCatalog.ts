@@ -1,8 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api/client";
-import { fetchAllProducts, fetchProduct, fetchProductPage, toProduct } from "@/lib/api/catalog";
+import {
+  fetchAllProducts,
+  fetchMaterials,
+  fetchProduct,
+  fetchProductPage,
+  toProduct,
+} from "@/lib/api/catalog";
 import { getCategoryImages, products as snapshotProducts } from "@/data/products";
-import type { Product } from "@/lib/api/types";
+import type { ApiMaterialGroup, Product } from "@/lib/api/types";
+import { materialSnapshot } from "@/data/materialSnapshot";
 
 /**
  * Where the product in hand came from.
@@ -130,4 +137,43 @@ export function useRelatedProducts(
     .map((row) => toProduct(row, ADAPTER))
     .filter((product) => product.id !== excludeId)
     .slice(0, limit);
+}
+
+export interface MaterialsResult {
+  groups: ApiMaterialGroup[];
+  source: CatalogSource;
+  /** Options with a real colour, counted here so no page ever types "6 premium finishes". */
+  swatchCount: number;
+  optionCount: number;
+  error: ApiError | null;
+}
+
+/**
+ * The finishes and materials, snapshot-first like everything else on the storefront.
+ *
+ * A failure degrades to the bundled snapshot; a successful empty answer does not, because an
+ * empty answer means the catalogue genuinely has no swatch attributes and showing three that
+ * cannot be ordered would be the lie this page was rebuilt to stop telling.
+ */
+export function useMaterials(): MaterialsResult {
+  const query = useQuery({
+    queryKey: ["catalog", "materials"],
+    queryFn: ({ signal }) => fetchMaterials({ signal }),
+    enabled: !CATALOG_OFFLINE,
+    ...QUERY,
+  });
+
+  const live = !CATALOG_OFFLINE && query.isSuccess ? query.data : null;
+  const groups = live ?? materialSnapshot;
+
+  return {
+    groups,
+    source: live === null ? "snapshot" : "api",
+    swatchCount: groups.reduce(
+      (total, group) => total + group.options.filter((option) => option.hex !== null).length,
+      0,
+    ),
+    optionCount: groups.reduce((total, group) => total + group.options.length, 0),
+    error: query.error instanceof ApiError ? query.error : null,
+  };
 }

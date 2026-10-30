@@ -135,21 +135,21 @@ paths:
     get:
       tags: [Catalog]
       summary: Materials and finishes library
+      description: |
+        Every swatch attribute the catalogue knows, grouped in the order an administrator
+        arranged them. The whole library is one cached response of a few kilobytes, so it is
+        not filtered: a storefront that wanted only finishes would still need the counts on the
+        others to tell a live finish from a decorative one.
+
+        The `family` and `brightness` filters this path used to advertise were never
+        implemented, and the catalog has no colour-family column to filter on.
       security: []
-      parameters:
-        - { name: family, in: query, schema: { type: string, enum: [wood, laminate, metal, fabric] } }
-        - { name: brightness, in: query, schema: { type: string, enum: [light, medium, dark] } }
       responses:
         '200':
           description: Materials
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items: { $ref: '#/components/schemas/Material' }
+              schema: { $ref: '#/components/schemas/MaterialLibrary' }
 
   /room-packages:
     get:
@@ -1385,16 +1385,55 @@ components:
 
     Material:
       type: object
+      description: |
+        One option of one swatch attribute. The catalog stores these in
+        `commerce_attribute_options`, not in a table of its own, so a finish is the same record
+        whether it is drawn on the materials page or filtered on in the shop.
       properties:
-        id: { type: string }
-        name: { type: string }
-        family: { type: string, enum: [wood, laminate, metal, fabric] }
-        hex: { type: string }
-        brightness: { type: string, enum: [light, medium, dark] }
-        image: { type: string, format: uri }
-        applicable_to:
+        code: { type: string, example: natural-oak }
+        label: { type: string, example: Natural Oak }
+        hex:
+          type: string
+          nullable: true
+          description: Uppercase `#RRGGBB`, or null when the option has a texture instead of a colour.
+          example: '#C8A97E'
+        image:
+          type: string
+          nullable: true
+          description: Swatch texture path, or null when the option is a flat colour.
+        products:
+          type: integer
+          description: Published products offering this option.
+        variants:
+          type: integer
+          description: Active variants carrying this option. Either count above zero makes it buyable.
+
+    MaterialGroup:
+      type: object
+      description: A swatch attribute and its options, in the admin's own order.
+      properties:
+        code: { type: string, example: finish }
+        name: { type: string, example: Finish }
+        type: { type: string, enum: [select, multiselect, swatch] }
+        swatch_type: { type: string, nullable: true, enum: [colour, image, null] }
+        options:
           type: array
-          items: { type: string, enum: [worktop, panel, seating, frame, storage] }
+          items: { $ref: '#/components/schemas/Material' }
+
+    MaterialLibrary:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/MaterialGroup' }
+        meta:
+          type: object
+          properties:
+            groups: { type: integer }
+            options: { type: integer }
+            swatches: { type: integer, description: Options with a real hex. }
+            live_options: { type: integer, description: Options a product or variant actually offers. }
+            dead_options: { type: integer, description: Options nothing carries — drawn but not deliverable. }
 
     RoomPackage:
       type: object

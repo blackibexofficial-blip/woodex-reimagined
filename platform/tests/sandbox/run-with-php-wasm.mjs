@@ -45,6 +45,30 @@ for (const file of walk(root)) {
   bundle['/app/' + relative(root, file)] = readFileSync(file, 'utf8');
 }
 
+/**
+ * The frontend, staged read-only at `/repo`.
+ *
+ * Half the contracts in this repository are one-sided without it: a screen's Blade and the page
+ * that reads its JSON live in different folders, and `src/` is outside `platform/`. Only source
+ * files — no assets, no `node_modules` — so the bundle stays a few hundred kilobytes.
+ */
+const site = join(root, '..', 'src');
+const siteWalk = (dir, files = []) => {
+  for (const name of readdirSync(dir)) {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) {
+      siteWalk(path, files);
+    } else if (/\.(ts|tsx|json)$/.test(name)) {
+      files.push(path);
+    }
+  }
+  return files;
+};
+
+for (const file of siteWalk(site)) {
+  bundle['/repo/src/' + relative(site, file)] = readFileSync(file, 'utf8');
+}
+
 await php.writeFile('/bundle.json', JSON.stringify(bundle));
 
 const filter = process.argv[2] ?? null;

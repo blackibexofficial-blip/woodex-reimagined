@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\Storefront\CatalogController;
 use App\Http\Controllers\Api\Storefront\CheckoutController;
 use App\Http\Controllers\Api\Storefront\CheckoutRaceController;
+use App\Http\Controllers\Api\Storefront\MaterialsController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -25,6 +26,7 @@ Route::middleware('throttle:storefront-catalog')->group(function (): void {
     Route::get('/products', [CatalogController::class, 'index'])->name('products.index');
     Route::get('/products/{slug}', [CatalogController::class, 'show'])->name('products.show');
     Route::get('/categories', [CatalogController::class, 'categories'])->name('categories.index');
+    Route::get('/materials', MaterialsController::class)->name('materials.index');
 
     // Pricing a basket is a read: it writes nothing, and the customer may do it several times
     // while deciding. It shares the catalog's budget.

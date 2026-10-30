@@ -18,6 +18,8 @@ import type {
   ApiCollection,
   ApiProductCard,
   ApiProductDetail,
+  ApiMaterialGroup,
+  ApiMaterialLibrary,
   Product,
   ProductColor,
   ProductSpecification,
@@ -296,4 +298,35 @@ export function uncoveredCategories(
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" "),
   }));
+}
+
+/**
+ * The finishes and materials the catalogue actually offers.
+ *
+ * Grouped by swatch attribute rather than flattened, because the page that renders it needs to
+ * know *which* axis a colour belongs to: "Finish" is three colours you can have a desk in,
+ * "Material" is fourteen build descriptions, and drawing the second as circles would produce
+ * fourteen grey discs.
+ */
+export async function fetchMaterials(options: FetchOptions = {}): Promise<ApiMaterialGroup[]> {
+  const body = await getJson<ApiMaterialLibrary>("/materials", { signal: options.signal });
+
+  return (body.data ?? [])
+    .map((group) => ({
+      code: group.code ?? "",
+      name: group.name || group.code || "Materials",
+      type: group.type ?? "select",
+      swatch_type: group.swatch_type ?? null,
+      options: (group.options ?? []).map((option) => ({
+        code: option.code ?? "",
+        label: option.label || option.code || "",
+        // The server already refuses malformed hexes; this is the second belt, because a
+        // transparent swatch on a white card is an option nobody can see.
+        hex: /^#[0-9a-f]{6}$/i.test(option.hex ?? "") ? (option.hex as string).toUpperCase() : null,
+        image: option.image || null,
+        products: typeof option.products === "number" ? option.products : null,
+        variants: typeof option.variants === "number" ? option.variants : null,
+      })),
+    }))
+    .filter((group) => group.code !== "" && group.options.length > 0);
 }

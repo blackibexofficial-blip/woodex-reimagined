@@ -162,3 +162,45 @@ to the API only when its parity test passes (same products, same prices, same or
 4. **Existing consumers keep working**: `forms.php`, `chat.php`, `/api/public/*` and the signed portals are not
    changed — new endpoints live under `/api/storefront/v1`.
 5. **Contract tests gate merges**: a breaking change to a published field fails CI.
+
+---
+
+## 7. Migration log — what the storefront actually reads from the OS today
+
+The plan above is the target. This table is the truth, and it is updated only when a page stops
+reading a bundled array and starts reading an endpoint. "Snapshot" means the page never blanks:
+it renders `src/data/*` on the first frame and the API replaces it when it answers.
+
+| Route | Reads from the OS | Endpoint | State |
+|---|---|---|---|
+| `/shop` | products, categories | `GET /products`, `GET /categories` | ✅ T13 |
+| `/shop/:slug` | product detail, related | `GET /products/{slug}`, `GET /products?category=` | ✅ T13 |
+| `/series`, `/series/:slug` | products | `GET /products` | ✅ T13 |
+| `/quotation` | products (picker) | `GET /products` | ✅ T13 |
+| `/materials` | finish + material vocabulary, with per-option product counts | `GET /materials` | ✅ T26 |
+| `/` | featured products, categories, series | — | ⬜ snapshot |
+| `/room-packages` | room packages | — | ⬜ snapshot |
+| `/projects`, `/projects/:slug` | projects | — | ⬜ snapshot |
+| `/blog`, `/blog/:slug` | posts | — | ⬜ snapshot |
+| `/services`, `/services/:slug` | services | — | ⬜ snapshot |
+| `/showrooms` | showrooms | — | ⬜ five hard-coded addresses |
+| `/contact`, `/about`, `/warranty`, `/b2b` | leads, warranties, copy | — | ⬜ snapshot |
+
+**T26 — materials, and why it was not cosmetic.** `/materials` kept four private arrays: six wood
+finishes, twelve fabric colours, five metal finishes, four prose "material standards". The
+catalogue has **three** finishes and fourteen materials, and six of the page's named finishes
+did not exist anywhere in it. A customer could read the page, choose Espresso, and be offered
+nothing — the page was a brochure that outran the factory.
+
+The page now renders `GET /materials`, which groups `commerce_attribute_options` by attribute
+and counts, per option, the published products and active variants that carry it. Three
+consequences worth knowing:
+
+- **The palette is an attribute, not a table.** An administrator adding a colour in
+  *Commerce → Attributes* makes it appear here with no deploy, which is what the migration that
+  created the option table promised ("the option is the swatch").
+- **A dead option is visible.** An option with zero products and zero variants is drawn greyed
+  with "Not currently offered", so a colour the shop cannot deliver is never presented as one it
+  can.
+- **No count is typed into the copy.** The page derives "3 colours · 17 materials" from the
+  payload. `MaterialVocabularyTest` fails the build if a numeral reappears in a heading.
