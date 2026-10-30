@@ -4,7 +4,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
 import ProductListItem from "@/components/shop/ProductListItem";
-import { products, getProductsByCategory, sortProducts, getCategoryImages } from "@/data/products";
+import { filterByCategory, pruneTree, sortProducts, uncoveredCategories } from "@/lib/api/catalog";
+import { useCatalogProducts } from "@/hooks/useCatalog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Grid3X3, LayoutList, SlidersHorizontal, ChevronDown, ChevronRight } from "lucide-react";
@@ -33,6 +34,9 @@ const officeCategoryTree: CategoryNode[] = [
   { label: "Workstations", id: "workstations", children: [] },
   { label: "Cubicle Workstations", id: "cubicle-workstations", children: [] },
   { label: "Office Storage", id: "storage", children: [] },
+  // Six products carried this id and had no sidebar entry at all: reachable only by browsing
+  // "All Products". The catalogue knows the category, so the shop should too.
+  { label: "Home Office", id: "home-office", children: [] },
   { label: "Lounge / Office Sofas", id: "office-sofas", children: [] },
   { label: "Acoustic Furniture", id: "acoustic", children: [] },
   { label: "Collaborative Furniture", id: "collaborative", children: [] },
@@ -98,6 +102,7 @@ const faqs = [
 ];
 
 const Shop = () => {
+  const { products, source, error } = useCatalogProducts();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get("category") || "all";
 
@@ -125,7 +130,7 @@ const Shop = () => {
   }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
-    let result = getProductsByCategory(selectedCategory);
+    let result = filterByCategory(products, selectedCategory);
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -136,13 +141,47 @@ const Shop = () => {
       );
     }
     return sortProducts(result, sortBy);
-  }, [selectedCategory, searchQuery, sortBy]);
+  }, [products, selectedCategory, searchQuery, sortBy]);
+
+  /**
+   * Sidebar counts, computed once per catalogue rather than once per node per render.
+   * Thirteen categories times a render of a 148-product list is 1,924 comparisons on every
+   * keystroke in the search box; the map makes it 148.
+   */
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const node of allCategoryTree) {
+      counts.set(node.id, filterByCategory(products, node.id).length);
+      for (const child of node.children) {
+        counts.set(child.id, filterByCategory(products, child.id).length);
+      }
+    }
+
+    return counts;
+  }, [products]);
 
   const toggleExpand = (id: string) => {
     setExpandedCategories((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
+
+  /**
+   * The sidebar, trimmed to what the catalogue actually has.
+   *
+   * In snapshot mode every editorial node survives, so the shop looks exactly as it did. On a
+   * partially seeded staging catalogue the empty ones disappear instead of opening onto "no
+   * products found", and a category the API has but the sidebar does not know about is added
+   * rather than hidden.
+   */
+  const officeNodes = useMemo(() => pruneTree(officeCategoryTree, products), [products]);
+  const homeNodes = useMemo(() => pruneTree(homeCategoryTree, products), [products]);
+
+  const extraCategories = useMemo(
+    () => uncoveredCategories(allCategoryTree, products),
+    [products],
+  );
 
   const getCategoryLabel = () => {
     if (selectedCategory === "all") return "All Products";
@@ -152,12 +191,11 @@ const Shop = () => {
         if (child.id === selectedCategory) return child.label;
       }
     }
-    return "All Products";
+    const extra = extraCategories.find((node) => node.id === selectedCategory);
+    return extra?.label ?? "All Products";
   };
 
-  const getCategoryCount = (catId: string): number => {
-    return getProductsByCategory(catId).length;
-  };
+  const getCategoryCount = (catId: string): number => categoryCounts.get(catId) ?? 0;
 
   const renderCategoryNode = (cat: CategoryNode) => (
     <div key={cat.id}>
@@ -260,17 +298,44 @@ const Shop = () => {
                   <div className="mb-4">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-accent px-3 mb-2">Office Furniture</h3>
                     <nav className="space-y-0.5">
-                      {officeCategoryTree.map(renderCategoryNode)}
+                      {officeNodes.map(renderCategoryNode)}
                     </nav>
                   </div>
 
                   {/* Home Furniture Group */}
-                  <div className="border-t border-border pt-4">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-accent px-3 mb-2">Home Furniture</h3>
-                    <nav className="space-y-0.5">
-                      {homeCategoryTree.map(renderCategoryNode)}
-                    </nav>
-                  </div>
+                  {homeNodes.length > 0 && (
+                    <div className="border-t border-border pt-4">
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-accent px-3 mb-2">Home Furniture</h3>
+                      <nav className="space-y-0.5">
+                        {homeNodes.map(renderCategoryNode)}
+                      </nav>
+                    </div>
+                  )}
+
+                  {/* Anything the catalogue has that the sidebar does not know about */}
+                  {extraCategories.length > 0 && (
+                    <div className="border-t border-border pt-4">
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-accent px-3 mb-2">More</h3>
+                      <nav className="space-y-0.5">
+                        {extraCategories.map((node) => (
+                          <button
+                            key={node.id}
+                            onClick={() => setSelectedCategory(node.id)}
+                            className={`w-full text-left px-3 py-2 text-sm rounded-sm transition-colors flex items-center justify-between ${
+                              selectedCategory === node.id
+                                ? "bg-accent text-accent-foreground font-semibold"
+                                : "text-foreground hover:bg-muted hover:text-accent"
+                            }`}
+                          >
+                            <span>{node.label}</span>
+                            <span className="text-xs font-normal text-muted-foreground">
+                              {categoryCounts.get(node.id) ?? 0}
+                            </span>
+                          </button>
+                        ))}
+                      </nav>
+                    </div>
+                  )}
                 </div>
               </aside>
 
@@ -316,7 +381,14 @@ const Shop = () => {
                 <div className="mb-6">
                   <h2 className="font-bold text-lg mb-1">{getCategoryLabel()}</h2>
                   <p className="text-sm text-muted-foreground">{seo.intro}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{filteredProducts.length} products</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {filteredProducts.length} products
+                    {source === "snapshot" && (
+                      <span title={error?.message}>
+                        {" · "}catalogue snapshot
+                      </span>
+                    )}
+                  </p>
                 </div>
 
                 {filteredProducts.length === 0 ? (

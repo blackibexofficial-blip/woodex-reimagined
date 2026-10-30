@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -31,17 +31,30 @@ import {
   ChevronLeft,
   CheckCircle,
 } from "lucide-react";
-import { getProductById, products, categories, formatPKR } from "@/data/products";
+import { categories, formatPKR } from "@/data/products";
+import { useProduct, useRelatedProducts } from "@/hooks/useCatalog";
 import { useQuote } from "@/contexts/QuoteContext";
 import { useCart } from "@/contexts/CartContext";
 
 const ProductDetail = () => {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
-  const product = getProductById(productId || "");
-  
+  const { product, isLoading, notFound } = useProduct(productId);
+
+  // Related products are read before the early return below, because a hook cannot be called
+  // conditionally — the "not found" branch is a different render, not a different component.
+  const relatedProducts = useRelatedProducts(product?.category, product?.id, 4);
+
   const [selectedColor, setSelectedColor] = useState(product?.colors[0]);
   const [quantity, setQuantity] = useState(1);
+
+  // The product arrives from the snapshot first and the API second. The colour selection is
+  // reset only when the product itself changes, or picking a finish would be undone by a
+  // background refetch.
+  useEffect(() => {
+    setSelectedColor(product?.colors[0]);
+    setQuantity(1);
+  }, [product?.id]);
   const [addedToQuote, setAddedToQuote] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const { addItem } = useQuote();
@@ -77,7 +90,7 @@ const ProductDetail = () => {
     setTimeout(() => setAddedToCart(false), 2500);
   };
 
-  if (!product) {
+  if (!product && !isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
@@ -85,7 +98,9 @@ const ProductDetail = () => {
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
             <p className="text-muted-foreground mb-6">
-              The product you're looking for doesn't exist or has been removed.
+              {notFound
+                ? "This product is no longer in the catalogue."
+                : "The product you're looking for doesn't exist or has been removed."}
             </p>
             <Button asChild>
               <Link to="/shop">
@@ -105,11 +120,6 @@ const ProductDetail = () => {
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
-
-  // Get related products (same category, excluding current)
-  const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
 
   const handleQuantityChange = (delta: number) => {
     setQuantity((prev) => Math.max(1, prev + delta));

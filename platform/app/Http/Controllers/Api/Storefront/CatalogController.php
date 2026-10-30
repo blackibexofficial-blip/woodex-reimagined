@@ -63,9 +63,9 @@ final class CatalogController
     public function show(Request $request, string $slug): JsonResponse
     {
         $card = Cache::remember(
-            'commerce:product:'.$slug.':v1',
+            'commerce:product:'.$slug.':v2',
             self::TTL_SECONDS,
-            fn () => $this->catalog->find($slug),
+            fn () => $this->catalog->findDetail($slug),
         );
 
         if ($card === null) {

@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useQuote } from "@/contexts/QuoteContext";
-import { formatPKR, products } from "@/data/products";
+import { formatPKR } from "@/data/products";
+import { useCatalogProducts } from "@/hooks/useCatalog";
 import { useEffect } from "react";
 import PrintableInvoice, { ClientInfo } from "@/components/quotation/PrintableInvoice";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -26,6 +27,9 @@ const Quotation = () => {
   const [submitted, setSubmitted] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [showProductSearch, setShowProductSearch] = useState(false);
+  // The quote builder searches the live catalogue: a quote for a product that has been
+  // withdrawn is a quote someone has to honour.
+  const { products } = useCatalogProducts();
   const { items, removeItem, updateQuantity, totalPrice, totalItems, addItem } = useQuote();
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +42,7 @@ const Quotation = () => {
     if (!productSearch.trim()) return [];
     const q = productSearch.toLowerCase();
     return products.filter(p => p.name.toLowerCase().includes(q) || p.shortDescription.toLowerCase().includes(q)).slice(0, 8);
-  }, [productSearch]);
+  }, [productSearch, products]);
 
   useEffect(() => {
     document.title = "Get E-Quotation — WOODEX Pakistan | Free Quote Request";

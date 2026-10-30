@@ -35,6 +35,7 @@ final readonly class ProductCard
         public string $name,
         public string $summary,
         public ?string $category,
+        public ?string $categorySlug,
         public ?string $series,
         public int $priceMinor,
         public ?int $compareAtMinor,
@@ -74,6 +75,7 @@ final readonly class ProductCard
             name: $product->displayName(),
             summary: (string) ($product->translation?->summary ?? ''),
             category: $product->primaryCategory?->displayName(),
+            categorySlug: $product->primaryCategory?->slug,
             series: $product->series,
             priceMinor: $price?->minor ?? 0,
             compareAtMinor: $compareAt?->minor,
@@ -103,6 +105,7 @@ final readonly class ProductCard
             'name' => $this->name,
             'summary' => $this->summary,
             'category' => $this->category,
+            'category_slug' => $this->categorySlug,
             'series' => $this->series,
             'price_minor' => $this->priceMinor,
             'price' => $this->price,
@@ -137,7 +140,7 @@ final readonly class ProductCard
      * The stored path is `{slug}/{hash}-{variant}.webp`; the hash is the only part the URL
      * builder needs, so it is read back out rather than duplicated on the row.
      */
-    private static function hashFromPath(string $path): string
+    public static function hashFromPath(string $path): string
     {
         if (preg_match('#/([a-f0-9]{8,64})-([a-z]+)\.webp$#', $path, $matches) === 1) {
             return $matches[1];

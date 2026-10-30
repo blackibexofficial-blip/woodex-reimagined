@@ -16,6 +16,8 @@ import bedroomImg from "@/assets/product-bedroom.jpg";
 import livingSofaImg from "@/assets/product-living-sofa.jpg";
 import diningImg from "@/assets/product-dining.jpg";
 import publicSeatingImg from "@/assets/product-public-seating.jpg";
+import { filterByCategory } from "@/lib/api/catalog";
+import type { Product } from "@/lib/api/types";
 
 // Category-to-image mapping for unique product photos per category
 const categoryImageMap: Record<string, string[]> = {
@@ -56,37 +58,9 @@ export const getCategoryImages = (category: string): string[] => {
   return categoryImageMap[category] || [deskImage, chairImage, workstationImage];
 };
 
-export interface ProductColor {
-  name: string;
-  hex: string;
-  image?: string;
-}
-
-export interface ProductSpecification {
-  label: string;
-  value: string;
-}
-
-export interface Product {
-  id: string;
-  name: string;
-  category: string;
-  subcategory?: string;
-  series?: string;
-  price: number;
-  originalPrice?: number;
-  description: string;
-  shortDescription: string;
-  images: string[];
-  colors: ProductColor[];
-  specifications: ProductSpecification[];
-  features: string[];
-  inStock: boolean;
-  isNew?: boolean;
-  isBestSeller?: boolean;
-  rating: number;
-  reviews: number;
-}
+// The catalogue's shapes live next to the API that produces them. Re-exported here so the
+// twenty components that import a type from this module keep working unchanged.
+export type { Product, ProductColor, ProductSpecification } from "@/lib/api/types";
 
 // ─── CATEGORY STRUCTURE ────────────────────────────────────────────────
 export const categoryGroups = [
@@ -223,6 +197,13 @@ const meshColors = mkColors(["Charcoal Black", "#1a1a1a"], ["Slate Gray", "#4a55
 const fabricColors = mkColors(["Gray", "#6b7280"], ["Teal", "#2dd4bf"], ["Navy", "#1e3a5f"]);
 
 // ─── PRODUCTS ────────────────────────────────────────────────────────────
+/**
+ * The bundled catalogue.
+ *
+ * This is a fallback, not the source of truth: the shop renders it on first paint and the
+ * catalogue API replaces it as soon as it answers. It is also what makes the app work with
+ * no backend at all (previews, offline demos, a staging box with PHP down).
+ */
 export const products: Product[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // CATEGORY 1: EXECUTIVE TABLES (30 products)
@@ -2901,46 +2882,30 @@ products.forEach((p) => {
   p.images = [imgs[0], imgs[1], imgs[2], imgs[0]];
 });
 
+/** The same list under a name that says what it is at the call site. */
+export const snapshotProducts: Product[] = products;
+
 // ─── UTILITY FUNCTIONS ───────────────────────────────────────────────────
 export const getProductById = (id: string): Product | undefined => {
   return products.find((p) => p.id === id);
 };
 
+/**
+ * Snapshots are filtered by the same function the API-backed shop uses.
+ *
+ * Two implementations of the parent-to-children rule would mean `/shop?category=living`
+ * showed a different set of products depending on whether the API answered — a bug that only
+ * appears when a visitor is offline, which is the hardest kind to be told about.
+ */
 export const getProductsByCategory = (category: string): Product[] => {
-  if (category === "all") return products;
-  const parentMap: Record<string, string[]> = {
-    "office-tables": ["executive-tables", "manager-tables", "staff-tables", "meeting-tables", "reception-tables"],
-    "bedroom": ["bed-sets", "bedside-tables", "dressing-tables", "mirrors", "bench-settee"],
-    "living": ["home-sofa", "center-side-tables", "coffee-tables", "console", "tv-units"],
-    "dining": ["dining-sets", "dining-chairs", "dining-tables"],
-  };
-  if (parentMap[category]) {
-    return products.filter(
-      (p) => p.category === category || parentMap[category].includes(p.subcategory || "")
-    );
-  }
-  return products.filter((p) => p.category === category || p.subcategory === category);
+  return filterByCategory(products, category);
 };
 
 export const getProductsBySeries = (seriesId: string): Product[] => {
   return products.filter((p) => p.series === seriesId);
 };
 
-export const sortProducts = (prods: Product[], sortBy: string): Product[] => {
-  const sorted = [...prods];
-  switch (sortBy) {
-    case "price-low":
-      return sorted.sort((a, b) => a.price - b.price);
-    case "price-high":
-      return sorted.sort((a, b) => b.price - a.price);
-    case "rating":
-      return sorted.sort((a, b) => b.rating - a.rating);
-    case "newest":
-      return sorted.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
-    default:
-      return sorted;
-  }
-};
+export { sortProducts } from "@/lib/api/catalog";
 
 export const formatPKR = (amount: number): string => {
   return `PKR ${amount.toLocaleString("en-PK")}`;

@@ -60,6 +60,22 @@ final readonly class CatalogService
     }
 
     /**
+     * A single product, with everything a product page renders.
+     *
+     * Separate from `find()` because the two are asked for at different times by different
+     * pages: a card list wants twenty-four shallow rows, a product page wants one deep one.
+     * Same query builder, same eager loads, so a product can never look different in the two.
+     */
+    public function findDetail(string $slug): ?ProductDetail
+    {
+        $product = $this->baseQuery(new CatalogQuery)
+            ->where('slug', $slug)
+            ->first();
+
+        return $product !== null ? ProductDetail::fromModel($product, $this->paths) : null;
+    }
+
+    /**
      * The category tree, two levels deep, with live product counts.
      *
      * Counts are of published products only — a category showing "12 products" that opens to

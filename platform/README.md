@@ -115,7 +115,7 @@ php platform/tests/run.php Money      # one suite
 PASS  Lint::allPhpFiles (150 files)
 PASS  TotalsInvariantTest::testEveryGeneratedCartKeepsTheSumInvariant  13114 assertions
 PASS  StockPlannerTest::testAPlanNeverAllocatesMoreThanIsPhysicallyThere  601 assertions
-191/191 checks passed · 15241 assertions · 884 ms
+204/204 checks passed · 15330 assertions · 823 ms
 ```
 
 ## T4 + T5 — the admin shell and the Products screen (done)
@@ -458,3 +458,96 @@ This sandbox has no PHP binary, no database and no HTTP server, so the probe its
 executed here — only its engine, which is what the suite covers. Running it is a staging task:
 `HOSTINGER-CAPACITY.md` §Gate G1 has the commands and what to record. Until those numbers exist,
 T12 is *built*, not *passed*.
+
+## T13 — the storefront reads the API (this branch)
+
+The gap this closes was the last one standing in the plan: the React app shipped 148 products
+as a TypeScript literal and made zero `fetch()` calls, so every product on the site was
+fiction the moment the catalogue moved into the database.
+
+### The seam
+
+One function knows both languages:
+
+```
+commerce_product_translations ─┐
+commerce_products ─────────────┼─→ CatalogService ─→ ProductDetail ─→ JSON ─→ toProduct() ─→ <ProductCard>
+commerce_product_media ────────┘        (paisa, snake_case)                  (rupees, camelCase)
+```
+
+`src/lib/api/catalog.ts:toProduct()` is the only place `price_minor` becomes rupees, `hex: null`
+becomes a visible swatch, and an empty `images` array becomes a category photo. Twenty
+components kept rendering `product.images[0]` and `formatPKR(product.price)` untouched.
+
+### What the pages do now
+
+| Page | Reads | Falls back to |
+|---|---|---|
+| `/shop` | `GET /products` (all pages, 48 at a time), filtered in the browser | bundled snapshot |
+| `/shop/:slug` | `GET /products/{slug}` + `GET /products?category=…&per_page=5` | snapshot, on network failure only |
+| `/series`, `/series/:id` | `GET /products` | bundled snapshot |
+| `/quotation` | `GET /products` (the quote builder searches the live catalogue) | bundled snapshot |
+
+### Why there is still a bundled catalogue
+
+Three reasons, and none of them is laziness:
+
+1. **The snapshot is the first paint.** `useCatalogProducts()` returns the bundled list
+   synchronously and swaps in the API answer when it arrives, so the shop never shows a
+   skeleton where a product grid belongs. On Hostinger that is a cached 40 ms response; on a
+   phone on 3G it is the difference between a shop and a spinner.
+2. **The app has to work with no backend.** Build previews, design reviews and a staging box
+   with PHP down all render a complete site.
+3. **It is now a fallback, not a source of truth.** It is named `snapshotProducts`, it is used
+   only when a request fails, and the shop labels the state ("… 148 products · catalogue
+   snapshot").
+
+A *successful* empty answer is respected: if the catalogue says it has no products, the shop
+shows an empty state rather than 148 products that cannot be ordered.
+
+### Decisions worth arguing about
+
+- **Filter in the browser, not the server.** The sidebar shows a live count for thirteen
+  categories and search is per-keystroke. Server-side filtering would make each of those a
+  request. At 148 products that is four cached requests of 48; at 1,000 it should move to
+  server-side pagination, and `MAX_PAGES` in `catalog.ts` is where that decision gets forced.
+- **The sidebar is trimmed to what exists.** A category with no stock is a dead end — the
+  visitor clicks and gets "no products found". The editorial order and wording survive; empty
+  nodes do not. A category the API has but the sidebar has never heard of gets its own group
+  rather than being hidden behind "All".
+- **404 is not a fallback.** `useProduct()` degrades to the snapshot when the API is
+  *unreachable* (status 0 or 5xx) and shows "no longer in the catalogue" when the API answers
+  404. Switching those two would let a withdrawn product be quoted and ordered.
+- **One retry, three-second deadline.** A PHP worker at capacity does not answer slowly, it
+  hangs; three retries turn a two-second stall into six. The snapshot is a better answer.
+
+### Wiring in the OS
+
+`git apply` the platform tree over the OS checkout as before. Two model changes are still
+needed in the OS's `app/Models/Page.php`, because the columns are new:
+
+```php
+protected $casts = [
+    // …
+    'puck_data' => 'array',
+    'seo' => 'array',
+];
+```
+
+`PuckDocument::fromStored()` accepts a JSON string or an array, so a cast that has not been
+added yet will not break the page — it is only faster.
+
+No new environment variables are required. `VITE_API_BASE_URL` defaults to
+`/api/storefront/v1`, which is correct on Hostinger where the SPA and the API share a domain.
+`.env.example` documents both it and `VITE_CATALOG_OFFLINE=1`.
+
+### `tests/Api/`
+
+| Suite | What it proves |
+|---|---|
+| `CatalogQueryTest` | page size is clamped, unknown sorts fall back, cache keys normalise |
+| `ProductDetailTest` | the product-page payload: minor units stay integers, empty specification rows and nameless swatches are dropped, a non-hex colour becomes a visible swatch, an empty row still renders |
+| `StorefrontWiringTest` | the three routes are public and throttled; the list answers `data`+`meta` and 304s; the detail route reuses the list query; the product cache key was bumped with the payload |
+
+**Result: `204/204 checks · 15,330 assertions`** (`php platform/tests/run.php`), TypeScript
+clean, `npm run build` clean.

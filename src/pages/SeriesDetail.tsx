@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
-import { seriesList, getProductsBySeries } from "@/data/products";
+import { seriesList } from "@/data/products";
+import { useCatalogProducts } from "@/hooks/useCatalog";
 import { useEffect } from "react";
 import SeoContentBlock from "@/components/SeoContentBlock";
 import { getSeriesSeo } from "@/data/seoContent";
@@ -22,8 +23,9 @@ const seriesImages: Record<string, string> = {
 
 const SeriesDetail = () => {
   const { seriesId } = useParams<{ seriesId: string }>();
+  const { products } = useCatalogProducts();
   const series = seriesList.find((s) => s.id === seriesId);
-  const seriesProducts = getProductsBySeries(seriesId || "");
+  const seriesProducts = products.filter((product) => product.series === seriesId);
   const seo = series ? getSeriesSeo(series.id) : undefined;
 
   useEffect(() => {
