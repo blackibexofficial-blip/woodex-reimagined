@@ -992,3 +992,33 @@ Attributes, Categories, Inventory, Orders, Invoices, Payments, Refunds & returns
 Shipping & tax, Customers, Reports, Settings. Every figure comes from `catalog.json` through the
 platform's own rules — 18% tax, ₨2,500 delivery free over ₨200,000 — and the same money facts
 feed the invoice, payment and refund screens so they cannot disagree with each other.
+
+## Running it
+
+Two commands, and the difference between them matters.
+
+**The preview — runs here, now.**
+
+```bash
+node platform/tools/make-admin-preview.mjs      # regenerate from the seed
+node platform/tools/serve-admin-preview.mjs     # http://0.0.0.0:8080
+```
+
+That is a static file: the fourteen screens, the real seeded numbers, the real wording, one
+HTML page with no build step and no database. It is what a design review looks at.
+
+**The admin itself — runs on Hostinger, not here.**
+
+The Livewire screens live inside the OS clone and need PHP 8.4, Composer and MySQL. This
+repository carries only the new platform files — there is no `composer.json`, no `artisan` and no
+`vendor/`, so there is nothing to boot. On the OS clone:
+
+```bash
+composer install
+php artisan migrate --seed          # 13 catalog tables + commerce permissions
+php artisan serve                   # or the Hostinger document root
+```
+
+Every screen is behind a permission check and every one of them is read-only, so the first
+thing to try on a real install is opening `/admin/commerce/invoices` — if the money pipeline,
+the seed and the permissions are all wired, that page renders numbers before any other.
