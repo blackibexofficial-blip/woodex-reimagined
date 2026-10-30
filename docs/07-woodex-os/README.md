@@ -1,6 +1,11 @@
 # WOODEX OS — Planning Pack
 
-Planning documents for turning the WOODEX frontend into a complete commerce platform backed by **WOODEX OS (Laravel)**.
+Planning documents for **Reimagin OS** — turning the WOODEX storefront into a complete commerce platform on the
+existing Laravel **WOODEX OS** backend, hosted on Hostinger shared hosting.
+
+**Locked decisions (v3):** shared hosting · reuse WOODEX OS · native Commerce domain · simple products at launch ·
+bank/COD first with Safepay in parallel · Puck page builder · agent autonomous within limits · no Supabase data
+migration · 3 developers, 16–20 weeks.
 
 | Document | Purpose |
 |---|---|
@@ -9,7 +14,9 @@ Planning documents for turning the WOODEX frontend into a complete commerce plat
 | [`openapi.yaml`](./openapi.yaml) | The API contract the reimagined storefront needs (v1 draft) |
 | [`OS-BASELINE.md`](./OS-BASELINE.md) | Measured audit of the WOODEX OS codebase (Laravel 13 / Livewire 4) |
 | [`COMMERCE-DOMAIN.md`](./COMMERCE-DOMAIN.md) | Schema, actions, endpoints and acceptance tests for the new Commerce domain |
-| [`REPO-INTAKE.md`](./REPO-INTAKE.md) | Intake checklist (now completed — kept as the method record) |
+| [`HOSTINGER-RUNTIME.md`](./HOSTINGER-RUNTIME.md) | Shared-hosting rules: cron queues, storage, budgets, runbooks |
+| [`PUCK-BUILDER.md`](./PUCK-BUILDER.md) | Puck live page builder: storage, registry, PHP renderer, tests |
+| [`REPO-INTAKE.md`](./REPO-INTAKE.md) | Intake checklist (completed — kept as the method record) |
 
 ## Status of the requested import
 

@@ -1,7 +1,11 @@
 # Commerce Domain — Implementation Spec
 
 **Target:** `platform/app/Domain/Commerce/` inside WOODEX OS (Laravel 13 / Livewire 4 / PHP 8.4 / MySQL 8)
-**Companion:** [`MASTER-PLAN.md`](./MASTER-PLAN.md) §5–§9 · [`openapi.yaml`](./openapi.yaml)
+**Companion:** [`MASTER-PLAN.md`](./MASTER-PLAN.md) §4–§5 · [`openapi.yaml`](./openapi.yaml)
+
+> **Locked scope (v1):** *simple products only* — every product gets exactly one default variant. The variant
+> tables stay in the schema so finish/colour/size and B2B price lists can be enabled later without a migration.
+> Prices at launch come from the variant's `price_minor`; `commerce_prices` stays empty until tier pricing is wanted.
 
 ---
 
