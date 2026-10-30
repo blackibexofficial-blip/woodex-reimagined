@@ -177,6 +177,12 @@ commerce_sequences       key, prefix, next, padding        (order/invoice/RMA nu
 commerce_activity_log    subject_type, subject_id, action, actor_id, diff JSON
 ```
 
+**Shipped so far (T3 + T11):** the 13 catalog tables plus 14 checkout tables — `commerce_sequences`, `commerce_carts`,
+`commerce_cart_items`, `commerce_cart_addresses`, `commerce_orders`, `commerce_order_items`, `commerce_order_addresses`,
+`commerce_order_status_history`, `commerce_invoices`, `commerce_invoice_items`, `commerce_payments`,
+`commerce_inventory_reservations` — and `commerce_inventory_*` from T3. The remaining tables (rules, coupons, refunds,
+returns, shipments, channels) arrive with the screens that need them; none of the shipped ones is a placeholder.
+
 **34 tables.** All additive — no existing OS table is altered except new FK columns on `people`/`companies`
 (`commerce_customer_id`, nullable).
 

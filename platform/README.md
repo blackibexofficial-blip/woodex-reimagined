@@ -112,10 +112,10 @@ php platform/tests/run.php Money      # one suite
 ```
 
 ```
-PASS  Lint::allPhpFiles (104 files)
+PASS  Lint::allPhpFiles (139 files)
 PASS  TotalsInvariantTest::testEveryGeneratedCartKeepsTheSumInvariant  13114 assertions
-PASS  PuckRegistryTest::testEveryBlockHasABladeView                     8 assertions
-104/104 checks passed · 14243 assertions · 831 ms
+PASS  StockPlannerTest::testAPlanNeverAllocatesMoreThanIsPhysicallyThere  601 assertions
+158/158 checks passed · 15123 assertions · 832 ms
 ```
 
 ## T4 + T5 — the admin shell and the Products screen (done)
@@ -331,3 +331,72 @@ page's slug — and `page_versions` already stores every published snapshot. Edi
 | `PageWriterTest` | saving refuses what rendering tolerates: unknown block, duplicate id, garbage input — all reported at once |
 | `PageComposerTest` | only bound blocks fetch, each variable lands under the name its view expects, identical queries are fetched once |
 | `PuckWiringTest` | routes exist, the controller gates on publish, the Blade shell writes every data attribute the studio reads, the migration adds the documented columns, and the studio really does import the same registry file |
+
+## T11 — the vertical slice (done)
+
+```
+database/migrations/2026_10_28_104000_create_commerce_checkout_tables.php   14 tables
+app/Domain/Commerce/Checkout/PricedCart.php        stored rows → CartInput (pure)
+app/Domain/Commerce/Checkout/StockPlanner.php      which warehouse ships what (pure)
+app/Domain/Commerce/Checkout/OrderNumber.php       WDX-000127 / INV-000127 (pure)
+app/Domain/Commerce/Checkout/OrderStatus.php       the order graph + COD payment rules (pure)
+app/Domain/Commerce/Checkout/OrderDraft.php        order + invoice + payment, reconciled (pure)
+app/Domain/Commerce/Checkout/CartService.php       open, add, change, price, write back
+app/Domain/Commerce/Checkout/CheckoutService.php   one transaction, one order
+app/Domain/Commerce/Checkout/SequenceAllocator.php numbers under a row lock
+app/Domain/Commerce/Checkout/Models/*.php          12 models
+app/Livewire/Admin/Commerce/{OrdersIndex,OrderShow}.php + views
+app/Console/Commands/DemoOrderCommand.php          php artisan commerce:demo-order
+```
+
+**The order of operations inside `place()` is the design**, not an accident:
+
+```
+lock the inventory rows → plan → refuse if short → price → take numbers → write everything
+```
+
+Refusing *before* pricing and before writing is what stops a phantom order: a customer is
+never shown a total for something that was already sold. `CheckoutWiringTest` pins that
+ordering by comparing positions in the source file, because a moved `Order::create()` compiles
+and reads fine.
+
+**A cart is mutable; an order is a record.** Every amount on an order line is copied when the
+order is placed. Rename or reprice a product tomorrow and the invoice still says what was agreed.
+
+**Money and statuses are three axes, not one.** `status`, `payment_status` and
+`fulfilment_status` are separate because a COD order is delivered *and then* paid, while a bank
+transfer is paid *and then* delivered. Delivering a COD order is what sets `paid_minor` — the
+model does it, so no screen can forget.
+
+**Stock is locked, planned, then consumed.** `commerce_inventory_reservations` records which
+cart or order held which units at which source, and releasing is a timestamp, never a delete.
+`StockPlanner` is pure, so the decision that prevents overselling is tested without a database
+(200 randomised rounds assert the plan never allocates more than exists).
+
+**One command proves it end to end:**
+
+```bash
+php artisan db:seed
+php artisan commerce:demo-order --qty=2
+# Order WDX-000001 placed — placed, payment pending
+# Invoice: INV-000001 · Payment: cod · ₨... due on delivery
+```
+
+### Admin
+
+`Commerce → Orders` is now a real screen: filter by order status and by payment status
+independently (the useful question is "delivered but still marked unpaid"), search by the number
+a customer reads out on the phone, and open an order to see the lines, the money breakdown, the
+address and the timeline. The only actions are the ones the graph allows — advance one step, or
+cancel with a reason that is written into the history. There is no status dropdown.
+
+### `tests/Checkout/`
+
+| Suite | What it proves |
+|---|---|
+| `CartPricingTest` | rows become priced lines; strings from MySQL stay integers; zero quantity is refused, not priced; free-shipping and inclusive-tax behave |
+| `StockPlannerTest` | priority order, splitting across sources, reserved stock, exact fits, and 200 randomised rounds that never over-allocate |
+| `OrderNumberTest` | padding, overflow without truncation, refused prefixes |
+| `OrderStatusTest` | the graph, terminals, cancelling before shipping, COD settling on delivery |
+| `VerticalSliceTest` | **the acceptance test** — 1 sofa + 2 chairs, 10% coupon, 18% GST, ₨2,500 delivery → ₨208,528; order, invoice, payment and line items all agree to the paisa |
+| `CheckoutWiringTest` | every model's table is migrated, stock is refused before an order is written, money is never a float |

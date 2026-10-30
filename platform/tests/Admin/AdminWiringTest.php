@@ -87,7 +87,8 @@ final class AdminWiringTest
 
         preg_match_all('/Route::get\\([^,]+, ([A-Za-z]+)::class\\)/', $routes, $matches);
 
-        Assert::same(14, count($matches[1]), 'fourteen GET routes are declared');
+        // Fourteen screens plus the per-order detail view added in T11.
+        Assert::same(15, count($matches[1]), 'fourteen screens and one detail route are declared');
 
         foreach ($matches[1] as $class) {
             $path = $this->root().'/app/Livewire/Admin/Commerce/'.$class.'.php';
@@ -109,6 +110,8 @@ final class AdminWiringTest
         $expected = [
             'Dashboard' => 'dashboard',
             'ProductsIndex' => 'products-index',
+            'OrdersIndex' => 'orders-index',
+            'OrderShow' => 'order-show',
         ];
 
         foreach ($expected as $class => $view) {
@@ -118,14 +121,15 @@ final class AdminWiringTest
             );
         }
 
-        // The twelve placeholder screens all render one shared view.
+        // The remaining placeholder screens all render one shared view. Orders left this list
+        // in T11: it now reads the real `commerce_orders` table.
         Assert::true(
             is_file($this->root().'/resources/views/livewire/admin/commerce/coming-soon.blade.php'),
             'placeholder screens render the shared coming-soon view',
         );
 
         foreach ([
-            'AttributesIndex', 'CategoriesIndex', 'InventoryIndex', 'OrdersIndex', 'InvoicesIndex',
+            'AttributesIndex', 'CategoriesIndex', 'InventoryIndex', 'InvoicesIndex',
             'PaymentsIndex', 'RefundsIndex', 'PromotionsIndex', 'ShippingTaxIndex',
             'CustomersIndex', 'ReportsIndex', 'SettingsIndex',
         ] as $class) {

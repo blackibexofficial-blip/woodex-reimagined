@@ -9,6 +9,7 @@ use App\Livewire\Admin\Commerce\Dashboard;
 use App\Livewire\Admin\Commerce\InventoryIndex;
 use App\Livewire\Admin\Commerce\InvoicesIndex;
 use App\Livewire\Admin\Commerce\OrdersIndex;
+use App\Livewire\Admin\Commerce\OrderShow;
 use App\Livewire\Admin\Commerce\PaymentsIndex;
 use App\Livewire\Admin\Commerce\ProductsIndex;
 use App\Livewire\Admin\Commerce\PromotionsIndex;
@@ -39,6 +40,7 @@ Route::get('/categories', CategoriesIndex::class)->name('categories');
 Route::get('/inventory', InventoryIndex::class)->name('inventory');
 
 Route::get('/orders', OrdersIndex::class)->name('orders');
+Route::get('/orders/{order}', OrderShow::class)->name('orders.show');
 Route::get('/invoices', InvoicesIndex::class)->name('invoices');
 Route::get('/payments', PaymentsIndex::class)->name('payments');
 Route::get('/refunds', RefundsIndex::class)->name('refunds');

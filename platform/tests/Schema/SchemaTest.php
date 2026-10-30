@@ -164,7 +164,7 @@ final class SchemaTest
         $names = array_keys($this->migrations());
         sort($names);
 
-        Assert::same(3, count($names), 'three commerce migrations');
+        Assert::same(4, count($names), "four commerce migrations");
 
         $previous = '';
 
