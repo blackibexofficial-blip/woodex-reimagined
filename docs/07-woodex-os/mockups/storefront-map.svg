@@ -1,0 +1,283 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1290" viewBox="0 0 1680 1290">
+<rect width="1680" height="1290" fill="#0A0E13"/>
+<text x="36" y="52" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="24" font-weight="700" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1">What the storefront shows today — and what the OS gives it</text>
+<text x="36" y="78" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">nine pages, measured from sbx-6hrgnvda5zy72gi6.arena.site · every form currently ends in a toast</text>
+<rect x="32" y="104" width="520" height="332" rx="12" fill="#111821" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="50" y="132" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1">Showrooms</text>
+<text x="50" y="150" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">/showrooms  ·  /virtual-showroom</text>
+<rect x="50" y="162" width="484" height="66" rx="6" fill="#0B1118" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="60.0" y="172" width="40.29333333333333" height="46" rx="4" fill="#1A2632" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="65.0" y="178" width="30.29333333333333" height="20.7" rx="3" fill="#22303D" stroke="none" stroke-width="1" opacity="1"/>
+<rect x="106.29333333333332" y="172" width="40.29333333333333" height="46" rx="4" fill="#1A2632" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="111.29333333333332" y="178" width="30.29333333333333" height="20.7" rx="3" fill="#22303D" stroke="none" stroke-width="1" opacity="1"/>
+<rect x="152.58666666666664" y="172" width="40.29333333333333" height="46" rx="4" fill="#1A2632" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="157.58666666666664" y="178" width="30.29333333333333" height="20.7" rx="3" fill="#22303D" stroke="none" stroke-width="1" opacity="1"/>
+<text x="224.23999999999998" y="180" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">what it shows</text>
+<text x="224.23999999999998" y="194" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Hero · city filter chips</text>
+<text x="224.23999999999998" y="208" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">3 showroom cards: photo, address, phone</text>
+<circle cx="54" cy="240.5" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="244.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Hero · city filter chips</text>
+<circle cx="54" cy="255.0" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="258.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">3 showroom cards: photo, address, phone</text>
+<circle cx="54" cy="269.5" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="273.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">“Book a visit” button → toast</text>
+<circle cx="54" cy="284.0" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="287.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">360° panorama viewer (static)</text>
+<line x1="50" y1="310" x2="534" y2="310" stroke="#20303D" stroke-width="1"/>
+<text x="50" y="328" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.2" font-weight="700" fill="#D9A85F" text-anchor="start" letter-spacing="1.4" opacity="1">THE OS GIVES IT</text>
+<path d="M54 342 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="348" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">location record + geo</text>
+<path d="M54 360 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="366" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">appointment → staff calendar</text>
+<path d="M54 378 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="384" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">visit becomes a CRM deal</text>
+<path d="M54 396 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="402" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">availability per showroom</text>
+<rect x="580" y="104" width="520" height="332" rx="12" fill="#111821" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="598" y="132" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1">Materials and Colors</text>
+<text x="598" y="150" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">/materials</text>
+<rect x="598" y="162" width="484" height="66" rx="6" fill="#0B1118" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="608.0" y="172.0" width="29.72" height="15.0" rx="3" fill="#1E2A36" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="643.72" y="172.0" width="29.72" height="15.0" rx="3" fill="#1E2A36" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="679.44" y="172.0" width="29.72" height="15.0" rx="3" fill="#1E2A36" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="715.16" y="172.0" width="29.72" height="15.0" rx="3" fill="#1E2A36" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="608.0" y="191.0" width="29.72" height="15.0" rx="3" fill="#1E2A36" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="643.72" y="191.0" width="29.72" height="15.0" rx="3" fill="#1E2A36" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="679.44" y="191.0" width="29.72" height="15.0" rx="3" fill="#1E2A36" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="715.16" y="191.0" width="29.72" height="15.0" rx="3" fill="#1E2A36" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="772.24" y="180" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">what it shows</text>
+<text x="772.24" y="194" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">16 material tiles (local JPGs)</text>
+<text x="772.24" y="208" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">filter: wood / laminate / metal / fabric</text>
+<circle cx="602" cy="240.5" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="244.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">16 material tiles (local JPGs)</text>
+<circle cx="602" cy="255.0" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="258.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">filter: wood / laminate / metal / fabric</text>
+<circle cx="602" cy="269.5" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="273.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">brightness filter</text>
+<circle cx="602" cy="284.0" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="287.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">no product connection</text>
+<line x1="598" y1="310" x2="1082" y2="310" stroke="#20303D" stroke-width="1"/>
+<text x="598" y="328" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.2" font-weight="700" fill="#D9A85F" text-anchor="start" letter-spacing="1.4" opacity="1">THE OS GIVES IT</text>
+<path d="M602 342 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="348" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">one library, product-bound</text>
+<path d="M602 360 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="366" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">finish + colour attributes</text>
+<path d="M602 378 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="384" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">appears inside product pages</text>
+<path d="M602 396 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="402" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">editable by staff</text>
+<rect x="1128" y="104" width="520" height="332" rx="12" fill="#111821" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="1146" y="132" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1">Warranty</text>
+<text x="1146" y="150" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">/warranty</text>
+<rect x="1146" y="162" width="484" height="66" rx="6" fill="#0B1118" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="1156" y="176" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="1" font-weight="400" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1"></text>
+<rect x="1156" y="172" width="120.88" height="10" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="1156" y="187" width="120.88" height="10" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="1156" y="205" width="62" height="13" rx="7" fill="#D9A85F" stroke="None" stroke-width="1" opacity="1"/>
+<text x="1320.24" y="180" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">what it shows</text>
+<text x="1320.24" y="194" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Coverage marketing copy</text>
+<text x="1320.24" y="208" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">“Register your product” form</text>
+<circle cx="1150" cy="240.5" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="244.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Coverage marketing copy</text>
+<circle cx="1150" cy="255.0" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="258.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">“Register your product” form</text>
+<circle cx="1150" cy="269.5" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="273.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">order number + phone fields</text>
+<circle cx="1150" cy="284.0" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="287.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">submit → toast, nothing stored</text>
+<line x1="1146" y1="310" x2="1630" y2="310" stroke="#20303D" stroke-width="1"/>
+<text x="1146" y="328" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.2" font-weight="700" fill="#D9A85F" text-anchor="start" letter-spacing="1.4" opacity="1">THE OS GIVES IT</text>
+<path d="M1150 342 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="348" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">registration vs real order line</text>
+<path d="M1150 360 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="366" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">claim → service job</text>
+<path d="M1150 378 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="384" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">status page by token</text>
+<path d="M1150 396 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="402" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">expiry tracking</text>
+<rect x="32" y="452" width="520" height="332" rx="12" fill="#111821" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="50" y="480" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1">Support</text>
+<text x="50" y="498" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">/contact</text>
+<rect x="50" y="510" width="484" height="66" rx="6" fill="#0B1118" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="60" y="524" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="1" font-weight="400" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1"></text>
+<rect x="60" y="520" width="120.88" height="10" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="60" y="535" width="120.88" height="10" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="60" y="553" width="62" height="13" rx="7" fill="#D9A85F" stroke="None" stroke-width="1" opacity="1"/>
+<text x="224.23999999999998" y="528" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">what it shows</text>
+<text x="224.23999999999998" y="542" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Contact form: name, email, message</text>
+<text x="224.23999999999998" y="556" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Map + phone + hours</text>
+<circle cx="54" cy="588.5" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="592.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Contact form: name, email, message</text>
+<circle cx="54" cy="603.0" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="606.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Map + phone + hours</text>
+<circle cx="54" cy="617.5" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="621.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">FAQ teaser block</text>
+<circle cx="54" cy="632.0" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="635.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">submit → toast, no ticket</text>
+<line x1="50" y1="658" x2="534" y2="658" stroke="#20303D" stroke-width="1"/>
+<text x="50" y="676" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.2" font-weight="700" fill="#D9A85F" text-anchor="start" letter-spacing="1.4" opacity="1">THE OS GIVES IT</text>
+<path d="M54 690 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="696" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">case number + SLA clock</text>
+<path d="M54 708 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="714" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">lands in the OS inbox</text>
+<path d="M54 726 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="732" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">AI first reply</text>
+<path d="M54 744 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="750" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">customer can follow up</text>
+<rect x="580" y="452" width="520" height="332" rx="12" fill="#111821" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="598" y="480" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1">Distributors (B2B)</text>
+<text x="598" y="498" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">/b2b</text>
+<rect x="598" y="510" width="484" height="66" rx="6" fill="#0B1118" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="608.0" y="543.0" width="38.29333333333333" height="23.0" rx="4" fill="#1A2632" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="654.2933333333333" y="532.88" width="38.29333333333333" height="33.12" rx="4" fill="#1A2632" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="700.5866666666667" y="520" width="38.29333333333333" height="46" rx="4" fill="#1A2632" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="772.24" y="528" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">what it shows</text>
+<text x="772.24" y="542" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Dealer program pitch</text>
+<text x="772.24" y="556" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Benefits grid</text>
+<circle cx="602" cy="588.5" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="592.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Dealer program pitch</text>
+<circle cx="602" cy="603.0" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="606.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Benefits grid</text>
+<circle cx="602" cy="617.5" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="621.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">“Request B2B catalog” → /quotation</text>
+<circle cx="602" cy="632.0" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="635.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">applicant not captured</text>
+<line x1="598" y1="658" x2="1082" y2="658" stroke="#20303D" stroke-width="1"/>
+<text x="598" y="676" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.2" font-weight="700" fill="#D9A85F" text-anchor="start" letter-spacing="1.4" opacity="1">THE OS GIVES IT</text>
+<path d="M602 690 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="696" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">application form + NTN docs</text>
+<path d="M602 708 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="714" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">review pipeline in CRM</text>
+<path d="M602 726 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="732" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">approval → dealer price list</text>
+<path d="M602 744 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="750" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">dealer sees trade prices</text>
+<rect x="1128" y="452" width="520" height="332" rx="12" fill="#111821" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="1146" y="480" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1">FAQ</text>
+<text x="1146" y="498" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">(block on home) · warranty page</text>
+<rect x="1146" y="510" width="484" height="66" rx="6" fill="#0B1118" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="1156" y="520" width="154.88" height="14" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="1156" y="538" width="154.88" height="14" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="1156" y="556" width="154.88" height="14" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="1320.24" y="528" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">what it shows</text>
+<text x="1320.24" y="542" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">6 questions hard-coded in a component</text>
+<text x="1320.24" y="556" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">accordion UI</text>
+<circle cx="1150" cy="588.5" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="592.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">6 questions hard-coded in a component</text>
+<circle cx="1150" cy="603.0" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="606.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">accordion UI</text>
+<circle cx="1150" cy="617.5" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="621.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">no /faq route</text>
+<circle cx="1150" cy="632.0" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="635.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">no schema for search</text>
+<line x1="1146" y1="658" x2="1630" y2="658" stroke="#20303D" stroke-width="1"/>
+<text x="1146" y="676" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.2" font-weight="700" fill="#D9A85F" text-anchor="start" letter-spacing="1.4" opacity="1">THE OS GIVES IT</text>
+<path d="M1150 690 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="696" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">content_entries table already exists</text>
+<path d="M1150 708 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="714" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">CRUD in admin</text>
+<path d="M1150 726 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="732" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">FAQPage JSON-LD</text>
+<path d="M1150 744 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="750" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">place on any page via Puck</text>
+<rect x="32" y="800" width="520" height="332" rx="12" fill="#111821" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="50" y="828" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1">B2B / Markets</text>
+<text x="50" y="846" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">/b2b</text>
+<rect x="50" y="858" width="484" height="66" rx="6" fill="#0B1118" stroke="#20303D" stroke-width="1" opacity="1"/>
+<circle cx="137.44" cy="891.0" r="23.0" fill="none"/>
+<circle cx="137.44" cy="891.0" r="23.0" fill="none" stroke="#20303D" stroke-width="1"/>
+<ellipse cx="137.44" cy="891.0" rx="11.5" ry="23.0" fill="none" stroke="#20303D"/>
+<line x1="114.44" y1="891.0" x2="160.44" y2="891.0" stroke="#20303D" stroke-width="1"/>
+<text x="224.23999999999998" y="876" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">what it shows</text>
+<text x="224.23999999999998" y="890" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Marketing page only</text>
+<text x="224.23999999999998" y="904" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">no markets, no countries</text>
+<circle cx="54" cy="936.5" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="940.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Marketing page only</text>
+<circle cx="54" cy="951.0" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="954.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">no markets, no countries</text>
+<circle cx="54" cy="965.5" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="969.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">“Markets” is a footer link</text>
+<circle cx="54" cy="980.0" r="1.8" fill="#5B6B7A"/>
+<text x="64" y="983.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">no enquiry capture</text>
+<line x1="50" y1="1006" x2="534" y2="1006" stroke="#20303D" stroke-width="1"/>
+<text x="50" y="1024" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.2" font-weight="700" fill="#D9A85F" text-anchor="start" letter-spacing="1.4" opacity="1">THE OS GIVES IT</text>
+<path d="M54 1038 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="1044" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">market records: country, terms</text>
+<path d="M54 1056 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="1062" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">indexable page per market</text>
+<path d="M54 1074 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="1080" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">enquiry → market pipeline</text>
+<path d="M54 1092 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="66" y="1098" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">export quote flow</text>
+<rect x="580" y="800" width="520" height="332" rx="12" fill="#111821" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="598" y="828" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1">Custom Design</text>
+<text x="598" y="846" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">/custom-design</text>
+<rect x="598" y="858" width="484" height="66" rx="6" fill="#0B1118" stroke="#20303D" stroke-width="1" opacity="1"/>
+<circle cx="618" cy="878" r="6" fill="#D9A85F"/>
+<line x1="624" y1="878" x2="642" y2="878" stroke="#20303D" stroke-width="1"/>
+<circle cx="648" cy="878" r="6" fill="#2A3742"/>
+<line x1="654" y1="878" x2="672" y2="878" stroke="#20303D" stroke-width="1"/>
+<circle cx="678" cy="878" r="6" fill="#2A3742"/>
+<line x1="684" y1="878" x2="702" y2="878" stroke="#20303D" stroke-width="1"/>
+<circle cx="708" cy="878" r="6" fill="#2A3742"/>
+<rect x="608" y="898" width="114.88" height="11" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="608" y="914" width="114.88" height="11" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="772.24" y="876" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">what it shows</text>
+<text x="772.24" y="890" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">4-step brief: space, style, size</text>
+<text x="772.24" y="904" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">budget band + reference uploads</text>
+<circle cx="602" cy="936.5" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="940.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">4-step brief: space, style, size</text>
+<circle cx="602" cy="951.0" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="954.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">budget band + reference uploads</text>
+<circle cx="602" cy="965.5" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="969.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">378 lines of real intent</text>
+<circle cx="602" cy="980.0" r="1.8" fill="#5B6B7A"/>
+<text x="612" y="983.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">submit → toast, discarded</text>
+<line x1="598" y1="1006" x2="1082" y2="1006" stroke="#20303D" stroke-width="1"/>
+<text x="598" y="1024" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.2" font-weight="700" fill="#D9A85F" text-anchor="start" letter-spacing="1.4" opacity="1">THE OS GIVES IT</text>
+<path d="M602 1038 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="1044" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">brief becomes a Project</text>
+<path d="M602 1056 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="1062" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">draft quote generated</text>
+<path d="M602 1074 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="1080" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">designer triage queue</text>
+<path d="M602 1092 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="614" y="1098" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">photos attached to the job</text>
+<rect x="1128" y="800" width="520" height="332" rx="12" fill="#111821" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="1146" y="828" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1">E-Quotation</text>
+<text x="1146" y="846" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">/quotation</text>
+<rect x="1146" y="858" width="484" height="66" rx="6" fill="#0B1118" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="1156" y="882" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="1" font-weight="400" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1"></text>
+<rect x="1156" y="868" width="130.88" height="12" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="1156" y="898" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="1" font-weight="400" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1"></text>
+<rect x="1156" y="885" width="130.88" height="12" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="1156" y="914" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="1" font-weight="400" fill="#E9EFF5" text-anchor="start" letter-spacing="0" opacity="1"></text>
+<rect x="1156" y="902" width="130.88" height="12" rx="3" fill="#182430" stroke="#20303D" stroke-width="1" opacity="1"/>
+<rect x="1240.88" y="868" width="60" height="26" rx="4" fill="#1E3326" stroke="#4FD18B" stroke-width="1" opacity="1"/>
+<text x="1270.88" y="885" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.5" font-weight="700" fill="#4FD18B" text-anchor="middle" letter-spacing="0" opacity="1">PDF</text>
+<text x="1320.24" y="876" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">what it shows</text>
+<text x="1320.24" y="890" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Quote basket in React state</text>
+<text x="1320.24" y="904" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="7.6" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">client details form</text>
+<circle cx="1150" cy="936.5" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="940.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">Quote basket in React state</text>
+<circle cx="1150" cy="951.0" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="954.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">client details form</text>
+<circle cx="1150" cy="965.5" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="969.0" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">“Open email” / “Open WhatsApp”</text>
+<circle cx="1150" cy="980.0" r="1.8" fill="#5B6B7A"/>
+<text x="1160" y="983.5" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.9" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">no number, no record, no follow-up</text>
+<line x1="1146" y1="1006" x2="1630" y2="1006" stroke="#20303D" stroke-width="1"/>
+<text x="1146" y="1024" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="8.2" font-weight="700" fill="#D9A85F" text-anchor="start" letter-spacing="1.4" opacity="1">THE OS GIVES IT</text>
+<path d="M1150 1038 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="1044" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">numbered PDF quotation</text>
+<path d="M1150 1056 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="1062" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">signed share link /q/{token}</text>
+<path d="M1150 1074 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="1080" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">accept online</text>
+<path d="M1150 1092 l5 3 l-5 3 z" fill="#D9A85F"/>
+<text x="1162" y="1098" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="9.2" font-weight="400" fill="#D8C3A0" text-anchor="start" letter-spacing="0" opacity="1">convert to order in one click</text>
+<rect x="32" y="1160" width="1616" height="96" rx="14" fill="#111821" stroke="#20303D" stroke-width="1" opacity="1"/>
+<text x="52" y="1190" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="11" font-weight="700" fill="#D9A85F" text-anchor="start" letter-spacing="1.6" opacity="1">COUNTED, NOT GUESSED</text>
+<text x="52" y="1212" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#8A9BAA" text-anchor="start" letter-spacing="0" opacity="1">1,913 lines across those seven pages · 0 fetch() calls · 0 server-side submits · 0 records created</text>
+<text x="52" y="1232" font-family="Inter, 'Segoe UI', system-ui, Arial, sans-serif" font-size="10" font-weight="400" fill="#5B6B7A" text-anchor="start" letter-spacing="0" opacity="1">The designs exist. The backend behind them does not. That is the entire upgrade.</text>
+</svg>
