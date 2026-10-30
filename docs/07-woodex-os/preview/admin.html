@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WOODEX OS · Commerce admin (static preview)</title>
+<style>
+  :root {
+    --navy: #0e1b2a; --navy-700: #16283d; --wood: #b08968; --wood-soft: #f1ebe4;
+    --ink: #1f2937; --muted: #6b7280; --line: #e5e7eb; --bg: #f7f6f4; --card: #ffffff;
+    --success: #0f766e; --success-bg: #d1fae5; --warning: #b45309; --warning-bg: #fef3c7;
+    --error: #b91c1c; --error-bg: #fee2e2; --info: #1d4ed8; --info-bg: #dbeafe;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .muted { color: var(--muted); }
+  .right { text-align: right; font-variant-numeric: tabular-nums; }
+  .warn { color: var(--warning); font-weight: 600; }
+
+  .preview { background: var(--wood-soft); border-bottom: 1px solid #e3d8cb; padding: 8px 20px;
+    font-size: 12px; color: #6b4a2f; }
+  .preview strong { color: #4a3520; }
+
+  .shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+  aside { background: var(--navy); color: #cbd5e1; padding: 18px 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 16px; }
+  .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--wood);
+    display: grid; place-items: center; font-weight: 800; color: #1b1206; }
+  .brand b { color: #fff; font-size: 14px; letter-spacing: .02em; }
+  .brand span { display: block; font-size: 11px; color: #94a3b8; }
+  .group { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #7c8ba1;
+    padding: 14px 10px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px;
+    color: #cbd5e1; text-decoration: none; font-size: 13px; }
+  .nav-item svg { width: 16px; height: 16px; opacity: .8; }
+  .nav-item:hover { background: var(--navy-700); color: #fff; }
+  .nav-item.active { background: var(--wood); color: #1b1206; font-weight: 600; }
+  .nav-muted { opacity: .62; }
+
+  main { padding: 22px 26px 60px; max-width: 1240px; }
+  .page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+  h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+  .page-head p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .crumbs { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+
+  .grid { display: grid; gap: 14px; }
+  .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .grid-2 { grid-template-columns: 1.6fr 1fr; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .stat-label { margin: 0; font-size: 12px; color: var(--muted); }
+  .stat-value { margin: 6px 0 2px; font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+  .stat-value.warning { color: var(--warning); } .stat-value.error { color: var(--error); }
+  .stat-value.success { color: var(--success); }
+  .stat-hint { margin: 0; font-size: 12px; color: var(--muted); }
+
+  .card h2 { margin: 0 0 2px; font-size: 15px; }
+  .card .sub { margin: 0 0 12px; font-size: 12px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; padding: 0 10px 8px; border-bottom: 1px solid var(--line); }
+  th.right { text-align: right; }
+  td { padding: 10px; border-bottom: 1px solid #f1f2f4; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: #fcfbfa; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge-success { background: var(--success-bg); color: var(--success); }
+  .badge-warning { background: var(--warning-bg); color: var(--warning); }
+  .badge-error { background: var(--error-bg); color: var(--error); }
+  .badge-info { background: var(--info-bg); color: var(--info); }
+  .badge-neutral { background: #eef0f3; color: #475569; }
+
+  .toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .field { height: 38px; border: 1px solid var(--line); background: #fff; border-radius: 8px;
+    padding: 0 12px; font-size: 13px; color: var(--ink); min-width: 180px; }
+  .field.grow { flex: 1; }
+
+  .screen { display: none; }
+  .screen.on { display: block; }
+  .soon-card { background: #fff; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 28px; max-width: 640px; }
+  .soon-card h2 { margin: 0 0 6px; }
+  .soon-card ul { margin: 12px 0 0; padding-left: 18px; color: var(--muted); }
+  .matrix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .matrix div { background: #faf9f7; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .matrix b { display: block; font-size: 18px; }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    aside { display: flex; overflow-x: auto; gap: 4px; padding: 10px; }
+    .group, .brand span { display: none; }
+    .grid-4, .grid-2, .matrix { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="preview">
+  <strong>Static preview of the WOODEX OS admin.</strong>
+  Rendered from the seeded catalogue with the platform's own money rules — not connected to a
+  database. The live admin is Livewire + MySQL behind the OS login.
+</div>
+
+<div class="shell">
+  <aside>
+    <div class="brand">
+      <div class="mark">W</div>
+      <div><b>WOODEX OS</b><span>Reimagined · v1</span></div>
+    </div>
+
+    <div class="group">Commerce</div>
+    <a href="#dashboard" data-go="dashboard" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m5 10V5m5 14v-7m5 7V8"/></svg><span>Dashboard</span></a>
+<a href="#products" data-go="products" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v11H4zM4 5h16v3H4zM10 12h4"/></svg><span>Products</span></a>
+<a href="#soon" data-go="soon" class="nav-item nav-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 4-8 4-8-4 8-4zm8 8l-8 4-8-4"/></svg><span>Attributes</span></a>
+<a href="#soon" data-go="soon" class="nav-item nav-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4zM4 10h16M9 10v9"/></svg><span>Categories</span></a>
+<a href="#inventory" data-go="inventory" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h6l2 3h8v9H4z"/></svg><span>Inventory</span></a>
+<a href="#orders" data-go="orders" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span>Orders</span></a>
+<a href="#soon" data-go="soon" class="nav-item nav-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l3 3v15H7zM14 3v4h4"/></svg><span>Invoices</span></a>
+<a href="#soon" data-go="soon" class="nav-item nav-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v11H4zM4 8l3-4h10l3 4M15 13h3"/></svg><span>Payments</span></a>
+<a href="#soon" data-go="soon" class="nav-item nav-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 10-3 6M20 6v6h-6"/></svg><span>Refunds &amp; returns</span></a>
+<a href="#soon" data-go="soon" class="nav-item nav-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l12-6v14L4 13zM4 11v2a2 2 0 002 2h1"/></svg><span>Promotions</span></a>
+<a href="#soon" data-go="soon" class="nav-item nav-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c3 3 3 15 0 18"/></svg><span>Shipping &amp; tax</span></a>
+<a href="#soon" data-go="soon" class="nav-item nav-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11a3 3 0 100-6 3 3 0 000 6zM2 20a6 6 0 0112 0M17 8a3 3 0 100 6M15 20a6 6 0 016-6"/></svg><span>Customers</span></a>
+<a href="#soon" data-go="soon" class="nav-item nav-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Reports</span></a>
+<a href="#soon" data-go="soon" class="nav-item nav-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 100 6 3 3 0 000-6zM4 12l-1 1 2 4 2-1 2 2 1 2h4l1-2 2-2 2 1 2-4-1-1 1-1-2-4-2 1-2-2-1-2h-4l-1 2-2 2-2-1-2 4z"/></svg><span>Settings</span></a>
+
+    <div class="group">Website</div>
+    <a href="#soon" data-go="soon" class="nav-item nav-muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4zM4 10h16M9 10v9"/></svg><span>Pages · Puck</span></a>
+    <a href="#soon" data-go="soon" class="nav-item nav-muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m5 10V5m5 14v-7m5 7V8"/></svg><span>Seo</span></a>
+
+    <div class="group">Settings</div>
+    <a href="#soon" data-go="soon" class="nav-item nav-muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11a3 3 0 100-6 3 3 0 000 6zM2 20a6 6 0 0112 0M17 8a3 3 0 100 6M15 20a6 6 0 016-6"/></svg><span>Access</span></a>
+    <a href="#soon" data-go="soon" class="nav-item nav-muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 100 6 3 3 0 000-6zM4 12l-1 1 2 4 2-1 2 2 1 2h4l1-2 2-2 2 1 2-4-1-1 1-1-2-4-2 1-2-2-1-2h-4l-1 2-2 2-2-1-2 4z"/></svg><span>System</span></a>
+  </aside>
+
+  <main>
+    <!-- ── Dashboard ──────────────────────────────────────────────────────── -->
+    <section class="screen on" id="dashboard">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce</div>
+          <h1>Commerce</h1>
+          <p>Catalog, orders and money. The figures below are live in the real admin; here they
+             are computed from the same seeded catalogue.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        <div class="card stat"><p class="stat-label">Published products</p><p class="stat-value ">20</p><p class="stat-hint">4 in drafts</p></div>
+        <div class="card stat"><p class="stat-label">Sellable variants</p><p class="stat-value ">24</p><p class="stat-hint">across all warehouses</p></div>
+        <div class="card stat"><p class="stat-label">Categories</p><p class="stat-value ">4</p><p class="stat-hint">active in the storefront</p></div>
+        <div class="card stat"><p class="stat-label">Low stock</p><p class="stat-value warning">6</p><p class="stat-hint">at or below threshold</p></div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:14px">
+        <div class="card">
+          <h2>Low stock</h2>
+          <p class="sub">At or below the threshold for their warehouse.</p>
+          <table>
+            <thead><tr><th>Product</th><th>SKU</th><th>Warehouse</th><th class="right">Available</th><th class="right">Threshold</th></tr></thead>
+            <tbody><tr>
+      <td>BALLMER Executive Desk</td>
+      <td class="muted mono">WX-1001</td>
+      <td class="muted">Lahore · Gulberg</td>
+      <td class="right">1</td>
+      <td class="right muted">3</td>
+    </tr>
+<tr>
+      <td>DYNASTY Executive Desk Set</td>
+      <td class="muted mono">WX-1002</td>
+      <td class="muted">Online</td>
+      <td class="right">0</td>
+      <td class="right muted">3</td>
+    </tr>
+<tr>
+      <td>DRIVE Manager Desk</td>
+      <td class="muted mono">WX-1005</td>
+      <td class="muted">Karachi · SITE</td>
+      <td class="right">0</td>
+      <td class="right muted">3</td>
+    </tr>
+<tr>
+      <td>Mamba High Back Chair</td>
+      <td class="muted mono">WX-1009</td>
+      <td class="muted">Online</td>
+      <td class="right">0</td>
+      <td class="right muted">3</td>
+    </tr>
+<tr>
+      <td>LINK-2 Face-to-Face Workstation</td>
+      <td class="muted mono">WX-1012</td>
+      <td class="muted">Online</td>
+      <td class="right">0</td>
+      <td class="right muted">3</td>
+    </tr>
+<tr>
+      <td>Royal King Bed Set</td>
+      <td class="muted mono">WX-1016</td>
+      <td class="muted">Lahore · Gulberg</td>
+      <td class="right">0</td>
+      <td class="right muted">3</td>
+    </tr></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h2>At a glance</h2>
+          <p class="sub">Stock value is on-hand units at cost, not listed price.</p>
+          <div class="matrix">
+            <div><b>167</b><span class="muted">units on hand</span></div>
+            <div><b>28</b><span class="muted">held by carts</span></div>
+            <div><b>PKR 12,749,000.00</b><span class="muted">stock value</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>Recent orders</h2>
+        <p class="sub">Money in paisa, copied from the cart when the order was placed — never recalculated from today's prices.</p>
+        <table>
+          <thead><tr><th>Order</th><th>Placed</th><th>Customer</th><th>Items</th><th class="right">Total</th><th>Payment</th><th>Status</th></tr></thead>
+          <tbody><tr>
+      <td class="mono">WDX-000042</td>
+      <td class="muted">2026-10-31</td>
+      <td><strong>Muhammad Ali</strong><div class="muted">Lahore</div></td>
+      <td class="muted">1 items</td>
+      <td class="right mono">PKR 63,860.00</td>
+      <td><span class="badge badge-warning">Awaiting COD</span></td>
+      <td><span class="badge badge-info">Placed</span></td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000041</td>
+      <td class="muted">2026-10-30</td>
+      <td><strong>Ayesha Khan</strong><div class="muted">Karachi</div></td>
+      <td class="muted">3 items</td>
+      <td class="right mono">PKR 116,960.00</td>
+      <td><span class="badge badge-success">Paid</span></td>
+      <td><span class="badge badge-success">Confirmed</span></td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000040</td>
+      <td class="muted">2026-10-28</td>
+      <td><strong>Sana Traders</strong><div class="muted">Islamabad</div></td>
+      <td class="muted">4 items</td>
+      <td class="right mono">PKR 96,900.00</td>
+      <td><span class="badge badge-warning">Awaiting COD</span></td>
+      <td><span class="badge badge-neutral">Packed</span></td>
+    </tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Products ───────────────────────────────────────────────────────── -->
+    <section class="screen" id="products">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Products</div>
+          <h1>Products</h1>
+          <p>Price and stock are edited in the row, so staff do not keep a spreadsheet on the side.</p>
+        </div>
+      </div>
+      <div class="toolbar">
+        <input class="field grow" placeholder="Search products…" aria-label="Search products">
+        <select class="field" aria-label="Category"><option>Any category</option>
+          <option>Office Tables</option><option>Chairs</option><option>Workstations</option><option>Home Furniture</option>
+        </select>
+        <select class="field" aria-label="Status"><option>Published</option><option>Drafts</option></select>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Product</th><th>Category</th><th>Series</th><th class="right">Price</th><th>Status</th><th>Stock</th></tr></thead>
+          <tbody><tr>
+      <td><strong>BALLMER Executive Desk</strong><div class="muted mono">WX-1001</div></td>
+      <td>Office Tables</td>
+      <td>ek-series</td>
+      <td class="right mono">PKR 52,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-warning">Running low</span></td>
+    </tr>
+<tr>
+      <td><strong>DYNASTY Executive Desk Set</strong><div class="muted mono">WX-1002</div></td>
+      <td>Office Tables</td>
+      <td>infinity-series</td>
+      <td class="right mono">PKR 210,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-error">Out of stock</span></td>
+    </tr>
+<tr>
+      <td><strong>THRONE Executive Desk</strong><div class="muted mono">WX-1003</div></td>
+      <td>Office Tables</td>
+      <td>infinity-series</td>
+      <td class="right mono">PKR 235,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>STRIDE Manager Desk</strong><div class="muted mono">WX-1004</div></td>
+      <td>Office Tables</td>
+      <td>ek-series</td>
+      <td class="right mono">PKR 35,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>DRIVE Manager Desk</strong><div class="muted mono">WX-1005</div></td>
+      <td>Office Tables</td>
+      <td>ek-series</td>
+      <td class="right mono">PKR 28,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-error">Out of stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Freedom High Back Chair</strong><div class="muted mono">WX-1006</div></td>
+      <td>Chairs</td>
+      <td>woodex-series</td>
+      <td class="right mono">PKR 19,500.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Swift High Back Chair</strong><div class="muted mono">WX-1007</div></td>
+      <td>Chairs</td>
+      <td>woodex-series</td>
+      <td class="right mono">PKR 19,500.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>CATALYST Ergonomic Pro Chair</strong><div class="muted mono">WX-1008</div></td>
+      <td>Chairs</td>
+      <td>woodex-series</td>
+      <td class="right mono">PKR 38,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Mamba High Back Chair</strong><div class="muted mono">WX-1009</div></td>
+      <td>Chairs</td>
+      <td>woodex-series</td>
+      <td class="right mono">PKR 18,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-error">Out of stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Torino High Back Chair</strong><div class="muted mono">WX-1010</div></td>
+      <td>Chairs</td>
+      <td>woodex-series</td>
+      <td class="right mono">PKR 20,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>LINK-1 Single Workstation</strong><div class="muted mono">WX-1011</div></td>
+      <td>Workstations</td>
+      <td>ek-series</td>
+      <td class="right mono">PKR 18,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>LINK-2 Face-to-Face Workstation</strong><div class="muted mono">WX-1012</div></td>
+      <td>Workstations</td>
+      <td>ek-series</td>
+      <td class="right mono">PKR 32,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-error">Out of stock</span></td>
+    </tr>
+<tr>
+      <td><strong>LINK-4 Cluster Workstation</strong><div class="muted mono">WX-1013</div></td>
+      <td>Workstations</td>
+      <td>ek-series</td>
+      <td class="right mono">PKR 58,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>CUBICLE-2 Aluminum Workstation</strong><div class="muted mono">WX-1014</div></td>
+      <td>Workstations</td>
+      <td>cubicle-series</td>
+      <td class="right mono">PKR 28,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>CUBICLE-4 Aluminum Workstation</strong><div class="muted mono">WX-1015</div></td>
+      <td>Workstations</td>
+      <td>cubicle-series</td>
+      <td class="right mono">PKR 55,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Royal King Bed Set</strong><div class="muted mono">WX-1016</div></td>
+      <td>Home Furniture</td>
+      <td>woodex-series</td>
+      <td class="right mono">PKR 285,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-error">Out of stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Glamour Dressing Table with Mirror</strong><div class="muted mono">WX-1017</div></td>
+      <td>Home Furniture</td>
+      <td>woodex-series</td>
+      <td class="right mono">PKR 65,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Comfort L-Shape Home Sofa</strong><div class="muted mono">WX-1018</div></td>
+      <td>Home Furniture</td>
+      <td>woodex-series</td>
+      <td class="right mono">PKR 195,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>TITAN Executive Desk</strong><div class="muted mono">WX-1019</div></td>
+      <td>Office Tables</td>
+      <td>infinity-series</td>
+      <td class="right mono">PKR 155,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>APEX Executive Desk</strong><div class="muted mono">WX-1020</div></td>
+      <td>Office Tables</td>
+      <td>infinity-series</td>
+      <td class="right mono">PKR 138,000.00</td>
+      <td><span class="badge badge-ok">Published</span></td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Orders ─────────────────────────────────────────────────────────── -->
+    <section class="screen" id="orders">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Orders</div>
+          <h1>Orders</h1>
+          <p>Read-only list. Every action that changes an order lives on the order itself, where the
+             totals, the address and the history are visible at the same time.</p>
+        </div>
+      </div>
+      <div class="toolbar">
+        <input class="field grow" placeholder="Order number, customer or SKU…" aria-label="Search orders">
+        <select class="field" aria-label="Status"><option>Any status</option><option>Placed</option><option>Confirmed</option><option>Packed</option><option>Shipped</option><option>Delivered</option></select>
+        <select class="field" aria-label="Payment"><option>Any payment</option><option>Awaiting payment</option><option>Paid</option><option>Refunded</option></select>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Order</th><th>Placed</th><th>Customer</th><th>Items</th><th class="right">Total</th><th>Payment</th><th>Status</th></tr></thead>
+          <tbody><tr>
+      <td class="mono">WDX-000042</td>
+      <td class="muted">2026-10-31</td>
+      <td><strong>Muhammad Ali</strong><div class="muted">Lahore</div></td>
+      <td class="muted">1 items</td>
+      <td class="right mono">PKR 63,860.00</td>
+      <td><span class="badge badge-warning">Awaiting COD</span></td>
+      <td><span class="badge badge-info">Placed</span></td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000041</td>
+      <td class="muted">2026-10-30</td>
+      <td><strong>Ayesha Khan</strong><div class="muted">Karachi</div></td>
+      <td class="muted">3 items</td>
+      <td class="right mono">PKR 116,960.00</td>
+      <td><span class="badge badge-success">Paid</span></td>
+      <td><span class="badge badge-success">Confirmed</span></td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000040</td>
+      <td class="muted">2026-10-28</td>
+      <td><strong>Sana Traders</strong><div class="muted">Islamabad</div></td>
+      <td class="muted">4 items</td>
+      <td class="right mono">PKR 96,900.00</td>
+      <td><span class="badge badge-warning">Awaiting COD</span></td>
+      <td><span class="badge badge-neutral">Packed</span></td>
+    </tr></tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h2>WDX-000042 · breakdown</h2>
+        <p class="sub">Cash on delivery · Lahore · placed today</p>
+        <table>
+          <tbody>
+            <tr><td>BALLMER Executive Desk<div class="muted mono">WX-1001</div></td><td class="right">× 1</td><td class="right mono">PKR 52,000.00</td></tr>
+            <tr><td class="muted">Subtotal</td><td></td><td class="right mono">PKR 52,000.00</td></tr>
+            <tr><td class="muted">Sales tax (18%)</td><td></td><td class="right mono">PKR 9,360.00</td></tr>
+            <tr><td class="muted">Delivery</td><td></td><td class="right mono">PKR 2,500.00</td></tr>
+            <tr><td><strong>Total</strong></td><td></td><td class="right mono"><strong>PKR 63,860.00</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Inventory ──────────────────────────────────────────────────────── -->
+    <section class="screen" id="inventory">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Inventory</div>
+          <h1>Inventory</h1>
+          <p>Availability is on hand minus held. A hold is a promise to a cart, and a promise that
+             never expires is stock nobody can sell.</p>
+        </div>
+        <span class="badge badge-warning">1 expired hold to release</span>
+      </div>
+
+      <div class="grid grid-4">
+        <div class="card stat"><p class="stat-label">Units on hand</p><p class="stat-value ">167</p><p class="stat-hint">across all warehouses</p></div>
+        <div class="card stat"><p class="stat-label">Held by carts</p><p class="stat-value ">28</p><p class="stat-hint">not sellable until released</p></div>
+        <div class="card stat"><p class="stat-label">Running low</p><p class="stat-value warning">1</p><p class="stat-hint">at or below threshold</p></div>
+        <div class="card stat"><p class="stat-label">Out of stock</p><p class="stat-value error">5</p><p class="stat-hint">cannot be bought right now</p></div>
+      </div>
+
+      <div class="toolbar" style="margin-top:14px">
+        <input class="field grow" placeholder="SKU or product name…" aria-label="Search stock">
+        <select class="field" aria-label="Warehouse"><option>Any warehouse</option><option>Lahore · Gulberg</option><option>Karachi · SITE</option><option>Online</option></select>
+        <select class="field" aria-label="Stock level"><option>Everything</option><option>Running low</option><option>Out of stock</option></select>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>Product</th><th>Warehouse</th><th class="right">On hand</th><th class="right">Held</th><th class="right">Available</th><th class="right">Threshold</th><th>Status</th></tr></thead>
+          <tbody><tr>
+      <td><strong>DYNASTY Executive Desk Set</strong><div class="muted mono">WX-1002</div></td>
+      <td class="muted">Online</td>
+      <td class="right">0</td>
+      <td class="right muted">0</td>
+      <td class="right"><strong>0</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-error">Out of stock</span></td>
+    </tr>
+<tr>
+      <td><strong>DRIVE Manager Desk</strong><div class="muted mono">WX-1005</div></td>
+      <td class="muted">Karachi · SITE</td>
+      <td class="right">3</td>
+      <td class="right warn">3</td>
+      <td class="right"><strong>0</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-error">Out of stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Mamba High Back Chair</strong><div class="muted mono">WX-1009</div></td>
+      <td class="muted">Online</td>
+      <td class="right">2</td>
+      <td class="right warn">2</td>
+      <td class="right"><strong>0</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-error">Out of stock</span></td>
+    </tr>
+<tr>
+      <td><strong>LINK-2 Face-to-Face Workstation</strong><div class="muted mono">WX-1012</div></td>
+      <td class="muted">Online</td>
+      <td class="right">3</td>
+      <td class="right warn">3</td>
+      <td class="right"><strong>0</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-error">Out of stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Royal King Bed Set</strong><div class="muted mono">WX-1016</div></td>
+      <td class="muted">Lahore · Gulberg</td>
+      <td class="right">2</td>
+      <td class="right warn">2</td>
+      <td class="right"><strong>0</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-error">Out of stock</span></td>
+    </tr>
+<tr>
+      <td><strong>BALLMER Executive Desk</strong><div class="muted mono">WX-1001</div></td>
+      <td class="muted">Lahore · Gulberg</td>
+      <td class="right">4</td>
+      <td class="right warn">3</td>
+      <td class="right"><strong>1</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-warning">Running low</span></td>
+    </tr>
+<tr>
+      <td><strong>CATALYST Ergonomic Pro Chair</strong><div class="muted mono">WX-1008</div></td>
+      <td class="muted">Lahore · Gulberg</td>
+      <td class="right">6</td>
+      <td class="right muted">0</td>
+      <td class="right"><strong>6</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Glamour Dressing Table with Mirror</strong><div class="muted mono">WX-1017</div></td>
+      <td class="muted">Karachi · SITE</td>
+      <td class="right">6</td>
+      <td class="right muted">0</td>
+      <td class="right"><strong>6</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>APEX Executive Desk</strong><div class="muted mono">WX-1020</div></td>
+      <td class="muted">Karachi · SITE</td>
+      <td class="right">8</td>
+      <td class="right warn">2</td>
+      <td class="right"><strong>6</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>STRIDE Manager Desk</strong><div class="muted mono">WX-1004</div></td>
+      <td class="muted">Online</td>
+      <td class="right">7</td>
+      <td class="right muted">0</td>
+      <td class="right"><strong>7</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>LINK-4 Cluster Workstation</strong><div class="muted mono">WX-1013</div></td>
+      <td class="muted">Lahore · Gulberg</td>
+      <td class="right">7</td>
+      <td class="right muted">0</td>
+      <td class="right"><strong>7</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Comfort L-Shape Home Sofa</strong><div class="muted mono">WX-1018</div></td>
+      <td class="muted">Online</td>
+      <td class="right">10</td>
+      <td class="right warn">1</td>
+      <td class="right"><strong>9</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>CUBICLE-2 Aluminum Workstation</strong><div class="muted mono">WX-1014</div></td>
+      <td class="muted">Karachi · SITE</td>
+      <td class="right">11</td>
+      <td class="right warn">1</td>
+      <td class="right"><strong>10</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Swift High Back Chair</strong><div class="muted mono">WX-1007</div></td>
+      <td class="muted">Online</td>
+      <td class="right">12</td>
+      <td class="right warn">1</td>
+      <td class="right"><strong>11</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Torino High Back Chair</strong><div class="muted mono">WX-1010</div></td>
+      <td class="muted">Lahore · Gulberg</td>
+      <td class="right">12</td>
+      <td class="right warn">1</td>
+      <td class="right"><strong>11</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>THRONE Executive Desk</strong><div class="muted mono">WX-1003</div></td>
+      <td class="muted">Karachi · SITE</td>
+      <td class="right">13</td>
+      <td class="right warn">1</td>
+      <td class="right"><strong>12</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>TITAN Executive Desk</strong><div class="muted mono">WX-1019</div></td>
+      <td class="muted">Lahore · Gulberg</td>
+      <td class="right">14</td>
+      <td class="right warn">2</td>
+      <td class="right"><strong>12</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>CUBICLE-4 Aluminum Workstation</strong><div class="muted mono">WX-1015</div></td>
+      <td class="muted">Online</td>
+      <td class="right">15</td>
+      <td class="right warn">2</td>
+      <td class="right"><strong>13</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>Freedom High Back Chair</strong><div class="muted mono">WX-1006</div></td>
+      <td class="muted">Lahore · Gulberg</td>
+      <td class="right">16</td>
+      <td class="right warn">2</td>
+      <td class="right"><strong>14</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr>
+<tr>
+      <td><strong>LINK-1 Single Workstation</strong><div class="muted mono">WX-1011</div></td>
+      <td class="muted">Karachi · SITE</td>
+      <td class="right">16</td>
+      <td class="right warn">2</td>
+      <td class="right"><strong>14</strong></td>
+      <td class="right muted">3</td>
+      <td><span class="badge badge-success">In stock</span></td>
+    </tr></tbody>
+        </table>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>Held right now</h2>
+        <p class="sub">The oldest promise first. When a cart expires its units come back, but only
+          because something releases them.</p>
+        <table>
+          <thead><tr><th>Product</th><th>Warehouse</th><th class="right">Units</th><th>Expires</th><th>Held by</th></tr></thead>
+          <tbody><tr>
+      <td>BALLMER Executive Desk</td>
+      <td class="muted">Lahore · Gulberg</td>
+      <td class="right">3</td>
+      <td class="muted">in 3 hours</td>
+      <td class="mono muted">cart #1841</td>
+    </tr>
+<tr>
+      <td>THRONE Executive Desk</td>
+      <td class="muted">Karachi · SITE</td>
+      <td class="right">1</td>
+      <td class="muted">in 11 hours</td>
+      <td class="mono muted">cart #1839</td>
+    </tr>
+<tr>
+      <td>DRIVE Manager Desk</td>
+      <td class="muted">Karachi · SITE</td>
+      <td class="right">3</td>
+      <td class="warn">expired 2 hours ago</td>
+      <td class="mono muted">order #97</td>
+    </tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Coming soon ────────────────────────────────────────────────────── -->
+    <section class="screen" id="soon">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce</div>
+          <h1>Coming in a later slice</h1>
+          <p>Ten commerce screens are routed, permissioned and in the sidebar. They open onto this
+             page in the real admin too — honest about status rather than empty.</p>
+        </div>
+      </div>
+      <div class="soon-card">
+        <h2>Attributes · Categories · Invoices · Payments · Refunds · Promotions · Shipping &amp; tax · Customers · Reports · Settings</h2>
+        <p class="muted">Already underneath: the catalog tables, the money calculator, checkout
+           services and the media pipeline. What is missing is the screen.</p>
+        <ul>
+          <li>Categories: tree with live product counts, drag to reorder</li>
+          <li>Invoices: list with totals and a print view</li>
+          <li>Payments: verify a bank transfer against an order</li>
+          <li>Reports: sales by day, by category, by series</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  const screens = Array.from(document.querySelectorAll(".screen"));
+  const links = Array.from(document.querySelectorAll("[data-go]"));
+
+  function show(target) {
+    const exists = screens.some((s) => s.id === target);
+    const id = exists ? target : "soon";
+    screens.forEach((s) => s.classList.toggle("on", s.id === id));
+    links.forEach((a) => a.classList.toggle("active", a.dataset.go === target && exists));
+    window.scrollTo(0, 0);
+  }
+
+  links.forEach((link) => link.addEventListener("click", (event) => {
+    event.preventDefault();
+    show(link.dataset.go);
+    history.replaceState(null, "", "#" + link.dataset.go);
+  }));
+
+  if (location.hash) show(location.hash.slice(1));
+</script>
+</body>
+</html>

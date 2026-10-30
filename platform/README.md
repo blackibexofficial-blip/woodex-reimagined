@@ -608,3 +608,53 @@ The preview and any deploy without a database still cannot place an order, becau
 PHP behind them. The page says so, keeps the basket, and offers the phone number. A checkout
 that claims success into a local variable is worse than one that admits it could not reach the
 order system.
+
+## T15 — the inventory screen (this branch)
+
+Inventory was a placeholder that described what it would do. It now reads
+`commerce_inventory_items` and `commerce_inventory_reservations`.
+
+### Two questions, in order
+
+1. **"Can we still sell this?"** — availability, which is `qty - reserved`, never `qty`. The
+   warehouse count is not the sellable count, and every filter, badge and dashboard tile on
+   the screen is computed from the subtraction.
+2. **"Who is holding it, and until when?"** — the ten oldest live holds, with their deadline
+   and whether they are a cart or an order. That is the answer to "the website said two left".
+
+The screen also shows the expired-hold backlog and releases it on an explicit click. Releasing
+is an `UPDATE` that stamps `released_at` and a reason — never a delete, because "we held it and
+let it go" is the audit trail support needs.
+
+### `StockLevel`
+
+`App\Domain\Commerce\Inventory\StockLevel` is a three-integer value object that decides
+in-stock / low / out. It exists so the admin badge, the dashboard tile and the storefront cannot
+disagree about where "low" starts, and because it is testable without a database:
+
+- the threshold is **inclusive** (`available <= threshold` is low, `available == 0` is out)
+- availability is clamped at zero, so a missed release shows as an empty shelf and an
+  `oversold` flag, not a negative number nobody can act on
+- a negative count or hold is corruption and is named as such
+
+### Why stock adjustment is still missing
+
+Deliberately. An adjustment needs a reason and a movement row, or the count drifts with no
+explanation. That lands with the movement ledger; this screen ships the part that is safe today.
+
+### Result
+
+**`231/231 checks · 15,460 assertions`** — `tests/Inventory/` adds 13 checks: the boundary
+cases of the stock rule, and the wiring that keeps availability out of `qty`.
+
+## The admin preview
+
+`node platform/tools/make-admin-preview.mjs` renders
+`docs/07-woodex-os/preview/admin.html` — one self-contained file showing Dashboard, Products,
+Orders and Inventory with the seeded catalogue, the platform's own tax and delivery rules, and
+the same words the Livewire screens use.
+
+It exists because the real admin needs PHP, Composer and MySQL, and none of those exist in a
+build sandbox or a design review. It is a preview and the page says so at the top; the live
+admin is still Livewire behind the OS login. Click the ten greyed-out screens and you get the
+same "coming in a later slice" card the real admin shows.
