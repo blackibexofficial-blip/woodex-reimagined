@@ -55,7 +55,9 @@ const products = seed.products.map((product, index) => {
     slug: product.slug,
     name: product.name,
     category: categories[product.category] ?? product.category,
+    categoryKey: product.category,
     categorySlug: categorySlug[product.category] ?? product.category,
+    subcategory: product.subcategory ?? null,
     series: product.series,
     priceMinor: product.price * 100,
     compareMinor: product.compare_at ? product.compare_at * 100 : null,
@@ -85,6 +87,44 @@ const totals = {
   out: products.filter((row) => status(row) === "out").length,
   valueMinor: products.reduce((sum, row) => sum + row.qty * row.priceMinor, 0),
 };
+
+/**
+ * The category tree, with the same counts the admin screen shows.
+ *
+ * Direct counts first (a product is filed at its leaf), then rolled up — a root whose stock
+ * lives entirely in its children must not read as empty.
+ */
+const headline = (slug) => slug.split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+
+const directCount = (slug) =>
+  products.filter((row) => row.subcategory === slug || (row.categoryKey === slug && !row.subcategory)).length;
+
+function buildNode(entry, rootKey) {
+  const slug = typeof entry === "string" ? entry : entry.slug;
+  const children = (typeof entry === "string" ? [] : entry.children ?? []).map((child) => buildNode(child, rootKey));
+
+  return {
+    slug,
+    name: headline(slug),
+    rootKey,
+    children,
+    direct: directCount(slug),
+    rolling: 0,
+  };
+}
+
+const rollUp = (node) => {
+  node.rolling = node.direct + node.children.reduce((sum, child) => sum + rollUp(child), 0);
+  return node.rolling;
+};
+
+const categoryNodes = seed.categories.map((root) => {
+  const node = buildNode({ slug: root.key, children: root.children ?? [] }, root.key);
+  node.name = root.name;
+  node.isRoot = true;
+  rollUp(node);
+  return node;
+});
 
 /** Three orders, built from real products with the platform's money rules. */
 const order = (number, daysAgo, customer, city, lines, gateway) => {
@@ -134,6 +174,31 @@ const holds = products
     holder: ["cart #1841", "cart #1839", "order #97"][i] ?? "cart #1830",
   }));
 
+const countNodes = (nodes) => nodes.reduce((total, node) => total + 1 + countNodes(node.children), 0);
+const depthOf = (nodes) => (nodes.length === 0 ? 0 : 1 + Math.max(...nodes.map((node) => depthOf(node.children))));
+
+const categoryRow = (node, depth = 0) => {
+  const indent = depth === 0 ? "" : ` style="padding-left:${depth * 22}px"`;
+  const badgeList = node.isRoot
+    ? `${badge("success", "Live")}${badge("neutral", "In menu")}`
+    : `${badge("success", "Live")}`;
+
+  const moveButtons = node.isRoot || depth > 0
+    ? `<span class="muted" style="font-size:11px">↑ ↓</span>`
+    : "";
+
+  return `<tr>
+      <td${indent}>${depth > 0 ? '<span class="muted" aria-hidden="true">└ </span>' : ""}<strong>${esc(node.name)}</strong>
+        <div class="muted mono">/${esc(node.slug)}</div></td>
+      <td class="right">${node.rolling}</td>
+      <td>${badgeList}</td>
+      <td class="right">${moveButtons}</td>
+    </tr>`;
+};
+
+const categoryRows = (nodes, depth = 0) =>
+  nodes.map((node) => categoryRow(node, depth) + categoryRows(node.children, depth + 1)).join("\n");
+
 const esc = (text) =>
   String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -143,7 +208,7 @@ const nav = [
   ["Dashboard", "chart", "dashboard", true],
   ["Products", "archive", "products", true],
   ["Attributes", "layers", "soon", false],
-  ["Categories", "layout", "soon", false],
+  ["Categories", "layout", "categories", true],
   ["Inventory", "folder", "inventory", true],
   ["Orders", "invoice", "orders", true],
   ["Invoices", "file", "soon", false],
@@ -193,7 +258,7 @@ const productsRows = products
       <td>${esc(row.category)}</td>
       <td>${esc(row.series ?? "—")}</td>
       <td class="right mono">${rupees(row.priceMinor)}</td>
-      <td>${badge("ok", "Published")}</td>
+      <td>${badge("success", "Published")}</td>
       <td>${badge(statusTone[status(row)], statusLabel[status(row)])}</td>
     </tr>`,
   )
@@ -526,6 +591,43 @@ const html = `<!doctype html>
       </div>
     </section>
 
+    <!-- ── Categories ─────────────────────────────────────────────────────── -->
+    <section class="screen" id="categories">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Categories</div>
+          <h1>Categories</h1>
+          <p>The storefront's navigation and its filters are both built from this tree. Renaming
+             changes the label everywhere; the slug stays, so no link breaks.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        ${stat("Categories", categoryNodes.reduce((n, node) => n + 1 + countNodes(node.children), 0), categoryNodes.length + " at the top level")}
+        ${stat("Tree depth", depthOf(categoryNodes), "three for home furniture")}
+        ${stat("Empty sections", categoryNodes.filter((node) => node.rolling === 0).length, "no published products beneath", categoryNodes.some((n) => n.rolling === 0) ? "warning" : "success")}
+        ${stat("Product filter keys", categoryNodes.reduce((n, node) => n + 1 + countNodes(node.children), 0), "each slug is a /shop?category= value")}
+      </div>
+
+      <div class="toolbar" style="margin-top:14px">
+        <input class="field grow" placeholder="Name or slug…" aria-label="Search categories">
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>Category</th><th class="right">Products</th><th>State</th><th class="right">Order</th></tr></thead>
+          <tbody>${categoryRows(categoryNodes)}</tbody>
+        </table>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>How the counts work</h2>
+        <p class="sub">A product is filed at its leaf — “Executive Tables”, not “Office Tables”. The
+          parent's number is its own products plus everything beneath it, so a section that holds
+          nothing directly still shows what it contains.</p>
+      </div>
+    </section>
+
     <!-- ── Coming soon ────────────────────────────────────────────────────── -->
     <section class="screen" id="soon">
       <div class="page-head">
@@ -537,11 +639,11 @@ const html = `<!doctype html>
         </div>
       </div>
       <div class="soon-card">
-        <h2>Attributes · Categories · Invoices · Payments · Refunds · Promotions · Shipping &amp; tax · Customers · Reports · Settings</h2>
+        <h2>Attributes · Invoices · Payments · Refunds · Promotions · Shipping &amp; tax · Customers · Reports · Settings</h2>
         <p class="muted">Already underneath: the catalog tables, the money calculator, checkout
            services and the media pipeline. What is missing is the screen.</p>
         <ul>
-          <li>Categories: tree with live product counts, drag to reorder</li>
+          <li>Attributes: the option lists a variant is built from</li>
           <li>Invoices: list with totals and a print view</li>
           <li>Payments: verify a bank transfer against an order</li>
           <li>Reports: sales by day, by category, by series</li>

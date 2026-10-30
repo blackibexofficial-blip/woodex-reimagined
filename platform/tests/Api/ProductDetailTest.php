@@ -30,6 +30,7 @@ final class ProductDetailTest extends \Tests\TestCase
             'description' => 'Walnut veneer, integrated cable management.',
             'category' => 'Office Tables',
             'category_slug' => 'office-tables',
+            'category_path' => ['office-tables', 'executive-tables'],
             'series' => 'ek-series',
             'price_minor' => 24500000,
             'compare_at_minor' => 27500000,
@@ -78,6 +79,30 @@ final class ProductDetailTest extends \Tests\TestCase
         Assert::same('ballmer-executive-desk', $json['id'], 'the public id is the slug');
         Assert::same(7, $json['product_id'], 'the database id is kept separately');
         Assert::same('/shop/ballmer-executive-desk', $json['url'], 'the url the SPA routes to');
+    }
+
+    public function testTheCategoryPathIsHowABreadcrumbIsBuilt(): void
+    {
+        $detail = ProductDetail::fromArray($this->row());
+
+        Assert::same(['office-tables', 'executive-tables'], $detail->categoryPath, 'root then leaf');
+        Assert::same('executive-tables', $detail->subcategory, 'the leaf is the subcategory');
+        Assert::same('office-tables', $detail->categorySlug, 'and the root is the category slug');
+    }
+
+    public function testARootLevelProductHasNoSubcategory(): void
+    {
+        $detail = ProductDetail::fromArray($this->row(['category_path' => ['chairs']]));
+
+        Assert::same(['chairs'], $detail->categoryPath, 'one level');
+        Assert::same(null, $detail->subcategory, 'and no leaf below it');
+    }
+
+    public function testAPathWithAnEmptySegmentIsDropped(): void
+    {
+        $detail = ProductDetail::fromArray($this->row(['category_path' => ['office-tables', '', 'executive-tables']]));
+
+        Assert::same(['office-tables', 'executive-tables'], $detail->categoryPath, 'the blank is not a level');
     }
 
     public function testMoneyIsIntegerMinorUnitsAndNeverAFloat(): void

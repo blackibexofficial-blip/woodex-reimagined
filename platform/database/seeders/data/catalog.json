@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "generated_from": "src/data/products.ts (live storefront catalog)",
   "currency": "PKR",
   "categories": [
@@ -8,9 +8,15 @@
       "slug": "office-tables",
       "name": "Office Tables",
       "children": [
-        "executive-tables",
-        "manager-tables",
-        "meeting-tables"
+        {
+          "slug": "executive-tables"
+        },
+        {
+          "slug": "manager-tables"
+        },
+        {
+          "slug": "meeting-tables"
+        }
       ]
     },
     {
@@ -24,7 +30,9 @@
       "slug": "workstations",
       "name": "Workstations",
       "children": [
-        "cubicle-workstations"
+        {
+          "slug": "cubicle-workstations"
+        }
       ]
     },
     {
@@ -32,9 +40,60 @@
       "slug": "home-furniture",
       "name": "Home Furniture",
       "children": [
-        "bedroom",
-        "living",
-        "dining"
+        {
+          "slug": "bedroom",
+          "children": [
+            {
+              "slug": "bed-sets"
+            },
+            {
+              "slug": "bedside-tables"
+            },
+            {
+              "slug": "dressing-tables"
+            },
+            {
+              "slug": "mirrors"
+            },
+            {
+              "slug": "bench-settee"
+            }
+          ]
+        },
+        {
+          "slug": "living",
+          "children": [
+            {
+              "slug": "home-sofa"
+            },
+            {
+              "slug": "center-side-tables"
+            },
+            {
+              "slug": "coffee-tables"
+            },
+            {
+              "slug": "console"
+            },
+            {
+              "slug": "tv-units"
+            }
+          ]
+        },
+        {
+          "slug": "dining",
+          "children": [
+            {
+              "slug": "dining-sets"
+            },
+            {
+              "slug": "dining-chairs"
+            },
+            {
+              "slug": "dining-tables"
+            }
+          ]
+        }
       ]
     }
   ],
@@ -238,7 +297,6 @@
       "sku": "WX-1006",
       "slug": "freedom-high-back-chair",
       "category": "chairs",
-      "subcategory": "chairs",
       "name": "Freedom High Back Chair",
       "summary": "Flagship ergonomic mesh chair with adjustable lumbar and headrest.",
       "description": "Flagship ergonomic mesh chair with adjustable lumbar and headrest.",
@@ -258,7 +316,6 @@
       "sku": "WX-1007",
       "slug": "swift-high-back-chair",
       "category": "chairs",
-      "subcategory": "chairs",
       "name": "Swift High Back Chair",
       "summary": "Butterfly lumbar mesh chair, top-selling ergonomic option.",
       "description": "Butterfly lumbar mesh chair, top-selling ergonomic option.",
@@ -278,7 +335,6 @@
       "sku": "WX-1008",
       "slug": "catalyst-ergonomic-pro-chair",
       "category": "chairs",
-      "subcategory": "chairs",
       "name": "CATALYST Ergonomic Pro Chair",
       "summary": "Full-featured ergonomic chair with every adjustment.",
       "description": "Full-featured ergonomic chair with every adjustment.",
@@ -298,7 +354,6 @@
       "sku": "WX-1009",
       "slug": "mamba-high-back-chair",
       "category": "chairs",
-      "subcategory": "chairs",
       "name": "Mamba High Back Chair",
       "summary": "Split-pad backrest with dual-density foam.",
       "description": "Split-pad backrest with dual-density foam.",
@@ -318,7 +373,6 @@
       "sku": "WX-1010",
       "slug": "torino-high-back-chair",
       "category": "chairs",
-      "subcategory": "chairs",
       "name": "Torino High Back Chair",
       "summary": "Chrome-base executive chair with premium MoltyFoam.",
       "description": "Chrome-base executive chair with premium MoltyFoam.",
@@ -338,7 +392,6 @@
       "sku": "WX-1011",
       "slug": "link-1-single-workstation",
       "category": "workstations",
-      "subcategory": "workstations",
       "name": "LINK-1 Single Workstation",
       "summary": "Single workstation with fabric partition.",
       "description": "Single workstation with fabric partition.",
@@ -358,7 +411,6 @@
       "sku": "WX-1012",
       "slug": "link-2-face-to-face-workstation",
       "category": "workstations",
-      "subcategory": "workstations",
       "name": "LINK-2 Face-to-Face Workstation",
       "summary": "2-person face-to-face workstation.",
       "description": "2-person face-to-face workstation.",
@@ -378,7 +430,6 @@
       "sku": "WX-1013",
       "slug": "link-4-cluster-workstation",
       "category": "workstations",
-      "subcategory": "workstations",
       "name": "LINK-4 Cluster Workstation",
       "summary": "4-person cross-pattern cluster, most popular config.",
       "description": "4-person cross-pattern cluster, most popular config.",

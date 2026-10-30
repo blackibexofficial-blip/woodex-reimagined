@@ -658,3 +658,69 @@ It exists because the real admin needs PHP, Composer and MySQL, and none of thos
 build sandbox or a design review. It is a preview and the page says so at the top; the live
 admin is still Livewire behind the OS login. Click the ten greyed-out screens and you get the
 same "coming in a later slice" card the real admin shows.
+
+## T16 — the category tree, and the bug it found (this branch)
+
+Categories was the third placeholder to become a screen. Building it surfaced a defect that
+had been shipping since T13.
+
+### The screen
+
+`CategoriesIndex` reads every category, orders it through `CategoryTree`, and offers three
+writes:
+
+| Action | What changes | What does not |
+|---|---|---|
+| Rename | the `commerce_category_translations` row for the current locale | **the slug** — it is in every product link, sitemap entry and bookmark |
+| Show / hide | `is_active` (serves) or `show_in_menu` (listed) — two independent switches | the products inside it |
+| Move | every sibling's `position`, rewritten `0..n` | anything else |
+
+Deleting is not offered. A category is the only way some products can be found, and removal
+needs a reassignment step, which is its own flow.
+
+### The defect
+
+The seed gives products a `subcategory` (`executive-tables`), but `CatalogSeeder` attached
+every product to its **root** and silently dropped the subcategory. Consequences on the API
+path, all of them invisible:
+
+- `GET /products?category=executive-tables` returned **nothing** — five desks were unreachable
+  by the filter the sidebar links to.
+- The sidebar's child entries showed 0 products.
+- `GET /categories` reported 0 for every child, and the root looked like it held everything.
+
+### The fix
+
+A product is now filed where it **lives** — the leaf — and the parents derive from it:
+
+- **Seeder** resolves `subcategory` to a real category and files the product there. Children
+  are registered in the seeder's id map and may nest (home furniture is three levels deep).
+- **`CatalogService::slugsInSubtree()`** expands a category to itself plus every descendant,
+  cached five minutes, so `?category=office-tables` still returns its children's products.
+  Without this the fix would have made every parent empty instead.
+- **Tree counts roll up**, so a parent shows its subtree even though it holds nothing directly.
+- **`ProductCard` gains `category_path`** (root → leaf). The storefront adapter sets
+  `category` to the root and `subcategory` to the leaf, so one product answers to both
+  `/shop?category=office-tables` and `/shop?category=executive-tables`.
+
+### Two data problems the new test caught
+
+`testEverySubcategoryIsAChildOfItsCategory` failed immediately, and both failures were real:
+
+1. `bed-sets`, `dressing-tables` and `home-sofa` were named by products but did not exist as
+   categories — the seed declared only `bedroom`, `living`, `dining` under `home`.
+2. Eight products declared `subcategory` **equal to** their `category` (every chair and
+   workstation). After the seeder started filing at the leaf, those would have been filed into
+   their own parent.
+
+Both are fixed in `catalog.json`, and the seeder now treats a self-referential subcategory as
+"no subcategory" because spreadsheets will keep producing them.
+
+### Result
+
+**`259/259 checks · 15,583 assertions`** — `CategoryTreeTest` (13) covers ordering ties,
+orphans, cycles, roll-up and move boundaries; `CategoriesScreenTest` (8) pins the permission
+checks, the untouched slug and the position rewrite.
+
+The admin preview gained a **Categories** screen with the same tree and the same counts,
+three levels deep.

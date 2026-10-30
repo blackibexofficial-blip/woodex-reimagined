@@ -86,7 +86,14 @@ export function toProduct(
   options: AdapterOptions = {},
 ): Product {
   const detail = row as Partial<ApiProductDetail>;
-  const category = row.category_slug ?? row.category ?? "";
+  const path = row.category_path ?? [];
+  // A product is filed at its leaf ("executive-tables") so that filtering by the leaf works;
+  // the storefront's sidebar has entries for both the leaf and its parent, and `filterByCategory`
+  // matches on `category` (the root) or `subcategory` (the leaf). Keeping both here is what
+  // makes one product answer to "Office Tables" and to "Executive Tables".
+  const root = path[0] ?? row.category_slug ?? row.category ?? "";
+  const leaf = path.length > 1 ? path[path.length - 1] : undefined;
+  const category = root;
 
   const images = (detail.images ?? []).filter(Boolean);
   const primary = row.image ?? images[0];
@@ -100,7 +107,7 @@ export function toProduct(
     id: row.slug,
     name: row.name,
     category,
-    subcategory: detail.subcategory ?? undefined,
+    subcategory: leaf,
     series: row.series ?? undefined,
     price: minorToRupees(row.price_minor) ?? 0,
     originalPrice: minorToRupees(row.compare_at_minor),

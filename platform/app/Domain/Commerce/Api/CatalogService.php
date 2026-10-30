@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Commerce\Api;
 
+use App\Domain\Commerce\Catalog\CategoryTree;
 use App\Domain\Commerce\Models\Category;
 use App\Domain\Commerce\Models\Product;
 use App\Domain\Commerce\Media\MediaPath;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Reads the catalog for the storefront.
@@ -98,10 +100,14 @@ final readonly class CatalogService
         return $roots->map(function (Category $category) use ($categories, $counts): array {
             $children = $categories->where('parent_id', $category->id);
 
+            $childCounts = $children->map(static fn (Category $child): int => $counts[$child->id] ?? 0);
+
             return [
                 'slug' => $category->slug,
                 'name' => $category->displayName(),
-                'count' => $counts[$category->id] ?? 0,
+                // The parent's own count plus every child's: a section that says "0 products"
+                // above five full subcategories is read as empty by everyone who sees it.
+                'count' => ($counts[$category->id] ?? 0) + $childCounts->sum(),
                 'children' => $children->map(static fn (Category $child): array => [
                     'slug' => $child->slug,
                     'name' => $child->displayName(),
@@ -126,6 +132,62 @@ final readonly class CatalogService
         return $rows->pluck('aggregate', 'category_id')->map(static fn ($n): int => (int) $n)->all();
     }
 
+    /**
+     * A category slug and every slug beneath it.
+     *
+     * One indexed read of the whole category table, cached for five minutes with the rest of
+     * the read side, turned into a lookup. The obvious alternative — a recursive query per
+     * product — is the one thing thirty shared-hosting workers cannot afford.
+     *
+     * An unknown slug returns just itself: a stale bookmark renders an empty page rather than
+     * a 500, which is the same answer the catalog gives for a category with no stock.
+     *
+     * @return list<string>
+     */
+    public static function slugsInSubtree(string $slug): array
+    {
+        /** @var array<string, list<string>> $map slug => itself and its descendants */
+        $map = Cache::remember('commerce:category-subtrees:v1', 300, static function (): array {
+            $rows = Category::query()
+                ->orderBy('position')
+                ->orderBy('id')
+                ->get(['id', 'parent_id', 'position', 'slug'])
+                ->map(static fn (Category $category): array => [
+                    'id' => (int) $category->id,
+                    'parent_id' => $category->parent_id !== null ? (int) $category->parent_id : null,
+                    'position' => (int) $category->position,
+                    'slug' => (string) $category->slug,
+                    'name' => (string) $category->slug,
+                    'is_active' => true,
+                    'show_in_menu' => true,
+                    'product_count' => 0,
+                ])
+                ->all();
+
+            $tree = CategoryTree::fromRows($rows);
+            $slugById = [];
+
+            foreach ($rows as $row) {
+                $slugById[$row['id']] = $row['slug'];
+            }
+
+            $map = [];
+
+            foreach ($slugById as $id => $categorySlug) {
+                $map[$categorySlug] = array_values(array_filter(array_map(
+                    static fn (int $categoryId): ?string => $slugById[$categoryId] ?? null,
+                    $tree->subtreeIds($id),
+                )));
+            }
+
+            return $map;
+        });
+
+        $found = $map[$slug] ?? null;
+
+        return $found !== null && $found !== [] ? $found : [$slug];
+    }
+
     /** @return Builder<Product> */
     private function baseQuery(CatalogQuery $query): Builder
     {
@@ -134,6 +196,7 @@ final readonly class CatalogService
             ->with([
                 'translation',
                 'primaryCategory.translation',
+                'primaryCategory.parent',
                 'media',
                 'variants.inventory',
                 'variants.options',
@@ -150,7 +213,18 @@ final readonly class CatalogService
                 });
             })
             ->when($query->category !== null, function (Builder $builder) use ($query): void {
-                $builder->whereHas('categories', static fn (Builder $c) => $c->where('slug', $query->category));
+                /*
+                 * A parent means its whole subtree.
+                 *
+                 * Products are filed at their leaf ("executive-tables"), so matching the slug
+                 * exactly would make "Office Tables" return nothing while its children hold
+                 * every desk in the catalogue. The expansion is a cached slug lookup, not a
+                 * recursive query per product.
+                 */
+                $builder->whereHas('categories', static fn (Builder $c) => $c->whereIn(
+                    'slug',
+                    self::slugsInSubtree((string) $query->category),
+                ));
             })
             ->when($query->minPriceMinor !== null, fn (Builder $b) => $b->where('price_minor', '>=', $query->minPriceMinor))
             ->when($query->maxPriceMinor !== null, fn (Builder $b) => $b->where('price_minor', '<=', $query->maxPriceMinor))

@@ -122,14 +122,14 @@ final class AdminWiringTest
         }
 
         // The remaining placeholder screens all render one shared view. Orders left this list
-        // in T11 and Inventory in T15: both now read real tables.
+        // in T11, Inventory in T15 and Categories in T16: all three read real tables now.
         Assert::true(
             is_file($this->root().'/resources/views/livewire/admin/commerce/coming-soon.blade.php'),
             'placeholder screens render the shared coming-soon view',
         );
 
         foreach ([
-            'AttributesIndex', 'CategoriesIndex', 'InvoicesIndex',
+            'AttributesIndex', 'InvoicesIndex',
             'PaymentsIndex', 'RefundsIndex', 'PromotionsIndex', 'ShippingTaxIndex',
             'CustomersIndex', 'ReportsIndex', 'SettingsIndex',
         ] as $class) {

@@ -40,6 +40,103 @@ final class CatalogSeedTest
         Assert::same('PKR', $data['currency'], 'currency');
     }
 
+    /**
+     * A subcategory must be a child of the category the product names.
+     *
+     * This is the contract the seeder silently broke: products declared "executive-tables"
+     * under "office-tables", the seeder attached them to the root, and the child category was
+     * left empty. A visitor filtering by Executive Tables got nothing, and nothing failed.
+     */
+    public function testEverySubcategoryIsAChildOfItsCategory(): void
+    {
+        $data = $this->data();
+        $tree = [];
+
+        foreach ($data['categories'] as $category) {
+            $tree[$category['key']] = $category['children'] ?? [];
+        }
+
+        $checked = 0;
+
+        foreach ($data['products'] as $product) {
+            $sub = $product['subcategory'] ?? null;
+
+            if ($sub === null) {
+                continue;
+            }
+
+            $checked++;
+
+            // The subcategory may sit at any depth beneath the declared category — home
+            // furniture is three levels deep — so it is looked up in the flattened subtree.
+            Assert::true(
+                in_array($sub, $this->descendants($tree[$product['category']] ?? []), true),
+                "{$product['sku']}: subcategory [{$sub}] sits under [{$product['category']}]",
+            );
+        }
+
+        Assert::true($checked > 0, 'the seed actually exercises subcategories');
+    }
+
+    /**
+     * Every slug beneath a node, at any depth.
+     *
+     * @param  list<array<string, mixed>|string>  $children
+     * @return list<string>
+     */
+    private function descendants(array $children, int $depth = 0): array
+    {
+        if ($depth > 4) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach ($children as $entry) {
+            $slug = is_array($entry) ? (string) ($entry['slug'] ?? '') : (string) $entry;
+
+            if ($slug === '') {
+                continue;
+            }
+
+            $out[] = $slug;
+
+            if (is_array($entry)) {
+                $out = array_merge($out, $this->descendants($entry['children'] ?? [], $depth + 1));
+            }
+        }
+
+        return $out;
+    }
+
+    public function testEveryChildSlugIsUniqueAcrossTheWholeTree(): void
+    {
+        $data = $this->data();
+        $seen = [];
+
+        $walk = function (array $children) use (&$walk, &$seen): void {
+            foreach ($children as $entry) {
+                $slug = is_array($entry) ? (string) $entry['slug'] : (string) $entry;
+                $seen[] = $slug;
+
+                if (is_array($entry)) {
+                    $walk($entry['children'] ?? []);
+                }
+            }
+        };
+
+        foreach ($data['categories'] as $category) {
+            $walk($category['children'] ?? []);
+        }
+
+        Assert::same(
+            count($seen),
+            count(array_unique($seen)),
+            'no slug is used twice, or a category would be moved by the second declaration',
+        );
+        Assert::true(count($seen) >= 9, 'the seed ships the leaves the sidebar links to');
+    }
+
     public function testEveryProductIsValid(): void
     {
         $data = $this->data();

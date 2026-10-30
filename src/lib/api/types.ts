@@ -49,6 +49,8 @@ export interface ApiProductCard {
   summary: string;
   category: string | null;
   category_slug: string | null;
+  /** Distinct category slugs from the root down to the one the product is filed in. */
+  category_path: string[];
   series: string | null;
   price_minor: number;
   price: string;
@@ -73,6 +75,7 @@ export interface ApiProductDetail extends ApiProductCard {
   product_id: number;
   description: string;
   category_slug: string | null;
+  category_path: string[];
   subcategory: string | null;
   images: string[];
   colors: { code: string; name: string; hex: string | null; image: string | null }[];

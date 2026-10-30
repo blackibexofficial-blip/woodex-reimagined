@@ -33,6 +33,7 @@ use RuntimeException;
 class CatalogSeeder extends Seeder
 {
     /** @var array<string, int> */
+    /** @var array<string, int> seed key or child slug => category id */
     private array $categoryIds = [];
 
     /** @var array<string, int> */
@@ -82,24 +83,56 @@ class CatalogSeeder extends Seeder
 
             $this->categoryIds[$row['key']] = $category->id;
 
-            // Children exist so a product can say "executive-tables" under "office-tables";
-            // they inherit no products of their own yet.
-            foreach ($row['children'] ?? [] as $index => $childSlug) {
-                $child = Category::query()->updateOrCreate(
-                    ['slug' => $childSlug],
-                    [
-                        'parent_id' => $category->id,
-                        'code' => $childSlug,
-                        'position' => $index,
-                        'is_active' => true,
-                        'show_in_menu' => false,
-                    ],
-                );
+            // Children are how a product says where it actually lives — "bed-sets" inside
+            // "bedroom" inside "home" — and they nest, because the storefront sidebar has
+            // three levels for home furniture and one for office.
+            $this->seedChildren($row['children'] ?? [], $category->id, 0);
+        }
+    }
 
-                CategoryTranslation::query()->updateOrCreate(
-                    ['category_id' => $child->id, 'locale' => 'en'],
-                    ['name' => Str::headline($childSlug)],
-                );
+    /**
+     * Create a category's children, and their children, and so on.
+     *
+     * @param  list<array<string, mixed>|string>  $children  a slug, or {slug, children}
+     */
+    private function seedChildren(array $children, int $parentId, int $depth): void
+    {
+        if ($depth > 4) {
+            // A tree this deep is a data mistake, and the loop that builds it would be a
+            // mistake too. Fail loudly at seed time rather than at render time.
+            throw new RuntimeException('Category nesting deeper than four levels is not supported.');
+        }
+
+        foreach ($children as $position => $entry) {
+            $slug = is_array($entry) ? (string) ($entry['slug'] ?? '') : (string) $entry;
+
+            if ($slug === '') {
+                throw new RuntimeException('A category child was declared without a slug.');
+            }
+
+            $child = Category::query()->updateOrCreate(
+                ['slug' => $slug],
+                [
+                    'parent_id' => $parentId,
+                    'code' => $slug,
+                    'position' => $position,
+                    'is_active' => true,
+                    'show_in_menu' => false,
+                ],
+            );
+
+            CategoryTranslation::query()->updateOrCreate(
+                ['category_id' => $child->id, 'locale' => 'en'],
+                ['name' => Str::headline($slug)],
+            );
+
+            // Registered under its own slug so a product can name it as `subcategory` and be
+            // filed there. Without this the map only knows roots, and every leaf membership
+            // would throw on seed.
+            $this->categoryIds[$slug] = $child->id;
+
+            if (is_array($entry) && ($entry['children'] ?? []) !== []) {
+                $this->seedChildren($entry['children'], $child->id, $depth + 1);
             }
         }
     }
@@ -185,13 +218,34 @@ class CatalogSeeder extends Seeder
                 throw new RuntimeException("Seed product {$row['sku']} points at unknown category [{$categoryKey}].");
             }
 
+            /*
+             * File the product where it actually lives, not at the top of its section.
+             *
+             * Five products declare `executive-tables` under `office-tables`. Attaching them to
+             * the root — which is what this did — leaves the child category empty, so a visitor
+             * filtering by "Executive Tables" gets nothing and the parent looks like it holds
+             * everything. The catalog's category filter expands a parent to its children, so
+             * filing at the leaf makes both questions work without duplicating the membership.
+             */
+            $leafId = $categoryId;
+
+            // A subcategory equal to the category is a spreadsheet habit, not a place. Treat it
+            // as "no subcategory" rather than filing the product into its own parent.
+            if (($row['subcategory'] ?? null) !== null && $row['subcategory'] !== $categoryKey) {
+                $leafId = $this->categoryIds[$row['subcategory']] ?? null;
+
+                if ($leafId === null) {
+                    throw new RuntimeException("Seed product {$row['sku']} points at unknown subcategory [{$row['subcategory']}].");
+                }
+            }
+
             $product = Product::query()->updateOrCreate(
                 ['sku' => $row['sku']],
                 [
                     'type' => Product::TYPE_SIMPLE,
                     'status' => Product::STATUS_PUBLISHED,
                     'slug' => $row['slug'],
-                    'primary_category_id' => $categoryId,
+                    'primary_category_id' => $leafId,
                     'series' => $row['series'],
                     'brand' => 'Woodex',
                     'material' => $row['material'],
@@ -226,7 +280,7 @@ class CatalogSeeder extends Seeder
                 ],
             );
 
-            $product->categories()->syncWithoutDetaching([$categoryId]);
+            $product->categories()->syncWithoutDetaching([$leafId]);
 
             if ($row['material'] !== null) {
                 $optionId = $this->attributeOptionIds['material.'.Str::slug($row['material'])] ?? null;

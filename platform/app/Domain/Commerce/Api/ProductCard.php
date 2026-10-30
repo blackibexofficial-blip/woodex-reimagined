@@ -27,6 +27,7 @@ final readonly class ProductCard
 {
     /**
      * @param  list<array{code: string, label: string, hex: string|null}>  $finishes
+     * @param  list<string>  $categoryPath  slugs from the root down to the category the product is filed in
      */
     public function __construct(
         public int $id,
@@ -75,7 +76,11 @@ final readonly class ProductCard
             name: $product->displayName(),
             summary: (string) ($product->translation?->summary ?? ''),
             category: $product->primaryCategory?->displayName(),
-            categorySlug: $product->primaryCategory?->slug,
+            categorySlug: $product->primaryCategory?->parent?->slug ?? $product->primaryCategory?->slug,
+            categoryPath: array_values(array_filter([
+                $product->primaryCategory?->parent?->slug,
+                $product->primaryCategory?->slug,
+            ])),
             series: $product->series,
             priceMinor: $price?->minor ?? 0,
             compareAtMinor: $compareAt?->minor,
@@ -106,6 +111,7 @@ final readonly class ProductCard
             'summary' => $this->summary,
             'category' => $this->category,
             'category_slug' => $this->categorySlug,
+            'category_path' => $this->categoryPath,
             'series' => $this->series,
             'price_minor' => $this->priceMinor,
             'price' => $this->price,

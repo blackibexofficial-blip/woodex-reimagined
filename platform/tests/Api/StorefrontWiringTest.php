@@ -79,6 +79,45 @@ final class StorefrontWiringTest
         Assert::true(str_contains($service, "->active()"), 'a hidden category is not served');
     }
 
+    public function testACategoryMeansItsWholeSubtree(): void
+    {
+        $service = $this->source('/app/Domain/Commerce/Api/CatalogService.php');
+
+        Assert::true(str_contains($service, 'public static function slugsInSubtree'), 'the expansion exists');
+        Assert::true(str_contains($service, 'self::slugsInSubtree('), 'and the category filter uses it');
+        Assert::true(str_contains($service, "whereIn(\n                    'slug',"), 'matching every slug in the subtree');
+        Assert::true(str_contains($service, 'commerce:category-subtrees:v1'), 'computed once per five minutes, not per request');
+
+        // The whole point: a parent with no products of its own must still return its children's.
+        Assert::same(
+            false,
+            str_contains($service, "->where('slug', \$query->category)"),
+            'a bare slug match would make every parent look empty',
+        );
+    }
+
+    public function testTheCategoryTreeCountsRollUp(): void
+    {
+        $service = $this->source('/app/Domain/Commerce/Api/CatalogService.php');
+
+        Assert::true(
+            str_contains($service, '($counts[$category->id] ?? 0) + $childCounts->sum()'),
+            'a parent shows its own products plus its children\'s',
+        );
+    }
+
+    public function testTheProductPayloadCarriesTheCanonicalCategoryPath(): void
+    {
+        $card = $this->source('/app/Domain/Commerce/Api/ProductCard.php');
+
+        Assert::true(str_contains($card, "'category_path' =>"), 'the list payload has it');
+        Assert::true(str_contains($card, 'primaryCategory?->parent?->slug'), 'root first, leaf second');
+        Assert::true(
+            str_contains($this->source('/app/Domain/Commerce/Api/CatalogService.php'), "'primaryCategory.parent'"),
+            'and the parent is eager loaded, so the path costs no extra query per product',
+        );
+    }
+
     public function testTheCachedProductKeyWasVersionedWhenThePayloadChanged(): void
     {
         $controller = $this->source('/app/Http/Controllers/Api/Storefront/CatalogController.php');

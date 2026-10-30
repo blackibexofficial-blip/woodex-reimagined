@@ -61,12 +61,13 @@ Ordered. Each row is one shippable thing, not a phase.
 | **T13** | Storefront reads the catalog API instead of `products.ts` | B | 3 | Shop, product, series and quotation pages render data from `/api/storefront/v1` | ✅ **done** — API client + adapter, snapshot fallback, `ProductDetail` payload |
 | **T14** | Storefront checkout: quote, then a real COD order | B | 3 | A customer places an order and gets a number; stock and invoice are real | ✅ **done** — `/checkout/quote` + `/checkout`, `CartQuote`, 409 on stock |
 | **T15** | Inventory screen: availability, holds, low-stock queue | B | 3 | Staff see what can be sold and who is holding the rest | ✅ **done** — `StockLevel`, held-hold release, static admin preview |
+| **T16** | Categories screen: rename, hide, reorder; products filed at the leaf | B | 3 | A child category filter returns products, and the tree is editable | ✅ **done** — `CategoryTree`, subtree filter, seed fixed |
 
 **Built:** `platform/app/Domain/Commerce/` (Money, CartLine, DiscountRule, ShippingMethod, CartInput, LineTotal, CartTotals, CartCalculator) + 14 fixtures + runner. Run it with `php platform/tests/run.php`.
 
-**Built:** T1–T15. The code gate is closed; what remains is running the probe on staging and recording the numbers (see `HOSTINGER-CAPACITY.md` §Gate G1). **Week 1:** T1–T4 ✅. **Week 2:** T5–T7 ✅. **Week 3:** T8–T10 ✅. **Week 4:** T11 ✅ · T12 ✅ · T13 ✅ · T14 ✅ · T15 ✅.
+**Built:** T1–T16. The code gate is closed; what remains is running the probe on staging and recording the numbers (see `HOSTINGER-CAPACITY.md` §Gate G1). **Week 1:** T1–T4 ✅. **Week 2:** T5–T7 ✅. **Week 3:** T8–T10 ✅. **Week 4:** T11 ✅ · T12 ✅ · T13 ✅ · T14 ✅ · T15 ✅ · T16 ✅.
 
-**T1–T13 are code, not a document.** They live in `platform/` (plus `src/lib/api/` for the storefront) and pass: 231 checks, 15,460 assertions, 1,000 generated carts.
+**T1–T13 are code, not a document.** They live in `platform/` (plus `src/lib/api/` for the storefront) and pass: 259 checks, 15,583 assertions, 1,000 generated carts.
 
 After T12 passes on staging, the remaining work is repetition: 30 more tables, 10 more screens, 18 more blocks, 9 surfaces. The storefront now has one real dependency on the OS — the catalog API — and every other page still reads the bundled snapshot until its own API exists.
 

@@ -39,6 +39,8 @@ final readonly class ProductDetail
         public string $description,
         public ?string $category,
         public ?string $categorySlug,
+        /** @var list<string> slugs root → leaf */
+        public array $categoryPath,
         public ?string $subcategory,
         public ?string $series,
         public int $priceMinor,
@@ -89,6 +91,7 @@ final readonly class ProductDetail
             'description' => (string) ($translation?->description ?? $translation?->summary ?? ''),
             'category' => $card->category,
             'category_slug' => $card->categorySlug,
+            'category_path' => $card->categoryPath,
             'series' => $product->series,
             'price_minor' => $card->priceMinor,
             'compare_at_minor' => $card->compareAtMinor,
@@ -172,6 +175,11 @@ final readonly class ProductDetail
             static fn (string $image): bool => $image !== '',
         ));
 
+        $path = array_values(array_filter(
+            array_map(static fn (mixed $slug): string => (string) $slug, (array) ($row['category_path'] ?? [])),
+            static fn (string $slug): bool => $slug !== '',
+        ));
+
         return new self(
             id: (int) ($row['id'] ?? 0),
             sku: (string) ($row['sku'] ?? ''),
@@ -181,7 +189,12 @@ final readonly class ProductDetail
             description: (string) ($row['description'] ?? ''),
             category: isset($row['category']) && $row['category'] !== '' ? (string) $row['category'] : null,
             categorySlug: isset($row['category_slug']) && $row['category_slug'] !== '' ? (string) $row['category_slug'] : null,
-            subcategory: isset($row['subcategory']) && $row['subcategory'] !== '' ? (string) $row['subcategory'] : null,
+            // The canonical path, so a product page can show "Office Tables / Executive Tables"
+            // without the client re-deriving it from two slugs it may not both have.
+            categoryPath: $path,
+            // The most specific category the product is filed in, read off the path so the two
+            // can never disagree about where a product lives.
+            subcategory: count($path) > 1 ? $path[count($path) - 1] : null,
             series: isset($row['series']) && $row['series'] !== '' ? (string) $row['series'] : null,
             priceMinor: (int) ($row['price_minor'] ?? 0),
             compareAtMinor: isset($row['compare_at_minor']) ? (int) $row['compare_at_minor'] : null,
@@ -220,6 +233,7 @@ final readonly class ProductDetail
             'description' => $this->description,
             'category' => $this->category,
             'category_slug' => $this->categorySlug,
+            'category_path' => $this->categoryPath,
             'subcategory' => $this->subcategory,
             'series' => $this->series,
             'price_minor' => $this->priceMinor,
