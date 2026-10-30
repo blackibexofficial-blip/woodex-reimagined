@@ -118,7 +118,54 @@ PASS  SchemaTest::testEveryPlannedCatalogTableIsCreated            13 assertions
 30/30 checks passed · 13793 assertions · 826 ms
 ```
 
-## Next (T4)
+## T4 + T5 — the admin shell and the Products screen (done)
 
-Admin shell: the Commerce navigation group, permission gates, empty screens — then T5, the
-Products screen with inline price and stock editing.
+```
+app/Domain/Commerce/Navigation/CommerceNavigation.php   the Commerce sidebar group
+app/Domain/Commerce/Access/CommercePermissions.php      11 permissions + role grants + plain-English descriptions
+database/seeders/CommercePermissionsSeeder.php          additive, idempotent, never creates roles
+routes/commerce.php                                     14 routes, included from routes/admin.php
+app/Livewire/Admin/Commerce/*.php                       Dashboard + Products + 12 screens
+app/Livewire/Admin/Commerce/Concerns/CommerceScreen.php shared base for the 12
+resources/views/livewire/admin/commerce/*.blade.php     one view per screen + one shared
+```
+
+**Wiring in the OS** is two lines:
+
+```php
+// App\Support\AdminNavigation::groups(), inside the returned array
+...\App\Domain\Commerce\Navigation\CommerceNavigation::groups(),
+
+// routes/admin.php, inside the existing $admin group
+Route::prefix('commerce')->name('commerce.')->group(base_path('routes/commerce.php'));
+
+// ProductionSeeder::run(), after RolesAndPermissionsSeeder
+$this->call(CommercePermissionsSeeder::class);
+```
+
+**The Dashboard shows only what exists.** Catalog counts and stock alerts are live; order and
+revenue tiles say "P2" rather than showing ₨0 — a dashboard that reports zero revenue when the
+table is simply empty teaches people to distrust it.
+
+**Products edits in the row.** Click a price, type rupees, Enter. Stored as integer paisa, the
+conversion happens once on save. A configurable product refuses the edit (its price belongs to
+its variants) instead of silently ignoring it. Decimal input is rejected, not rounded.
+
+### `tests/Admin/AdminWiringTest.php`
+
+Eight checks that catch the failures which survive code review:
+
+| Check | Catches |
+|---|---|
+| 14 screens, unique labels | a nav entry silently dropped in a merge |
+| every nav route is registered | a sidebar link to nowhere |
+| every route's class exists and matches its file | a typo that 500s on click |
+| every component has its Blade view | "view not found" in production |
+| every `can(...)` names a seeded permission | a screen nobody can open — or everybody can |
+| every role grant references a real permission | a grant that silently does nothing |
+| every icon exists in the OS set | an empty square nobody notices for a month |
+| every model's `$table` is migrated | a model pointing at a table that does not exist |
+
+**Icon test found a real bug immediately:** `box` was used for Products and does not exist in
+the OS icon set — it would have rendered as a blank square. Now `archive`, and the test parses
+the live icon component (or a committed snapshot when the OS clone isn't present).
