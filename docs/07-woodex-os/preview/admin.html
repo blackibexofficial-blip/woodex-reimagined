@@ -120,7 +120,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h6l2 3h8v9H4z"/></svg><span>Inventory</span></a>
 <a href="#orders" data-go="orders" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span>Orders</span></a>
-<a href="#soon" data-go="soon" class="nav-item nav-muted">
+<a href="#invoices" data-go="invoices" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l3 3v15H7zM14 3v4h4"/></svg><span>Invoices</span></a>
 <a href="#soon" data-go="soon" class="nav-item nav-muted">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v11H4zM4 8l3-4h10l3 4M15 13h3"/></svg><span>Payments</span></a>
@@ -947,6 +947,73 @@
       </div>
     </section>
 
+    <!-- ── Invoices ───────────────────────────────────────────────────────── -->
+    <section class="screen" id="invoices">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Invoices</div>
+          <h1>Invoices</h1>
+          <p>Every invoice, and what is still owed on it. The status is worked out from the money —
+             paid, refunded and outstanding — not from the column written when it was issued.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        <div class="card stat"><p class="stat-label">Invoices</p><p class="stat-value ">3</p><p class="stat-hint">issued in total</p></div>
+        <div class="card stat"><p class="stat-label">Paid</p><p class="stat-value ">PKR 189,635.00</p><p class="stat-hint">received, net of refunds</p></div>
+        <div class="card stat"><p class="stat-label">Outstanding</p><p class="stat-value warning">PKR 88,085.00</p><p class="stat-hint">still owed</p></div>
+        <div class="card stat"><p class="stat-label">Overdue</p><p class="stat-value error">PKR 24,225.00</p><p class="stat-hint">1 past their due date</p></div>
+      </div>
+
+      <div class="toolbar" style="margin-top:14px">
+        <input class="field grow" placeholder="Invoice, order, customer or phone…" aria-label="Search invoices">
+        <select class="field" aria-label="Invoice state"><option>Outstanding</option><option>Overdue</option><option>Paid</option><option>Void</option><option>All invoices</option></select>
+        <input class="field" type="date" aria-label="Issued from">
+        <input class="field" type="date" aria-label="Issued to">
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>Invoice</th><th>Order</th><th>Customer</th><th>Issued</th><th class="right">Total</th><th class="right">Outstanding</th><th>Status</th><th></th></tr></thead>
+          <tbody><tr>
+      <td class="mono">INV-000042</td>
+      <td class="mono muted">WDX-000042</td>
+      <td><strong>Muhammad Ali</strong><div class="muted">Lahore</div></td>
+      <td class="muted">2026-10-31</td>
+      <td class="right mono">PKR 63,860.00</td>
+      <td class="right mono warn">PKR 63,860.00</td>
+      <td><span class="badge badge-info">Issued</span></td>
+      <td class="right"><a href="#invoices" class="muted" style="font-size:11px">Print</a></td>
+    </tr>
+<tr>
+      <td class="mono">INV-000041</td>
+      <td class="mono muted">WDX-000041</td>
+      <td><strong>Ayesha Khan</strong><div class="muted">Karachi</div></td>
+      <td class="muted">2026-10-30</td>
+      <td class="right mono">PKR 116,960.00</td>
+      <td class="right mono muted">—</td>
+      <td><span class="badge badge-success">Paid</span></td>
+      <td class="right"><a href="#invoices" class="muted" style="font-size:11px">Print</a></td>
+    </tr>
+<tr>
+      <td class="mono">INV-000040</td>
+      <td class="mono muted">WDX-000040</td>
+      <td><strong>Sana Traders</strong><div class="muted">Islamabad</div></td>
+      <td class="muted">2026-10-28<div class="warn" style="font-size:11px">12 days late</div></td>
+      <td class="right mono">PKR 96,900.00</td>
+      <td class="right mono warn">PKR 24,225.00</td>
+      <td><span class="badge badge-error">Overdue</span></td>
+      <td class="right"><a href="#invoices" class="muted" style="font-size:11px">Print</a></td>
+    </tr></tbody>
+        </table>
+      </div>
+
+      <p class="muted" style="margin-top:10px;font-size:12px">
+        Invoices are issued automatically with an order and are never edited here. Voiding or
+        correcting one is a separate, permissioned action that records a reason.
+      </p>
+    </section>
+
     <!-- ── Coming soon ────────────────────────────────────────────────────── -->
     <section class="screen" id="soon">
       <div class="page-head">
@@ -958,7 +1025,7 @@
         </div>
       </div>
       <div class="soon-card">
-        <h2>Attributes · Invoices · Payments · Refunds · Promotions · Shipping &amp; tax · Customers · Reports · Settings</h2>
+        <h2>Attributes · Payments · Refunds · Promotions · Shipping &amp; tax · Customers · Reports · Settings</h2>
         <p class="muted">Already underneath: the catalog tables, the money calculator, checkout
            services and the media pipeline. What is missing is the screen.</p>
         <ul>

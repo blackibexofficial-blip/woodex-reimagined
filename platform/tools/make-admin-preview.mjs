@@ -199,10 +199,63 @@ const categoryRow = (node, depth = 0) => {
 const categoryRows = (nodes, depth = 0) =>
   nodes.map((node) => categoryRow(node, depth) + categoryRows(node.children, depth + 1)).join("\n");
 
+/**
+ * Invoices derived from the three orders, with the same rules as InvoiceBalance:
+ * net paid = paid − refunded, outstanding = max(0, total − net paid), and overdue is about the
+ * deadline rather than the stored status.
+ */
+const invoices = orders.map((row, index) => {
+  // Three shapes worth seeing at once: nothing received, paid in full, and paid then partly
+  // refunded — the last one is where the stored status and the money disagree most often.
+  const paid = index === 0 ? 0 : row.grand;
+  const refunded = index === 2 ? Math.round(row.grand / 4) : 0;
+  const netPaid = Math.max(0, paid - refunded);
+  const outstanding = Math.max(0, row.grand - netPaid);
+  const daysUntilDue = index === 2 ? -12 : index === 1 ? 4 : 21;
+
+  const status = outstanding === 0 ? "paid" : netPaid > 0 ? "part_paid" : "issued";
+  const overdue = outstanding > 0 && daysUntilDue < 0;
+
+  return {
+    number: `INV-0000${42 - index}`,
+    order: row.number,
+    customer: row.customer,
+    city: row.city,
+    issued: row.placed,
+    total: row.grand,
+    paid: netPaid,
+    outstanding,
+    daysUntilDue,
+    overdue,
+    status,
+    label: overdue ? "Overdue" : status === "paid" ? "Paid" : status === "part_paid" ? "Part paid" : "Issued",
+    tone: overdue ? "error" : status === "paid" ? "success" : status === "part_paid" ? "warning" : "info",
+  };
+});
+
+const invoiceSummary = {
+  count: invoices.length,
+  paid: invoices.reduce((sum, inv) => sum + inv.paid, 0),
+  outstanding: invoices.reduce((sum, inv) => sum + inv.outstanding, 0),
+  overdue: invoices.filter((inv) => inv.overdue).reduce((sum, inv) => sum + inv.outstanding, 0),
+  overdueCount: invoices.filter((inv) => inv.overdue).length,
+};
+
 const esc = (text) =>
   String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 const badge = (tone, label) => `<span class="badge badge-${tone}">${esc(label)}</span>`;
+
+const invoiceRows = invoices.map((inv) => `<tr>
+      <td class="mono">${esc(inv.number)}</td>
+      <td class="mono muted">${esc(inv.order)}</td>
+      <td><strong>${esc(inv.customer)}</strong><div class="muted">${esc(inv.city)}</div></td>
+      <td class="muted">${esc(inv.issued)}${inv.overdue ? `<div class="warn" style="font-size:11px">${Math.abs(inv.daysUntilDue)} days late</div>` : ""}</td>
+      <td class="right mono">${rupees(inv.total)}</td>
+      <td class="right mono ${inv.outstanding > 0 ? "warn" : "muted"}">${inv.outstanding > 0 ? rupees(inv.outstanding) : "—"}</td>
+      <td>${badge(inv.tone, inv.label)}</td>
+      <td class="right"><a href="#invoices" class="muted" style="font-size:11px">Print</a></td>
+    </tr>`).join("\n");
 
 const nav = [
   ["Dashboard", "chart", "dashboard", true],
@@ -211,7 +264,7 @@ const nav = [
   ["Categories", "layout", "categories", true],
   ["Inventory", "folder", "inventory", true],
   ["Orders", "invoice", "orders", true],
-  ["Invoices", "file", "soon", false],
+  ["Invoices", "file", "invoices", true],
   ["Payments", "wallet", "soon", false],
   ["Refunds & returns", "refresh", "soon", false],
   ["Promotions", "megaphone", "soon", false],
@@ -628,6 +681,44 @@ const html = `<!doctype html>
       </div>
     </section>
 
+    <!-- ── Invoices ───────────────────────────────────────────────────────── -->
+    <section class="screen" id="invoices">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Invoices</div>
+          <h1>Invoices</h1>
+          <p>Every invoice, and what is still owed on it. The status is worked out from the money —
+             paid, refunded and outstanding — not from the column written when it was issued.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        ${stat("Invoices", invoiceSummary.count, "issued in total")}
+        ${stat("Paid", rupees(invoiceSummary.paid), "received, net of refunds")}
+        ${stat("Outstanding", rupees(invoiceSummary.outstanding), "still owed", invoiceSummary.outstanding > 0 ? "warning" : "success")}
+        ${stat("Overdue", rupees(invoiceSummary.overdue), invoiceSummary.overdueCount + " past their due date", invoiceSummary.overdueCount > 0 ? "error" : "success")}
+      </div>
+
+      <div class="toolbar" style="margin-top:14px">
+        <input class="field grow" placeholder="Invoice, order, customer or phone…" aria-label="Search invoices">
+        <select class="field" aria-label="Invoice state"><option>Outstanding</option><option>Overdue</option><option>Paid</option><option>Void</option><option>All invoices</option></select>
+        <input class="field" type="date" aria-label="Issued from">
+        <input class="field" type="date" aria-label="Issued to">
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>Invoice</th><th>Order</th><th>Customer</th><th>Issued</th><th class="right">Total</th><th class="right">Outstanding</th><th>Status</th><th></th></tr></thead>
+          <tbody>${invoiceRows}</tbody>
+        </table>
+      </div>
+
+      <p class="muted" style="margin-top:10px;font-size:12px">
+        Invoices are issued automatically with an order and are never edited here. Voiding or
+        correcting one is a separate, permissioned action that records a reason.
+      </p>
+    </section>
+
     <!-- ── Coming soon ────────────────────────────────────────────────────── -->
     <section class="screen" id="soon">
       <div class="page-head">
@@ -639,7 +730,7 @@ const html = `<!doctype html>
         </div>
       </div>
       <div class="soon-card">
-        <h2>Attributes · Invoices · Payments · Refunds · Promotions · Shipping &amp; tax · Customers · Reports · Settings</h2>
+        <h2>Attributes · Payments · Refunds · Promotions · Shipping &amp; tax · Customers · Reports · Settings</h2>
         <p class="muted">Already underneath: the catalog tables, the money calculator, checkout
            services and the media pipeline. What is missing is the screen.</p>
         <ul>

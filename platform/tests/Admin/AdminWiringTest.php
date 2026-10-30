@@ -87,18 +87,28 @@ final class AdminWiringTest
 
         preg_match_all('/Route::get\\([^,]+, ([A-Za-z]+)::class\\)/', $routes, $matches);
 
-        // Fourteen screens plus the per-order detail view added in T11.
-        Assert::same(15, count($matches[1]), 'fourteen screens and one detail route are declared');
+        // Fourteen screens, the per-order detail view from T11, and the printable invoice
+        // document from T17 — which is a controller, not a Livewire component, because it
+        // renders once and has no state to keep.
+        Assert::same(16, count($matches[1]), 'fifteen screens and the printable document are declared');
 
         foreach ($matches[1] as $class) {
-            $path = $this->root().'/app/Livewire/Admin/Commerce/'.$class.'.php';
+            $component = $this->root().'/app/Livewire/Admin/Commerce/'.$class.'.php';
+            $controller = $this->root().'/app/Http/Controllers/Admin/'.$class.'.php';
 
-            Assert::true(is_file($path), "component {$class} exists at app/Livewire/Admin/Commerce");
+            $path = is_file($component) ? $component : $controller;
+
+            Assert::true(
+                is_file($path),
+                "{$class} exists as a Livewire component or an admin controller",
+            );
 
             if (is_file($path)) {
                 $source = (string) file_get_contents($path);
+                // Livewire components are `class X extends Component`; controllers are often
+                // `final class X` — both declare the class, and the test should not care which.
                 Assert::true(
-                    str_contains($source, 'class '.$class.' '),
+                    preg_match('/\b(class|interface|trait|enum)\s+'.$class.'\b/', $source) === 1,
                     "{$class}.php declares class {$class}",
                 );
             }
@@ -122,14 +132,14 @@ final class AdminWiringTest
         }
 
         // The remaining placeholder screens all render one shared view. Orders left this list
-        // in T11, Inventory in T15 and Categories in T16: all three read real tables now.
+        // in T11, Inventory in T15, Categories in T16 and Invoices in T17.
         Assert::true(
             is_file($this->root().'/resources/views/livewire/admin/commerce/coming-soon.blade.php'),
             'placeholder screens render the shared coming-soon view',
         );
 
         foreach ([
-            'AttributesIndex', 'InvoicesIndex',
+            'AttributesIndex',
             'PaymentsIndex', 'RefundsIndex', 'PromotionsIndex', 'ShippingTaxIndex',
             'CustomersIndex', 'ReportsIndex', 'SettingsIndex',
         ] as $class) {

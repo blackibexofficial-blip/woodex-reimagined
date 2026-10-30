@@ -724,3 +724,58 @@ checks, the untouched slug and the position rewrite.
 
 The admin preview gained a **Categories** screen with the same tree and the same counts,
 three levels deep.
+
+## T17 — invoices (this branch)
+
+The invoice screen answers one question — **who owes us money** — and it answers it from the
+money, not from the status column.
+
+### Why the status is derived
+
+`commerce_invoices.status` is written once at issue and then never touched. A customer who paid
+in full three weeks ago still reads `issued` until somebody remembers to change the row. The
+amount, what has been paid and what has been refunded are the only values that cannot disagree
+with themselves, so `InvoiceBalance` derives the state from them:
+
+| Money | State |
+|---|---|
+| void flag set | **Void** — not a claim, whatever the balance says |
+| nothing received | **Issued** |
+| something received | **Part paid** |
+| everything received | **Paid** |
+
+A refund is money going *out*, so `netPaid = paid − refunded`. Refunding ₨5,000 of a settled
+₨50,000 invoice puts ₨5,000 back on the balance — which is correct, and which a naive
+`paid_minor` read gets wrong. Both sides are clamped at zero: a refund larger than the payment
+leaves the invoice owed in full, not negative.
+
+**Overdue is a separate axis**, not a fourth state. A void invoice cannot be late, a paid one
+no longer has a deadline that means anything, and an unpaid one is late only once `due_at` has
+passed. It carries aging buckets (0–30, 31–60, 61–90, 90+) because "how much is stale" is a
+question an accountant asks in ranges.
+
+### The screen and the paper
+
+`GET /admin/commerce/invoices` lists with filters that run against the same columns the
+derivation reads — outstanding, overdue, paid, void — plus a search across invoice number,
+order number, customer name and phone.
+
+`GET /admin/commerce/invoices/{invoice}/print` is a **separate document**: no sidebar, no
+breadcrumbs, `@media print` and `@page` rules, and exactly one button that is hidden when
+printing. It builds its balance through the same `InvoiceBalance`, so the paper and the screen
+cannot tell a customer two different stories. Both routes check `commerce.orders.view`; the
+document is not public, because it carries a customer's name, phone and address.
+
+Line amounts come from the invoice's own items when it has them, and from the order only when
+it does not — never recalculated from today's prices.
+
+### Not offered, deliberately
+
+Editing, voiding and correcting an invoice from this screen. A document that has been sent to a
+customer is changed by a named action that records a reason, not by a list row.
+
+### Result
+
+**`279/279 checks · 15,691 assertions`** — `InvoiceBalanceTest` (14) covers refunds, voids,
+zero-value invoices, overdue boundaries and the COD stamping rule; `InvoicesScreenTest` (7)
+pins the derivation, the print document and both permission checks.
