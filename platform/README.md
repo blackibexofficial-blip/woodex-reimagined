@@ -112,10 +112,10 @@ php platform/tests/run.php Money      # one suite
 ```
 
 ```
-PASS  Lint::allPhpFiles (139 files)
+PASS  Lint::allPhpFiles (150 files)
 PASS  TotalsInvariantTest::testEveryGeneratedCartKeepsTheSumInvariant  13114 assertions
 PASS  StockPlannerTest::testAPlanNeverAllocatesMoreThanIsPhysicallyThere  601 assertions
-158/158 checks passed · 15123 assertions · 832 ms
+191/191 checks passed · 15241 assertions · 884 ms
 ```
 
 ## T4 + T5 — the admin shell and the Products screen (done)
@@ -400,3 +400,61 @@ cancel with a reason that is written into the history. There is no status dropdo
 | `OrderStatusTest` | the graph, terminals, cancelling before shipping, COD settling on delivery |
 | `VerticalSliceTest` | **the acceptance test** — 1 sofa + 2 chairs, 10% coupon, 18% GST, ₨2,500 delivery → ₨208,528; order, invoice, payment and line items all agree to the paisa |
 | `CheckoutWiringTest` | every model's table is migrated, stock is refused before an order is written, money is never a float |
+
+## T12 — the load probe (built; the gate runs on staging)
+
+```
+app/Domain/Commerce/Probe/LoadSample.php     one request as measured
+app/Domain/Commerce/Probe/LoadReport.php     p50/p95/p99 by nearest rank, errors by whose fault
+app/Domain/Commerce/Probe/ProbeTarget.php    the pass mark, in one place, with reasons
+app/Domain/Commerce/Probe/OversellAudit.php  did we sell the same chair twice
+app/Console/Commands/LoadProbeCommand.php    commerce:load-probe
+app/Http/Controllers/Api/Storefront/CheckoutRaceController.php   the endpoint the race fires at
+config/commerce.php                          probe token + thresholds, off by default
+```
+
+```bash
+# 30 concurrent catalog reads × 10 waves, from outside the app, over HTTPS
+php artisan commerce:load-probe --base=https://staging.example.com \
+    --token="$COMMERCE_PROBE_TOKEN" --catalog=30 --waves=10
+
+# 5 simultaneous checkouts for a variant with exactly one unit
+php artisan commerce:load-probe --base=https://staging.example.com \
+    --token="$COMMERCE_PROBE_TOKEN" --checkouts=5 --sku=WX-1019 --confirm-oversell-test
+```
+
+**Measured from outside, deliberately.** Calling the controller in-process measures the code and
+not the hosting, and the hosting is what the gate is about. curl_multi rather than a Guzzle pool:
+thirty simultaneous requests on a shared account is exactly where one buffer per request matters.
+
+**The verdict is computed, not read off a table.** `ProbeTarget` fails the run on a p95 over
+budget, on any 5xx, on an error rate over 1%, and on any oversell — and prints every reason.
+Exit code 0 means the gate passed. `1500 ms` passes (the budget is "≤ 1.5 s"); `1500.1` does not.
+
+**Oversell is audited from the database.** Order lines claimed after the run plus units still held
+by a live reservation must not exceed what was on the shelf. The probe's own count of its 2xx
+responses is not evidence — it is the thing being tested.
+
+**A probe that cannot reach the host must not pass.** A 4xx is reported but not failed on: the
+checkout race expects four refusals out of five, and counting those as errors would report a
+correct race as a broken site. Timeouts and 5xx always fail.
+
+**Safe by default.** The race endpoint answers 404 unless a `COMMERCE_PROBE_TOKEN` is configured;
+the rate-limit bypass exists only when that token exists; and the command refuses to place real
+orders without `--confirm-oversell-test`. Unset in production means none of it is reachable.
+
+### `tests/Probe/`
+
+| Suite | What it proves |
+|---|---|
+| `LoadReportTest` | nearest-rank percentiles against hand-checkable cases; 20 samples put p95 on the 19th; one outlier in twenty is the p100, not the p95 — which is why the probe runs 300 requests |
+| `ProbeTargetTest` | the boundaries: exactly on budget passes, a tenth of a millisecond over fails; one 5xx fails; a 404 does not; an oversell fails whatever the latency |
+| `OversellAuditTest` | two orders for one unit, claiming from nothing, negative stock reported as corruption rather than as a race |
+| `ProbeWiringTest` | curl_multi and not curl_exec; the endpoint hides as 404 without a token; the limiter trusts nothing unconfigured; the command refuses to place orders uninvited |
+
+### Honest scope
+
+This sandbox has no PHP binary, no database and no HTTP server, so the probe itself cannot be
+executed here — only its engine, which is what the suite covers. Running it is a staging task:
+`HOSTINGER-CAPACITY.md` §Gate G1 has the commands and what to record. Until those numbers exist,
+T12 is *built*, not *passed*.

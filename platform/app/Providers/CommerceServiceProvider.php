@@ -32,9 +32,27 @@ final class CommerceServiceProvider extends ServiceProvider
         $this->app->singleton(Transformer::class, static fn (): Transformer => new GdTransformer);
     }
 
+    /** Whether this request carries the staging-only probe token. */
+    public static function isProbe(Request $request): bool
+    {
+        $expected = config('commerce.probe.token');
+        $given = $request->header('X-Load-Probe');
+
+        return is_string($expected) && $expected !== ''
+            && is_string($given) && $given !== ''
+            && hash_equals($expected, $given);
+    }
+
     public function boot(): void
     {
         RateLimiter::for('storefront-catalog', static function (Request $request): Limit {
+            // The load probe identifies itself with a token that only exists on a staging
+            // install. Without the token it is not exempt, so a leaked command cannot be used
+            // to hammer production — the limiter is the reason the probe needs this at all.
+            if (self::isProbe($request)) {
+                return Limit::perMinute(5000)->by('probe:'.$request->ip());
+            }
+
             // A signed-in customer browsing their own order history is not a scraper; give
             // them more room. Everyone else shares a per-IP budget.
             $perMinute = $request->user() !== null ? 240 : 120;

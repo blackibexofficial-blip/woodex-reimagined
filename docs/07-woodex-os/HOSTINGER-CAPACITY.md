@@ -85,6 +85,30 @@ Not a hosting-install risk any more (one Laravel app is proven on this host), bu
 | Cron drains invoice emails within 60 s | yes |
 | DB size and inode count recorded | filled into §1 |
 
+**How the gate is run (T12, shipped).** Two commands, both reporting a verdict and an exit code:
+
+```bash
+# 1. catalog — 30 concurrent reads × 10 waves = 300 requests, from outside, over HTTPS
+php artisan commerce:load-probe --base=https://staging.example.com \
+    --token="$COMMERCE_PROBE_TOKEN" --catalog=30 --waves=10
+
+# 2. the race — 5 simultaneous checkouts for a variant with exactly 1 unit
+php artisan commerce:load-probe --base=https://staging.example.com \
+    --token="$COMMERCE_PROBE_TOKEN" --checkouts=5 --sku=WX-1019 --confirm-oversell-test
+```
+
+- **30 is the account's entry-process ceiling**, not a round number. Firing 30 at once is the saturation test: if p95
+  holds at 30 concurrent, it holds for the traffic this plan expects. 300 requests is the sample size — with 20 samples
+  a single slow request is the p100, not the p95, and the probe would under-report.
+- **The verdict is computed, not eyeballed.** `p95 ≈ 1500 ms` passes (the budget is "≤ 1.5 s"); 1500.1 does not. Any 5xx
+  fails. Any oversell fails, whatever the latency.
+- **Oversell is audited from the database**, not from the responses: order lines claimed after the run plus units still
+  held by a live reservation must not exceed what was on the shelf. The probe's own view of what happened is not
+  evidence.
+- **The probe identifies itself** with `X-Load-Probe`, which the catalog rate limiter trusts only when
+  `COMMERCE_PROBE_TOKEN` is set. Unset — as in production — the bypass does not exist and the race endpoint answers 404.
+- Exit 0 = gate passed. Every reason for a failure is printed and written into the JSON report.
+
 Fail → fix before P2 (checkout build). There is no fallback hosting decision to make at that point; the fallback is
 performance work, and only if the account truly cannot cope does the same codebase move to a bigger Hostinger tier —
 unchanged.

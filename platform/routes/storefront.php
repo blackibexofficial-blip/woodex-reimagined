@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\Storefront\CatalogController;
+use App\Http\Controllers\Api\Storefront\CheckoutRaceController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -24,3 +25,9 @@ Route::middleware('throttle:storefront-catalog')->group(function (): void {
     Route::get('/products/{slug}', [CatalogController::class, 'show'])->name('products.show');
     Route::get('/categories', [CatalogController::class, 'categories'])->name('categories.index');
 });
+
+/*
+ * The T12 checkout race. Registered outside the public rate limit because the probe fires
+ * requests simultaneously on purpose, and answers 404 unless a probe token is configured.
+ */
+Route::post('/checkout/race', CheckoutRaceController::class)->name('checkout.race');
