@@ -1,0 +1,107 @@
+{
+  "$comment": "The single source of truth for Puck blocks. Both consumers read this file: resources/js/studio/config.tsx builds the editor from it, and App\\Domain\\Website\\Puck\\Registry reads it to validate saves and to prove a Blade view exists. Do not hand-edit the field lists in either consumer.",
+  "version": 1,
+  "blocks": {
+    "hero": {
+      "label": "Hero",
+      "group": "Layout",
+      "icon": "image",
+      "bind": false,
+      "description": "Full-width opening statement: headline, supporting line, one action.",
+      "fields": {
+        "eyebrow": { "type": "text", "label": "Eyebrow", "default": "" },
+        "heading": { "type": "text", "label": "Heading", "default": "Rooms worth living in" },
+        "subheading": { "type": "textarea", "label": "Supporting line", "default": "" },
+        "image": { "type": "text", "label": "Background image URL", "default": "" },
+        "ctaLabel": { "type": "text", "label": "Button label", "default": "Explore the collection" },
+        "ctaHref": { "type": "text", "label": "Button link", "default": "/shop" },
+        "align": { "type": "select", "label": "Alignment", "default": "left", "options": ["left", "center"] }
+      }
+    },
+    "richText": {
+      "label": "Rich text",
+      "group": "Content",
+      "icon": "file",
+      "bind": false,
+      "description": "Sanitised HTML for editorial copy. Owner-only raw HTML is a separate block.",
+      "fields": {
+        "html": { "type": "textarea", "label": "Content", "default": "" },
+        "width": { "type": "select", "label": "Measure", "default": "prose", "options": ["prose", "wide"] }
+      }
+    },
+    "productGrid": {
+      "label": "Product grid",
+      "group": "Commerce",
+      "icon": "archive",
+      "bind": true,
+      "description": "Live products from the catalog. Stores a query, never a copy — a price change appears here without republishing the page.",
+      "fields": {
+        "heading": { "type": "text", "label": "Heading", "default": "Selected pieces" },
+        "category": { "type": "text", "label": "Category slug", "default": "" },
+        "limit": { "type": "number", "label": "How many", "default": 8, "min": 1, "max": 24 },
+        "sort": { "type": "select", "label": "Order", "default": "featured", "options": ["featured", "price_asc", "price_desc", "newest"] },
+        "inStockOnly": { "type": "boolean", "label": "In stock only", "default": false }
+      }
+    },
+    "categoryTiles": {
+      "label": "Category tiles",
+      "group": "Commerce",
+      "icon": "layout",
+      "bind": true,
+      "description": "The catalog's top-level categories with live product counts.",
+      "fields": {
+        "heading": { "type": "text", "label": "Heading", "default": "Shop by room" },
+        "limit": { "type": "number", "label": "How many", "default": 4, "min": 1, "max": 12 }
+      }
+    },
+    "materialsShowcase": {
+      "label": "Materials",
+      "group": "Commerce",
+      "icon": "palette",
+      "bind": true,
+      "description": "Swatches from the material attribute, so the library on this page is the same record products are filtered by.",
+      "fields": {
+        "heading": { "type": "text", "label": "Heading", "default": "Materials and finishes" },
+        "attribute": { "type": "text", "label": "Attribute code", "default": "finish" },
+        "limit": { "type": "number", "label": "How many", "default": 12, "min": 1, "max": 24 }
+      }
+    },
+    "faq": {
+      "label": "FAQ",
+      "group": "Content",
+      "icon": "info",
+      "bind": true,
+      "description": "Questions from the content library, with FAQPage schema emitted for search engines.",
+      "fields": {
+        "heading": { "type": "text", "label": "Heading", "default": "Frequently asked" },
+        "limit": { "type": "number", "label": "How many", "default": 6, "min": 1, "max": 20 },
+        "emitSchema": { "type": "boolean", "label": "Emit FAQ schema", "default": true }
+      }
+    },
+    "showroomMap": {
+      "label": "Showroom map",
+      "group": "Commerce",
+      "icon": "map-pin",
+      "bind": true,
+      "description": "Showroom locations with address and hours, plus a link to book a visit.",
+      "fields": {
+        "heading": { "type": "text", "label": "Heading", "default": "Visit a showroom" },
+        "limit": { "type": "number", "label": "How many", "default": 3, "min": 1, "max": 10 }
+      }
+    },
+    "cta": {
+      "label": "Call to action",
+      "group": "Layout",
+      "icon": "megaphone",
+      "bind": false,
+      "description": "One sentence and one button, on a band of colour.",
+      "fields": {
+        "heading": { "type": "text", "label": "Heading", "default": "Planning a space?" },
+        "body": { "type": "textarea", "label": "Supporting line", "default": "" },
+        "ctaLabel": { "type": "text", "label": "Button label", "default": "Request a quotation" },
+        "ctaHref": { "type": "text", "label": "Button link", "default": "/quotation" },
+        "tone": { "type": "select", "label": "Tone", "default": "wood", "options": ["wood", "navy", "sand"] }
+      }
+    }
+  }
+}

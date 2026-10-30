@@ -48,22 +48,22 @@ Ordered. Each row is one shippable thing, not a phase.
 |---|---|---|---|---|---|
 | **T1** | `Money` value object + `CartCalculator` skeleton | A | 2 | Integer paisa everywhere, no float in the path | ✅ **done** |
 | **T2** | 14 golden total fixtures + sum-invariant property test | A | 2 | Tests run red, then green | ✅ **done** — 16 tests / 13,371 assertions |
-| **T3** | Commerce catalog tables (11) + factories + seeder | A | 3 | `migrate:fresh --seed` → 20 products, 4 categories |
-| **T4** | Admin shell: Commerce group, empty screens, permissions | B | 2 | Sidebar shows 14 screens, unauthorized users blocked |
-| **T5** | Products admin: list, filter, search, inline price/stock | B | 4 | Staff edit a price without a developer |
-| **T6** | Media pipeline: upload → 3 sizes + WebP, outside web root | B | 2 | One image end-to-end, served with cache headers |
-| **T7** | `GET /products`, `/products/{slug}`, `/categories` | B | 2 | Cached 5 min, typed client generated |
-| **T8** | Puck Studio at `/admin/studio` behind OS session | C | 3 | Editor opens, drag-drop, saves JSON |
-| **T9** | Registry v1: 8 blocks, editor + Blade renderer, parity test | C | 4 | Same JSON → same HTML, CI fails on drift |
-| **T10** | Serve `pages` / `page_blocks` at `/p/{slug}`, cached | C | 3 | A page created in Studio renders on the site |
+| **T3** | Commerce catalog tables (13) + factories + seeder | A | 3 | `migrate:fresh --seed` → 20 products, 4 categories | ✅ **done** — WX-1001…WX-1020 |
+| **T4** | Admin shell: Commerce group, empty screens, permissions | B | 2 | Sidebar shows 14 screens, unauthorized users blocked | ✅ **done** |
+| **T5** | Products admin: list, filter, search, inline price/stock | B | 4 | Staff edit a price without a developer | ✅ **done** |
+| **T6** | Media pipeline: upload → 3 sizes + WebP, outside web root | B | 2 | One image end-to-end, served with cache headers | ✅ **done** |
+| **T7** | `GET /products`, `/products/{slug}`, `/categories` | B | 2 | Cached 5 min, typed client generated | ✅ **done** |
+| **T8** | Puck Studio behind the OS session (`/admin/website/pages/{page}/edit`) | C | 3 | Editor opens, drag-drop, saves JSON | ✅ **done** |
+| **T9** | Registry v1: 8 blocks, editor + Blade renderer, parity test | C | 4 | Same JSON → same HTML, CI fails on drift | ✅ **done** — 8 blocks / 8 views |
+| **T10** | Serve `pages` at `/p/{slug}`, cached, drafts via `preview_token` | C | 3 | A page created in Studio renders on the site | ✅ **done** |
 | **T11** | **Vertical slice: product → cart → COD order → invoice** | A+B | 5 | A real order exists in the DB with correct totals |
 | **T12** | Load probe: 30 concurrent catalog + 5 checkouts | A | 2 | p95 < 1.5 s, zero 5xx, zero oversell |
 
 **Built:** `platform/app/Domain/Commerce/` (Money, CartLine, DiscountRule, ShippingMethod, CartInput, LineTotal, CartTotals, CartCalculator) + 14 fixtures + runner. Run it with `php platform/tests/run.php`.
 
-**Built:** T1–T7. Next: T8–T10 (Puck), then T11 the vertical slice — product → cart → COD order. **Week 2:** T5–T7. **Week 3:** T8–T10. **Week 4:** T11–T12 → gate.
+**Built:** T1–T10. Next: T11 the vertical slice — product → cart → COD order → invoice, then T12 the load probe. **Week 1:** T1–T4 ✅. **Week 2:** T5–T7 ✅. **Week 3:** T8–T10 ✅. **Week 4:** T11–T12 → gate.
 
-**T1–T2 are code, not a document.** They live in `platform/` and pass: 16 tests, 13,371 assertions, 1,000 generated carts.
+**T1–T10 are code, not a document.** They live in `platform/` and pass: 104 checks, 14,243 assertions, 1,000 generated carts.
 
 After T12 passes, the remaining work is repetition: 30 more tables, 10 more screens, 18 more blocks, 9 surfaces.
 

@@ -30,7 +30,10 @@ const walk = (dir, files = []) => {
     if (statSync(path).isDirectory()) {
       if (name === 'node_modules' || name === 'sandbox') continue;
       walk(path, files);
-    } else if (/\.(php|json)$/.test(name)) {
+    } else if (/\.(php|json|ts|tsx)$/.test(name)) {
+      // TypeScript is included so the wiring tests can assert that the studio reads the same
+      // registry and the same data attributes the Blade shell writes. They are a few kilobytes;
+      // a test that cannot see the other half of a contract is a test that proves nothing.
       files.push(path);
     }
   }

@@ -13,17 +13,22 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 
 spl_autoload_register(static function (string $class) use ($root): void {
-    $prefix = 'App\\Domain\\Commerce\\';
+    // Domains are listed explicitly rather than mapped by convention: an autoloader that
+    // resolves any `App\Domain\*` class would also load the Eloquent models, and those need a
+    // booted framework that this runner deliberately does not have.
+    foreach (['Commerce', 'Website'] as $domain) {
+        $prefix = 'App\\Domain\\'.$domain.'\\';
 
-    if (! str_starts_with($class, $prefix)) {
-        return;
-    }
+        if (! str_starts_with($class, $prefix)) {
+            continue;
+        }
 
-    $relative = str_replace('\\', '/', substr($class, strlen($prefix)));
-    $path = $root.'/app/Domain/Commerce/'.$relative.'.php';
+        $relative = str_replace('\\', '/', substr($class, strlen($prefix)));
+        $path = $root.'/app/Domain/'.$domain.'/'.$relative.'.php';
 
-    if (is_file($path)) {
-        require_once $path;
+        if (is_file($path)) {
+            require_once $path;
+        }
     }
 });
 

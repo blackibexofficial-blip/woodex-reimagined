@@ -61,6 +61,11 @@ ALTER TABLE pages
 - `page_versions` (already exists) stores every published snapshot → rollback is a copy.
 - `content_entries` (already exists, unused) becomes the **Content** backbone: `type` ∈ `post | study | page` with a
   Puck body, so Blog and Portfolio stop writing HTML shells.
+- **`draft_of` is not added** (decision, T8): `pages.slug` is unique, so a draft row cannot share the published
+  page's slug, and `page_versions` already stores every published snapshot. Pages are edited in place with
+  `status` + `published_at`; drafts are previewed through the row's own `preview_token`, not a parallel row.
+- **Reading is lenient, writing is strict.** Decoding a document drops blocks the build no longer knows, so an
+  old page still renders; saving refuses them, so a save can never silently delete a section.
 
 ---
 
