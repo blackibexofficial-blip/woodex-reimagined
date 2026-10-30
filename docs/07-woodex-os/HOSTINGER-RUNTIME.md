@@ -16,7 +16,9 @@ APP_DEBUG=false
 APP_URL=https://woodex.com.pk
 PUBLIC_SITE_URL=https://woodex.com.pk
 
-DB_CONNECTION=mysql           # single shared instance
+DB_CONNECTION=mysql           # OS database only
+# Bagisto has its OWN database, user and .env on the same account (see BAGISTO-INTEGRATION.md §2).
+# The OS never opens a second connection to it — it talks to the Bagisto API, not its tables.
 SESSION_DRIVER=database
 CACHE_STORE=file              # database is the fallback
 QUEUE_CONNECTION=database

@@ -1,242 +1,242 @@
-# Reimagin OS — Master Plan (v4)
+# Reimagin OS — Master Plan v5
 
-**Date:** 31 October 2026 · **Status:** upgraded from v3 after the admin screenshot audit and the module-by-module code review
-**Name:** **Reimagin OS** = WOODEX OS (Laravel backend) + **Puck Studio** (replaces the file-based frontend) + **Commerce** + **Storefront API**
-**Hosting:** Hostinger **shared hosting** (no SSH, no Node, no Redis) · **Team:** 3 developers · **Target:** 18–22 weeks
-
-> Companion docs: [`ADMIN-UI-AUDIT.md`](./ADMIN-UI-AUDIT.md) (screenshot vs code) · [`PUCK-BUILDER.md`](./PUCK-BUILDER.md) (frontend v1 replacement) ·
-> [`FRONTEND-API.md`](./FRONTEND-API.md) (complete API inventory + integration) · [`COMMERCE-DOMAIN.md`](./COMMERCE-DOMAIN.md) · [`HOSTINGER-RUNTIME.md`](./HOSTINGER-RUNTIME.md) ·
-> [`OS-BASELINE.md`](./OS-BASELINE.md) · [`OPEN-QUESTIONS.md`](./OPEN-QUESTIONS.md) · [`openapi.yaml`](./openapi.yaml)
-
----
-
-## 1. What changed in v4
-
-| # | Change | Why |
-|---|---|---|
-| 1 | **Puck Studio is now a core pillar, not an add-on** | `SiteRouter` states *“A page is a file”*: 142 public pages are raw HTML edited by hand. Nothing data-driven (prices, products, stock) can ever live in them. |
-| 2 | **The Page Builder and Content modules are explicitly replaced** | Builder edits whole HTML documents (`SaveHtmlFile`); Blog/Portfolio publish by writing HTML shells (`ArticleFile`); `pages`, `page_blocks`, `content_entries` tables are dead weight. |
-| 3 | **Admin IA gets a defined target** | Screenshot = revision 49 target: `Website` heading with 6 entries, SEO merged. Code still has 7 loose tools + a separate SEO agent. |
-| 4 | **`Preview Owner` is flagged as undefined** | It exists in the screenshot but **nowhere in `app/`**. Must be specified before it is built. |
-| 5 | **Frontend API work is staged S0–S5 with contract-first CI** | Only 11 public endpoints exist today; none catalog-shaped. |
-| 6 | **Timeline corrected to 18–22 weeks** | Builder replacement (142 pages, parity-gated) runs alongside commerce. |
-| 7 | **Storefront work is gated on answers** | Per instruction: questions first — see [`OPEN-QUESTIONS.md`](./OPEN-QUESTIONS.md). |
-
----
-
-## 2. Ground truth (measured)
-
-### WOODEX OS — `woodex420/woodexinterior` @ `c437cad`
+**One storefront. Two Laravel backends. One page builder. One AI agent. One shared host.**
 
 | | |
-|---|---:|
-| PHP files / lines in `platform/app` | 682 / **73,582** |
-| Livewire components / domain models | 117 / 81 |
-| Migrations / tables | 82 / **98** |
-| Admin route definitions | **106** |
-| Test files | 180 *(repo reports 1,722 passing)* |
-| Public pages served as static files | **142** |
-| Public JSON endpoints | **11** (leads, chat ×3, legacy bridge ×3, MCP ×2, bridge reads ×3) |
-| MCP tools (read-only) | **7** |
-| Commerce tables | **0** |
+|---|---|
+| **Frontend** | `woodex-reimagined` — React 18 + Vite + TS + Tailwind, 23 routes, 148 products, currently **0 API calls** |
+| **Master backend** | **WOODEX OS** — Laravel 13 · PHP 8.4 · Livewire 4.4, 682 files, 98 tables, 180 tests |
+| **Commerce engine** | **Bagisto 2.5** — Laravel 13 · PHP 8.4 · MySQL 8 (MIT) |
+| **Page builder** | **Puck 0.24** (`@puckeditor/core`, MIT) — JSON pages, React editor, `<Render>` |
+| **AI** | OS agent — 7 tools today, 14 at launch, guardrailed |
+| **Hosting** | **Hostinger shared. No VPS.** 2 cores · ~1.5 GB RAM · 30 entry processes · 3 GB DB |
+| **Team** | 3 developers |
+| **Calendar** | **P0–P5, 24 weeks**, public launch at **week 16** |
 
-### Storefront — this repo
-
-23 routes · 148 products · 28 subcategories · 5 series · 16 materials · 6 posts · 7 projects · dual cart + quote
-funnels · **no API client** (`src/data/*` is the only source).
+> v4 proposed replacing Bagisto with a hand-built commerce domain. **That is withdrawn.** Bagisto is the commerce
+> engine. This document is how it lives with the OS on a shared host — see `BAGISTO-INTEGRATION.md`.
 
 ---
 
-## 3. Module status matrix (from the screenshot + code)
+## 1. Decisions, locked
 
-| Module (sidebar) | State | Evidence | v4 work |
+| # | Decision | Consequence |
+|---|---|---|
+| D1 | **Bagisto is commerce** — catalog, cart, checkout, orders, invoices, refunds | OS never writes prices or stock |
+| D2 | **Bagisto runs as a second site** (`shop.woodex.pk`), not vendored into the OS | Two deploys, one API boundary, no merge debt |
+| D3 | **WOODEX OS is master** for people, quotes, projects, content, AI | The 360° customer view lives here |
+| D4 | **Os owns the storefront API** (`/api/storefront/v1`) as a BFF | The SPA never talks to Bagisto directly |
+| D5 | **Puck replaces the file-based builder** | One builder for pages, blog, showrooms, materials, FAQ |
+| D6 | **Marketing is server-rendered** (OS Blade), commerce is SPA | Indexable without Node on the host |
+| D7 | **Hostinger shared hosting** | No Node runtime, no Redis, no workers, no websockets |
+| D8 | **Gate H0**: prove Bagisto installs before building UI | Week 1, cheap, de-risks everything |
+| D9 | Launch catalogue **simple products**, PKR, bank + COD | Safepay/JazzCash behind flags |
+| D10 | **Seed data only**; no Supabase migration | Import from CSV/Bagisto importer |
+| D11 | AI agent acts autonomously **within limits**, always logged | Human approval for money/refunds |
+
+---
+
+## 2. System map
+
+```
+                       ┌─────────────────────────────────────────────┐
+   visitor ───────────►│  woodex.pk  —  storefront                   │
+                       │  · marketing pages   → OS Blade + Puck JSON │
+                       │  · product pages     → OS Blade (cached)    │
+                       │  · cart/checkout     → React SPA            │
+                       └───────────────┬─────────────────────────────┘
+                                       │ BFF  /api/storefront/v1
+                       ┌───────────────▼─────────────────────────────┐
+                       │  WOODEX OS  (admin.woodex.pk)               │
+                       │  CRM · Sales · Projects · Accounts ·        │
+                       │  Conversations · Website/Puck · AI Agent    │
+                       └───────┬─────────────────────────┬───────────┘
+                               │ signed HTTPS            │ cron
+                       ┌───────▼──────────────┐  ┌───────▼─────────┐
+                       │  BAGISTO             │  │  MySQL ×2       │
+                       │  shop.woodex.pk      │  │  OS + Bagisto   │
+                       │  catalog · cart ·    │  │  (no shared      │
+                       │  checkout · orders   │  │   tables)       │
+                       └──────────────────────┘  └─────────────────┘
+```
+
+**Boundary rule:** money → Bagisto. People, promises, pages → OS.
+
+---
+
+## 3. The three workstreams
+
+### A — Commerce (Bagisto + storefront integration) · 2 devs weeks 1–16
+
+| A# | Deliverable | Week |
+|---|---|---|
+| A1 | **Gate H0** — Bagisto installs, one product, one order on the real account | 1 |
+| A2 | Bagisto configured: PKR, tax, 3 warehouses, customer groups, attributes | 2 |
+| A3 | Catalog import (148 products → Bagisto CSV importer), images, categories | 2–3 |
+| A4 | `CommerceGateway` interface + `BagistoGateway` + `NullGateway` | 3 |
+| A5 | BFF catalog endpoints + `commerce_products` cache + invalidation webhook | 4–5 |
+| A6 | Product/category pages server-rendered from cache, indexable | 5–6 |
+| A7 | Cart + checkout SPA wired to Bagisto through the BFF | 6–8 |
+| A8 | Payments: bank transfer + COD live; Safepay integrated behind flag | 8–10 |
+| A9 | Order webhooks → `commerce_orders` mirror → Accounts entry | 9–10 |
+| A10 | Account area: orders, invoices, addresses, tracking | 10–12 |
+| A11 | **Quote → cart → order** path (from OS Sales) | 12–13 |
+| A12 | Refunds, cancellations, RMA, reconciliation job | 13–14 |
+| A13 | JazzCash / easypaisa; multi-currency; export channel | 14–16 |
+| A14 | Load test: 30 concurrent checkouts, zero 508, p95 < 1.5 s | 15 |
+
+### B — OS parity modules (the nine gaps) · 1.5 devs weeks 5–20
+
+| B# | Feature | Week | Tables |
 |---|---|---|---|
-| **Reports** | ✅ done | `Reports` Livewire, `ReportRange`, period presets | add commerce KPIs |
-| **CRM** | ✅ done | Leads, Contacts, Tasks & Visits, scoring, assignment, SLA, activity feed | lead source = storefront |
-| **Sales** | ✅ done | Estimations, Quotes (+versions, approvals, milestones), Invoices, Payments, Documents, PDFs | storefront quote intake |
-| **Accounts** | ✅ done | CoA, Journals, Trial balance, P&L, Payables, Expenses, Periods, Payment methods | order → invoice → ledger |
-| **Projects** | ✅ done | Projects, Board, Client portal, Handovers | installation scheduling for orders |
-| **Inbox** | ✅ done | Conversations (WhatsApp/Telegram/web chat), Chat Bot | **agent activity screen** |
-| **Automation** | ✅ done | Automations, Sequences, WhatsApp templates | order/quote triggers |
-| **Marketing** | 🟡 partial | Social posting screen | campaign landing pages (Puck) |
-| **Pages & Builder** | 🔴 **file-based** | 142 HTML docs, `SaveHtmlFile` | **replace with Puck Studio** |
-| **Content** | 🔴 **file-based** | Blog/Portfolio write HTML shells | **rebuild on Puck bodies** |
-| **Website** | 🟡 tools only | Media, SEO (+SEO agent separate), Speed, Site health, Theme, Settings | merge SEO tabs, add heading |
-| **System** | ✅ done | Settings, Access & team, Connections, Platform | commerce permissions |
-| **Commerce** | ❌ **absent** | no products/carts/orders/stock | **build (P4–P6)** |
+| B1 | **E-Quotation public** (draft, signed link, accept, PDF, WhatsApp) | 5–7 | +1 |
+| B2 | **FAQ** — wire existing `ContentEntry` | 6 | 0 |
+| B3 | **Support cases** — public intake → Conversations + SLA | 7–8 | +2 |
+| B4 | **Showrooms + appointments** → CRM visits | 9–11 | +2 |
+| B5 | **Materials & colours** + Bagisto attribute bridge | 10–12 | +3 |
+| B6 | **Warranty** registration + claims → service jobs | 12–15 | +3 |
+| B7 | **Custom Design** brief → Project + Quote draft | 14–16 | +2 |
+| B8 | **Distributors** application pipeline + Bagisto group sync | 15–17 | +2 |
+| B9 | **Markets** pages + enquiry pipeline | 17–18 | +2 |
+| B10 | Admin screens, permissions, reports for all of the above | 8–20 | — |
+
+*Full spec: `FEATURE-PARITY.md`.*
+
+### C — CMS, Puck builder, AI · 1.5 devs weeks 1–20
+
+| C# | Deliverable | Week |
+|---|---|---|
+| C1 | Puck Studio embedded in the OS admin (`/admin/studio`), auth via OS session | 2–4 |
+| C2 | Page schema v1: components, tokens, breakpoints, versioning, preview | 4–6 |
+| C3 | **`pages` / `page_blocks` served** — render Puck JSON through Blade, cached | 5–7 |
+| C4 | Component library vs. the 142 legacy pages (M0–M7 migration groups) | 6–10 |
+| C5 | Media library, asset variants, focal points | 8–9 |
+| C6 | Blog/insights on Puck + `ContentEntry` (testimonials, logos, FAQ) | 9–11 |
+| C7 | SEO: sitemap, canonical, JSON-LD (Product, FAQPage, LocalBusiness), redirects | 10–12 |
+| C8 | Migrate all 142 static pages, keep 301s | 11–16 |
+| C9 | **AI agent** — 14 tools (catalog, order status, quote draft, appointment, warranty, ticket, page draft, translate…) | 8–18 |
+| C10 | Agent guardrails: allow-list, spend caps, approval gates, full audit log | 12–14 |
+| C11 | Agent surfaces: admin copilot, site chat, WhatsApp, email triage | 14–18 |
+| C12 | Roles, audit trail, backups drill, staging subdomain | 18–20 |
 
 ---
 
-## 4. Locked decisions
+## 4. Phases
 
-| # | Decision |
-|---|---|
-| L1 | **Hostinger shared hosting** — no Node/Redis/Socket at runtime; cron queues; static preview build of Studio |
-| L2 | **WOODEX OS is the master backend** — no second app, no second database |
-| L3 | **Commerce is a native domain** in the OS (reuses Sales invoices/payments + Accounts ledger) |
-| L4 | **Puck Studio replaces the file-based frontend** for Pages & Builder and Content |
-| L5 | **Simple products at launch** (one default variant), variant tables present for later |
-| L6 | **Bank transfer + COD first**, Safepay/wallets in parallel; no launch dependency |
-| L7 | **Agent autonomous within limits** — caps enforced server-side, hard handoff beyond them |
-| L8 | **No Supabase data migration** — catalog + content seeded from this repo; customers/quotes start fresh |
-| L9 | **3 developers, 4 parallel tracks** |
-| L10 | **Storefront integration starts only after the open questions are answered** |
+| Phase | Weeks | Goal | Exit gate |
+|---|---|---|---|
+| **P0 — Prove the ground** | 1–2 | H0 Bagisto gate; hosting topology; repos; CI | Bagisto + OS both live on the account |
+| **P1 — Commerce spine** | 3–7 | Catalog in Bagisto, BFF, product pages, Puck Studio v0 | A product page renders from Bagisto data, editable copy |
+| **P2 — Sell** | 8–12 | Cart, checkout, bank+COD, orders, accounts, quotations | **First real online order** |
+| **P3 — Launch** | 13–16 | Payments, all nine public surfaces, 142 pages migrated, SEO | **Public launch, week 16** |
+| **P4 — Depth** | 17–20 | Warranties, dealer pricing, markets, AI agent live | Dealer onboarded; agent handles 40% of tickets |
+| **P5 — Harden** | 21–24 | Load, security, DR drill, docs, handover | 14 days zero drift; runbooks written |
+
+Beyond the launch gate: GA4 + Search Console + WhatsApp Business API + abandoned-cart flow.
 
 ---
 
-## 5. Target architecture
+## 5. Team of 3
 
-```
-                          ┌──────────────────────────────────────────────┐
- public visitor ─────────▶│ Storefront (React 18 SPA, this repo)         │
-                          │  reads /api/storefront/v1 · renders pages     │
-                          └───────────────┬──────────────────────────────┘
-                                          │
-┌─────────────────────────────────────────▼──────────────────────────────────┐
-│ REIMAGIN OS — Laravel 13 · Livewire 4 · PHP 8.4 · Hostinger shared         │
-│                                                                             │
-│  Commerce (NEW)        Sales (existing)        Accounts (existing)          │
-│  products · carts  ──▶ quotes · invoices ────▶ ledger · periods             │
-│  orders · stock        payments · PDFs                                      │
-│                                                                             │
-│  Website (existing)    Puck Studio (NEW)       Content (rebuilt)           │
-│  media · seo · theme   JSON pages · PHP render posts · studies · forms     │
-│                                                                             │
-│  CRM · Inbox · Automation · Marketing (existing) + Agent (extended)         │
-└─────────────────────────────────────────────────────────────────────────────┘
-                          │
-        MySQL 8 · file cache · cron queue · storage outside webroot
-```
+| Dev | Weeks 1–8 | Weeks 9–16 | Weeks 17–24 |
+|---|---|---|---|
+| **A — Commerce** | H0, Bagisto setup, import, gateway, BFF | Cart, checkout, payments, orders | Refunds, reconciliation, load, multi-currency |
+| **B — OS/domain** | Quotations, FAQ, support cases, admin patterns | Showrooms, materials, warranty, custom design | Distributors, markets, reports |
+| **C — CMS/AI** | Puck Studio, schema, render pipeline | Component library, 142-page migration, SEO | AI agent tools, guardrails, hardening |
+| **Shared** | Code review, contract tests, staging | Launch checklist, content ops | Runbooks, handover |
 
-**The rule that keeps it honest:** Commerce and the Agent never write `payments`, `journal_*` or `invoices`
-directly — they call the existing, audited Sales/Accounts actions. An architecture test fails the build on violation.
+Nothing is single-owner: every module has a reader and a writer.
+Contract tests between OS ↔ Bagisto are written by **B**, executed in **A**'s CI.
 
 ---
 
-## 6. Workstream A — replace the file-based frontend (Puck)
+## 6. Data
 
-Full design: [`PUCK-BUILDER.md`](./PUCK-BUILDER.md). Summary of the commitment:
+| System | Tables added | Notes |
+|---|---|---|
+| Bagisto | catalog, orders, invoices (its own schema) | never modified — config + attributes only |
+| OS — commerce mirrors | `commerce_products`, `commerce_orders`, `commerce_order_lines`, `commerce_customers`, `commerce_events`, `commerce_sync_runs` | 6 |
+| OS — parity modules | locations, appointments, materials, variants, warranties, claims, cases, dealer_applications, markets, enquiries, design_requests, quote shares | ≈ 13–16 |
+| OS — CMS | `pages`, `page_blocks` (exist), `content_entries` (exists), `page_revisions`, `redirects` | reuse first |
 
-| Item | Detail |
-|---|---|
-| Editor | `@puckeditor/core` 0.24.0 (MIT), static bundle at `/admin/studio` |
-| Storage | `pages.builder='puck'` + `puck_data` JSON; `page_versions` for rollback; `source_file` keeps the v1 origin |
-| Render | PHP Blade block registry; **full HTML, zero required JS** |
-| Blocks | 10 ported from the existing 18 `BlockType` cases + **8 new data-bound commerce blocks** |
-| Migration | 7 groups: pilot 6 → core 5 → 48 cost guides → 20 cities → 54 specialists → blog/portfolio → retire file writer |
-| Rule | **No URL changes, site never dark, every group reversible, DOM parity report required** |
-| Content | `content_entries` (already in schema, unused) becomes the blog/portfolio backbone |
-| Gate | v1 vs v2 rendered-DOM parity + Lighthouse ≥ 90 on each group |
-
-**Why this unlocks commerce:** product pages, category landing pages and campaign pages become *blocks over live
-data* instead of hand-written HTML.
+**Migration policy:** additive only. No data migration from Supabase. Seed data is generated, reviewable, and
+re-runnable (`php artisan db:seed --class=DemoSeeder`).
 
 ---
 
-## 7. Workstream B — Commerce
+## 7. AI agent
 
-[`COMMERCE-DOMAIN.md`](./COMMERCE-DOMAIN.md) for DDL/actions/tests.
+**Today:** 7 read-only tools. **At launch:** 14, all scoped to one customer and one session.
 
-| Layer | Content |
-|---|---|
-| Data | 21 additive migrations (products, variants, attributes, media, categories, collections, price lists, inventory, movements, carts, items, orders, items, shipments, returns) |
-| Reuse | invoice raising, payment recording, allocation, ledger posting, numbering, contacts, notifications, media, money helper |
-| Admin | Commerce group in the sidebar: Overview · Products · Categories & collections · Inventory · Orders · Shipments & returns · Pricing · Storefront settings |
-| Storefront | catalog read API + cart + checkout + bank/COD → invoice → payment |
-| Payments | Safepay (cards/wallets/Raast), JazzCash, easypaisa; webhooks HMAC-verified; replay window; refunds via credit note |
+| Tool group | Tools | Guardrail |
+|---|---|---|
+| Catalog | search, detail, stock, compare | read-only |
+| Orders | status, invoice, tracking | customer-scoped, no PII echo |
+| Sales | draft quotation, book appointment | draft only — a human sends |
+| Service | open ticket, check warranty, raise claim | claim ≤ auto-approve limit |
+| Content | draft page section, rewrite for SEO, translate | publish requires approval |
+| Ops | summarise ticket, suggest reply | never auto-sends money messages |
 
----
-
-## 8. Workstream C — frontend API (contract-first)
-
-[`FRONTEND-API.md`](./FRONTEND-API.md) — 11 existing endpoints documented, 30 target paths, 14 advanced features
-(ETag caching, idempotency, public tokens, OTP auth, rate limits, outbound webhooks, MySQL fulltext search, media
-derivatives, server-driven blocks, SEO/JSON-LD, i18n, server-side analytics, agent tools, observability).
-
-Stages: **S0** contract + mock + CI → **S1** catalog read → **S2** quote write → **S3** cart/checkout → **S4** payments
-→ **S5** agent + auth. The storefront switches per page behind `VITE_DATA_SOURCE=static|api`.
+**Hard limits:** no refunds, no price changes, no customer deletion, no email to a customer without approval above a
+threshold. Every call is logged with input, output, tokens and decision. Cost cap per conversation and per day.
+Escalation to a human is a first-class outcome, not a failure.
 
 ---
 
-## 9. Delivery plan — 3 devs, 4 tracks, 18–22 weeks
+## 8. Risks (ranked by expected damage)
 
-```
-W1-2    P0 Foundations      secrets rotation · branches · commerce migrations · API contract + mock
-                            · Puck registry skeleton · nav/UX deltas (A1-A4)
-W3-6    P1 Catalog          products/categories/series/materials/content seeded and served
-                            · storefront reads API · pilot 6 pages converted to Puck (G1, G2)
-W7-10   P2 Commerce core    cart · checkout · order · invoice bridge · bank/COD · admin screens (G3)
-W9-13   P3 Builder rollout  core pages · 48 guides · 20 cities · Content on Puck bodies (G4)
-W11-14  P4 Payments         Safepay sandbox→prod · wallets · webhooks · refunds (G5)
-W13-16  P5 Agent            commerce tools · policy engine · agent activity screen · WhatsApp/web (G6)
-W15-18  P6 Specialists      remaining 54 pages converted · ArticleFile retired (G7)
-W17-22  P7 Hardening        e2e · load on shared hosting · restore drill · permissions audit · training (G8)
-```
-
-| Track | Dev | P0–P1 | P2–P3 | P4–P7 |
+| # | Risk | Prob | Impact | Mitigation |
 |---|---|---|---|---|
-| **A** Laravel / commerce | 1 | schema, catalog services, read API | cart/checkout, invoice bridge | payments, orders admin |
-| **B** Laravel / builder | 2 | Puck shell, registry, PHP renderer | page migration M1–M4, content | M5–M7, retire file writer |
-| **C** Frontend | 3 | API client, `DATA_SOURCE` switch | catalog pages on API, cart/checkout UI | Puck blocks, storefront pages |
-| **D** QA / agent | shared | contract CI, parity harness | payment webhooks e2e | agent tools, policy, load test |
-
-**Gates** — G1 catalog parity 100% · G2 pilot pages DOM-identical to v1 · G3 one real order invoice posted to the
-ledger · G4 Content publishes via Puck with unchanged URLs · G5 gateway sandbox then production approval ·
-G6 agent completes a capped order and escalates an over-limit one · G7 zero pages still `builder='file'` ·
-G8 restore drill + 50-concurrent checkout test pass.
-
-**Critical path:** commerce schema → catalog API → storefront switch → cart/checkout → payments.
-Builder migration is parallel and independently shippable.
+| R1 | **Bagisto can't run on shared** | Med | **Fatal to plan** | Gate H0 week 1; fallbacks in `HOSTINGER-CAPACITY.md` §2 |
+| R2 | Two apps exceed 30 entry processes at peak | Med | Slow checkout | Page cache, BFF catalog cache, 3-size images, monitor 508 |
+| R3 | Bagisto's API surface differs from the adapter's assumptions | High | Rework | Pin version, contract tests, thin gateway |
+| R4 | 142-page migration stalls on bespoke layouts | High | Launch slip | Component library first; migrate top 30, 301 the rest |
+| R5 | Quote → order handoff creates duplicate customers | Med | Data mess | Link on email+phone, single `commerce_customers` link table |
+| R6 | Composers OOM in the Git deploy hook | Med | Deploy pain | Pre-built `vendor` fallback, SSH step, lockfile pinned |
+| R7 | Scope creep from "complete CMS" | High | Everything slips | P0–P3 scope frozen at 9 gaps + 142 pages; new asks go to P5 |
+| R8 | AI agent hallucinating order data | Med | Trust | Tools return structured rows only; no free-text generation over DB |
 
 ---
 
-## 10. Effort
+## 9. Budget
 
-| Shape | Calendar | Note |
-|---|---|---|
-| 3 developers (recommended) | **18–22 weeks** | 4 tracks; matches “all in parallel” |
-| 2 developers | 26–32 weeks | builder and commerce serialise at the end |
-| 1 developer | 44–52 weeks | not recommended with payments in scope |
-
-Running cost stays as in v3 (≈ $35–80/month on shared hosting; no licence fees — Puck and all OS packages are MIT).
-
----
-
-## 11. Risks (v4 additions in bold)
-
-| # | Risk | Mitigation |
-|---|---|---|
-| 1 | **Page migration breaks SEO/URLs** | URL freeze, DOM parity gate, per-group rollback, sitemap diff |
-| 2 | **Puck registry drifts TS vs PHP** | single JSON registry + parity test in CI |
-| 3 | **Builder replacement stalls while commerce races ahead** | builder is its own track with weekly shippable groups |
-| 4 | Commerce writes bypass audited finance | architecture test; code review rule |
-| 5 | Shared-hosting CPU under checkout bursts | ≤6 queries per checkout; 50-concurrent test in P2 |
-| 6 | **Cron-only queue delays emails/PDFs** | anything a customer waits for is synchronous |
-| 7 | **`Preview Owner` built wrong (real impersonation without audit)** | specify first; read-only, audited, banner |
-| 8 | Payment onboarding delay | bank/COD first; gateway is additive |
-| 9 | Historical secrets | rotate before payment keys |
-| 10 | Scope creep (marketplace, multi-currency) | explicit out-of-scope list per phase |
-
----
-
-## 12. Next 10 working days
-
-| Day | Deliverable |
+| Line | Monthly |
 |---|---|
-| 1 | Rotate secrets; create `commerce` + `studio` branches; freeze OS open financial items |
-| 2 | Commerce migrations 1–21 drafted + architecture test stub |
-| 3 | `openapi.yaml` frozen; mock server; CI schema check |
-| 4 | Catalog import command seeds 148 products / 28 categories / 5 series / 16 materials |
-| 5 | `GET /api/storefront/v1/products` + `/categories` green |
-| 6 | Storefront `src/lib/api/` + `VITE_DATA_SOURCE` switch on staging |
-| 7 | Puck Studio shell at `/admin/studio` with Hero + RichText + ProductGrid |
-| 8 | PHP renderer for those three blocks; a page served with no JS |
-| 9 | Pilot conversion of 1 real page (e.g. `/commercial-interior/`) + parity report |
-| 10 | Demo: edit → publish → storefront shows it; catalog served from the OS; order draft raised |
+| Hostinger shared (Business) | $4–9 |
+| Domain + SSL | ~$1 |
+| Email (transactional) | $0–15 |
+| WhatsApp Business API | usage |
+| Gateway fees | 2–3 % of online revenue |
+| **Infra floor** | **≈ $10–25/mo** |
+
+If H0 fails and a managed cloud box is needed: **+$10–20/mo**. Still not a VPS in the owner's sense, still one bill.
 
 ---
 
-## 13. Open questions (storefront)
+## 10. Launch checklist (week 16)
 
-Recorded in [`OPEN-QUESTIONS.md`](./OPEN-QUESTIONS.md) and asked directly. **No storefront build starts before
-these are answered** — the answers change the workstream C shape, the SEO strategy and the checkout design.
+- [ ] Product page indexable, in sitemap, JSON-LD valid
+- [ ] Guest checkout: bank transfer and COD, both completing
+- [ ] Order confirmation email + WhatsApp
+- [ ] 40 real orders reconciled with zero unexplained drift
+- [ ] All nine public surfaces submit to the OS (no toast-only forms)
+- [ ] Puck: 30 marketing pages editable by a non-developer, one-click publish + rollback
+- [ ] 301 map for every legacy URL; no 404 spikes in Search Console
+- [ ] Staging subdomain deploys the same commit as production
+- [ ] Backup restores into a scratch folder in under 30 minutes
+- [ ] Admin runbook: refund, cancel, re-send invoice, edit order, restore page
+
+---
+
+## 11. Explicitly out of scope (v5)
+
+Multi-vendor marketplace · mobile apps · ERP payroll/HR · POS · subscription billing · full PIM · BI warehouse ·
+custom SSO · email marketing automation suite · loyalty program · live chat with agents beyond polling ·
+VPS/Kubernetes/Redis/Node runtime.
+
+---
+
+## 12. What must be answered before code starts
+
+See `OPEN-QUESTIONS.md`. Four answers block week 1: **Bagisto account shape**, **who pays for what** (gateway/KYC),
+**catalog ownership during import**, and **launch date flexibility**.

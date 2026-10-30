@@ -1,20 +1,92 @@
-# Open Questions — answer before storefront build
+# Open Questions — v5
 
-**Rule (from the owner):** the storefront is not started until these are answered. Each has a recommended default
-so work never blocks waiting for a perfect answer.
+Six decisions block or reshape week 1. Each is stated as *the choice*, *what it changes*, and *what I assume if
+silent*. The default is the recommendation.
 
-| # | Question | Options | Recommended default |
-|---|---|---|---|
-| Q1 | **What is the storefront’s job?** | (a) full shop with checkout · (b) catalogue + quote requests only · (c) both, B2C cart for retail SKUs and quote for B2B | **(c)** — the OS already has both funnels |
-| Q2 | **Who owns the marketing pages after Puck ships?** | (a) storefront renders Puck JSON via `/pages/{slug}` · (b) Laravel renders Puck pages itself, storefront stays SPA-only for app routes | **(b)** — fastest SEO win, one renderer |
-| Q3 | **Does the 142-page v1 site get migrated at all?** | (a) yes, all 7 groups · (b) only home + services + guides · (c) keep v1 files, build new pages in Puck only | **(a)** but the last group (54 specialists) can slip past launch |
-| Q4 | **Which products actually sell online at launch?** | (a) all 148 · (b) curated 30–50 · (c) none — quote-only | **(b)** — stock and photography are the real constraint |
-| Q5 | **Who is the first customer type?** | (a) B2C walk-in · (b) B2B corporate · (c) both with separate journeys | **(b)** — 60% of revenue, and the OS already models it |
-| Q6 | **Is `Preview Owner` a role preview or a staging marker?** | (a) read-only “view as role”, audited · (b) environment banner only · (c) real impersonation for support | **(a)** |
-| Q7 | **Payment go-live** | (a) bank + COD at launch · (b) wait for Safepay approval · (c) both | **(c)** |
-| Q8 | **Storefront tech after Puck** | (a) stay React 18 + Vite + prerender · (b) move to Next.js App Router/ISR now · (c) stay, revisit after launch | **(a)** now, **(c)** review at P7 |
-| Q9 | **Agent autonomy caps** | confirm PKR 250k / 10% discount, or different | PKR 250k / 10% |
-| Q10 | **Urdu** | (a) English only · (b) EN + UR content, EN UI · (c) full bilingual | **(b)** |
+---
 
-Answers change three things: workstream C’s shape (Q1, Q2, Q8), the migration schedule (Q3), and the launch
-catalogue (Q4).
+### Q1 — If Bagisto will not run on the shared account, what do we do?
+
+Gate H0 (week 1) answers this technically. This is the business decision if it fails.
+
+| Option | Cost | What changes |
+|---|---|---|
+| **A. Upgrade to Hostinger Cloud Startup** | +$10–20/mo | Same account, same hPanel, ~3–4 GB RAM. Least disruption. **Recommended** |
+| B. Bagisto on a cheap managed host, OS stays shared | +$10–20/mo | Two providers, two bills, API sync unchanged |
+| C. Stay shared, launch catalog + quotations only, checkout later | $0 | Loses "complete e-commerce" at launch |
+
+**Default if no answer: A**, and we test it inside H0 so there is no surprise later.
+
+---
+
+### Q2 — Where does the team actually run orders?
+
+| Option | Consequence |
+|---|---|
+| **A. Staff use the Bagisto admin for orders/fulfilment; OS shows a read-only order mirror + the customer 360** | Fastest to launch, no duplicate order UI. **Recommended** |
+| B. Orders are managed in the OS, Bagisto is a hidden engine | Better UX for staff, +4–6 weeks of order UI, more sync surface |
+| C. Both are writable | Rejected — two writers, guaranteed drift |
+
+**Default: A.**
+
+---
+
+### Q3 — The 142 existing pages: migrate all, or curate?
+
+| Option | Consequence |
+|---|---|
+| **A. Migrate top 30 + all product/category pages; 301 the rest to the nearest parent** | Launch on time, no ranking cliff if redirects are mapped. **Recommended** |
+| B. Migrate all 142 | Adds ~3–4 weeks; many pages are near-duplicates |
+| C. Keep legacy HTML, migrate only new pages | Two builders forever — rejected |
+
+**Default: A**, with a URL-by-URL redirect map reviewed before cutover.
+
+---
+
+### Q4 — Who owns the catalog data during import?
+
+| Option | Consequence |
+|---|---|
+| **A. We import the 148 products from the existing TS arrays into Bagisto CSV, owner reviews once** | One-time, fast, reversible. **Recommended** |
+| B. Sales team re-enters everything in the Bagisto admin | Slow, error-prone, no benefit |
+| C. Keep the TS arrays as truth, sync to Bagisto | Two truths — rejected |
+
+Also: **variants at launch?** Default is simple products only; configurable (size/finish) added in P4 for the top 20 SKUs.
+
+**Default: A + simple products.**
+
+---
+
+### Q5 — Payments and KYC
+
+Needed before P2 (week 8): Safepay merchant account status, bank details for manual transfer verification, COD limits
+(per order, per city), and who reconciles transfers daily.
+
+**Default if silent:** bank transfer (manual verification, 24 h SLA) + COD capped at PKR 150,000; gateways flagged off.
+
+---
+
+### Q6 — Is week 16 a hard launch or a movable target?
+
+| Option | Consequence |
+|---|---|
+| **A. Hard date** — scope is cut, not the date | Parity items move to P4/P5. **Recommended for a business launch** |
+| B. Soft date — full parity before launch | Realistic completion ~week 24 |
+
+**Default: A.**
+
+---
+
+## Already answered (kept for the record)
+
+| Question | Answer |
+|---|---|
+| Hosting | Hostinger **shared**, no VPS |
+| Commerce engine | **Bagisto** |
+| Page builder | **Puck** |
+| Backend | **Laravel / WOODEX OS** |
+| Team | 3 developers |
+| Data | Seed only, no Supabase migration |
+| Payments at launch | Bank + COD, gateways in parallel |
+| Catalogue | Simple products, one price |
+| AI | Autonomous within limits |

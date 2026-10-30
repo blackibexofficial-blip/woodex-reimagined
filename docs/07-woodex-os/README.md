@@ -1,57 +1,49 @@
-# WOODEX OS — Planning Pack
+# Reimagin OS — Planning Pack (v5)
 
-Planning documents for **Reimagin OS** — turning the WOODEX storefront into a complete commerce platform on the
-existing Laravel **WOODEX OS** backend, hosted on Hostinger shared hosting.
+**One storefront. Two Laravel backends. One page builder. One AI agent. One shared host.**
 
-**Locked decisions (v4):** shared hosting · reuse WOODEX OS · native Commerce domain · **Puck Studio replaces the
-file-based frontend (142 pages)** · simple products at launch · bank/COD first with Safepay in parallel · agent
-autonomous within limits · no Supabase data migration · 3 developers, 18–22 weeks.
-
-| Document | Purpose |
+| Component | Choice |
 |---|---|
-| [`MASTER-PLAN.md`](./MASTER-PLAN.md) | The full plan: current state, target architecture, phases, effort, risks, decisions |
-| [`PLATFORM-EVALUATION.md`](./PLATFORM-EVALUATION.md) | Deep comparison: Bagisto 2.5 vs Medusa v2 vs Bagisto Headless vs custom Laravel — with evidence |
-| [`openapi.yaml`](./openapi.yaml) | The API contract the reimagined storefront needs (v1 draft) |
-| [`OS-BASELINE.md`](./OS-BASELINE.md) | Measured audit of the WOODEX OS codebase (Laravel 13 / Livewire 4) |
-| [`COMMERCE-DOMAIN.md`](./COMMERCE-DOMAIN.md) | Schema, actions, endpoints and acceptance tests for the new Commerce domain |
-| [`HOSTINGER-RUNTIME.md`](./HOSTINGER-RUNTIME.md) | Shared-hosting rules: cron queues, storage, budgets, runbooks |
-| [`PUCK-BUILDER.md`](./PUCK-BUILDER.md) | Replacing the file-based frontend with Puck Studio (Pages & Builder + Content), 142-page migration |
-| [`ADMIN-UI-AUDIT.md`](./ADMIN-UI-AUDIT.md) | Screenshot vs code: control-centre IA, nav deltas, undefined `Preview Owner` |
-| [`FRONTEND-API.md`](./FRONTEND-API.md) | Complete API inventory (11 today → 30 target), gaps, advanced features, S0–S5 stages |
-| [`OPEN-QUESTIONS.md`](./OPEN-QUESTIONS.md) | The 10 answers needed before storefront work starts |
-| [`REPO-INTAKE.md`](./REPO-INTAKE.md) | Intake checklist (completed — kept as the method record) |
+| Frontend | `woodex-reimagined` — React 18 + Vite + TS, 23 routes, 148 products, **0 API calls today** |
+| Master backend | **WOODEX OS** — Laravel 13 · PHP 8.4 · Livewire 4.4 |
+| Commerce | **Bagisto 2.5** — Laravel 13 · MySQL 8 · MIT |
+| Page builder | **Puck 0.24** (`@puckeditor/core`, MIT) |
+| AI | OS agent — 7 tools today, 14 at launch |
+| Hosting | **Hostinger shared — no VPS** |
+| Team / calendar | 3 devs · **24 weeks**, launch at **week 16** |
 
-## Status of the requested import
+> **v4 correction:** v4 recommended a native `app/Domain/Commerce` instead of Bagisto. **Withdrawn.** Bagisto is the
+> commerce engine; see `BAGISTO-INTEGRATION.md`.
 
-**Resolved on 2026-10-31.** The repository `woodex420/woodexinterior` (branch `arena/8be318a2-woodexinterior`,
-HEAD `c437cad`) became public during this session and was cloned and analysed. Earlier probes returned 404:
+## Read in this order
 
-| Probe | Result at the time |
-|---|---|
-| `git ls-remote` / `gh api repos/woodex420/woodexinterior` | `Repository not found` |
-| `codeload.github.com/.../arena/8be318a2-woodexinterior` | `404` |
-| repo listings for `woodex420`, `woodex-int` | no `woodexinterior` entry |
+| # | Document | What it answers |
+|---|---|---|
+| 1 | [`MASTER-PLAN.md`](./MASTER-PLAN.md) | The plan: architecture, 3 workstreams, phases, team, risks, budget, launch checklist |
+| 2 | [`HOSTINGER-CAPACITY.md`](./HOSTINGER-CAPACITY.md) | **Exactly what the shared plan allows** — PHP, MySQL, cron, Composer, no Node/Redis/workers — plus the two-app capacity math and **Gate H0** |
+| 3 | [`BAGISTO-INTEGRATION.md`](./BAGISTO-INTEGRATION.md) | How Bagisto and WOODEX OS coexist: three options, the chosen one, ownership matrix, BFF contract, sync flows |
+| 4 | [`FEATURE-PARITY.md`](./FEATURE-PARITY.md) | The nine frontend gaps measured against the OS: Showrooms, Materials, Warranty, Support, Distributors, FAQ, Markets, Custom Design, E-Quotation |
+| 5 | [`OPEN-QUESTIONS.md`](./OPEN-QUESTIONS.md) | **Six decisions needed before week 1** (Q1 hosting fallback, Q2 order admin, Q3 page migration, Q4 catalog import, Q5 payments/KYC, Q6 launch date) |
+| 6 | [`PUCK-BUILDER.md`](./PUCK-BUILDER.md) | Puck Studio replacing the file-based builder; 142-page migration groups M0–M7 |
+| 7 | [`HOSTINGER-RUNTIME.md`](./HOSTINGER-RUNTIME.md) | Operating rules on shared hosting: env, deploy, cron queues, storage, budgets, runbooks |
+| 8 | [`OS-BASELINE.md`](./OS-BASELINE.md) | Measured audit of the WOODEX OS codebase |
+| 9 | [`FRONTEND-API.md`](./FRONTEND-API.md) | API inventory: 11 today → 30 target, S0–S5 staging |
+| 10 | [`ADMIN-UI-AUDIT.md`](./ADMIN-UI-AUDIT.md) | Screenshot vs code: control-centre IA, nav deltas, undefined `Preview Owner` |
+| 11 | [`PLATFORM-EVALUATION.md`](./PLATFORM-EVALUATION.md) | Why Bagisto over Medusa / headless / custom — with evidence |
+| 12 | [`openapi.yaml`](./openapi.yaml) | The storefront API contract (30 paths) |
+| 13 | [`REPO-INTAKE.md`](./REPO-INTAKE.md) | Intake checklist (completed — method record) |
+| — | [`COMMERCE-DOMAIN.md`](./COMMERCE-DOMAIN.md) | **WITHDRAWN** — the rejected native-commerce proposal, kept as a record |
 
-An SSH host-key fingerprint authenticates a host, not a private repository, so it could not substitute for access.
+## The three findings that shape everything
 
-## What the OS turned out to be
+1. **The frontend has zero `fetch()` calls.** Every form — quotation, showroom visit, warranty, dealer application,
+   contact — ends in a toast. The work is not porting pages; it is giving designed surfaces a backend that remembers.
+2. **Bagisto is the only commerce engine that can physically run here.** Laravel + MySQL, no Node runtime. Medusa
+   needs Node 22. `nextjs-commerce` would replace the storefront and needs Next SSR.
+3. **The OS is the mature half.** 98 tables, double-entry accounting, quotations with revision sequences, projects,
+   an inbox, 180 tests. The storefront is the smaller build — it just has to be *connected*.
 
-A mature **Laravel 13 + Livewire 4** application — 682 PHP files, 73,582 lines, 98 tables, 117 Livewire
-components, 180 test files — running quotations, invoices, advances, double-entry accounting, CRM, projects,
-WhatsApp/Telegram and a website builder on Hostinger shared hosting. It has **no commerce layer** (no products,
-carts, orders or stock), which is exactly what this plan adds.
+## Status of the import
 
-Supporting repositories also reviewed:
-
-- `woodex420/woodex` @ `woodex-admin` — 13-page React admin + Supabase schema (45 tables, 106 RLS policies, 32 edge functions)
-- `woodex420/woodex-2030` @ `arena/01a10a97-woodex-2030` — Express + SQLite API monorepo with dashboard, storefront, tests
-- `woodex420/woodex-2030` @ `arena/01a1087c-woodex-2030` — the October 2026 master plan and docs
-- `blackibexofficial-blip/woodex-reimagined` — this storefront (23 routes, 148 products)
-- `medusajs/medusa`, `bagisto/bagisto`, `bagisto/b2b-ecommerce`, `bagisto/nextjs-commerce` — platform evaluation
-
-## ⚠️ Do this before anything else
-
-Public repositories in this account have contained **live payment and integration secrets** (previously
-flagged in the 2026-10-05 plan). Rotate every key that has ever been committed — Stripe, Supabase
-service-role, WhatsApp/Meta, mail, database URLs — and purge history with `git filter-repo`. A plan is
-worthless if the credentials leak first.
+`woodex420/woodexinterior` (branch `arena/8be318a2-woodexinterior`, HEAD `c437cad`) became public during the earlier
+session, was cloned to `/home/user/refs/woodexinterior`, and is the measured baseline for every claim about the OS.
