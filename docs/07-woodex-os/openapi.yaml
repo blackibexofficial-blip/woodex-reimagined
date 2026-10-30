@@ -3,7 +3,10 @@ info:
   title: WOODEX OS Public API
   version: 1.0.0-draft
   description: |
-    Contract between the WOODEX storefront (React SPA) and WOODEX OS (Laravel 13 + Bagisto 2.5).
+    Contract between the WOODEX storefront (React SPA) and WOODEX OS (Laravel 13 + Livewire 4).
+
+    Implemented by `routes/storefront.php` inside WOODEX OS; coexists with the existing
+    `/api/public/*` endpoints (leads, chat, legacy bridge, MCP) without changing them.
 
     Conventions
     - Money is an integer number of Pakistani Rupees (PKR), never a float.
@@ -13,12 +16,12 @@ info:
     - Mutating endpoints that can be retried require an `Idempotency-Key` header.
     - Public catalog endpoints are cacheable; add `ETag` and honour `If-None-Match`.
 servers:
-  - url: https://api.woodex.pk/api/v1
-    description: Production
-  - url: https://staging-api.woodex.pk/api/v1
+  - url: https://woodex.com.pk/api/storefront/v1
+    description: Production (WOODEX OS, routes/storefront.php)
+  - url: https://staging.woodex.com.pk/api/storefront/v1
     description: Staging
-  - url: http://localhost:8000/api/v1
-    description: Local
+  - url: http://127.0.0.1:8000/api/storefront/v1
+    description: Local artisan serve
 
 tags:
   - name: Catalog

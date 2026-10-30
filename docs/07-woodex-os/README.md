@@ -7,31 +7,31 @@ Planning documents for turning the WOODEX frontend into a complete commerce plat
 | [`MASTER-PLAN.md`](./MASTER-PLAN.md) | The full plan: current state, target architecture, phases, effort, risks, decisions |
 | [`PLATFORM-EVALUATION.md`](./PLATFORM-EVALUATION.md) | Deep comparison: Bagisto 2.5 vs Medusa v2 vs Bagisto Headless vs custom Laravel — with evidence |
 | [`openapi.yaml`](./openapi.yaml) | The API contract the reimagined storefront needs (v1 draft) |
-| [`REPO-INTAKE.md`](./REPO-INTAKE.md) | What to extract from the WOODEX OS repo the moment read access exists |
+| [`OS-BASELINE.md`](./OS-BASELINE.md) | Measured audit of the WOODEX OS codebase (Laravel 13 / Livewire 4) |
+| [`COMMERCE-DOMAIN.md`](./COMMERCE-DOMAIN.md) | Schema, actions, endpoints and acceptance tests for the new Commerce domain |
+| [`REPO-INTAKE.md`](./REPO-INTAKE.md) | Intake checklist (now completed — kept as the method record) |
 
 ## Status of the requested import
 
-The repository `woodex420/woodexinterior` (branch `arena/8be318a2-woodexinterior`) returns **404** to every
-credential available in this environment. Verified on 2026-10-31:
+**Resolved on 2026-10-31.** The repository `woodex420/woodexinterior` (branch `arena/8be318a2-woodexinterior`,
+HEAD `c437cad`) became public during this session and was cloned and analysed. Earlier probes returned 404:
 
-| Probe | Result |
+| Probe | Result at the time |
 |---|---|
-| `git ls-remote https://github.com/woodex420/woodexinterior.git` | `Repository not found` |
-| `gh api repos/woodex420/woodexinterior` (token: `blackibexofficial-blip`) | `404 Not Found` |
-| `gh repo view woodex420/woodexinterior` | `Could not resolve to a Repository` |
-| `codeload.github.com/.../tar.gz/refs/heads/arena/8be318a2-woodexinterior` | `404` |
-| Org/user repo listings for `woodex420`, `woodex-int` | no `woodexinterior` entry |
-| Search `woodexinterior in:name` | only unrelated `woodex-int/woodex-os` (empty) |
+| `git ls-remote` / `gh api repos/woodex420/woodexinterior` | `Repository not found` |
+| `codeload.github.com/.../arena/8be318a2-woodexinterior` | `404` |
+| repo listings for `woodex420`, `woodex-int` | no `woodexinterior` entry |
 
-An SSH host-key fingerprint (`SHA256:+PZ1s…`) proves identity of a **host**, not authorisation to read a
-private repository. To be usable it needs a host + URL + a key that host accepts, and this sandbox can only
-reach `github.com`, `codeload.github.com`, `api.github.com`, `registry.npmjs.org`, `pypi.org` and
-`files.pythonhosted.org`. See §2 of the master plan for the three ways to unblock.
+An SSH host-key fingerprint authenticates a host, not a private repository, so it could not substitute for access.
 
-## What was analysed instead
+## What the OS turned out to be
 
-Because the private repo is unreadable, the plan is grounded in the WOODEX repositories that **are**
-readable — which turn out to contain most of the intended system:
+A mature **Laravel 13 + Livewire 4** application — 682 PHP files, 73,582 lines, 98 tables, 117 Livewire
+components, 180 test files — running quotations, invoices, advances, double-entry accounting, CRM, projects,
+WhatsApp/Telegram and a website builder on Hostinger shared hosting. It has **no commerce layer** (no products,
+carts, orders or stock), which is exactly what this plan adds.
+
+Supporting repositories also reviewed:
 
 - `woodex420/woodex` @ `woodex-admin` — 13-page React admin + Supabase schema (45 tables, 106 RLS policies, 32 edge functions)
 - `woodex420/woodex-2030` @ `arena/01a10a97-woodex-2030` — Express + SQLite API monorepo with dashboard, storefront, tests

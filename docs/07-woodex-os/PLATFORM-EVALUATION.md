@@ -5,6 +5,23 @@
 
 ---
 
+## Verdict update — after reading WOODEX OS (31 Oct 2026)
+
+The comparison below stands on its own merits, but the recommendation changes once the target application is
+known. WOODEX OS is a **73,582-line custom Laravel 13 / Livewire 4 ERP** that already owns quotations, invoices,
+advances, double-entry accounting, CRM and messaging, and runs on **Hostinger shared hosting without SSH**.
+
+- Bagisto is a *complete application*, not an embeddable package. Adopting it means either replacing WOODEX OS
+  (losing the audited financial spine) or running a second app + MySQL + admin beside it (dual-write risk).
+- Therefore: **build the Commerce domain natively in WOODEX OS** and use Bagisto as the **reference design**
+  (product/variant model, cart→order→invoice→shipment state machine, price lists, inventory sources).
+- Bagisto remains the right answer *if* the commerce engine must be a standalone headless service later
+  (e.g. 10k+ SKUs, marketplace, or a Node/PHP split team).
+
+See [`MASTER-PLAN.md`](./MASTER-PLAN.md) §3 for the full decision matrix.
+
+---
+
 ## 0. The short answer
 
 | Option | Verdict for WOODEX |
