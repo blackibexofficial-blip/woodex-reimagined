@@ -128,6 +128,11 @@ final class AdminWiringTest
             'AttributesIndex' => 'attributes-index',
             'CustomersIndex' => 'customers-index',
             'PaymentsIndex' => 'payments-index',
+            'RefundsIndex' => 'refunds-index',
+            'PromotionsIndex' => 'promotions-index',
+            'ShippingTaxIndex' => 'shipping-tax-index',
+            'ReportsIndex' => 'reports-index',
+            'SettingsIndex' => 'settings-index',
         ];
 
         foreach ($expected as $class => $view) {
@@ -137,23 +142,21 @@ final class AdminWiringTest
             );
         }
 
-        // The remaining placeholder screens all render one shared view. Orders left this list
-        // in T11, Inventory in T15, Categories in T16, Invoices in T17, Attributes and
-        // Customers in T18/T19, and Payments in T20.
+        // Every commerce screen is real now. The shared placeholder is kept because new
+        // sections (Cases, Warranties, Claims) will start on it in the next phase — but no
+        // screen in the sidebar renders it any more.
         Assert::true(
             is_file($this->root().'/resources/views/livewire/admin/commerce/coming-soon.blade.php'),
-            'placeholder screens render the shared coming-soon view',
+            'the shared coming-soon view still exists for the next section',
         );
 
-        foreach ([
-            'RefundsIndex', 'PromotionsIndex', 'ShippingTaxIndex',
-            'ReportsIndex', 'SettingsIndex',
-        ] as $class) {
-            $source = (string) file_get_contents($this->root().'/app/Livewire/Admin/Commerce/'.$class.'.php');
+        foreach (glob($this->root().'/app/Livewire/Admin/Commerce/*.php') ?: [] as $file) {
+            $source = (string) file_get_contents($file);
 
-            Assert::true(
+            Assert::same(
+                false,
                 str_contains($source, 'extends CommerceScreen'),
-                "{$class} extends the shared CommerceScreen",
+                basename($file).' is a real screen, not a placeholder',
             );
         }
     }

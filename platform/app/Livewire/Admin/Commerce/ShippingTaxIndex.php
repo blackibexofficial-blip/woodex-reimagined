@@ -4,49 +4,111 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin\Commerce;
 
-use App\Livewire\Admin\Commerce\Concerns\CommerceScreen;
+use App\Domain\Commerce\Checkout\CartService;
+use App\Domain\Commerce\Checkout\Models\Order;
+use App\Domain\Commerce\Pricing\ChargeAudit;
+use App\Domain\Commerce\Pricing\ShippingMethod;
+use App\Domain\Commerce\Support\Money;
+use App\Livewire\Concerns\InteractsWithAdmin;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
+use Livewire\Component;
 
+/**
+ * The two charges a customer can check with a calculator.
+ *
+ * Tax and delivery are configured as constants today — a rate, a fee and a free-delivery
+ * threshold — and every order stores what it was actually charged. This screen shows the rules
+ * as they are and then audits the orders against them, which is the only way to notice that a
+ * rate changed under an old order or that somebody comped a delivery by hand.
+ *
+ * It never recalculates an order. An order older than the current rule is *correct*; the audit
+ * only flags the ones that do not match the rule they were placed under.
+ */
 #[Layout('layouts::admin')]
-#[Title('Shipping and tax')]
-class ShippingTaxIndex extends CommerceScreen
+#[Title('Shipping & tax')]
+class ShippingTaxIndex extends Component
 {
-    protected function heading(): string
+    use InteractsWithAdmin;
+
+    /** all | tax | shipping */
+    #[Url]
+    public string $scope = 'all';
+
+    public function mount(): void
     {
-        return 'Shipping and tax';
+        abort_unless($this->user()->can('commerce.settings.manage'), 403);
     }
 
-    protected function summary(): string
+    public function delivery(): ShippingMethod
     {
-        return 'Where we deliver, what it costs, and the tax matrix behind every total.';
+        return CartService::cashOnDelivery();
     }
 
-    protected function phase(): string
+    /** The audit, over orders that actually carried a tax or delivery charge. */
+    public function audit(): ChargeAudit
     {
-        return 'P2';
+        $delivery = $this->delivery();
+
+        $rows = Order::query()
+            ->where('status', '<>', 'cancelled')
+            ->orderByDesc('placed_at')
+            ->limit(500)
+            ->get()
+            ->map(static fn (Order $order): array => [
+                'order' => (string) $order->number,
+                'net' => max(0, (int) $order->subtotal_minor - (int) $order->discount_minor),
+                'tax' => (int) $order->tax_minor,
+                'shipping' => (int) $order->shipping_minor,
+                'placed_at' => $order->placed_at?->toIso8601String(),
+            ])
+            ->all();
+
+        return new ChargeAudit(
+            orders: $rows,
+            taxBp: CartService::DEFAULT_TAX_RATE_BP,
+            deliveryMinor: $delivery->baseRate->minor,
+            freeOverMinor: $delivery->freeOver?->minor ?? PHP_INT_MAX,
+        );
     }
 
-    protected function planned(): array
+    /**
+     * The orders that disagree with the rule, either way.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function mismatches(): Collection
     {
-        return [
-            'Shipping zones by city and province',
-            'Flat, free-over and weight-band methods per zone',
-            'Tax zones, categories and inclusive/exclusive rates',
-            'COD availability and per-order caps',
-        ];
+        $audit = $this->audit();
+
+        return collect($audit->taxMismatches())
+            ->map(static fn (array $row): array => $row + ['kind' => 'tax'])
+            ->merge(collect($audit->shippingMismatches())->map(static fn (array $row): array => $row + ['kind' => 'shipping']))
+            ->when($this->scope === 'tax', fn (Collection $rows): Collection => $rows->where('kind', 'tax'))
+            ->when($this->scope === 'shipping', fn (Collection $rows): Collection => $rows->where('kind', 'shipping'))
+            ->sortBy('order')
+            ->values();
     }
 
-    protected function ready(): array
+    public function money(int $minor): string
     {
-        return [
-            'Shipping and tax evaluated in CartCalculator',
-            'Inclusive-tax extraction tested in fixture 08',
-        ];
+        return Money::ofMinor($minor, 'PKR')->format();
     }
 
-    protected function needs(): array
+    public function render(): View
     {
-        return ['commerce.settings.manage'];
+        $audit = $this->audit();
+        $delivery = $this->delivery();
+
+        return view('livewire.admin.commerce.shipping-tax-index', [
+            'summary' => $audit->summary(),
+            'warnings' => $audit->warnings(),
+            'mismatches' => $this->mismatches(),
+            'taxBp' => CartService::DEFAULT_TAX_RATE_BP,
+            'delivery' => $delivery,
+        ]);
     }
 }

@@ -31,6 +31,8 @@ const TAX_BP = 1800;
 const DELIVERY = 250000;
 const FREE_OVER = 20000000;
 
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
 const rupees = (minor) =>
   `PKR ${Math.floor(Math.abs(minor) / 100).toLocaleString("en-US")}.${String(Math.abs(minor) % 100).padStart(2, "0")}`;
 
@@ -127,9 +129,8 @@ const categoryNodes = seed.categories.map((root) => {
 });
 
 /** Orders, built from real products with the platform's money rules. */
-const order = (number, daysAgo, customer, city, lines, gateway, phone) => {
+const order = (number, daysAgo, customer, city, lines, gateway, phone, coupon = null, discount = 0) => {
   const subtotal = lines.reduce((sum, line) => sum + products[line.index].priceMinor * line.qty, 0);
-  const discount = 0;
   const net = subtotal - discount;
   const tax = Math.round((net * TAX_BP) / 10000);
   const shipping = net >= FREE_OVER ? 0 : DELIVERY;
@@ -138,6 +139,8 @@ const order = (number, daysAgo, customer, city, lines, gateway, phone) => {
   return {
     number,
     placed: `2026-10-${String(31 - daysAgo).padStart(2, "0")}`,
+    coupon,
+    discount,
     customer,
     city,
     phone,
@@ -167,11 +170,35 @@ const order = (number, daysAgo, customer, city, lines, gateway, phone) => {
  */
 const orders = [
   order("WDX-000042", 0, "Muhammad Ali", "Lahore", [{ index: 0, qty: 1 }], "cod", "0300-1234567"),
-  order("WDX-000041", 1, "Ayesha Khan", "Karachi", [{ index: 5, qty: 2 }, { index: 12, qty: 1 }], "bank", "0321 9988776"),
+  order("WDX-000041", 1, "Ayesha Khan", "Karachi", [{ index: 5, qty: 2 }, { index: 12, qty: 1 }], "bank", "0321 9988776", "EID10", 600000),
   order("WDX-000040", 3, "Sana Traders", "Islamabad", [{ index: 9, qty: 4 }], "cod", "051 2277889"),
-  order("WDX-000039", 5, "Bilal Ahmed", "Islamabad", [{ index: 3, qty: 1 }, { index: 15, qty: 2 }], "bank", "+92 51 227 7889"),
+  order("WDX-000039", 5, "Bilal Ahmed", "Islamabad", [{ index: 3, qty: 1 }, { index: 15, qty: 2 }], "bank", "+92 51 227 7889", null, 250000),
   order("WDX-000038", 9, "Muhammad Ali", "Lahore", [{ index: 7, qty: 2 }], "cod", "+92 300 1234567"),
 ];
+
+/*
+ * One set of money facts, read by three screens.
+ *
+ * `recorded` is what the order says it received; `refunded` is what went back. Keeping them in
+ * one place is the only reason the invoice, payments and refunds screens can agree — in the app
+ * they all read `paid_minor` and `refunded_minor` from the same row.
+ */
+const money = Object.fromEntries(
+  orders.map((row) => [
+    row.number,
+    {
+      recorded: 0,
+      refunded: 0,
+    },
+  ]),
+);
+
+money["WDX-000041"].recorded = 0;                                  // the drift case — the transfer landed, the order was never updated
+money["WDX-000038"].recorded = orders.find((o) => o.number === "WDX-000038").grand;
+money["WDX-000038"].refunded = Math.round(money["WDX-000038"].recorded / 4); // one chair returned, partly refunded
+
+const recordedOf = (number) => money[number]?.recorded ?? 0;
+const refundedOf = (number) => money[number]?.refunded ?? 0;
 
 const holds = products
   .filter((row) => row.reserved > 0)
@@ -276,8 +303,7 @@ const payments = orders.flatMap((row, index) => {
   return [base];
 });
 
-const recordedPaid = Object.fromEntries(orders.map((row) => [row.number, row.gateway === "cod" ? 0 : row.grand]));
-recordedPaid["WDX-000041"] = 0; // the order was never updated after the transfer landed
+const recordedPaid = Object.fromEntries(orders.map((row) => [row.number, recordedOf(row.number)]));
 
 const paymentStates = payments.map((payment) => {
   const recorded = recordedPaid[payment.order] ?? 0;
@@ -295,6 +321,167 @@ const paymentSummary = {
   drift: paymentStates.filter((s) => s === "drift").length,
   codPending: payments.filter((p) => p.gateway === "cod" && p.status === "pending").reduce((sum, p) => sum + p.amount, 0),
 };
+
+/* ── Refunds ────────────────────────────────────────────────────────────────────────────
+ *
+ * Only what went back, plus any cancellation that still holds money. `RefundAudit` derives the
+ * three defects from these numbers; the preview shows what it would find.
+ */
+const refundRowsData = orders
+  .filter((row) => refundedOf(row.number) > 0 || (row.status === "cancelled" && recordedOf(row.number) > 0))
+  .map((row) => {
+    const paid = recordedOf(row.number);
+    const refunded = refundedOf(row.number);
+    let state = "partial";
+
+    if (refunded > paid) state = "over";
+    else if (row.status === "cancelled" && paid > 0 && refunded === 0) state = "held";
+    else if (refunded > 0 && row.status !== "cancelled") state = "open";
+    else if (refunded >= paid) state = "full";
+
+    return { order: row.number, total: row.grand, paid, refunded, status: row.status, state };
+  });
+
+const refundSummary = {
+  refunded: refundRowsData.reduce((sum, row) => sum + row.refunded, 0),
+  count: refundRowsData.filter((row) => row.refunded > 0).length,
+  partial: refundRowsData.filter((row) => row.state === "partial").length,
+  full: refundRowsData.filter((row) => row.state === "full").length,
+  held: refundRowsData.filter((row) => row.state === "held").length,
+  over: refundRowsData.filter((row) => row.state === "over").length,
+  paid: orders.reduce((sum, row) => sum + recordedOf(row.number), 0),
+};
+refundSummary.rate = refundSummary.paid === 0 ? 0 : (refundSummary.refunded * 100) / refundSummary.paid;
+
+/* ── Promotions ─────────────────────────────────────────────────────────────────────────
+ *
+ * Every order that carried a code or gave money away. The two findings are in the data on
+ * purpose: one code that ran twice, and one discount with no code at all.
+ */
+const promoOrders = orders.filter((row) => row.coupon !== null || row.discount > 0);
+
+const promoByCode = Object.values(
+  promoOrders
+    .filter((row) => row.coupon)
+    .reduce((acc, row) => {
+      const code = row.coupon.trim().toUpperCase();
+      acc[code] ??= { code, uses: 0, discount: 0, average: 0, largest: 0, subtotal: 0 };
+      acc[code].uses++;
+      acc[code].discount += row.discount;
+      acc[code].largest = Math.max(acc[code].largest, row.discount);
+      acc[code].subtotal += row.subtotal;
+      return acc;
+    }, {}),
+)
+  .map((row) => ({ ...row, average: Math.floor(row.discount / row.uses) }))
+  .sort((a, b) => b.discount - a.discount);
+
+const promoUnattributed = promoOrders.filter((row) => !row.coupon && row.discount > 0);
+const promoSummary = {
+  discount: promoOrders.reduce((sum, row) => sum + row.discount, 0),
+  gross: promoOrders.reduce((sum, row) => sum + row.subtotal, 0),
+  codes: promoByCode.length,
+  uses: promoOrders.filter((row) => row.coupon).length,
+  unattributed: promoUnattributed.length,
+  unattributedAmount: promoUnattributed.reduce((sum, row) => sum + row.discount, 0),
+};
+promoSummary.rate = promoSummary.gross === 0 ? 0 : (promoSummary.discount * 100) / promoSummary.gross;
+
+/* ── Shipping & tax ─────────────────────────────────────────────────────────────────────
+ *
+ * The audit needs no separate data: the rules are constants and every order stores what it was
+ * charged. If the two disagree, the mismatch list below fills itself.
+ */
+const chargeRows = orders
+  .filter((row) => row.status !== "cancelled")
+  .map((row) => {
+    const net = row.subtotal - row.discount;
+    const expectedTax = Math.round((net * TAX_BP) / 10000);
+    const expectedShipping = net >= FREE_OVER ? 0 : DELIVERY;
+
+    return {
+      order: row.number,
+      net,
+      tax: row.tax,
+      shipping: row.shipping,
+      taxDrift: expectedTax !== row.tax,
+      shippingDrift: expectedShipping !== row.shipping,
+      expectedTax,
+      expectedShipping,
+    };
+  });
+
+const chargeSummary = {
+  tax: chargeRows.reduce((sum, row) => sum + row.tax, 0),
+  shipping: chargeRows.reduce((sum, row) => sum + row.shipping, 0),
+  net: chargeRows.reduce((sum, row) => sum + row.net, 0),
+  free: chargeRows.filter((row) => row.shipping === 0).length,
+  taxErrors: chargeRows.filter((row) => row.taxDrift).length,
+  shippingErrors: chargeRows.filter((row) => row.shippingDrift).length,
+};
+chargeSummary.effectiveBp = chargeSummary.net === 0 ? 0 : (chargeSummary.tax * 10000) / chargeSummary.net;
+
+/* ── Reports ────────────────────────────────────────────────────────────────────────────
+ *
+ * Revenue is goods minus discount: tax goes to the government and delivery pays for a van.
+ */
+const reportRows = orders
+  .filter((row) => row.status !== "cancelled")
+  .flatMap((row) =>
+    row.items.map((item) => ({
+      order: row.number,
+      date: row.placed,
+      product: item.name,
+      qty: item.qty,
+      // The order-level discount is split across its lines in proportion to their value,
+      // which is what the calculator already does when it writes `line_discount_minor`.
+      revenue: item.total - Math.round((row.discount * item.total) / Math.max(1, row.subtotal)),
+    })),
+  );
+
+const reportByDay = Object.values(
+  reportRows.reduce((acc, row) => {
+    acc[row.date] ??= { date: row.date, revenue: 0, units: 0, orders: new Set() };
+    acc[row.date].revenue += row.revenue;
+    acc[row.date].units += row.qty;
+    acc[row.date].orders.add(row.order);
+    return acc;
+  }, {}),
+)
+  .map((row) => ({ ...row, orders: row.orders.size }))
+  .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+const reportByProduct = Object.values(
+  reportRows.reduce((acc, row) => {
+    acc[row.product] ??= { product: row.product, revenue: 0, units: 0 };
+    acc[row.product].revenue += row.revenue;
+    acc[row.product].units += row.qty;
+    return acc;
+  }, {}),
+).sort((a, b) => b.revenue - a.revenue);
+
+const reportSummary = {
+  revenue: reportRows.reduce((sum, row) => sum + row.revenue, 0),
+  units: reportRows.reduce((sum, row) => sum + row.qty, 0),
+  orders: new Set(reportRows.map((row) => row.order)).size,
+  days: reportByDay.length,
+  refunded: orders.reduce((sum, row) => sum + refundedOf(row.number), 0),
+};
+reportSummary.average = reportSummary.orders === 0 ? 0 : Math.floor(reportSummary.revenue / reportSummary.orders);
+reportSummary.peak = Math.max(1, ...reportByDay.map((row) => row.revenue));
+
+/* ── Settings ───────────────────────────────────────────────────────────────────────────
+ *
+ * The counters, checked against the numbers actually issued.
+ */
+const sequences = [
+  { key: "order", prefix: "WDX-", next: 43, highest: Math.max(...orders.map((row) => Number(row.number.slice(-6)))) },
+  { key: "invoice", prefix: "INV-", next: 43, highest: Math.max(...orders.map((row) => Number(row.number.split("-")[1]))) },
+  { key: "rma", prefix: "RMA-", next: 1, highest: 0 },
+].map((row) => {
+  const state = row.highest === 0 ? "empty" : row.next <= row.highest ? "colliding" : row.next > row.highest + 1 ? "ahead" : "healthy";
+  return { ...row, gap: row.next - row.highest, state };
+});
 
 const countNodes = (nodes) => nodes.reduce((total, node) => total + 1 + countNodes(node.children), 0);
 const depthOf = (nodes) => (nodes.length === 0 ? 0 : 1 + Math.max(...nodes.map((node) => depthOf(node.children))));
@@ -327,10 +514,10 @@ const categoryRows = (nodes, depth = 0) =>
  * deadline rather than the stored status.
  */
 const invoices = orders.map((row, index) => {
-  // Three shapes worth seeing at once: nothing received, paid in full, and paid then partly
-  // refunded — the last one is where the stored status and the money disagree most often.
-  const paid = index === 0 ? 0 : row.grand;
-  const refunded = index === 2 ? Math.round(row.grand / 4) : 0;
+  // Shapes worth seeing at once: nothing received, paid in full, and paid then partly refunded
+  // — the last one is where the stored status and the money disagree most often.
+  const paid = recordedOf(row.number);
+  const refunded = refundedOf(row.number);
   const netPaid = Math.max(0, paid - refunded);
   const outstanding = Math.max(0, row.grand - netPaid);
   const daysUntilDue = index === 2 ? -12 : index === 1 ? 4 : 21;
@@ -367,6 +554,99 @@ const esc = (text) =>
   String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 const badge = (tone, label) => `<span class="badge badge-${tone}">${esc(label)}</span>`;
+
+const refundStateBadge = {
+  over: ["error", "Refunded more than paid"],
+  held: ["error", "Cancelled, money held"],
+  open: ["warning", "Refunded, still live"],
+  partial: ["info", "Partially refunded"],
+  full: ["success", "Refunded in full"],
+};
+
+const refundRows = refundRowsData
+  .map((row) => {
+    const [tone, label] = refundStateBadge[row.state];
+    return `<tr>
+      <td class="mono">${esc(row.order)}</td>
+      <td class="right mono muted">${rupees(row.total)}</td>
+      <td class="right mono">${rupees(row.paid)}</td>
+      <td class="right mono">${row.refunded > 0 ? rupees(row.refunded) : "—"}</td>
+      <td class="muted">${esc(row.status)}</td>
+      <td>${badge(tone, label)}</td>
+    </tr>`;
+  })
+  .join("\n");
+
+const promoRows = promoByCode
+  .map(
+    (row) => `<tr>
+      <td class="mono">${esc(row.code)}</td>
+      <td class="right">${row.uses}</td>
+      <td class="right mono">${rupees(row.discount)}</td>
+      <td class="right mono muted">${rupees(row.average)}</td>
+      <td class="right mono muted">${rupees(row.largest)}</td>
+      <td class="right muted">${row.subtotal > 0 ? ((row.discount * 100) / row.subtotal).toFixed(1) + "%" : "—"}</td>
+    </tr>`,
+  )
+  .join("\n");
+
+const unattributedRows = promoUnattributed
+  .map((row) => `<li class="row-split"><span class="mono">${esc(row.number)}</span><span class="warn mono">−${rupees(row.discount)}</span></li>`)
+  .join("\n");
+
+const chargeRowsHtml = chargeRows
+  .filter((row) => row.taxDrift || row.shippingDrift)
+  .map(
+    (row) => `<tr>
+      <td class="mono">${esc(row.order)}</td>
+      <td>${badge(row.taxDrift ? "warning" : "info", row.taxDrift ? "Tax" : "Delivery")}</td>
+      <td class="right mono muted">${rupees(row.net)}</td>
+      <td class="right mono">${rupees(row.taxDrift ? row.tax : row.shipping)}</td>
+      <td class="right mono">${rupees(row.taxDrift ? row.expectedTax : row.expectedShipping)}</td>
+    </tr>`,
+  )
+  .join("\n");
+
+const reportDayRows = reportByDay
+  .map(
+    (row) => `<li class="day-row">
+      <div class="row-split"><span>${esc(row.date)}</span><span class="mono">${rupees(row.revenue)}</span></div>
+      <div class="row-split"><div class="bar"><div style="width:${Math.max(2, Math.round((row.revenue * 100) / reportSummary.peak))}%"></div></div><span class="muted" style="font-size:11px">${row.orders} ${row.orders === 1 ? "order" : "orders"}</span></div>
+    </li>`,
+  )
+  .join("\n");
+
+const reportProductRows = reportByProduct
+  .slice(0, 8)
+  .map(
+    (row) => `<tr>
+      <td>${esc(row.product)}</td>
+      <td class="right muted">${row.units}</td>
+      <td class="right mono">${rupees(row.revenue)}</td>
+    </tr>`,
+  )
+  .join("\n");
+
+const sequenceRows = sequences
+  .map((row) => {
+    const [tone, label] =
+      row.state === "colliding"
+        ? ["error", "Would collide"]
+        : row.state === "ahead"
+          ? ["warning", row.gap + " ahead"]
+          : row.state === "empty"
+            ? ["neutral", "Not used yet"]
+            : ["success", "Healthy"];
+
+    return `<tr>
+      <td>${esc(row.key.charAt(0).toUpperCase() + row.key.slice(1))}<div class="muted mono">${esc(row.prefix)}</div></td>
+      <td class="mono">${esc(row.prefix + String(row.next).padStart(6, "0"))}</td>
+      <td class="right muted">${row.highest === 0 ? "—" : row.highest}</td>
+      <td>${badge(tone, label)}</td>
+    </tr>`;
+  })
+  .join("\n");
+
 
 const paymentStateBadge = {
   awaiting: ["warning", "Awaiting a check"],
@@ -572,12 +852,12 @@ const nav = [
   ["Orders", "invoice", "orders", true],
   ["Invoices", "file", "invoices", true],
   ["Payments", "wallet", "payments", true],
-  ["Refunds & returns", "refresh", "soon", false],
-  ["Promotions", "megaphone", "soon", false],
-  ["Shipping & tax", "globe", "soon", false],
+  ["Refunds & returns", "refresh", "refunds", true],
+  ["Promotions", "megaphone", "promotions", true],
+  ["Shipping & tax", "globe", "shipping-tax", true],
   ["Customers", "users", "customers", true],
-  ["Reports", "trending-up", "soon", false],
-  ["Settings", "settings", "soon", false],
+  ["Reports", "trending-up", "reports", true],
+  ["Settings", "settings", "settings", true],
 ];
 
 const icons = {
@@ -756,6 +1036,14 @@ const html = `<!doctype html>
     display: inline-block; flex: none; }
   .card-head { display: flex; justify-content: space-between; align-items: flex-start;
     gap: 10px; margin-bottom: 10px; }
+  .row-split { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .bar { height: 6px; flex: 1; background: #eef0f3; border-radius: 999px; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--navy-600, #1e3a5f); border-radius: 999px; }
+  .day-row { padding: 10px 16px; border-bottom: 1px solid #f1f2f4; }
+  .day-row:last-child { border-bottom: 0; }
+  .list-plain { margin: 0; padding: 0; list-style: none; }
+  .list-plain li { padding: 9px 16px; border-bottom: 1px solid #f1f2f4; font-size: 13px; }
+  .list-plain li:last-child { border-bottom: 0; }
   .notice { border: 1px solid #f6d9a8; background: var(--warning-bg); border-radius: 12px;
     padding: 14px 16px; margin-top: 14px; font-size: 13px; color: #7a4b06; }
   .notice p { margin: 0 0 4px; }
@@ -1153,22 +1441,212 @@ const html = `<!doctype html>
       </p>
     </section>
 
+    <!-- ── Refunds & returns ──────────────────────────────────────────────── -->
+    <section class="screen" id="refunds">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Refunds &amp; returns</div>
+          <h1>Refunds &amp; returns</h1>
+          <p>Money that went back out. A refund is two numbers on the order and nothing else, so
+             this page checks them against each other rather than listing them.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        ${stat("Refunded", rupees(refundSummary.refunded), `PKR across ${plural(refundSummary.count, "order", "orders")}`)}
+        ${stat("Refund rate", refundSummary.rate.toFixed(2) + "%", "of everything paid", refundSummary.rate > 5 ? "warning" : "success")}
+        ${stat("Partial", refundSummary.partial, "part of the money returned")}
+        ${stat("Money held", refundSummary.held, "cancelled orders not refunded", refundSummary.held > 0 ? "error" : "success")}
+      </div>
+
+      <div class="toolbar" style="margin-top:14px">
+        <input class="field grow" placeholder="Order number…" aria-label="Search refunds">
+        <select class="field" aria-label="Show"><option>Every refund and cancellation</option><option>Refunded more than paid</option><option>Cancelled, money held</option><option>Partially refunded</option><option>Fully refunded</option></select>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>Order</th><th class="right">Order total</th><th class="right">Paid</th><th class="right">Refunded</th><th>Order status</th><th>Reconciliation</th></tr></thead>
+          <tbody>${refundRows || '<tr><td colspan="6" class="muted" style="text-align:center;padding:32px">No refunds or cancellations. This page only has work on it when money went back out.</td></tr>'}</tbody>
+        </table>
+      </div>
+
+      <p class="muted" style="font-size:12px;margin-top:10px">
+        A refund is never issued from this page. Returning money is a permissioned action that
+        records who authorised it and why — the reason is the part an accountant asks for.
+      </p>
+    </section>
+
+    <!-- ── Promotions ─────────────────────────────────────────────────────── -->
+    <section class="screen" id="promotions">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Promotions</div>
+          <h1>Promotions</h1>
+          <p>What discounting actually cost, by code. There is no coupon catalogue yet, so this
+             reads the discounts that landed on real orders — which are the only ones that cost
+             anything.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        ${stat("Given away", rupees(promoSummary.discount), "PKR of discount across orders")}
+        ${stat("Of gross", promoSummary.rate.toFixed(2) + "%", "measured before the discount")}
+        ${stat("Codes used", promoSummary.codes, `${plural(promoSummary.uses, "order", "orders")} carried a code`)}
+        ${stat("Unattributed", rupees(promoSummary.unattributedAmount), `${plural(promoSummary.unattributed, "order", "order")} with no code`, promoSummary.unattributed > 0 ? "warning" : "success")}
+      </div>
+
+      ${promoSummary.unattributed > 0 ? `<div class="notice"><p>${promoSummary.unattributed} order was discounted with no code attached. That is money off nobody can reproduce or switch off.</p></div>` : ""}
+
+      <div class="card" style="margin-top:14px">
+        <table>
+          <thead><tr><th>Code</th><th class="right">Uses</th><th class="right">Given away</th><th class="right">Average</th><th class="right">Largest</th><th class="right">Of goods</th></tr></thead>
+          <tbody>${promoRows}</tbody>
+        </table>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>Discounted with no code</h2>
+        <p class="sub">Money off that nobody can reproduce or switch off.</p>
+        <ul class="list-plain">${unattributedRows}</ul>
+      </div>
+    </section>
+
+    <!-- ── Shipping & tax ─────────────────────────────────────────────────── -->
+    <section class="screen" id="shipping-tax">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Shipping &amp; tax</div>
+          <h1>Shipping &amp; tax</h1>
+          <p>The two charges a customer can check with a calculator. The rules are shown as they
+             are, then every order is audited against them — an order older than a rule is fine,
+             an order that never matched it is not.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        ${stat("Tax rate", (TAX_BP / 100).toFixed(2) + "%", "on goods, exclusive of delivery")}
+        ${stat("Delivery", rupees(DELIVERY).replace("PKR ", ""), "PKR · free over " + rupees(FREE_OVER).replace("PKR ", ""))}
+        ${stat("Tax collected", rupees(chargeSummary.tax), "effective " + (chargeSummary.effectiveBp / 100).toFixed(2) + "% of net", chargeSummary.taxErrors > 0 ? "error" : "success")}
+        ${stat("Delivery charged", rupees(chargeSummary.shipping), `${plural(chargeSummary.free, "order", "orders")} delivered free`, chargeSummary.shippingErrors > 0 ? "warning" : "success")}
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>Orders that disagree with the rule</h2>
+        <p class="sub">Each order stores what it was charged. This compares that with what the rate and threshold produce.</p>
+        ${chargeRowsHtml
+          ? `<table><thead><tr><th>Order</th><th>Charge</th><th class="right">Net goods</th><th class="right">Charged</th><th class="right">Rule says</th></tr></thead><tbody>${chargeRowsHtml}</tbody></table>`
+          : `<p class="muted" style="padding:20px;text-align:center">Every order matches the rule — the tax is exactly 18% of net and no order was charged delivery at or above the free threshold.</p>`}
+      </div>
+    </section>
+
+    <!-- ── Reports ────────────────────────────────────────────────────────── -->
+    <section class="screen" id="reports">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Reports</div>
+          <h1>Reports</h1>
+          <p>Sales over a period, with one definition of revenue: what was ordered, minus
+             discounts, minus refunds. Tax belongs to the government and delivery pays for a van,
+             so neither is counted here.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        ${stat("Revenue", rupees(reportSummary.revenue), `PKR · ${reportSummary.days} trading days`)}
+        ${stat("Orders", reportSummary.orders, `${reportSummary.units} units`)}
+        ${stat("Average order", rupees(reportSummary.average), "PKR per order")}
+        ${stat("Refunded", rupees(reportSummary.refunded), "in this period, not per line")}
+      </div>
+
+      <div class="grid grid-2" style="margin-top:14px;align-items:start">
+        <div class="card" style="padding:0">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
+            <h2 style="margin:0">Revenue by day</h2>
+            <p class="muted" style="margin:2px 0 0;font-size:12px">Only days that traded appear. A gap is a closed shop, not a zero.</p>
+          </div>
+          <ul class="list-plain">${reportDayRows}</ul>
+        </div>
+
+        <div class="card" style="padding:0">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
+            <h2 style="margin:0">What sold</h2>
+            <p class="muted" style="margin:2px 0 0;font-size:12px">By product, largest first. Eight rows is what anybody reads.</p>
+          </div>
+          <table>
+            <thead><tr><th>Product</th><th class="right">Units</th><th class="right">Revenue</th></tr></thead>
+            <tbody>${reportProductRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Settings ───────────────────────────────────────────────────────── -->
+    <section class="screen" id="settings">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Settings</div>
+          <h1>Settings</h1>
+          <p>The settings that decide what a number looks like and what money is charged. Almost
+             everything here is read-only, because changing it rewrites the meaning of documents
+             customers already hold.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        ${stat("Currency", "PKR", "integer minor units, never float")}
+        ${stat("Tax rate", (TAX_BP / 100).toFixed(2) + "%", "on goods at checkout")}
+        ${stat("Delivery", rupees(DELIVERY).replace("PKR ", ""), "free over " + rupees(FREE_OVER).replace("PKR ", ""))}
+        ${stat("Sequences", sequences.length, `${sequences.filter((s) => s.state === "healthy").length} healthy`, sequences.some((s) => s.state === "colliding") ? "error" : "success")}
+      </div>
+
+      <div class="grid grid-2" style="margin-top:14px;align-items:start">
+        <div class="card" style="padding:0">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
+            <h2 style="margin:0">Number sequences</h2>
+            <p class="muted" style="margin:2px 0 0;font-size:12px">Checked against the highest number actually issued, so a restored backup cannot hand out a duplicate.</p>
+          </div>
+          <table>
+            <thead><tr><th>Series</th><th>Next number</th><th class="right">Highest issued</th><th>State</th></tr></thead>
+            <tbody>${sequenceRows}</tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Money</h2>
+          <p class="sub">The rules the calculator applies, as they stand today.</p>
+          <ul class="list-plain" style="border-top:1px solid var(--line)">
+            <li class="row-split"><span class="muted">Currency</span><span>PKR · ₨</span></li>
+            <li class="row-split"><span class="muted">Tax on goods</span><span>${(TAX_BP / 100).toFixed(2)}%</span></li>
+            <li class="row-split"><span class="muted">Delivery</span><span>${rupees(DELIVERY)}</span></li>
+            <li class="row-split"><span class="muted">Free delivery over</span><span>${rupees(FREE_OVER)}</span></li>
+            <li class="row-split"><span class="muted">Delivery estimate</span><span>4 days</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="muted" style="font-size:12px;margin-top:10px">
+        Rates and thresholds live in configuration and change with a deploy, not from a form — an
+        edit here would silently reinterpret every order placed before it.
+      </p>
+    </section>
+
     <!-- ── Coming soon ────────────────────────────────────────────────────── -->
     <section class="screen" id="soon">
       <div class="page-head">
         <div>
           <div class="crumbs">Commerce</div>
           <h1>Coming in a later slice</h1>
-          <p>Five commerce screens are routed, permissioned and in the sidebar. They open onto this
+          <p>All fourteen commerce screens are routed, permissioned and live. This page stays for the
              page in the real admin too — honest about status rather than empty.</p>
         </div>
       </div>
       <div class="soon-card">
-        <h2>Refunds · Promotions · Shipping &amp; tax · Reports · Settings</h2>
-        <p class="muted">Already underneath: the catalog tables, the money calculator, checkout
-           services and the media pipeline. What is missing is the screen.</p>
+        <h2>Nothing — every Commerce screen in the sidebar is built</h2>
+        <p class="muted">next section: Cases, Warranties, Claims, RMA, Puck Studio, FAQ library,
+           Showrooms, Materials &amp; colours, Markets, Dealer applications, Service jobs.</p>
         <ul>
-          <li>Reports: sales by day, by category, by series</li>
+          <li>Nothing in Commerce. The next section starts on this page.</li>
         </ul>
       </div>
     </section>

@@ -914,3 +914,81 @@ time is the kind of thing that makes a page feel slow for no visible reason.
 
 **`350/350 checks · 15,976 assertions`** — `PaymentLedgerTest` (15) and `PaymentsScreenTest`
 (7) pin the comparison, the COD exemptions and the absence of any write.
+
+## T21–T25 — the last five screens
+
+Every screen in the Commerce sidebar now exists. What they have in common is that each one
+**reconciles** rather than edits: the tables around them already hold the money, and the thing
+missing was a page that asks whether the numbers agree with each other.
+
+### T21 — Refunds & returns
+
+There is no refunds table. A refund is `refunded_minor` on the order plus, usually, a status of
+`cancelled`, written at different moments by different people. `RefundAudit` finds the three
+ways that goes wrong:
+
+| Finding | What it means |
+|---|---|
+| **Refunded more than paid** | Money left that never arrived — a refund entered twice, or a payment never recorded |
+| **Cancelled, money held** | The order is dead, the customer's money is still here. This is the one that ends in a phone call |
+| **Refunded, still live** | The money is back and the order still says it is being delivered |
+
+A full refund is measured against what was **paid**, not what was owed: a customer who paid a
+25% deposit and cancelled has been refunded in full even though the total says otherwise.
+
+### T22 — Promotions
+
+Without a coupon catalogue, the only honest question is the retrospective one: what did
+discounting cost, and by which code? Two findings make it a page rather than a report:
+
+- **Discount with no code.** Money off nobody can reproduce, explain or switch off.
+- **Code with no discount.** The customer was told their coupon worked, and it did not.
+
+The rate is measured against the price *before* the discount (subtotal + discount). Dividing by
+the discounted total makes every promotion look smaller than it was — 10% off shows as 9.1%.
+
+### T23 — Shipping & tax
+
+The two charges a customer can check with a calculator. The page shows the rules and audits
+every order against them, including tax-inclusive pricing — `net × bp / (10000 + bp)` rather
+than `net × bp / 10000`, which overstates tax by 18% on every inclusive line.
+
+It audits, it never recalculates. An order older than a rule is *correct*; only one that never
+matched the rule it was placed under is wrong. Positive difference means charged more than the
+rule; negative means charged less.
+
+### T24 — Reports
+
+One definition of revenue, stated once: **what was ordered, minus discounts, minus refunds.**
+Tax belongs to the government, delivery pays for a van, and neither is revenue.
+
+Days with no trading are absent rather than drawn at zero — a flat line across a week the shop
+was closed reads as a collapse, and the shape of the line is the first thing anyone looks at.
+Refunds are reported on their own line instead of being spread across product rows, because
+allocating one order-level refund across four items is inventing data.
+
+### T25 — Settings
+
+Sequences, money rules and stock sources. Most of it is read-only on purpose: a counter, a tax
+rate and a delivery threshold are the three settings where "just change it" rewrites documents
+that have already gone to customers.
+
+The check that earns the page is `SequenceHealth`. The allocator is safe against two checkouts
+in the same second, but nothing stops a restored backup from pointing a counter at a number
+that is already in use — and that collision is discovered by a customer holding two invoices
+with the same number. Numbers are compared by their **numeric tail**: `WDX-000009` and
+`WDX-000010` sort backwards as strings, and the padding changes at a million.
+
+### Result
+
+**`414/414 checks · 16,288 assertions`** — five value objects, 60 tests between them, plus
+`RemainingScreensTest` which pins that each screen asks its value object, states the finding
+before the list, checks its own permission, and writes nothing.
+
+## The admin preview is the whole sidebar
+
+`docs/07-woodex-os/preview/admin.html` now renders all fourteen screens: Dashboard, Products,
+Attributes, Categories, Inventory, Orders, Invoices, Payments, Refunds & returns, Promotions,
+Shipping & tax, Customers, Reports, Settings. Every figure comes from `catalog.json` through the
+platform's own rules — 18% tax, ₨2,500 delivery free over ₨200,000 — and the same money facts
+feed the invoice, payment and refund screens so they cannot disagree with each other.
