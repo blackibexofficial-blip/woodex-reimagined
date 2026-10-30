@@ -59,12 +59,13 @@ Ordered. Each row is one shippable thing, not a phase.
 | **T11** | **Vertical slice: product → cart → COD order → invoice** | A+B | 5 | A real order exists in the DB with correct totals | ✅ **done** — 14 tables, `commerce:demo-order`, order screens |
 | **T12** | Load probe: 30 concurrent catalog + 5 checkouts | A | 2 | p95 < 1.5 s, zero 5xx, zero oversell | ✅ **done** — `commerce:load-probe`, verdict + JSON report |
 | **T13** | Storefront reads the catalog API instead of `products.ts` | B | 3 | Shop, product, series and quotation pages render data from `/api/storefront/v1` | ✅ **done** — API client + adapter, snapshot fallback, `ProductDetail` payload |
+| **T14** | Storefront checkout: quote, then a real COD order | B | 3 | A customer places an order and gets a number; stock and invoice are real | ✅ **done** — `/checkout/quote` + `/checkout`, `CartQuote`, 409 on stock |
 
 **Built:** `platform/app/Domain/Commerce/` (Money, CartLine, DiscountRule, ShippingMethod, CartInput, LineTotal, CartTotals, CartCalculator) + 14 fixtures + runner. Run it with `php platform/tests/run.php`.
 
-**Built:** T1–T13. The code gate is closed; what remains is running the probe on staging and recording the numbers (see `HOSTINGER-CAPACITY.md` §Gate G1). **Week 1:** T1–T4 ✅. **Week 2:** T5–T7 ✅. **Week 3:** T8–T10 ✅. **Week 4:** T11 ✅ · T12 ✅ · T13 ✅.
+**Built:** T1–T14. The code gate is closed; what remains is running the probe on staging and recording the numbers (see `HOSTINGER-CAPACITY.md` §Gate G1). **Week 1:** T1–T4 ✅. **Week 2:** T5–T7 ✅. **Week 3:** T8–T10 ✅. **Week 4:** T11 ✅ · T12 ✅ · T13 ✅ · T14 ✅.
 
-**T1–T13 are code, not a document.** They live in `platform/` (plus `src/lib/api/` for the storefront) and pass: 204 checks, 15,330 assertions, 1,000 generated carts.
+**T1–T13 are code, not a document.** They live in `platform/` (plus `src/lib/api/` for the storefront) and pass: 218 checks, 15,397 assertions, 1,000 generated carts.
 
 After T12 passes on staging, the remaining work is repetition: 30 more tables, 10 more screens, 18 more blocks, 9 surfaces. The storefront now has one real dependency on the OS — the catalog API — and every other page still reads the bundled snapshot until its own API exists.
 

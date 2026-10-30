@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Truck, CreditCard, Banknote, ChevronLeft, CheckCircle, MapPin, Phone, User, Mail } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useQuery } from "@tanstack/react-query";
 import { useCart } from "@/contexts/CartContext";
+import { ApiError } from "@/lib/api/client";
+import { fetchQuote, placeOrder, type OrderReceipt } from "@/lib/api/checkout";
+import { CATALOG_OFFLINE } from "@/hooks/useCatalog";
 import { formatPKR } from "@/data/products";
 
 const cities = [
@@ -21,8 +25,10 @@ const cities = [
 const Checkout = () => {
   const { items, totalPrice, totalItems, clearCart } = useCart();
   const navigate = useNavigate();
-  const [paymentMethod, setPaymentMethod] = useState("cod");
-  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "bank">("cod");
+  const [receipt, setReceipt] = useState<OrderReceipt | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "", email: "", phone: "", address: "", city: "Lahore", notes: "",
   });
@@ -31,21 +37,88 @@ const Checkout = () => {
     document.title = "Checkout — WOODEX Pakistan";
   }, []);
 
-  const deliveryFee = totalPrice >= 50000 ? 0 : 2500;
-  const grandTotal = totalPrice + deliveryFee;
+  const lines = useMemo(
+    () => items.map((item) => ({ slug: item.id, qty: item.quantity, color: item.color })),
+    [items],
+  );
+
+  /**
+   * The server prices the basket; the page only draws it.
+   *
+   * The signature is the identity of the basket — a quantity change makes a new query, so two
+   * customers on the same wifi cannot be shown each other's totals from a shared cache key.
+   */
+  const signature = lines.map((line) => `${line.slug}:${line.qty}:${line.color ?? ""}`).join("|");
+
+  const quote = useQuery({
+    queryKey: ["checkout", "quote", signature],
+    queryFn: ({ signal }) => fetchQuote(lines, signal),
+    enabled: lines.length > 0 && !CATALOG_OFFLINE,
+    retry: 0,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const totals = quote.data?.totals;
+
+  // What the page shows before the server answers — and the only numbers it shows at all in a
+  // build preview with no backend. The rule mirrors CartService::cashOnDelivery(): ₨2,500
+  // delivery, free over ₨200,000. When the quote arrives it replaces all of this.
+  const estimateDelivery = totalPrice >= 200_000 ? 0 : 2500;
+  const subtotal = totals ? totals.subtotal / 100 : totalPrice;
+  const tax = totals ? totals.tax_total / 100 : null;
+  const deliveryFee = totals ? totals.shipping_total / 100 : estimateDelivery;
+  const grandTotal = totals ? totals.grand_total / 100 : totalPrice + estimateDelivery;
+
+  const [formError, setFormError] = useState<Record<string, string[]>>({});
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setOrderPlaced(true);
-    clearCart();
-    window.scrollTo(0, 0);
+    setError(null);
+    setFormError({});
+    setSubmitting(true);
+
+    try {
+      const order = await placeOrder({
+        lines,
+        gateway: paymentMethod,
+        customer: {
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email || undefined,
+        },
+        shipping: { line1: formData.address, city: formData.city },
+        notes: formData.notes || undefined,
+      });
+
+      setReceipt(order);
+      clearCart();
+      window.scrollTo(0, 0);
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        if (caught.code === "validation_error") {
+          setFormError(caught.fields);
+          setError(caught.message);
+        } else if (caught.status === 0) {
+          setError(
+            "We could not reach our order system, so nothing has been charged. Your basket is saved — call or WhatsApp us on +92 300 000 0000 and we will place the same order for you.",
+          );
+        } else {
+          setError(caught.message);
+        }
+      } else {
+        setError("Something went wrong while placing the order. Please try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  if (orderPlaced) {
+  if (receipt) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
@@ -54,12 +127,34 @@ const Checkout = () => {
             <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="h-10 w-10 text-accent" />
             </div>
-            <h1 className="text-3xl font-bold mb-3">Order Placed Successfully!</h1>
-            <p className="text-muted-foreground mb-2">
-              Thank you for your order. Our team will contact you within 24 hours to confirm delivery details.
+            <h1 className="text-3xl font-bold mb-3">Order Confirmed</h1>
+            <p className="text-muted-foreground mb-4">
+              Thank you. Our team will contact you within 24 hours to confirm delivery details.
             </p>
+
+            <div className="bg-section-light border border-border rounded-sm p-4 mb-4 text-left space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Order number</span>
+                <span className="font-mono font-semibold">{receipt.number}</span>
+              </div>
+              {receipt.invoice_number && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Invoice</span>
+                  <span className="font-mono">{receipt.invoice_number}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-semibold">{receipt.total}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Delivery</span>
+                <span>3–{receipt.shipping_estimate_days} working days</span>
+              </div>
+            </div>
+
             <p className="text-sm text-muted-foreground mb-8">
-              {paymentMethod === "cod"
+              {receipt.payment_method === "cod"
                 ? "Payment will be collected on delivery."
                 : "Our team will share bank details for transfer."}
             </p>
@@ -172,7 +267,7 @@ const Checkout = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
+                      <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value === "bank" ? "bank" : "cod")} className="space-y-3">
                         <label className={`flex items-center gap-4 p-4 border rounded-sm cursor-pointer transition-colors ${paymentMethod === "cod" ? "border-accent bg-accent/5" : "border-border hover:border-accent/50"}`}>
                           <RadioGroupItem value="cod" id="cod" />
                           <Banknote className="h-5 w-5 text-accent" />
@@ -224,14 +319,25 @@ const Checkout = () => {
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Subtotal ({totalItems} items)</span>
-                          <span className="font-medium">{formatPKR(totalPrice)}</span>
+                          <span className="font-medium">{formatPKR(subtotal)}</span>
                         </div>
+                        {tax !== null && tax > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Sales tax (18%)</span>
+                            <span className="font-medium">{formatPKR(tax)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Delivery</span>
                           <span className="font-medium">{deliveryFee === 0 ? <span className="text-accent">FREE</span> : formatPKR(deliveryFee)}</span>
                         </div>
                         {deliveryFee > 0 && (
-                          <p className="text-xs text-muted-foreground">Free delivery on orders above PKR 50,000</p>
+                          <p className="text-xs text-muted-foreground">Free delivery on orders above PKR 200,000</p>
+                        )}
+                        {!totals && !quote.isPending && (
+                          <p className="text-xs text-muted-foreground">
+                            Estimated total — the order system confirms delivery and tax when you place it.
+                          </p>
                         )}
                         <div className="flex justify-between items-center">
                           <span className="text-muted-foreground">Assembly</span>
@@ -246,8 +352,30 @@ const Checkout = () => {
                         <span className="font-bold text-xl text-accent">{formatPKR(grandTotal)}</span>
                       </div>
 
-                      <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-base h-12">
-                        {paymentMethod === "cod" ? "Place Order — Cash on Delivery" : "Place Order — Bank Transfer"}
+                      {error && (
+                        <div role="alert" className="border border-destructive/40 bg-destructive/5 text-sm rounded-sm p-3 space-y-1">
+                          <p className="font-medium text-destructive">We could not place this order</p>
+                          <p className="text-muted-foreground">{error}</p>
+                          {Object.entries(formError).length > 0 && (
+                            <ul className="list-disc pl-4 text-xs text-muted-foreground">
+                              {Object.entries(formError).map(([field, messages]) => (
+                                <li key={field}>{messages[0]}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+
+                      <Button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-base h-12 disabled:opacity-70"
+                      >
+                        {submitting
+                          ? "Placing your order…"
+                          : paymentMethod === "cod"
+                            ? "Place Order — Cash on Delivery"
+                            : "Place Order — Bank Transfer"}
                       </Button>
 
                       <div className="flex items-start gap-2 text-xs text-muted-foreground">

@@ -122,6 +122,7 @@ return new class extends Migration
             $table->json('applied_rules')->nullable();    // what the customer was promised
             $table->timestamp('placed_at')->nullable()->index();
             $table->timestamp('cancelled_at')->nullable();
+            $table->string('email', 190)->nullable();   // the customer's, for the receipt
             $table->text('notes')->nullable();
             $table->timestamps();
         });

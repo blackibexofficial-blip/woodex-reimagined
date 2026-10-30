@@ -115,7 +115,7 @@ php platform/tests/run.php Money      # one suite
 PASS  Lint::allPhpFiles (150 files)
 PASS  TotalsInvariantTest::testEveryGeneratedCartKeepsTheSumInvariant  13114 assertions
 PASS  StockPlannerTest::testAPlanNeverAllocatesMoreThanIsPhysicallyThere  601 assertions
-204/204 checks passed · 15330 assertions · 823 ms
+218/218 checks passed · 15397 assertions · 841 ms
 ```
 
 ## T4 + T5 — the admin shell and the Products screen (done)
@@ -551,3 +551,60 @@ No new environment variables are required. `VITE_API_BASE_URL` defaults to
 
 **Result: `204/204 checks · 15,330 assertions`** (`php platform/tests/run.php`), TypeScript
 clean, `npm run build` clean.
+
+## T14 — checkout through the API (this branch)
+
+The storefront's "Place Order" button used to set a boolean and clear the cart. Nothing was
+written anywhere. Now it places a real COD order — stock locked, invoice issued, order number
+the customer can read back to support.
+
+### Two endpoints, one calculator
+
+| Route | Writes | Limit | Answers |
+|---|---|---|---|
+| `POST /api/storefront/v1/checkout/quote` | nothing | `throttle:storefront-catalog` | server-priced basket |
+| `POST /api/storefront/v1/checkout` | order + invoice + payment + reservation | `throttle:10,1` | 201 with the order number |
+
+The quote exists because the checkout page shows a total before the customer commits. If the
+browser computed that total, the summary and the invoice would be two opinions about the same
+money. Instead the SPA sends its lines and the server answers with `CartCalculator`'s numbers —
+the same object that later prices the order, so they cannot drift.
+
+A quote opens no cart, takes no sequence number and creates no reservation. It runs on every
+quantity change; it must leave no trace.
+
+### The basket lives in the browser
+
+Deliberate. A server-side cart is a row read and written on every quantity click, on a host
+with thirty PHP workers. The SPA keeps the lines in `localStorage` and re-sends them with each
+request; the server re-prices from the catalogue every time, so what the browser thinks a desk
+costs is never what it pays. The trade-off is honest: no basket follows a customer between
+devices until they have an account.
+
+### Refusals
+
+- **422** — unknown slug, a product with no active variant, a product with no price, a
+  quantity of zero, more than 20 lines, more than 10 of one thing. Field-level, so the basket
+  can mark the offending line.
+- **409** — `insufficient_stock`, with the shortfall. Four of five racing checkouts get this
+  and it is the correct answer, not an error.
+- **429** — more than ten placement attempts a minute.
+
+### `tests/Api/`
+
+| Suite | What it proves |
+|---|---|
+| `CartQuoteTest` | lines plus shipping equal the grand total; display data is joined by SKU and not by position; an empty basket quotes zero; paisa stays integer to the payload; a tampered total is refused; delivery is free above the threshold and charged below it |
+| `StorefrontCheckoutTest` | the quote writes nothing; the order goes through `CheckoutService` and not a reimplementation; 409 on stock; unknown slugs are refused before a row is written; the receipt carries the number and the amount due |
+
+**Result: `218/218 checks · 15,397 assertions`.** TypeScript and `npm run build` clean. The
+client was exercised against a stand-in API for all four answer classes — 200, 201, 409, 422 —
+and against an unreachable host, which surfaces as an explicit "nothing has been charged"
+message rather than a fake confirmation.
+
+### One honest gap
+
+The preview and any deploy without a database still cannot place an order, because there is no
+PHP behind them. The page says so, keeps the basket, and offers the phone number. A checkout
+that claims success into a local variable is worse than one that admits it could not reach the
+order system.

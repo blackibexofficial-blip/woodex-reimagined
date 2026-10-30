@@ -129,3 +129,65 @@ export async function getJson<T>(path: string, options: RequestOptions = {}): Pr
     signal?.removeEventListener("abort", onAbort);
   }
 }
+
+/**
+ * A JSON POST.
+ *
+ * The read path degrades to the bundled snapshot; this one must not. A checkout that silently
+ * "succeeds" into a local variable is worse than a checkout that says it failed — the customer
+ * believes they bought a sofa. So a network failure here is surfaced, not swallowed.
+ */
+export async function postJson<T>(path: string, body: unknown, options: RequestOptions = {}): Promise<T> {
+  const { signal, timeoutMs = 10_000 } = options;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const onAbort = () => controller.abort();
+  signal?.addEventListener("abort", onAbort, { once: true });
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      credentials: "omit",
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    const parsed = await response.json().catch(() => null);
+    const envelope = (parsed as { error?: { code?: string; message?: string; fields?: Record<string, string[]> } } | null)?.error;
+
+    if (!response.ok) {
+      if (envelope && typeof envelope.code === "string") {
+        throw new ApiError(envelope.message ?? `The storefront answered ${response.status}.`, response.status, envelope.code, envelope.fields ?? {});
+      }
+
+      // Laravel's own validation response is `{ message, errors }`. Reading it as "not our
+      // API" would turn a mistyped phone number into "we could not reach the order service".
+      const validation = (parsed as { message?: string; errors?: Record<string, string[]> } | null)?.errors;
+
+      if (response.status === 422 && validation && typeof validation === "object") {
+        throw new ApiError("Please check the details you entered.", 422, "validation_error", validation);
+      }
+
+      throw new ApiError(`Reached something at ${API_BASE_URL} that is not the storefront API.`, 0, "unexpected_response");
+    }
+
+    if (parsed === null) {
+      throw new ApiError("The storefront answered with something that is not JSON.", 0, "unexpected_response");
+    }
+
+    return parsed as T;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+
+    if (error instanceof DOMException && error.name === "AbortError" && signal?.aborted) {
+      throw error;
+    }
+
+    throw new ApiError("Could not reach the order service.", 0, "network_error");
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", onAbort);
+  }
+}
