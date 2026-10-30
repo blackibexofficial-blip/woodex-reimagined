@@ -1,5 +1,9 @@
 # Open Questions — v5
 
+> **Status: the owner skipped this round (30 Oct 2026). The recommended default for each question is adopted and the
+> plan proceeds on it.** Each answer is reversible until the phase that depends on it begins — Q1 is the only one that
+> must be settled in week 1 (see `WEEK-1-KICKOFF.md`). Reply with a letter at any time and the plan is re-cut.
+
 Six decisions block or reshape week 1. Each is stated as *the choice*, *what it changes*, and *what I assume if
 silent*. The default is the recommendation.
 

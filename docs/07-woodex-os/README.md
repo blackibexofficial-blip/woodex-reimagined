@@ -23,15 +23,16 @@
 | 2 | [`HOSTINGER-CAPACITY.md`](./HOSTINGER-CAPACITY.md) | **Exactly what the shared plan allows** — PHP, MySQL, cron, Composer, no Node/Redis/workers — plus the two-app capacity math and **Gate H0** |
 | 3 | [`BAGISTO-INTEGRATION.md`](./BAGISTO-INTEGRATION.md) | How Bagisto and WOODEX OS coexist: three options, the chosen one, ownership matrix, BFF contract, sync flows |
 | 4 | [`FEATURE-PARITY.md`](./FEATURE-PARITY.md) | The nine frontend gaps measured against the OS: Showrooms, Materials, Warranty, Support, Distributors, FAQ, Markets, Custom Design, E-Quotation |
-| 5 | [`OPEN-QUESTIONS.md`](./OPEN-QUESTIONS.md) | **Six decisions needed before week 1** (Q1 hosting fallback, Q2 order admin, Q3 page migration, Q4 catalog import, Q5 payments/KYC, Q6 launch date) |
-| 6 | [`PUCK-BUILDER.md`](./PUCK-BUILDER.md) | Puck Studio replacing the file-based builder; 142-page migration groups M0–M7 |
-| 7 | [`HOSTINGER-RUNTIME.md`](./HOSTINGER-RUNTIME.md) | Operating rules on shared hosting: env, deploy, cron queues, storage, budgets, runbooks |
-| 8 | [`OS-BASELINE.md`](./OS-BASELINE.md) | Measured audit of the WOODEX OS codebase |
-| 9 | [`FRONTEND-API.md`](./FRONTEND-API.md) | API inventory: 11 today → 30 target, S0–S5 staging |
-| 10 | [`ADMIN-UI-AUDIT.md`](./ADMIN-UI-AUDIT.md) | Screenshot vs code: control-centre IA, nav deltas, undefined `Preview Owner` |
-| 11 | [`PLATFORM-EVALUATION.md`](./PLATFORM-EVALUATION.md) | Why Bagisto over Medusa / headless / custom — with evidence |
-| 12 | [`openapi.yaml`](./openapi.yaml) | The storefront API contract (30 paths) |
-| 13 | [`REPO-INTAKE.md`](./REPO-INTAKE.md) | Intake checklist (completed — method record) |
+| 5 | [`WEEK-1-KICKOFF.md`](./WEEK-1-KICKOFF.md) | **Start here on Monday** — day-by-day Gate H0: hosting facts, Bagisto install, smoke test, two-app load test, go/no-go |
+| 6 | [`OPEN-QUESTIONS.md`](./OPEN-QUESTIONS.md) | Six decisions (Q1 hosting fallback … Q6 launch date). *Owner skipped — recommended defaults adopted* |
+| 7 | [`PUCK-BUILDER.md`](./PUCK-BUILDER.md) | Puck Studio replacing the file-based builder; 142-page migration groups M0–M7 |
+| 8 | [`HOSTINGER-RUNTIME.md`](./HOSTINGER-RUNTIME.md) | Operating rules on shared hosting: env, deploy, cron queues, storage, budgets, runbooks |
+| 9 | [`OS-BASELINE.md`](./OS-BASELINE.md) | Measured audit of the WOODEX OS codebase |
+| 10 | [`FRONTEND-API.md`](./FRONTEND-API.md) | API inventory: 11 today → 30 target, S0–S5 staging |
+| 11 | [`ADMIN-UI-AUDIT.md`](./ADMIN-UI-AUDIT.md) | Screenshot vs code: control-centre IA, nav deltas, undefined `Preview Owner` |
+| 12 | [`PLATFORM-EVALUATION.md`](./PLATFORM-EVALUATION.md) | Why Bagisto over Medusa / headless / custom — with evidence |
+| 13 | [`openapi.yaml`](./openapi.yaml) | The storefront API contract — **45 paths**, incl. warranty, support, dealer, markets, custom design, Bagisto webhooks |
+| 14 | [`REPO-INTAKE.md`](./REPO-INTAKE.md) | Intake checklist (completed — method record) |
 | — | [`COMMERCE-DOMAIN.md`](./COMMERCE-DOMAIN.md) | **WITHDRAWN** — the rejected native-commerce proposal, kept as a record |
 
 ## The three findings that shape everything

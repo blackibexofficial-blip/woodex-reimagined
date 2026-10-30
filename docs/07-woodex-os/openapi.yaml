@@ -34,6 +34,11 @@ tags:
   - name: Leads
   - name: Auth
   - name: B2B
+  - name: Warranty
+  - name: Support
+  - name: Markets
+  - name: Design
+  - name: Webhooks
   - name: Admin
 
 security:
@@ -681,6 +686,391 @@ paths:
         '200': { description: Updated quote }
         '409': { description: Illegal transition }
 
+  /showrooms/{slug}/appointments:
+    post:
+      tags: [Merchandising]
+      summary: Book a showroom visit
+      description: Creates a CRM visit and a staff-calendar entry. Confirmation by email and WhatsApp template.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Slug'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, date, slot]
+              properties:
+                name: { type: string, maxLength: 120 }
+                phone: { type: string, maxLength: 32 }
+                email: { type: string, format: email }
+                date: { type: string, format: date }
+                slot: { type: string, example: "15:00" }
+                party_size: { type: integer, minimum: 1, maximum: 20, default: 2 }
+                interests: { type: array, items: { type: string } }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '201':
+          description: Appointment booked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      reference: { type: string, example: "APT-2026-0142" }
+                      status: { type: string, enum: [requested, confirmed] }
+                      starts_at: { type: string, format: date-time }
+        '409': { description: Slot unavailable }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /faqs:
+    get:
+      tags: [Content]
+      summary: FAQ entries from the content library
+      security: []
+      parameters:
+        - { name: category, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: string }, description: Limit to FAQs placed on this page }
+      responses:
+        '200':
+          description: FAQs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Faq' }
+
+  /warranties:
+    post:
+      tags: [Warranty]
+      summary: Register a product warranty
+      description: Accepts an order number plus phone or serial; no login required. Returns a claim token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_number, phone]
+              properties:
+                order_number: { type: string, example: "WDX-10231" }
+                phone: { type: string, maxLength: 32 }
+                sku: { type: string }
+                serial: { type: string }
+                purchased_at: { type: string, format: date }
+                invoice: { type: string, format: uri, description: Uploaded invoice reference }
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Warranty' }
+        '404': { description: Order not found or phone does not match }
+
+  /warranties/{token}:
+    get:
+      tags: [Warranty]
+      summary: Warranty status by share token
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Warranty
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Warranty' }
+        '404': { description: Unknown token }
+
+  /warranties/claims:
+    post:
+      tags: [Warranty]
+      summary: Raise a warranty claim
+      description: Creates a service job linked to the warranty and its order.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, symptom]
+              properties:
+                token: { type: string }
+                symptom: { type: string, maxLength: 2000 }
+                photos: { type: array, items: { type: string, format: uri }, maxItems: 6 }
+                preferred_visit: { type: string, format: date }
+      responses:
+        '201':
+          description: Claim opened
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      claim_number: { type: string, example: "WC-2026-0031" }
+                      status: { type: string, enum: [submitted, triaged, approved, rejected, resolved] }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /support/cases:
+    post:
+      tags: [Support]
+      summary: Open a support case
+      description: Creates a Conversation on the web_form channel with an SLA clock and a case number.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, message]
+              properties:
+                name: { type: string, maxLength: 120 }
+                email: { type: string, format: email }
+                phone: { type: string, maxLength: 32 }
+                subject: { type: string, maxLength: 200 }
+                message: { type: string, maxLength: 5000 }
+                topic: { type: string, enum: [order, product, warranty, dealer, other] }
+                order_number: { type: string }
+                attachments: { type: array, items: { type: string, format: uri }, maxItems: 5 }
+      responses:
+        '201':
+          description: Case opened
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      case_number: { type: string, example: "SC-2026-1042" }
+                      token: { type: string, description: Used to read the case without an account }
+                      sla_due_at: { type: string, format: date-time }
+        '429': { description: Rate limited }
+
+  /support/cases/{number}:
+    get:
+      tags: [Support]
+      summary: Read a case
+      security: []
+      parameters:
+        - { name: number, in: path, required: true, schema: { type: string } }
+        - { name: token, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Case with messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/SupportCase' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /support/cases/{number}/messages:
+    post:
+      tags: [Support]
+      summary: Reply to a case
+      security: []
+      parameters:
+        - { name: number, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, body]
+              properties:
+                token: { type: string }
+                body: { type: string, maxLength: 5000 }
+      responses:
+        '201': { description: Message appended }
+
+  /dealer-applications:
+    post:
+      tags: [B2B]
+      summary: Apply to become a dealer
+      description: Creates a deal in the Dealer Onboarding pipeline. Approval grants the Bagisto Dealer customer group.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_name, contact_name, phone, city]
+              properties:
+                business_name: { type: string, maxLength: 200 }
+                contact_name: { type: string, maxLength: 120 }
+                phone: { type: string, maxLength: 32 }
+                email: { type: string, format: email }
+                city: { type: string, maxLength: 80 }
+                ntn: { type: string, maxLength: 20, description: Tax number, verified before approval }
+                showroom_area: { type: integer, description: Square feet }
+                est_monthly_volume: { type: integer, description: PKR per month }
+                brands_carried: { type: array, items: { type: string } }
+                documents: { type: array, items: { type: string, format: uri }, maxItems: 4 }
+      responses:
+        '201':
+          description: Application received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      token: { type: string }
+                      stage: { type: string, enum: [applied, verifying, approved, rejected] }
+        '409': { description: An application already exists for this business }
+
+  /dealer-applications/{token}:
+    get:
+      tags: [B2B]
+      summary: Check application status
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Application status }
+        '404': { description: Unknown token }
+
+  /markets:
+    get:
+      tags: [Markets]
+      summary: Export markets
+      security: []
+      responses:
+        '200':
+          description: Markets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Market' }
+
+  /markets/{slug}:
+    get:
+      tags: [Markets]
+      summary: Market detail with enquiry form context
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Slug'
+      responses:
+        '200':
+          description: Market
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Market' }
+        '404': { description: Not found }
+
+  /custom-design/requests:
+    post:
+      tags: [Design]
+      summary: Submit a custom design brief
+      description: Creates a Project in Intake, a draft quote, and a conversation thread.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, space, brief]
+              properties:
+                name: { type: string, maxLength: 120 }
+                phone: { type: string, maxLength: 32 }
+                email: { type: string, format: email }
+                space: { type: string, enum: [living, bedroom, dining, kitchen, office, retail, other] }
+                style: { type: string, maxLength: 80 }
+                dimensions: { type: string, maxLength: 120 }
+                budget_band: { type: string, enum: [under_250k, 250k_750k, 750k_2m, above_2m] }
+                target_date: { type: string, format: date }
+                brief: { type: string, maxLength: 5000 }
+                references: { type: array, items: { type: string, format: uri }, maxItems: 8 }
+      responses:
+        '201':
+          description: Brief accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      token: { type: string }
+                      project_code: { type: string, example: "PRJ-2026-0217" }
+                      quote_draft: { type: string, example: "WI-2026-0089" }
+        '429': { description: Rate limited }
+
+  /custom-design/requests/{token}:
+    get:
+      tags: [Design]
+      summary: Track a custom design brief
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Brief, project stage and designer notes }
+        '404': { description: Unknown token }
+
+  /webhooks/bagisto:
+    post:
+      tags: [Webhooks]
+      summary: Bagisto -> OS event receiver
+      description: |
+        Signed with HMAC-SHA256 in `X-Bagisto-Signature`. Every event carries `X-Bagisto-Event-Id`, stored in
+        `commerce_events` for idempotency. Handled events: order created/updated, invoice paid, refund created,
+        product updated, customer registered.
+      security: []
+      parameters:
+        - { name: X-Bagisto-Event-Id, in: header, required: true, schema: { type: string, format: uuid } }
+        - { name: X-Bagisto-Signature, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event, payload]
+              properties:
+                event:
+                  type: string
+                  enum: [order.created, order.updated, invoice.paid, refund.created, product.updated, customer.registered]
+                payload: { type: object, additionalProperties: true }
+      responses:
+        '202': { description: Accepted for processing by the cron queue }
+        '401': { description: Bad signature }
+        '200': { description: Duplicate event, already processed }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1084,3 +1474,75 @@ components:
             token_type: { type: string, example: Bearer }
             expires_at: { type: string, format: date-time }
             user: { $ref: '#/components/schemas/User' }
+
+    Faq:
+      type: object
+      properties:
+        id: { type: string }
+        question: { type: string }
+        answer: { type: string }
+        category: { type: string }
+        position: { type: integer }
+        pages: { type: array, items: { type: string }, description: Page slugs this FAQ is placed on }
+
+    Warranty:
+      type: object
+      properties:
+        id: { type: string }
+        token: { type: string }
+        order_number: { type: string }
+        sku: { type: string }
+        product_name: { type: string }
+        serial: { type: string }
+        purchased_at: { type: string, format: date }
+        coverage_months: { type: integer }
+        expires_at: { type: string, format: date }
+        status: { type: string, enum: [active, expiring, expired, void] }
+        claims:
+          type: array
+          items:
+            type: object
+            properties:
+              claim_number: { type: string }
+              status: { type: string, enum: [submitted, triaged, approved, rejected, resolved] }
+              opened_at: { type: string, format: date-time }
+
+    SupportCase:
+      type: object
+      properties:
+        case_number: { type: string }
+        subject: { type: string }
+        status: { type: string, enum: [open, pending_customer, resolved, closed] }
+        sla_due_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        messages:
+          type: array
+          items:
+            type: object
+            properties:
+              author: { type: string, enum: [customer, agent, ai, system] }
+              body: { type: string }
+              created_at: { type: string, format: date-time }
+
+    Market:
+      type: object
+      properties:
+        slug: { type: string }
+        country: { type: string }
+        region: { type: string }
+        currency: { type: string, example: SAR }
+        lead_time_days: { type: integer }
+        incoterms: { type: string, example: CIF }
+        local_agent: { type: string }
+        hero: { type: object, additionalProperties: true }
+        notes: { type: string }
+
+    DesignRequest:
+      type: object
+      properties:
+        token: { type: string }
+        project_code: { type: string }
+        stage: { type: string, enum: [intake, triage, design, quoted, won, lost] }
+        quote_draft: { type: string, nullable: true }
+        designer_notes: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
