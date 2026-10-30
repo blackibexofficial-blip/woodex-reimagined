@@ -63,6 +63,21 @@ class ProductVariant extends Model
         )->withPivot('option_id');
     }
 
+    /**
+     * The attribute options this variant represents — "Natural Oak", "Black frame".
+     *
+     * @return BelongsToMany<AttributeOption, $this>
+     */
+    public function options(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            AttributeOption::class,
+            'commerce_variant_options',
+            'variant_id',
+            'option_id',
+        )->withPivot('attribute_id');
+    }
+
     /** @return HasMany<ProductMedia, $this> */
     public function media(): HasMany
     {

@@ -112,10 +112,10 @@ php platform/tests/run.php Money      # one suite
 ```
 
 ```
-PASS  Lint::allPhpFiles (35 files)
-PASS  CatalogSeedTest::testEveryProductIsValid                    201 assertions
-PASS  SchemaTest::testEveryPlannedCatalogTableIsCreated            13 assertions
-30/30 checks passed · 13793 assertions · 826 ms
+PASS  Lint::allPhpFiles (46 files)
+PASS  TotalsInvariantTest::testEveryGeneratedCartKeepsTheSumInvariant  13114 assertions
+PASS  AdminWiringTest::testEveryIconExistsInTheOsIconSet              31 assertions
+65/65 checks passed · 14078 assertions · 756 ms
 ```
 
 ## T4 + T5 — the admin shell and the Products screen (done)
@@ -169,3 +169,42 @@ Eight checks that catch the failures which survive code review:
 **Icon test found a real bug immediately:** `box` was used for Products and does not exist in
 the OS icon set — it would have rendered as a blank square. Now `archive`, and the test parses
 the live icon component (or a committed snapshot when the OS clone isn't present).
+
+## T6 — media pipeline (done)
+
+```
+app/Domain/Commerce/Media/ImageVariant.php   three sizes: 400 / 800 / 1600 webp
+app/Domain/Commerce/Media/MediaPath.php      where files live, and what a request path may be
+app/Domain/Commerce/Media/ImageRules.php     extension + sniffed MIME must agree; 8 MB cap
+app/Domain/Commerce/Media/ImageStore.php     plans, writes, rolls back on failure
+app/Domain/Commerce/Media/Transformer.php    interface (GD, Imagick, or a fake in tests)
+app/Domain/Commerce/Media/GdTransformer.php  resample + webp, never upscales
+app/Http/Controllers/Media/ProductImageController.php   serves from outside the web root
+```
+
+Images live in `storage/app/commerce/products/{sku}/{hash}-{size}.webp` — **never** in
+`public_html`, because a deploy replaces tracked files and would delete anything staff uploaded.
+
+The stored filename is the **content hash**, not the uploaded name. That is what makes the URL
+immutable (`max-age=31536000, immutable`), makes re-uploading the same bytes free, and means a
+file called `../../evil.php` never reaches a path.
+
+## T7 — catalog API (done)
+
+```
+app/Domain/Commerce/Api/CatalogQuery.php     filters, clamping, cache key
+app/Domain/Commerce/Api/CatalogService.php   paginate / find / categoryTree
+app/Domain/Commerce/Api/ProductCard.php      the listing DTO
+app/Http/Controllers/Api/Storefront/CatalogController.php
+routes/storefront.php     →  /api/storefront/v1/products, /products/{slug}, /categories
+app/Providers/CommerceServiceProvider.php    bindings + rate limiter
+```
+
+`ProductCard` emits the keys the SPA already uses (`id`, `name`, `price`, `inStock`) **plus**
+`price_minor`, real stock, real rating and `url` — so replacing `data/products.ts` with the API
+does not mean rewriting any JSX. Money crosses as integer paisa *and* as a formatted string, so
+no client ever divides by 100.
+
+`CatalogQuery` is the only thing between an anonymous request and the database: `per_page=500`
+becomes 48, an unknown `sort` falls back, option codes are sanitised to `[a-z0-9-]`, prices
+arrive in rupees and leave in paisa.

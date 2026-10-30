@@ -27,5 +27,6 @@ spl_autoload_register(static function (string $class) use ($root): void {
     }
 });
 
+require_once __DIR__.'/TestCase.php';
 require_once __DIR__.'/Support/Assert.php';
 require_once __DIR__.'/Support/FixtureFactory.php';

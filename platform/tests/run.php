@@ -107,17 +107,34 @@ foreach ($files as $file) {
 
     $instance = new $class();
     $methods = array_values(array_filter(
-        get_class_methods($instance),
+        get_class_methods($class),
         static fn (string $method): bool => str_starts_with($method, 'test'),
     ));
 
     foreach ($methods as $method) {
         Assert::reset();
 
+        // A fresh instance per test so nothing leaks between them, then the conventional
+        // setUp/tearDown hooks — which is what makes this runner behave like the framework
+        // it stands in for.
+        $case = new $class();
+
         try {
-            $instance->{$method}();
+            if (method_exists($case, 'setUp')) {
+                $case->setUp();
+            }
+
+            $case->{$method}();
         } catch (Throwable $e) {
             Assert::fail(sprintf('threw %s: %s', $e::class, $e->getMessage()));
+        } finally {
+            try {
+                if (method_exists($case, 'tearDown')) {
+                    $case->tearDown();
+                }
+            } catch (Throwable) {
+                // A failing teardown must not mask a passing test.
+            }
         }
 
         $results[] = [
