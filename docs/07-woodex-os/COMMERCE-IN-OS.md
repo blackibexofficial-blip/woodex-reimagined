@@ -305,7 +305,7 @@ These are recorded as *not planned*, not as *missing* — see `MASTER-PLAN.md` �
 
 | Test | Fixture |
 |---|---|
-| **Golden totals** (14 cases) | simple cart · qty>1 · group price · catalog rule · cart rule · coupon capped · free shipping threshold · inclusive tax · exclusive tax · mixed tax classes · partial refund · shipping taxed · currency switch · zero-price gift line |
+| **Golden totals** (14 cases) | `01_simple` · `02_qty_gt_one` · `03_group_price` · `04_catalog_rule` · `05_cart_rule` · `06_coupon_capped` · `07_free_shipping_threshold` · `08_tax_inclusive` · `09_tax_exclusive` · `10_mixed_tax_rates` · `11_taxed_shipping` · `12_discount_split_remainder` · `13_rounding_half_up` · `14_zero_price_line` — all in `platform/tests/fixtures/commerce/totals/` |
 | **Sum invariant** | property test: 1,000 random carts → `Σ lines + shipping + tax = grand total` |
 | **Oversell** | 10 parallel orders for 1 unit → exactly 1 succeeds |
 | **Idempotency** | same webhook 5× → one payment; same `Idempotency-Key` 3× → one order |
@@ -315,6 +315,9 @@ These are recorded as *not planned*, not as *missing* — see `MASTER-PLAN.md` �
 | **Load** | 30 concurrent checkouts, p95 < 1.5 s, zero 5xx |
 
 CI runs all of these on every push. **Commerce does not ship without the golden totals green.**
+
+**Status (T1–T2 done):** `Money`, `CartCalculator` and the 14 fixtures are implemented and green —
+**16 tests, 13,371 assertions**, including the 1,000-cart property run. See `platform/README.md`.
 
 ---
 

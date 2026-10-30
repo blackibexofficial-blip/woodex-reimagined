@@ -1,0 +1,41 @@
+{
+  "name": "06 · fixed coupon larger than the cart — capped, shipping still payable",
+  "currency": "PKR",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "sku": "WX-LP-022",
+      "name": "Brass Floor Lamp",
+      "product_id": "wx-lp-022",
+      "qty": 1,
+      "unit_price": 300000,
+      "tax_rate_bp": 0
+    }
+  ],
+  "rules": [
+    {
+      "kind": "coupon",
+      "type": "fixed",
+      "value": 500000,
+      "label": "Welcome 5 000",
+      "code": "WELCOME5000"
+    }
+  ],
+  "shipping": {
+    "code": "flat",
+    "label": "Standard delivery",
+    "base_rate": 350000,
+    "free_over": null,
+    "taxable": false,
+    "tax_rate_bp": 0
+  },
+  "expect": {
+    "subtotal": 300000,
+    "discount_total": 300000,
+    "net_total": 0,
+    "tax_total": 0,
+    "shipping_total": 350000,
+    "shipping_tax": 0,
+    "grand_total": 350000
+  }
+}

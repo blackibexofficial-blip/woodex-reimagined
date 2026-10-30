@@ -44,10 +44,10 @@ Nine surfaces, all currently ending in a toast. The right half of each card is t
 
 Ordered. Each row is one shippable thing, not a phase.
 
-| # | Task | Owner | Days | Done when |
-|---|---|---|---|---|
-| **T1** | `Money` value object + `CartCalculator` skeleton | A | 2 | Integer paisa everywhere, no float in the path |
-| **T2** | 14 golden total fixtures + sum-invariant property test | A | 2 | Tests run red, then green |
+| # | Task | Owner | Days | Done when | Status |
+|---|---|---|---|---|---|
+| **T1** | `Money` value object + `CartCalculator` skeleton | A | 2 | Integer paisa everywhere, no float in the path | ✅ **done** |
+| **T2** | 14 golden total fixtures + sum-invariant property test | A | 2 | Tests run red, then green | ✅ **done** — 16 tests / 13,371 assertions |
 | **T3** | Commerce catalog tables (11) + factories + seeder | A | 3 | `migrate:fresh --seed` → 20 products, 4 categories |
 | **T4** | Admin shell: Commerce group, empty screens, permissions | B | 2 | Sidebar shows 14 screens, unauthorized users blocked |
 | **T5** | Products admin: list, filter, search, inline price/stock | B | 4 | Staff edit a price without a developer |
@@ -59,7 +59,11 @@ Ordered. Each row is one shippable thing, not a phase.
 | **T11** | **Vertical slice: product → cart → COD order → invoice** | A+B | 5 | A real order exists in the DB with correct totals |
 | **T12** | Load probe: 30 concurrent catalog + 5 checkouts | A | 2 | p95 < 1.5 s, zero 5xx, zero oversell |
 
+**Built:** `platform/app/Domain/Commerce/` (Money, CartLine, DiscountRule, ShippingMethod, CartInput, LineTotal, CartTotals, CartCalculator) + 14 fixtures + runner. Run it with `php platform/tests/run.php`.
+
 **Week 1:** T1–T4. **Week 2:** T5–T7. **Week 3:** T8–T10. **Week 4:** T11–T12 → gate.
+
+**T1–T2 are code, not a document.** They live in `platform/` and pass: 16 tests, 13,371 assertions, 1,000 generated carts.
 
 After T12 passes, the remaining work is repetition: 30 more tables, 10 more screens, 18 more blocks, 9 surfaces.
 

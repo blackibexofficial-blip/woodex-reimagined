@@ -1,0 +1,26 @@
+{
+  "name": "02 · quantity three, pickup (no shipping)",
+  "currency": "PKR",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "sku": "WX-ST-011",
+      "name": "Oak Side Table",
+      "product_id": "wx-st-011",
+      "qty": 3,
+      "unit_price": 1250000,
+      "tax_rate_bp": 0
+    }
+  ],
+  "rules": [],
+  "shipping": null,
+  "expect": {
+    "subtotal": 3750000,
+    "discount_total": 0,
+    "net_total": 3750000,
+    "tax_total": 0,
+    "shipping_total": 0,
+    "shipping_tax": 0,
+    "grand_total": 3750000
+  }
+}

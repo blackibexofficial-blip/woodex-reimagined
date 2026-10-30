@@ -1,0 +1,38 @@
+{
+  "name": "14 · a free gift line next to a paid one",
+  "currency": "PKR",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "sku": "WX-GIFT",
+      "name": "Gift: care kit",
+      "product_id": "wx-gift",
+      "qty": 1,
+      "unit_price": 0,
+      "tax_rate_bp": 0
+    },
+    {
+      "sku": "WX-CH-001",
+      "name": "Natural Oak Chair",
+      "product_id": "wx-ch-001",
+      "qty": 1,
+      "unit_price": 4250000,
+      "tax_rate_bp": 0
+    }
+  ],
+  "rules": [],
+  "shipping": null,
+  "expect": {
+    "subtotal": 4250000,
+    "discount_total": 0,
+    "net_total": 4250000,
+    "tax_total": 0,
+    "shipping_total": 0,
+    "shipping_tax": 0,
+    "grand_total": 4250000,
+    "line_net": [
+      0,
+      4250000
+    ]
+  }
+}

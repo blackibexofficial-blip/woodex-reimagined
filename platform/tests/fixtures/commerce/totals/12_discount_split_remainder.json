@@ -1,0 +1,59 @@
+{
+  "name": "12 · fixed discount split 1:2:4 — largest remainder, not one paisa lost",
+  "currency": "PKR",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "sku": "A",
+      "name": "Line A",
+      "product_id": "a",
+      "qty": 1,
+      "unit_price": 1000000,
+      "tax_rate_bp": 0
+    },
+    {
+      "sku": "B",
+      "name": "Line B",
+      "product_id": "b",
+      "qty": 1,
+      "unit_price": 2000000,
+      "tax_rate_bp": 0
+    },
+    {
+      "sku": "C",
+      "name": "Line C",
+      "product_id": "c",
+      "qty": 1,
+      "unit_price": 4000000,
+      "tax_rate_bp": 0
+    }
+  ],
+  "rules": [
+    {
+      "kind": "cart",
+      "type": "fixed",
+      "value": 100000,
+      "label": "Flat 1 000 off"
+    }
+  ],
+  "shipping": null,
+  "expect": {
+    "subtotal": 7000000,
+    "discount_total": 100000,
+    "net_total": 6900000,
+    "tax_total": 0,
+    "shipping_total": 0,
+    "shipping_tax": 0,
+    "grand_total": 6900000,
+    "line_discounts": [
+      14286,
+      28571,
+      57143
+    ],
+    "line_net": [
+      985714,
+      1971429,
+      3942857
+    ]
+  }
+}

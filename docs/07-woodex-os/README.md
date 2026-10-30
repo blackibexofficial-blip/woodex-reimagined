@@ -37,6 +37,13 @@
 | 13 | [`openapi.yaml`](./openapi.yaml) | Storefront API contract — **48 paths**, incl. coupons, shipping, availability, warranty, support, dealers, markets, custom design |
 | 14 | [`REPO-INTAKE.md`](./REPO-INTAKE.md) | Intake method record (historical) |
 
+## Built so far
+
+| Piece | Where | State |
+|---|---|---|
+| `Money`, `CartCalculator`, 14 golden fixtures, invariant property test | `platform/app/Domain/Commerce/` · `platform/tests/` | ✅ **16 tests, 13,371 assertions green** |
+| Admin map, three key screens, storefront gap map | `docs/07-woodex-os/mockups/` | ✅ |
+
 ## The three findings that shape everything
 
 1. **The frontend has zero `fetch()` calls.** Every form — quotation, showroom visit, warranty, dealer application,

@@ -1,0 +1,33 @@
+{
+  "name": "07 · free shipping once the pre-discount subtotal passes the threshold",
+  "currency": "PKR",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "sku": "WX-BD-005",
+      "name": "Cherry Bed Frame",
+      "product_id": "wx-bd-005",
+      "qty": 1,
+      "unit_price": 4000000,
+      "tax_rate_bp": 0
+    }
+  ],
+  "rules": [],
+  "shipping": {
+    "code": "flat",
+    "label": "Standard delivery",
+    "base_rate": 350000,
+    "free_over": 3000000,
+    "taxable": false,
+    "tax_rate_bp": 0
+  },
+  "expect": {
+    "subtotal": 4000000,
+    "discount_total": 0,
+    "net_total": 4000000,
+    "tax_total": 0,
+    "shipping_total": 0,
+    "shipping_tax": 0,
+    "grand_total": 4000000
+  }
+}

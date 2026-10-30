@@ -1,0 +1,45 @@
+{
+  "name": "04 · catalog rule, 10 % on two lines",
+  "currency": "PKR",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "sku": "WX-CH-001",
+      "name": "Natural Oak Chair",
+      "product_id": "wx-ch-001",
+      "qty": 1,
+      "unit_price": 4250000,
+      "tax_rate_bp": 0
+    },
+    {
+      "sku": "WX-LP-022",
+      "name": "Brass Floor Lamp",
+      "product_id": "wx-lp-022",
+      "qty": 1,
+      "unit_price": 2100000,
+      "tax_rate_bp": 0
+    }
+  ],
+  "rules": [
+    {
+      "kind": "catalog",
+      "type": "percent",
+      "value": 1000,
+      "label": "Spring 10 %"
+    }
+  ],
+  "shipping": null,
+  "expect": {
+    "subtotal": 6350000,
+    "discount_total": 635000,
+    "net_total": 5715000,
+    "tax_total": 0,
+    "shipping_total": 0,
+    "shipping_tax": 0,
+    "grand_total": 5715000,
+    "line_discounts": [
+      425000,
+      210000
+    ]
+  }
+}

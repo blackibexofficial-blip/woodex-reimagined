@@ -1,0 +1,33 @@
+{
+  "name": "11 · shipping is taxed at the goods rate",
+  "currency": "PKR",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "sku": "WX-CH-002",
+      "name": "Oak Dining Chair",
+      "product_id": "wx-ch-002",
+      "qty": 1,
+      "unit_price": 1000000,
+      "tax_rate_bp": 1800
+    }
+  ],
+  "rules": [],
+  "shipping": {
+    "code": "flat",
+    "label": "Standard delivery",
+    "base_rate": 100000,
+    "free_over": null,
+    "taxable": true,
+    "tax_rate_bp": 1800
+  },
+  "expect": {
+    "subtotal": 1000000,
+    "discount_total": 0,
+    "net_total": 1000000,
+    "tax_total": 198000,
+    "shipping_total": 100000,
+    "shipping_tax": 18000,
+    "grand_total": 1298000
+  }
+}

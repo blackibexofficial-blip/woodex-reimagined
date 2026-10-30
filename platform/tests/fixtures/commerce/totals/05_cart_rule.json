@@ -1,0 +1,41 @@
+{
+  "name": "05 · cart rule, 15 % above a 50 000 threshold",
+  "currency": "PKR",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "sku": "WX-SF-008",
+      "name": "Linen Sofa",
+      "product_id": "wx-sf-008",
+      "qty": 1,
+      "unit_price": 6000000,
+      "tax_rate_bp": 0
+    }
+  ],
+  "rules": [
+    {
+      "kind": "cart",
+      "type": "percent",
+      "value": 1500,
+      "label": "Bulk 15 %",
+      "min_subtotal": 5000000
+    }
+  ],
+  "shipping": {
+    "code": "flat",
+    "label": "Standard delivery",
+    "base_rate": 350000,
+    "free_over": null,
+    "taxable": false,
+    "tax_rate_bp": 0
+  },
+  "expect": {
+    "subtotal": 6000000,
+    "discount_total": 900000,
+    "net_total": 5100000,
+    "tax_total": 0,
+    "shipping_total": 350000,
+    "shipping_tax": 0,
+    "grand_total": 5450000
+  }
+}

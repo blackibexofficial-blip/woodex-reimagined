@@ -1,0 +1,26 @@
+{
+  "name": "13 · 18 % on 3 333.25 → 599.99 half-up, not truncation",
+  "currency": "PKR",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "sku": "WX-TX-001",
+      "name": "Rounding probe",
+      "product_id": "wx-tx-001",
+      "qty": 1,
+      "unit_price": 333325,
+      "tax_rate_bp": 1800
+    }
+  ],
+  "rules": [],
+  "shipping": null,
+  "expect": {
+    "subtotal": 333325,
+    "discount_total": 0,
+    "net_total": 333325,
+    "tax_total": 59999,
+    "shipping_total": 0,
+    "shipping_tax": 0,
+    "grand_total": 393324
+  }
+}

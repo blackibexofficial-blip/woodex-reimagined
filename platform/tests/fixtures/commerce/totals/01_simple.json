@@ -1,0 +1,33 @@
+{
+  "name": "01 · one line, flat shipping, no tax",
+  "currency": "PKR",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "sku": "WX-CH-001",
+      "name": "Natural Oak Chair",
+      "product_id": "wx-ch-001",
+      "qty": 1,
+      "unit_price": 4250000,
+      "tax_rate_bp": 0
+    }
+  ],
+  "rules": [],
+  "shipping": {
+    "code": "flat",
+    "label": "Standard delivery",
+    "base_rate": 350000,
+    "free_over": null,
+    "taxable": false,
+    "tax_rate_bp": 0
+  },
+  "expect": {
+    "subtotal": 4250000,
+    "discount_total": 0,
+    "net_total": 4250000,
+    "tax_total": 0,
+    "shipping_total": 350000,
+    "shipping_tax": 0,
+    "grand_total": 4600000
+  }
+}
