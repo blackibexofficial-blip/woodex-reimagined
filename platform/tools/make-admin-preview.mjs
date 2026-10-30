@@ -126,8 +126,8 @@ const categoryNodes = seed.categories.map((root) => {
   return node;
 });
 
-/** Three orders, built from real products with the platform's money rules. */
-const order = (number, daysAgo, customer, city, lines, gateway) => {
+/** Orders, built from real products with the platform's money rules. */
+const order = (number, daysAgo, customer, city, lines, gateway, phone) => {
   const subtotal = lines.reduce((sum, line) => sum + products[line.index].priceMinor * line.qty, 0);
   const discount = 0;
   const net = subtotal - discount;
@@ -140,6 +140,7 @@ const order = (number, daysAgo, customer, city, lines, gateway) => {
     placed: `2026-10-${String(31 - daysAgo).padStart(2, "0")}`,
     customer,
     city,
+    phone,
     gateway,
     payment: gateway === "cod" ? "pending" : "paid",
     status: daysAgo === 0 ? "placed" : daysAgo === 1 ? "confirmed" : "packed",
@@ -156,10 +157,20 @@ const order = (number, daysAgo, customer, city, lines, gateway) => {
   };
 };
 
+/*
+ * Five orders, and one deliberate fact: the same person is typed two ways.
+ *
+ * `Muhammad Ali` orders twice on the same number — once as `0300-1234567`, once as
+ * `+92 300 1234567`. `Sana Traders` and `Bilal Ahmed` share a number, which is what a
+ * business landline looks like. Both are in the catalog of things the customers screen is
+ * for, so the preview should not pretend the seed is tidier than reality.
+ */
 const orders = [
-  order("WDX-000042", 0, "Muhammad Ali", "Lahore", [{ index: 0, qty: 1 }], "cod"),
-  order("WDX-000041", 1, "Ayesha Khan", "Karachi", [{ index: 5, qty: 2 }, { index: 12, qty: 1 }], "bank"),
-  order("WDX-000040", 3, "Sana Traders", "Islamabad", [{ index: 9, qty: 4 }], "cod"),
+  order("WDX-000042", 0, "Muhammad Ali", "Lahore", [{ index: 0, qty: 1 }], "cod", "0300-1234567"),
+  order("WDX-000041", 1, "Ayesha Khan", "Karachi", [{ index: 5, qty: 2 }, { index: 12, qty: 1 }], "bank", "0321 9988776"),
+  order("WDX-000040", 3, "Sana Traders", "Islamabad", [{ index: 9, qty: 4 }], "cod", "051 2277889"),
+  order("WDX-000039", 5, "Bilal Ahmed", "Islamabad", [{ index: 3, qty: 1 }, { index: 15, qty: 2 }], "bank", "+92 51 227 7889"),
+  order("WDX-000038", 9, "Muhammad Ali", "Lahore", [{ index: 7, qty: 2 }], "cod", "+92 300 1234567"),
 ];
 
 const holds = products
@@ -173,6 +184,76 @@ const holds = products
     expired: i === 2,
     holder: ["cart #1841", "cart #1839", "order #97"][i] ?? "cart #1830",
   }));
+
+/* ── Attributes ─────────────────────────────────────────────────────────────────────────
+ *
+ * The vocabulary, counted against the catalog the way the screen counts it: products that
+ * carry each option, and variants that point at it. A material option nothing carries would
+ * be a filter returning an empty page; a finish with no variant behind it is a swatch that
+ * cannot be bought. Both are silent in the attribute table and visible here.
+ */
+const materials = seed.attributes.find((a) => a.code === "material");
+const finishes = seed.attributes.find((a) => a.code === "finish");
+
+const slugify = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+const materialOptions = materials.options.map((option) => {
+  const carried = products.filter((row) => {
+    const product = seed.products.find((p) => p.sku === row.sku);
+    return slugify(product.material) === option.code;
+  });
+
+  return {
+    code: option.code,
+    label: option.label,
+    products: carried.length,
+    variants: 0,
+    state: carried.length > 0 ? "used" : "dead_filter",
+  };
+});
+
+const finishOptions = finishes.options.map((option) => {
+  const variants = seed.variants.filter((variant) => variant.option_value === option.label);
+  const carried = new Set(variants.map((variant) => variant.product_sku));
+
+  return {
+    code: option.code,
+    label: option.label,
+    hex: option.hex,
+    products: carried.size,
+    variants: variants.length,
+    state: variants.length === 0 ? "orphan_variant" : "used",
+  };
+});
+
+const attributeGroups = [
+  {
+    code: materials.code,
+    name: materials.name,
+    type: materials.type,
+    isVariant: materials.is_variant,
+    isFilterable: materials.is_filterable,
+    options: materialOptions,
+  },
+  {
+    code: finishes.code,
+    name: finishes.name,
+    type: finishes.type,
+    isVariant: finishes.is_variant,
+    isFilterable: finishes.is_filterable,
+    options: finishOptions,
+  },
+];
+
+const allOptions = attributeGroups.flatMap((group) => group.options);
+const attributeSummary = {
+  attributes: attributeGroups.length,
+  options: allOptions.length,
+  used: allOptions.filter((o) => o.state === "used").length,
+  deadFilter: allOptions.filter((o) => o.state === "dead_filter").length,
+  orphan: allOptions.filter((o) => o.state === "orphan_variant").length,
+  rail: allOptions.filter((o) => o.state === "used" && o.variants + o.products > 0).length,
+};
 
 const countNodes = (nodes) => nodes.reduce((total, node) => total + 1 + countNodes(node.children), 0);
 const depthOf = (nodes) => (nodes.length === 0 ? 0 : 1 + Math.max(...nodes.map((node) => depthOf(node.children))));
@@ -246,6 +327,164 @@ const esc = (text) =>
 
 const badge = (tone, label) => `<span class="badge badge-${tone}">${esc(label)}</span>`;
 
+const attributeRows = attributeGroups
+  .map((group) => {
+    const rows = group.options
+      .map((option) => {
+        const [tone, label] =
+          option.state === "orphan_variant"
+            ? ["error", "Orphaned"]
+            : option.state === "dead_filter"
+              ? ["warning", "Empty filter"]
+              : option.state === "unused"
+                ? ["neutral", "Unused"]
+                : ["success", "In use"];
+
+        const reason =
+          option.state === "orphan_variant"
+            ? "Offered as a finish, but no variant exists — the customer picks it and finds nothing to buy."
+            : option.state === "dead_filter"
+              ? "Shown as a filter, but no product carries it — ticking it returns an empty page."
+              : option.variants > 0
+                ? `${option.variants} variants`
+                : `${option.products} ${option.products === 1 ? "product" : "products"}`;
+
+        const swatch = option.hex
+          ? `<span class="swatch" style="background:${esc(option.hex)}"></span>`
+          : "";
+
+        return `<tr>
+      <td><div class="inline-gap">${swatch}<div><div>${esc(option.label)}</div><div class="muted mono">${esc(option.code)}</div></div></div></td>
+      <td class="right ${option.products === 0 ? "muted" : ""}">${option.products}</td>
+      <td class="right ${option.variants === 0 ? "muted" : ""}">${option.variants}</td>
+      <td>${badge(tone, label)}</td>
+      <td class="muted" style="font-size:12px">${esc(reason)}</td>
+    </tr>`;
+      })
+      .join("\n");
+
+    const flags = [
+      badge("info", group.type),
+      group.isVariant ? badge("info", "generates variants") : "",
+      group.isFilterable ? badge("info", "filterable") : "",
+    ].join("");
+
+    return `<div class="card" style="margin-top:14px">
+        <div class="card-head">
+          <div>
+            <h2 style="margin:0">${esc(group.name)} <span class="mono muted" style="font-weight:400">${esc(group.code)}</span></h2>
+            <div class="inline-gap" style="margin-top:6px">${flags}</div>
+          </div>
+          <span class="muted" style="font-size:12px">${group.options.length} options</span>
+        </div>
+        <table>
+          <thead><tr><th>Option</th><th class="right">Products</th><th class="right">Variants</th><th>State</th><th>What it means</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  })
+  .join("\n");
+
+/* ── Customers ──────────────────────────────────────────────────────────────────────────
+ *
+ * No customer table exists, and the preview should not invent one. The list is the orders
+ * folded by normalised phone, using the same rule as `CustomerLedger`.
+ */
+const normalisePhone = (raw) => {
+  let digits = String(raw ?? "").replace(/\D+/g, "");
+  if (digits.startsWith("0092")) digits = "0" + digits.slice(4);
+  else if (digits.startsWith("92") && digits.length >= 11) digits = "0" + digits.slice(2);
+  return digits;
+};
+
+const formatPhone = (raw) => {
+  const digits = normalisePhone(raw);
+  if (!digits) return "—";
+  if (digits.length === 11 && digits.startsWith("03")) return digits.slice(0, 4) + " " + digits.slice(4);
+  if (digits.startsWith("0") && digits.length >= 10) return digits.slice(0, 3) + " " + digits.slice(3);
+  return digits;
+};
+
+const foldCustomers = (rows) => {
+  const buckets = new Map();
+  let unidentified = 0;
+
+  for (const row of rows) {
+    const phone = normalisePhone(row.phone);
+    if (!phone) {
+      unidentified++;
+      continue;
+    }
+
+    const bucket = buckets.get(phone) ?? {
+      phone,
+      names: new Map(),
+      orders: 0,
+      lifetime: 0,
+      paid: 0,
+      city: row.city,
+      lastAt: row.placed,
+      firstAt: row.placed,
+    };
+
+    bucket.names.set(row.customer, (bucket.names.get(row.customer) ?? 0) + 1);
+    bucket.orders++;
+    bucket.lifetime += row.grand;
+    // Cash on delivery is not money yet: it is collected when the van arrives.
+    bucket.paid += row.gateway === "cod" ? 0 : row.grand;
+    bucket.city = row.city;
+    if (row.placed > bucket.lastAt) bucket.lastAt = row.placed;
+    if (row.placed < bucket.firstAt) bucket.firstAt = row.placed;
+    buckets.set(phone, bucket);
+  }
+
+  const people = [...buckets.values()].map((bucket) => {
+    const names = [...bucket.names.entries()].sort((a, b) => b[1] - a[1]);
+    const canonical = names[0][0];
+    const fingerprint = (name) => name.toLowerCase().replace(/\s+/g, " ").trim();
+    const aliases = names.map(([name]) => name).filter((name) => fingerprint(name) !== fingerprint(canonical));
+
+    return {
+      ...bucket,
+      name: canonical,
+      aliases,
+      outstanding: Math.max(0, bucket.lifetime - bucket.paid),
+      repeat: bucket.orders > 1,
+    };
+  });
+
+  people.sort((a, b) => b.lifetime - a.lifetime);
+  return { people, unidentified };
+};
+
+const customerLedger = foldCustomers(orders);
+const customerSummary = {
+  customers: customerLedger.people.length,
+  repeat: customerLedger.people.filter((p) => p.repeat).length,
+  lifetime: customerLedger.people.reduce((sum, p) => sum + p.lifetime, 0),
+  outstanding: customerLedger.people.reduce((sum, p) => sum + p.outstanding, 0),
+  conflicts: customerLedger.people.filter((p) => p.aliases.length > 0).length,
+  unidentified: customerLedger.unidentified,
+};
+
+const customerRows = customerLedger.people
+  .map(
+    (person) => `<tr>
+      <td><div class="inline-gap"><strong>${esc(person.name)}</strong>
+        ${person.repeat ? badge("success", "repeat") : ""}
+        ${person.aliases.length > 0 ? badge("warning", "also " + person.aliases[0]) : ""}</div>
+        ${person.aliases.length > 0 ? `<div class="muted" style="font-size:11px">one number, ${person.aliases.length + 1} names</div>` : ""}
+      </td>
+      <td class="mono">${esc(formatPhone(person.phone))}</td>
+      <td class="muted">${esc(person.city)}</td>
+      <td class="right">${person.orders}</td>
+      <td class="right mono">${rupees(person.lifetime)}</td>
+      <td class="right mono ${person.outstanding > 0 ? "warn" : "muted"}">${person.outstanding > 0 ? rupees(person.outstanding) : "—"}</td>
+      <td class="muted">${esc(person.lastAt)}</td>
+    </tr>`,
+  )
+  .join("\n");
+
 const invoiceRows = invoices.map((inv) => `<tr>
       <td class="mono">${esc(inv.number)}</td>
       <td class="mono muted">${esc(inv.order)}</td>
@@ -260,7 +499,7 @@ const invoiceRows = invoices.map((inv) => `<tr>
 const nav = [
   ["Dashboard", "chart", "dashboard", true],
   ["Products", "archive", "products", true],
-  ["Attributes", "layers", "soon", false],
+  ["Attributes", "layers", "attributes", true],
   ["Categories", "layout", "categories", true],
   ["Inventory", "folder", "inventory", true],
   ["Orders", "invoice", "orders", true],
@@ -269,7 +508,7 @@ const nav = [
   ["Refunds & returns", "refresh", "soon", false],
   ["Promotions", "megaphone", "soon", false],
   ["Shipping & tax", "globe", "soon", false],
-  ["Customers", "users", "soon", false],
+  ["Customers", "users", "customers", true],
   ["Reports", "trending-up", "soon", false],
   ["Settings", "settings", "soon", false],
 ];
@@ -444,6 +683,17 @@ const html = `<!doctype html>
   .badge-error { background: var(--error-bg); color: var(--error); }
   .badge-info { background: var(--info-bg); color: var(--info); }
   .badge-neutral { background: #eef0f3; color: #475569; }
+
+  .inline-gap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .swatch { width: 18px; height: 18px; border-radius: 999px; border: 1px solid var(--line);
+    display: inline-block; flex: none; }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 10px; margin-bottom: 10px; }
+  .notice { border: 1px solid #f6d9a8; background: var(--warning-bg); border-radius: 12px;
+    padding: 14px 16px; margin-top: 14px; font-size: 13px; color: #7a4b06; }
+  .notice p { margin: 0 0 4px; }
+  .notice p:last-child { margin: 0; }
+  .notice.info { border-color: #c7d7f0; background: var(--info-bg); color: #1e4b8f; }
 
   .toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
   .field { height: 38px; border: 1px solid var(--line); background: #fff; border-radius: 8px;
@@ -719,23 +969,96 @@ const html = `<!doctype html>
       </p>
     </section>
 
+    <!-- ── Attributes ─────────────────────────────────────────────────────── -->
+    <section class="screen" id="attributes">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Attributes</div>
+          <h1>Attributes</h1>
+          <p>The vocabulary the catalog is described in. Each option is counted against the products
+             that carry it and the variants that point at it, because both failures here are silent:
+             a filter that returns nothing, and a finish with nothing behind it.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        ${stat("Attributes", attributeSummary.attributes, attributeSummary.options + " options in total")}
+        ${stat("In use", attributeSummary.used, "carried by a live product or variant", "success")}
+        ${stat("Empty filters", attributeSummary.deadFilter, "drawn, but return nothing", attributeSummary.deadFilter > 0 ? "error" : "success")}
+        ${stat("Orphaned finishes", attributeSummary.orphan, "offered, but not buyable", attributeSummary.orphan > 0 ? "error" : "success")}
+      </div>
+
+      ${attributeSummary.deadFilter + attributeSummary.orphan > 0
+        ? `<div class="notice"><p>${attributeSummary.orphan} option(s) are offered as a finish with no variant behind them.</p><p class="muted">The storefront reads these options directly, so the fix is a catalog decision, not a deploy.</p></div>`
+        : `<div class="notice info"><p>Every option is carried by something. Nothing on this page is showing a customer an empty page — the last time it was not true, six products were filed under a material the vocabulary did not contain.</p></div>`}
+
+      ${attributeRows}
+
+      <p class="muted" style="font-size:12px;margin-top:10px">
+        ${attributeSummary.rail} filter options will return something in the storefront.
+      </p>
+    </section>
+
+    <!-- ── Customers ──────────────────────────────────────────────────────── -->
+    <section class="screen" id="customers">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Customers</div>
+          <h1>Customers</h1>
+          <p>Who ordered, folded together by phone number. There is no customer account in a
+             cash-on-delivery shop, so the number the rider calls is the identity — and
+             +92 300 1234567 is the same person as 0300-1234567.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        ${stat("Customers", customerSummary.customers, orders.length + " orders between them")}
+        ${stat("Came back", customerSummary.repeat, "more than one order", customerSummary.repeat > 0 ? "success" : "")}
+        ${stat("Lifetime value", rupees(customerSummary.lifetime), "ordered, net of refunds")}
+        ${stat("Outstanding", rupees(customerSummary.outstanding), "still owed by them", customerSummary.outstanding > 0 ? "warning" : "success")}
+      </div>
+
+      ${customerSummary.conflicts + customerSummary.unidentified > 0
+        ? `<div class="notice info">
+             ${customerSummary.conflicts > 0 ? `<p>${customerSummary.conflicts} number(s) appear under more than one name. Usually a typo at checkout — occasionally a household or a shop sharing a line.</p>` : ""}
+             ${customerSummary.unidentified > 0 ? `<p>${customerSummary.unidentified} order(s) have no phone number and are not counted as a customer above.</p>` : ""}
+           </div>`
+        : ""}
+
+      <div class="toolbar" style="margin-top:14px">
+        <input class="field grow" placeholder="Name, phone or city…" aria-label="Search customers">
+        <select class="field" aria-label="Show"><option>All customers</option><option>Came back</option><option>Owe us money</option><option>More than one name</option></select>
+        <select class="field" aria-label="Sort by"><option>Highest value</option><option>Most recent</option><option>Most orders</option></select>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>Customer</th><th>Phone</th><th>City</th><th class="right">Orders</th><th class="right">Lifetime</th><th class="right">Owing</th><th>Last order</th></tr></thead>
+          <tbody>${customerRows}</tbody>
+        </table>
+      </div>
+
+      <p class="muted" style="font-size:12px;margin-top:10px">
+        Lifetime value is what they ordered, net of refunds — not what they paid. Cash on delivery
+        is money collected when the van arrives, so an unpaid COD order shows as owed.
+      </p>
+    </section>
+
     <!-- ── Coming soon ────────────────────────────────────────────────────── -->
     <section class="screen" id="soon">
       <div class="page-head">
         <div>
           <div class="crumbs">Commerce</div>
           <h1>Coming in a later slice</h1>
-          <p>Ten commerce screens are routed, permissioned and in the sidebar. They open onto this
+          <p>Six commerce screens are routed, permissioned and in the sidebar. They open onto this
              page in the real admin too — honest about status rather than empty.</p>
         </div>
       </div>
       <div class="soon-card">
-        <h2>Attributes · Payments · Refunds · Promotions · Shipping &amp; tax · Customers · Reports · Settings</h2>
+        <h2>Payments · Refunds · Promotions · Shipping &amp; tax · Reports · Settings</h2>
         <p class="muted">Already underneath: the catalog tables, the money calculator, checkout
            services and the media pipeline. What is missing is the screen.</p>
         <ul>
-          <li>Attributes: the option lists a variant is built from</li>
-          <li>Invoices: list with totals and a print view</li>
           <li>Payments: verify a bank transfer against an order</li>
           <li>Reports: sales by day, by category, by series</li>
         </ul>

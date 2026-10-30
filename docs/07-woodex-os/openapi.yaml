@@ -419,10 +419,53 @@ paths:
         '409':
           description: Insufficient stock
 
+  /checkout/quote:
+    post:
+      tags: [Cart, Orders]
+      summary: Price a basket without creating anything
+      description: |
+        The customer's basket lives in the browser, so every call sends the lines again and
+        they are re-priced here at current prices, discounts, tax and shipping. Nothing is
+        written: no cart row, no reservation, no sequence number. A quote is safe to call on
+        every quantity click, so it shares the catalog's rate limit rather than the checkout's.
+
+        The totals returned by this endpoint and the total charged by `POST /checkout` come
+        from the same calculator, so the summary a customer approves is the amount they owe.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BasketRequest' }
+      responses:
+        '200':
+          description: Priced basket
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/BasketTotals' }
+        '422':
+          description: |
+            A line could not be priced. The field error names the line, and `code` is one of
+            `product_unavailable`, `variant_unavailable` or `price_missing` so the basket can
+            mark the row instead of showing a message about the whole page.
+          $ref: '#/components/responses/ValidationError'
+        '429': { $ref: '#/components/responses/RateLimited' }
+
   /checkout:
     post:
       tags: [Orders]
-      summary: Place an order from a cart
+      summary: Place an order from a basket
+      description: |
+        Opens a cart, fills it, addresses it and places it in one transaction. Stock is
+        reserved, the order number is allocated from a sequence, and the invoice is issued
+        before the response is written — an order that exists without its invoice is not a
+        state this endpoint can return.
+
+        Re-pricing happens here too. The lines are priced from the catalog at the moment of
+        the order, never from a `total` the browser sends.
       security: []
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -433,14 +476,35 @@ paths:
             schema: { $ref: '#/components/schemas/CheckoutRequest' }
       responses:
         '201':
-          description: Order created
+          description: Order placed, invoice issued
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  data: { $ref: '#/components/schemas/Order' }
+                  data: { $ref: '#/components/schemas/PlacedOrder' }
+        '409':
+          description: |
+            Insufficient stock. `error.code` is `insufficient_stock` and `shortfalls` lists
+            each line the shelf cannot cover with the quantity that is actually available —
+            the useful part of the answer, because the customer can adjust one line.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code: { type: string, const: insufficient_stock }
+                      message: { type: string }
+                  shortfalls:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
         '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
 
   /orders/{number}:
     get:
@@ -1487,29 +1551,117 @@ components:
         item_count: { type: integer }
         subtotal: { $ref: '#/components/schemas/Money' }
 
-    CheckoutRequest:
+    # The basket is sent with the request rather than kept server-side: the platform runs on
+    # shared hosting, and a session cart would be a read and a write on every quantity click.
+    BasketLine:
       type: object
-      required: [cart_id, customer, shipping_address, payment_method]
+      required: [slug, qty]
       properties:
-        cart_id: { type: string }
-        customer:
-          type: object
-          required: [name, phone]
+        slug: { type: string, description: Product slug from `GET /products`, not a SKU }
+        qty: { type: integer, minimum: 1, maximum: 10 }
+        color:
+          type: string
+          nullable: true
+          description: The finish the customer picked, echoed back for display only
+
+    BasketRequest:
+      type: object
+      required: [lines]
+      properties:
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 20
+          description: A basket above twenty lines is a purchase order and should go through sales.
+          items: { $ref: '#/components/schemas/BasketLine' }
+        gateway: { type: string, enum: [cod, bank] }
+        notes: { type: string, maxLength: 1000 }
+
+    CheckoutRequest:
+      allOf:
+        - $ref: '#/components/schemas/BasketRequest'
+        - type: object
+          required: [customer, shipping]
           properties:
-            name: { type: string }
-            phone: { type: string }
-            email: { type: string, format: email }
-        shipping_address:
+            customer:
+              type: object
+              required: [name, phone]
+              properties:
+                name: { type: string, maxLength: 120 }
+                phone: { type: string, maxLength: 32 }
+                email: { type: string, format: email, nullable: true }
+            shipping:
+              type: object
+              required: [line1, city]
+              properties:
+                line1: { type: string, maxLength: 190 }
+                line2: { type: string, nullable: true, maxLength: 190 }
+                city: { type: string, maxLength: 80 }
+                province: { type: string, maxLength: 80 }
+                postcode: { type: string, maxLength: 16 }
+
+    BasketTotals:
+      type: object
+      properties:
+        currency: { type: string, example: PKR }
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              slug: { type: string }
+              sku: { type: string }
+              name: { type: string }
+              quantity: { type: integer }
+              unit_price_minor: { type: integer }
+              unit_price: { type: string, description: Formatted, for display only }
+              line_total_minor: { type: integer }
+              line_total: { type: string }
+              tax_minor: { type: integer }
+              tax_rate_bp: { type: integer }
+              discount_minor: { type: integer }
+              image: { type: string, nullable: true }
+              color: { type: string, nullable: true }
+        totals:
           type: object
-          required: [line1, city]
-          properties:
-            line1: { type: string }
-            line2: { type: string }
-            city: { type: string }
-            province: { type: string }
-            postcode: { type: string }
-        payment_method: { type: string, enum: [cod, bank_transfer, safepay, jazzcash, easypaisa] }
-        notes: { type: string }
+          additionalProperties: true
+          description: |
+            Every field is integer paisa; `grand_total` is the amount the server will charge,
+            including tax and shipping. `lines[].line_total_minor` sums to `grand_total` minus
+            shipping, and the endpoint refuses to answer if it does not.
+        item_count: { type: integer }
+        free_shipping: { type: boolean }
+        savings_bp:
+          type: integer
+          description: Discount as basis points of subtotal, for the "you saved" line
+
+    PlacedOrder:
+      type: object
+      description: Written once, when the order is placed — not a live projection.
+      properties:
+        number: { type: string, example: WDX-000042 }
+        status: { type: string, enum: [placed, confirmed, in_production, ready, shipped, delivered, cancelled] }
+        payment_status: { type: string, enum: [pending, paid, part_paid, refunded] }
+        payment_method: { type: string, example: cod }
+        currency: { type: string, example: PKR }
+        total_minor: { type: integer }
+        total: { type: string, description: Formatted, for display only }
+        amount_due_minor:
+          type: integer
+          description: Zero for a prepaid order; the full total for cash on delivery
+        placed_at: { type: string, format: date-time }
+        invoice_number: { type: string, nullable: true, example: INV-000042 }
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              slug: { type: string }
+              name: { type: string }
+              quantity: { type: integer }
+              line_total_minor: { type: integer }
+              line_total: { type: string }
+        shipping_estimate_days: { type: integer, example: 5 }
 
     Order:
       type: object

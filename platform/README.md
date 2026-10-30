@@ -779,3 +779,96 @@ customer is changed by a named action that records a reason, not by a list row.
 **`279/279 checks · 15,691 assertions`** — `InvoiceBalanceTest` (14) covers refunds, voids,
 zero-value invoices, overdue boundaries and the COD stamping rule; `InvoicesScreenTest` (7)
 pins the derivation, the print document and both permission checks.
+
+## T18 — attributes, and the six products the filter could not see
+
+The attributes screen exists to answer a question the attribute table cannot: **does this
+vocabulary still describe this catalog?**
+
+An option is configuration. It stays valid forever, whether or not anything uses it. But the
+storefront draws every filterable option as a checkbox and every variant-axis option as a
+swatch, so an option nothing carries becomes a checkbox that returns an empty page, or a
+finish a customer can select with nothing to buy. Neither throws an error. Both look like a
+broken shop.
+
+`AttributeVocabulary` counts two things per option — live products carrying it, and live
+variants pointing at it — and sorts each option into one of four states:
+
+| Products | Variants | On a variant axis | Filterable | State |
+|---|---|---|---|---|
+| any | 0 | yes | — | **Orphaned** — offered as a finish, not buyable |
+| 0 | 0 | no | yes | **Empty filter** — drawn, returns nothing |
+| 0 | 0 | no | no | **Unused** — untidy, not a defect |
+| >0 | — | — | — | **In use** |
+
+Orphans outrank empty filters when an option could be both, because an orphan costs a sale and
+an empty filter costs a click.
+
+Both counts are restricted to what a customer can reach: `published` products only, and
+variants that are neither soft-deleted nor inactive. Counting drafts would make a dead option
+look busy because of work in progress.
+
+### The bug it found
+
+`CatalogSeeder` files a product under a material by slugging its material string and looking
+it up in the attribute's options. Six of the twenty seeded products had a material with no
+matching option — `MDF Melamine` (seven products), `Solid Hardwood`, `Mesh + Split-Pad`,
+`Mesh Back + Premium MoltyFoam`, `Natural Walnut Veneer + Glass`, `Dark Oak Veneer`. Those
+products were in the catalog, searchable, priced, and **invisible to the material filter**,
+because no attribute value was ever written for them.
+
+The fix is in the seed: the material attribute now has all fourteen options the catalog
+actually uses. Two tests in `CatalogSeedTest` pin both directions — every material string has
+an option, and every option is carried by something — so the next product added with a new
+material fails the suite instead of quietly disappearing from the filter.
+
+### Not offered
+
+Editing options here. Every change on this table reaches the storefront's filter rail on the
+next page load, so it belongs with product management behind `commerce.products.manage`, not
+on a screen whose job is to report.
+
+## T19 — customers, without a customers table
+
+There is no `commerce_customers` table, and adding one would be the wrong fix. A
+cash-on-delivery shop has no accounts: the rider's phone number is the only durable identity,
+and every order already stores it. A customers table would be filled from those same rows, kept
+in step with them by hand, and would still be wrong the first time somebody typed their number
+differently.
+
+So customers are derived. `PhoneNumber::normalise()` folds a number to one shape — local,
+digits only, leading zero — which is why `0300-1234567`, `+92 300 1234567` and
+`0092-300-1234567` are one customer rather than three. The length guard is `>= 11`, not `> 11`:
+a Karachi landline written as `+92 51 …` leaves eleven digits, the same length as a local
+mobile, and a `> 11` test folds nothing — which is how a business ends up counted twice.
+
+`CustomerLedger` groups orders by that key and derives what the orders table cannot show:
+
+- **Repeat.** More than one order. One order is a trial; the second is the only proof that the
+  furniture, the price and the delivery were acceptable. The repeat rate counts people, not
+  orders.
+- **Name conflict.** The same number under two names. Not corrected automatically — it is
+  usually a typo at checkout, and occasionally a household or a shop sharing a line, which is
+  worth knowing before a rider is sent.
+- **Outstanding.** Ordered minus paid, per person, using the same arithmetic as the invoices
+  screen. Cash on delivery is not money until the van arrives.
+
+Cancelled orders are excluded — they are not purchases — and orders with no phone number are
+**counted, not dropped**. The screen says how many there are, so the customer total always
+reconciles with the order total instead of silently losing a few percent of the business.
+
+## Spec drift fixed
+
+`openapi.yaml` still described the checkout from before T14: a `cart_id`-based `POST
+/checkout` returning an `Order`. The code takes the basket's lines directly and returns a
+placed-order receipt. Both are now documented as built, including `POST /checkout/quote`
+(the re-pricing read that writes nothing) and the `409 insufficient_stock` response with its
+`shortfalls`. The older quotation endpoints kept their names — `BasketQuote` and
+`BasketRequest` were used for the basket instead, because "quote" already means something
+specific to the sales team.
+
+### Result
+
+**`329/329 checks · 15,891 assertions`** — `AttributeVocabularyTest` (17), `CustomerLedgerTest`
+(18), `AttributesScreenTest` (8), `CustomersScreenTest` (9), plus two seed tests that now fail
+if a product's material is not in the vocabulary.

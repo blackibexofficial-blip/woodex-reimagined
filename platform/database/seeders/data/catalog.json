@@ -110,12 +110,8 @@
           "label": "38mm MDF Melamine"
         },
         {
-          "code": "walnut-veneer",
-          "label": "Walnut Veneer"
-        },
-        {
-          "code": "premium-walnut-veneer-tempered-glass",
-          "label": "Premium Walnut Veneer + Tempered Glass"
+          "code": "mdf-melamine",
+          "label": "MDF Melamine"
         },
         {
           "code": "mdf-melamine-dark-walnut",
@@ -126,16 +122,44 @@
           "label": "MDF Melamine (Natural Oak)"
         },
         {
-          "code": "mesh-moltyfoam-seat",
-          "label": "Mesh + MoltyFoam Seat"
+          "code": "dark-oak-veneer",
+          "label": "Dark Oak Veneer"
+        },
+        {
+          "code": "natural-walnut-veneer-glass",
+          "label": "Natural Walnut Veneer + Glass"
+        },
+        {
+          "code": "premium-walnut-veneer-tempered-glass",
+          "label": "Premium Walnut Veneer + Tempered Glass"
+        },
+        {
+          "code": "solid-hardwood",
+          "label": "Solid hardwood"
+        },
+        {
+          "code": "walnut-veneer",
+          "label": "Walnut Veneer"
+        },
+        {
+          "code": "full-mesh",
+          "label": "Full Mesh"
         },
         {
           "code": "mesh-back-moltyfoam",
           "label": "Mesh Back + MoltyFoam"
         },
         {
-          "code": "full-mesh",
-          "label": "Full Mesh"
+          "code": "mesh-back-premium-moltyfoam",
+          "label": "Mesh Back + Premium MoltyFoam"
+        },
+        {
+          "code": "mesh-moltyfoam-seat",
+          "label": "Mesh + MoltyFoam Seat"
+        },
+        {
+          "code": "mesh-split-pad",
+          "label": "Mesh + Split-Pad"
         }
       ]
     },

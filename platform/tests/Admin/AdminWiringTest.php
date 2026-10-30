@@ -122,6 +122,11 @@ final class AdminWiringTest
             'ProductsIndex' => 'products-index',
             'OrdersIndex' => 'orders-index',
             'OrderShow' => 'order-show',
+            'InventoryIndex' => 'inventory-index',
+            'CategoriesIndex' => 'categories-index',
+            'InvoicesIndex' => 'invoices-index',
+            'AttributesIndex' => 'attributes-index',
+            'CustomersIndex' => 'customers-index',
         ];
 
         foreach ($expected as $class => $view) {
@@ -132,16 +137,16 @@ final class AdminWiringTest
         }
 
         // The remaining placeholder screens all render one shared view. Orders left this list
-        // in T11, Inventory in T15, Categories in T16 and Invoices in T17.
+        // in T11, Inventory in T15, Categories in T16, Invoices in T17, and Attributes and
+        // Customers in T18/T19.
         Assert::true(
             is_file($this->root().'/resources/views/livewire/admin/commerce/coming-soon.blade.php'),
             'placeholder screens render the shared coming-soon view',
         );
 
         foreach ([
-            'AttributesIndex',
             'PaymentsIndex', 'RefundsIndex', 'PromotionsIndex', 'ShippingTaxIndex',
-            'CustomersIndex', 'ReportsIndex', 'SettingsIndex',
+            'ReportsIndex', 'SettingsIndex',
         ] as $class) {
             $source = (string) file_get_contents($this->root().'/app/Livewire/Admin/Commerce/'.$class.'.php');
 

@@ -72,6 +72,17 @@
   .badge-info { background: var(--info-bg); color: var(--info); }
   .badge-neutral { background: #eef0f3; color: #475569; }
 
+  .inline-gap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .swatch { width: 18px; height: 18px; border-radius: 999px; border: 1px solid var(--line);
+    display: inline-block; flex: none; }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 10px; margin-bottom: 10px; }
+  .notice { border: 1px solid #f6d9a8; background: var(--warning-bg); border-radius: 12px;
+    padding: 14px 16px; margin-top: 14px; font-size: 13px; color: #7a4b06; }
+  .notice p { margin: 0 0 4px; }
+  .notice p:last-child { margin: 0; }
+  .notice.info { border-color: #c7d7f0; background: var(--info-bg); color: #1e4b8f; }
+
   .toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
   .field { height: 38px; border: 1px solid var(--line); background: #fff; border-radius: 8px;
     padding: 0 12px; font-size: 13px; color: var(--ink); min-width: 180px; }
@@ -112,7 +123,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m5 10V5m5 14v-7m5 7V8"/></svg><span>Dashboard</span></a>
 <a href="#products" data-go="products" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v11H4zM4 5h16v3H4zM10 12h4"/></svg><span>Products</span></a>
-<a href="#soon" data-go="soon" class="nav-item nav-muted">
+<a href="#attributes" data-go="attributes" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 4-8 4-8-4 8-4zm8 8l-8 4-8-4"/></svg><span>Attributes</span></a>
 <a href="#categories" data-go="categories" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4zM4 10h16M9 10v9"/></svg><span>Categories</span></a>
@@ -130,7 +141,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l12-6v14L4 13zM4 11v2a2 2 0 002 2h1"/></svg><span>Promotions</span></a>
 <a href="#soon" data-go="soon" class="nav-item nav-muted">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c3 3 3 15 0 18"/></svg><span>Shipping &amp; tax</span></a>
-<a href="#soon" data-go="soon" class="nav-item nav-muted">
+<a href="#customers" data-go="customers" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11a3 3 0 100-6 3 3 0 000 6zM2 20a6 6 0 0112 0M17 8a3 3 0 100 6M15 20a6 6 0 016-6"/></svg><span>Customers</span></a>
 <a href="#soon" data-go="soon" class="nav-item nav-muted">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Reports</span></a>
@@ -255,6 +266,24 @@
       <td><strong>Sana Traders</strong><div class="muted">Islamabad</div></td>
       <td class="muted">4 items</td>
       <td class="right mono">PKR 96,900.00</td>
+      <td><span class="badge badge-warning">Awaiting COD</span></td>
+      <td><span class="badge badge-neutral">Packed</span></td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000039</td>
+      <td class="muted">2026-10-26</td>
+      <td><strong>Bilal Ahmed</strong><div class="muted">Islamabad</div></td>
+      <td class="muted">3 items</td>
+      <td class="right mono">PKR 713,900.00</td>
+      <td><span class="badge badge-success">Paid</span></td>
+      <td><span class="badge badge-neutral">Packed</span></td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000038</td>
+      <td class="muted">2026-10-22</td>
+      <td><strong>Muhammad Ali</strong><div class="muted">Lahore</div></td>
+      <td class="muted">2 items</td>
+      <td class="right mono">PKR 92,180.00</td>
       <td><span class="badge badge-warning">Awaiting COD</span></td>
       <td><span class="badge badge-neutral">Packed</span></td>
     </tr></tbody>
@@ -487,6 +516,24 @@
       <td><strong>Sana Traders</strong><div class="muted">Islamabad</div></td>
       <td class="muted">4 items</td>
       <td class="right mono">PKR 96,900.00</td>
+      <td><span class="badge badge-warning">Awaiting COD</span></td>
+      <td><span class="badge badge-neutral">Packed</span></td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000039</td>
+      <td class="muted">2026-10-26</td>
+      <td><strong>Bilal Ahmed</strong><div class="muted">Islamabad</div></td>
+      <td class="muted">3 items</td>
+      <td class="right mono">PKR 713,900.00</td>
+      <td><span class="badge badge-success">Paid</span></td>
+      <td><span class="badge badge-neutral">Packed</span></td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000038</td>
+      <td class="muted">2026-10-22</td>
+      <td><strong>Muhammad Ali</strong><div class="muted">Lahore</div></td>
+      <td class="muted">2 items</td>
+      <td class="right mono">PKR 92,180.00</td>
       <td><span class="badge badge-warning">Awaiting COD</span></td>
       <td><span class="badge badge-neutral">Packed</span></td>
     </tr></tbody>
@@ -959,8 +1006,8 @@
       </div>
 
       <div class="grid grid-4">
-        <div class="card stat"><p class="stat-label">Invoices</p><p class="stat-value ">3</p><p class="stat-hint">issued in total</p></div>
-        <div class="card stat"><p class="stat-label">Paid</p><p class="stat-value ">PKR 189,635.00</p><p class="stat-hint">received, net of refunds</p></div>
+        <div class="card stat"><p class="stat-label">Invoices</p><p class="stat-value ">5</p><p class="stat-hint">issued in total</p></div>
+        <div class="card stat"><p class="stat-label">Paid</p><p class="stat-value ">PKR 995,715.00</p><p class="stat-hint">received, net of refunds</p></div>
         <div class="card stat"><p class="stat-label">Outstanding</p><p class="stat-value warning">PKR 88,085.00</p><p class="stat-hint">still owed</p></div>
         <div class="card stat"><p class="stat-label">Overdue</p><p class="stat-value error">PKR 24,225.00</p><p class="stat-hint">1 past their due date</p></div>
       </div>
@@ -1004,6 +1051,26 @@
       <td class="right mono warn">PKR 24,225.00</td>
       <td><span class="badge badge-error">Overdue</span></td>
       <td class="right"><a href="#invoices" class="muted" style="font-size:11px">Print</a></td>
+    </tr>
+<tr>
+      <td class="mono">INV-000039</td>
+      <td class="mono muted">WDX-000039</td>
+      <td><strong>Bilal Ahmed</strong><div class="muted">Islamabad</div></td>
+      <td class="muted">2026-10-26</td>
+      <td class="right mono">PKR 713,900.00</td>
+      <td class="right mono muted">—</td>
+      <td><span class="badge badge-success">Paid</span></td>
+      <td class="right"><a href="#invoices" class="muted" style="font-size:11px">Print</a></td>
+    </tr>
+<tr>
+      <td class="mono">INV-000038</td>
+      <td class="mono muted">WDX-000038</td>
+      <td><strong>Muhammad Ali</strong><div class="muted">Lahore</div></td>
+      <td class="muted">2026-10-22</td>
+      <td class="right mono">PKR 92,180.00</td>
+      <td class="right mono muted">—</td>
+      <td><span class="badge badge-success">Paid</span></td>
+      <td class="right"><a href="#invoices" class="muted" style="font-size:11px">Print</a></td>
     </tr></tbody>
         </table>
       </div>
@@ -1014,23 +1081,272 @@
       </p>
     </section>
 
+    <!-- ── Attributes ─────────────────────────────────────────────────────── -->
+    <section class="screen" id="attributes">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Attributes</div>
+          <h1>Attributes</h1>
+          <p>The vocabulary the catalog is described in. Each option is counted against the products
+             that carry it and the variants that point at it, because both failures here are silent:
+             a filter that returns nothing, and a finish with nothing behind it.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        <div class="card stat"><p class="stat-label">Attributes</p><p class="stat-value ">2</p><p class="stat-hint">17 options in total</p></div>
+        <div class="card stat"><p class="stat-label">In use</p><p class="stat-value success">17</p><p class="stat-hint">carried by a live product or variant</p></div>
+        <div class="card stat"><p class="stat-label">Empty filters</p><p class="stat-value success">0</p><p class="stat-hint">drawn, but return nothing</p></div>
+        <div class="card stat"><p class="stat-label">Orphaned finishes</p><p class="stat-value success">0</p><p class="stat-hint">offered, but not buyable</p></div>
+      </div>
+
+      <div class="notice info"><p>Every option is carried by something. Nothing on this page is showing a customer an empty page — the last time it was not true, six products were filed under a material the vocabulary did not contain.</p></div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="card-head">
+          <div>
+            <h2 style="margin:0">Material <span class="mono muted" style="font-weight:400">material</span></h2>
+            <div class="inline-gap" style="margin-top:6px"><span class="badge badge-info">select</span><span class="badge badge-info">filterable</span></div>
+          </div>
+          <span class="muted" style="font-size:12px">14 options</span>
+        </div>
+        <table>
+          <thead><tr><th>Option</th><th class="right">Products</th><th class="right">Variants</th><th>State</th><th>What it means</th></tr></thead>
+          <tbody><tr>
+      <td><div class="inline-gap"><div><div>38mm MDF Melamine</div><div class="muted mono">38mm-mdf-melamine</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>MDF Melamine</div><div class="muted mono">mdf-melamine</div></div></div></td>
+      <td class="right ">7</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">7 products</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>MDF Melamine (Dark Walnut)</div><div class="muted mono">mdf-melamine-dark-walnut</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>MDF Melamine (Natural Oak)</div><div class="muted mono">mdf-melamine-natural-oak</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>Dark Oak Veneer</div><div class="muted mono">dark-oak-veneer</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>Natural Walnut Veneer + Glass</div><div class="muted mono">natural-walnut-veneer-glass</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>Premium Walnut Veneer + Tempered Glass</div><div class="muted mono">premium-walnut-veneer-tempered-glass</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>Solid hardwood</div><div class="muted mono">solid-hardwood</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>Walnut Veneer</div><div class="muted mono">walnut-veneer</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>Full Mesh</div><div class="muted mono">full-mesh</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>Mesh Back + MoltyFoam</div><div class="muted mono">mesh-back-moltyfoam</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>Mesh Back + Premium MoltyFoam</div><div class="muted mono">mesh-back-premium-moltyfoam</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>Mesh + MoltyFoam Seat</div><div class="muted mono">mesh-moltyfoam-seat</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><div><div>Mesh + Split-Pad</div><div class="muted mono">mesh-split-pad</div></div></div></td>
+      <td class="right ">1</td>
+      <td class="right muted">0</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">1 product</td>
+    </tr></tbody>
+        </table>
+      </div>
+<div class="card" style="margin-top:14px">
+        <div class="card-head">
+          <div>
+            <h2 style="margin:0">Finish <span class="mono muted" style="font-weight:400">finish</span></h2>
+            <div class="inline-gap" style="margin-top:6px"><span class="badge badge-info">swatch</span><span class="badge badge-info">generates variants</span><span class="badge badge-info">filterable</span></div>
+          </div>
+          <span class="muted" style="font-size:12px">3 options</span>
+        </div>
+        <table>
+          <thead><tr><th>Option</th><th class="right">Products</th><th class="right">Variants</th><th>State</th><th>What it means</th></tr></thead>
+          <tbody><tr>
+      <td><div class="inline-gap"><span class="swatch" style="background:#C8A97E"></span><div><div>Natural Oak</div><div class="muted mono">natural-oak</div></div></div></td>
+      <td class="right ">4</td>
+      <td class="right ">4</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">4 variants</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><span class="swatch" style="background:#5B3A29"></span><div><div>Dark Walnut</div><div class="muted mono">dark-walnut</div></div></div></td>
+      <td class="right ">4</td>
+      <td class="right ">4</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">4 variants</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><span class="swatch" style="background:#1C1C1C"></span><div><div>Matte Black</div><div class="muted mono">matte-black</div></div></div></td>
+      <td class="right ">4</td>
+      <td class="right ">4</td>
+      <td><span class="badge badge-success">In use</span></td>
+      <td class="muted" style="font-size:12px">4 variants</td>
+    </tr></tbody>
+        </table>
+      </div>
+
+      <p class="muted" style="font-size:12px;margin-top:10px">
+        17 filter options will return something in the storefront.
+      </p>
+    </section>
+
+    <!-- ── Customers ──────────────────────────────────────────────────────── -->
+    <section class="screen" id="customers">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Customers</div>
+          <h1>Customers</h1>
+          <p>Who ordered, folded together by phone number. There is no customer account in a
+             cash-on-delivery shop, so the number the rider calls is the identity — and
+             +92 300 1234567 is the same person as 0300-1234567.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        <div class="card stat"><p class="stat-label">Customers</p><p class="stat-value ">3</p><p class="stat-hint">5 orders between them</p></div>
+        <div class="card stat"><p class="stat-label">Came back</p><p class="stat-value success">2</p><p class="stat-hint">more than one order</p></div>
+        <div class="card stat"><p class="stat-label">Lifetime value</p><p class="stat-value ">PKR 1,083,800.00</p><p class="stat-hint">ordered, net of refunds</p></div>
+        <div class="card stat"><p class="stat-label">Outstanding</p><p class="stat-value warning">PKR 252,940.00</p><p class="stat-hint">still owed by them</p></div>
+      </div>
+
+      <div class="notice info">
+             <p>1 number(s) appear under more than one name. Usually a typo at checkout — occasionally a household or a shop sharing a line.</p>
+             
+           </div>
+
+      <div class="toolbar" style="margin-top:14px">
+        <input class="field grow" placeholder="Name, phone or city…" aria-label="Search customers">
+        <select class="field" aria-label="Show"><option>All customers</option><option>Came back</option><option>Owe us money</option><option>More than one name</option></select>
+        <select class="field" aria-label="Sort by"><option>Highest value</option><option>Most recent</option><option>Most orders</option></select>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>Customer</th><th>Phone</th><th>City</th><th class="right">Orders</th><th class="right">Lifetime</th><th class="right">Owing</th><th>Last order</th></tr></thead>
+          <tbody><tr>
+      <td><div class="inline-gap"><strong>Sana Traders</strong>
+        <span class="badge badge-success">repeat</span>
+        <span class="badge badge-warning">also Bilal Ahmed</span></div>
+        <div class="muted" style="font-size:11px">one number, 2 names</div>
+      </td>
+      <td class="mono">051 2277889</td>
+      <td class="muted">Islamabad</td>
+      <td class="right">2</td>
+      <td class="right mono">PKR 810,800.00</td>
+      <td class="right mono warn">PKR 96,900.00</td>
+      <td class="muted">2026-10-28</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><strong>Muhammad Ali</strong>
+        <span class="badge badge-success">repeat</span>
+        </div>
+        
+      </td>
+      <td class="mono">0300 1234567</td>
+      <td class="muted">Lahore</td>
+      <td class="right">2</td>
+      <td class="right mono">PKR 156,040.00</td>
+      <td class="right mono warn">PKR 156,040.00</td>
+      <td class="muted">2026-10-31</td>
+    </tr>
+<tr>
+      <td><div class="inline-gap"><strong>Ayesha Khan</strong>
+        
+        </div>
+        
+      </td>
+      <td class="mono">0321 9988776</td>
+      <td class="muted">Karachi</td>
+      <td class="right">1</td>
+      <td class="right mono">PKR 116,960.00</td>
+      <td class="right mono muted">—</td>
+      <td class="muted">2026-10-30</td>
+    </tr></tbody>
+        </table>
+      </div>
+
+      <p class="muted" style="font-size:12px;margin-top:10px">
+        Lifetime value is what they ordered, net of refunds — not what they paid. Cash on delivery
+        is money collected when the van arrives, so an unpaid COD order shows as owed.
+      </p>
+    </section>
+
     <!-- ── Coming soon ────────────────────────────────────────────────────── -->
     <section class="screen" id="soon">
       <div class="page-head">
         <div>
           <div class="crumbs">Commerce</div>
           <h1>Coming in a later slice</h1>
-          <p>Ten commerce screens are routed, permissioned and in the sidebar. They open onto this
+          <p>Six commerce screens are routed, permissioned and in the sidebar. They open onto this
              page in the real admin too — honest about status rather than empty.</p>
         </div>
       </div>
       <div class="soon-card">
-        <h2>Attributes · Payments · Refunds · Promotions · Shipping &amp; tax · Customers · Reports · Settings</h2>
+        <h2>Payments · Refunds · Promotions · Shipping &amp; tax · Reports · Settings</h2>
         <p class="muted">Already underneath: the catalog tables, the money calculator, checkout
            services and the media pipeline. What is missing is the screen.</p>
         <ul>
-          <li>Attributes: the option lists a variant is built from</li>
-          <li>Invoices: list with totals and a print view</li>
           <li>Payments: verify a bank transfer against an order</li>
           <li>Reports: sales by day, by category, by series</li>
         </ul>

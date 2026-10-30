@@ -270,4 +270,75 @@ final class CatalogSeedTest
             );
         }
     }
+
+    /**
+     * The material filter, checked from the product side.
+     *
+     * `CatalogSeeder` files a product under an option by slugging the product's material
+     * string and looking it up in the attribute's options. When the two disagree the product
+     * is silently filed nowhere: it is in the catalog, it is searchable, it has a price — and
+     * it disappears the moment somebody ticks a material in the storefront's filter rail.
+     *
+     * This was true of six of the twenty seeded products when the attributes screen first
+     * counted them, which is why this test exists rather than a comment in the seeder.
+     */
+    public function testEveryProductMaterialIsAnOptionInTheVocabulary(): void
+    {
+        $data = $this->data();
+        $material = null;
+
+        foreach ($data['attributes'] as $attribute) {
+            if ($attribute['code'] === 'material') {
+                $material = $attribute;
+            }
+        }
+
+        Assert::true($material !== null, 'the material attribute exists');
+
+        $optionCodes = array_column($material['options'], 'code');
+        $orphaned = [];
+
+        foreach ($data['products'] as $product) {
+            $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', (string) $product['material']) ?? '');
+
+            if (! in_array(trim($slug, '-'), $optionCodes, true)) {
+                $orphaned[] = $product['sku'].' ['.$product['material'].']';
+            }
+        }
+
+        Assert::same(
+            [],
+            $orphaned,
+            'every product material matches a real option, or the product cannot be filtered by material',
+        );
+    }
+
+    /** And the reverse: an option nothing carries is a filter that returns an empty page. */
+    public function testEveryMaterialOptionIsCarriedByAtLeastOneProduct(): void
+    {
+        $data = $this->data();
+        $material = null;
+
+        foreach ($data['attributes'] as $attribute) {
+            if ($attribute['code'] === 'material') {
+                $material = $attribute;
+            }
+        }
+
+        Assert::true($material !== null, 'the material attribute exists');
+
+        $carried = [];
+
+        foreach ($data['products'] as $product) {
+            $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', (string) $product['material']) ?? '');
+            $carried[trim($slug, '-')] = true;
+        }
+
+        foreach ($material['options'] as $option) {
+            Assert::true(
+                isset($carried[$option['code']]),
+                "material option [{$option['code']}] is carried by at least one product",
+            );
+        }
+    }
 }
