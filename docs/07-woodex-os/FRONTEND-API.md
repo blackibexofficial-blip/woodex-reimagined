@@ -178,7 +178,7 @@ it renders `src/data/*` on the first frame and the API replaces it when it answe
 | `/series`, `/series/:slug` | products | `GET /products` | ✅ T13 |
 | `/quotation` | products (picker) | `GET /products` | ✅ T13 |
 | `/materials` | finish + material vocabulary, with per-option product counts | `GET /materials` | ✅ T26 |
-| `/` | featured products, categories, series | — | ⬜ snapshot |
+| `/` | latest collection (featured products) | `GET /products` | ✅ T27 (categories and series still snapshot) |
 | `/room-packages` | room packages | — | ⬜ snapshot |
 | `/projects`, `/projects/:slug` | projects | — | ⬜ snapshot |
 | `/blog`, `/blog/:slug` | posts | — | ⬜ snapshot |
@@ -204,3 +204,13 @@ consequences worth knowing:
   can.
 - **No count is typed into the copy.** The page derives "3 colours · 17 materials" from the
   payload. `MaterialVocabularyTest` fails the build if a numeral reappears in a heading.
+
+**T27 — the homepage's dead links.** "Latest Collection" was four cards with four written-in
+slugs. Three of the four products did not exist in the database *or* in the bundled snapshot,
+so the busiest page on the site linked to three product pages that would tell the visitor the
+item had been withdrawn. Nothing errored, because a link to a slug that was never created is a
+perfectly valid link.
+
+The section now takes featured products from the catalogue and fills the remaining tiles from
+the rest of it, which is also what "latest" ought to mean. It renders nothing at all when the
+catalogue is empty, rather than an empty grid.
