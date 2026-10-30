@@ -133,7 +133,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span>Orders</span></a>
 <a href="#invoices" data-go="invoices" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l3 3v15H7zM14 3v4h4"/></svg><span>Invoices</span></a>
-<a href="#soon" data-go="soon" class="nav-item nav-muted">
+<a href="#payments" data-go="payments" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v11H4zM4 8l3-4h10l3 4M15 13h3"/></svg><span>Payments</span></a>
 <a href="#soon" data-go="soon" class="nav-item nav-muted">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 10-3 6M20 6v6h-6"/></svg><span>Refunds &amp; returns</span></a>
@@ -1332,22 +1332,107 @@
       </p>
     </section>
 
+    <!-- ── Payments ───────────────────────────────────────────────────────── -->
+    <section class="screen" id="payments">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Payments</div>
+          <h1>Payments</h1>
+          <p>What actually arrived, against what the orders say arrived. The two are written by
+             different code — the bank check sets one, the delivery step sets the other — so this
+             screen compares them and names the orders where they disagree.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        <div class="card stat"><p class="stat-label">Received</p><p class="stat-value ">PKR 116,960.00</p><p class="stat-hint">PKR confirmed</p></div>
+        <div class="card stat"><p class="stat-label">Awaiting a check</p><p class="stat-value warning">1</p><p class="stat-hint">PKR 713,900.00 in bank transfers</p></div>
+        <div class="card stat"><p class="stat-label">Bookkeeping drift</p><p class="stat-value error">1</p><p class="stat-hint">orders whose payments disagree</p></div>
+        <div class="card stat"><p class="stat-label">Cash on delivery</p><p class="stat-value ">PKR 252,940.00</p><p class="stat-hint">PKR to collect at the door</p></div>
+      </div>
+
+      <div class="notice">
+        <p>1 bank transfer is waiting to be checked against the account.</p>
+        <p>1 order has payments and a recorded total that do not agree. The invoice screen is reading the recorded number.</p>
+      </div>
+
+      <div class="toolbar" style="margin-top:14px">
+        <input class="field grow" placeholder="Order, reference or gateway…" aria-label="Search payments">
+        <select class="field" aria-label="Show"><option>Every payment</option><option>Waiting to be checked</option><option>Does not match the order</option><option>Repeated reference</option><option>Cash to collect</option></select>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>Order</th><th>Gateway</th><th>Reference</th><th class="right">Amount</th><th>Status</th><th>Check</th><th>When</th></tr></thead>
+          <tbody><tr>
+      <td class="mono">WDX-000042</td>
+      <td>cod</td>
+      <td class="mono muted">—</td>
+      <td class="right mono">PKR 63,860.00</td>
+      <td><span class="badge badge-info">Pending</span></td>
+      <td><span class="muted" style="font-size:11px">agrees with the order</span></td>
+      <td class="muted">2026-10-31</td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000041</td>
+      <td>bank</td>
+      <td class="mono muted">TRX-88201</td>
+      <td class="right mono">PKR 116,960.00</td>
+      <td><span class="badge badge-success">Paid</span></td>
+      <td><span class="badge badge-error">Does not match</span></td>
+      <td class="muted">2026-10-30</td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000040</td>
+      <td>cod</td>
+      <td class="mono muted">—</td>
+      <td class="right mono">PKR 96,900.00</td>
+      <td><span class="badge badge-info">Pending</span></td>
+      <td><span class="muted" style="font-size:11px">agrees with the order</span></td>
+      <td class="muted">2026-10-28</td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000039</td>
+      <td>bank</td>
+      <td class="mono muted">TRX-88203</td>
+      <td class="right mono">PKR 713,900.00</td>
+      <td><span class="badge badge-info">Pending</span></td>
+      <td><span class="badge badge-warning">Awaiting a check</span></td>
+      <td class="muted">2026-10-26</td>
+    </tr>
+<tr>
+      <td class="mono">WDX-000038</td>
+      <td>cod</td>
+      <td class="mono muted">—</td>
+      <td class="right mono">PKR 92,180.00</td>
+      <td><span class="badge badge-info">Pending</span></td>
+      <td><span class="muted" style="font-size:11px">agrees with the order</span></td>
+      <td class="muted">2026-10-22</td>
+    </tr></tbody>
+        </table>
+      </div>
+
+      <p class="muted" style="font-size:12px;margin-top:10px">
+        Confirming a bank transfer is a separate, permissioned action taken with the statement
+        open — it moves money and changes an invoice, so it is not a table row you can click.
+      </p>
+    </section>
+
     <!-- ── Coming soon ────────────────────────────────────────────────────── -->
     <section class="screen" id="soon">
       <div class="page-head">
         <div>
           <div class="crumbs">Commerce</div>
           <h1>Coming in a later slice</h1>
-          <p>Six commerce screens are routed, permissioned and in the sidebar. They open onto this
+          <p>Five commerce screens are routed, permissioned and in the sidebar. They open onto this
              page in the real admin too — honest about status rather than empty.</p>
         </div>
       </div>
       <div class="soon-card">
-        <h2>Payments · Refunds · Promotions · Shipping &amp; tax · Reports · Settings</h2>
+        <h2>Refunds · Promotions · Shipping &amp; tax · Reports · Settings</h2>
         <p class="muted">Already underneath: the catalog tables, the money calculator, checkout
            services and the media pipeline. What is missing is the screen.</p>
         <ul>
-          <li>Payments: verify a bank transfer against an order</li>
           <li>Reports: sales by day, by category, by series</li>
         </ul>
       </div>

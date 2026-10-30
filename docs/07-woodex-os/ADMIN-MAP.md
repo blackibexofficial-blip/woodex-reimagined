@@ -65,14 +65,15 @@ Ordered. Each row is one shippable thing, not a phase.
 | **T17** | Invoices: derived balance, aging, printable document | B | 3 | Staff can answer "who owes us money" and print what they sent | ✅ **done** — `InvoiceBalance`, print route, 279 checks |
 | **T18** | Attributes: option usage, dead filters, orphaned finishes | B | 3 | A filter that returns nothing and a finish nobody can buy are both visible | ✅ **done** — `AttributeVocabulary`; the screen found 6 products filed under a material the vocabulary did not have |
 | **T19** | Customers: derived from orders, folded by phone number | B | 3 | Repeat customers and shared numbers are visible without a customers table | ✅ **done** — `PhoneNumber`, `CustomerLedger` |
+| **T20** | Payments: what arrived vs. what the orders say arrived | B | 3 | Unchecked transfers and bookkeeping drift are both visible | ✅ **done** — `PaymentLedger`, drift/duplicate/overpaid detection |
 
 **Built:** `platform/app/Domain/Commerce/` (Money, CartLine, DiscountRule, ShippingMethod, CartInput, LineTotal, CartTotals, CartCalculator) + 14 fixtures + runner. Run it with `php platform/tests/run.php`.
 
-**Built:** T1–T19. The code gate is closed; what remains is running the probe on staging and recording the numbers (see `HOSTINGER-CAPACITY.md` §Gate G1). **Week 1:** T1–T4 ✅. **Week 2:** T5–T7 ✅. **Week 3:** T8–T10 ✅. **Week 4:** T11 ✅ · T12 ✅ · T13 ✅ · T14 ✅ · T15 ✅ · T16 ✅ · T17 ✅ · T18 ✅ · T19 ✅.
+**Built:** T1–T20. The code gate is closed; what remains is running the probe on staging and recording the numbers (see `HOSTINGER-CAPACITY.md` §Gate G1). **Week 1:** T1–T4 ✅. **Week 2:** T5–T7 ✅. **Week 3:** T8–T10 ✅. **Week 4:** T11 ✅ · T12 ✅ · T13 ✅ · T14 ✅ · T15 ✅ · T16 ✅ · T17 ✅ · T18 ✅ · T19 ✅ · T20 ✅.
 
-**T1–T19 are code, not a document.** They live in `platform/` (plus `src/lib/api/` for the storefront) and pass: 329 checks, 15,891 assertions, 1,000 generated carts.
+**T1–T20 are code, not a document.** They live in `platform/` (plus `src/lib/api/` for the storefront) and pass: 350 checks, 15,976 assertions, 1,000 generated carts.
 
-After T12 passes on staging, the remaining work is repetition: 30 more tables, 6 more screens, 18 more blocks, 9 surfaces. The storefront now has one real dependency on the OS — the catalog API — and every other page still reads the bundled snapshot until its own API exists.
+After T12 passes on staging, the remaining work is repetition: 30 more tables, 5 more screens, 18 more blocks, 9 surfaces. The storefront now has one real dependency on the OS — the catalog API — and every other page still reads the bundled snapshot until its own API exists.
 
 ---
 

@@ -872,3 +872,45 @@ specific to the sales team.
 **`329/329 checks · 15,891 assertions`** — `AttributeVocabularyTest` (17), `CustomerLedgerTest`
 (18), `AttributesScreenTest` (8), `CustomersScreenTest` (9), plus two seed tests that now fail
 if a product's material is not in the vocabulary.
+
+## T20 — payments, and the two numbers that are allowed to disagree
+
+Money arrives in two places. `commerce_payments` records attempts — gateway, reference,
+amount, status — and `commerce_orders.paid_minor` is the single number every other screen
+reads. They are written by different code: the bank check writes the first, the delivery step
+writes the second, and nothing in the schema forces them to agree.
+
+That is not a design flaw, it is a fact of the workflow — and it means a screen is needed. This
+one compares them, per order, and reports three things the tables cannot:
+
+| Finding | What it means | Why it matters |
+|---|---|---|
+| **Awaiting a check** | A bank transfer is `pending` | Money may already be in the account. Someone has to look, and until they do the customer is waiting |
+| **Drift** | Paid payments ≠ `paid_minor` | The invoice screen keeps chasing somebody who has already paid, or vice versa |
+| **Repeated reference** | One reference on two rows | A double payment, a double click, or one transfer entered against two orders |
+
+A payment larger than its order is caught too, because overpayment means either a refund the
+shop does not know it owes or a total that is wrong.
+
+### Three things it deliberately does not do
+
+**Cash on delivery is not "awaiting verification."** Nobody banks a rider's cash into an
+account before it is collected; a pending COD row is expected, not a task. It is counted
+separately as "to collect at the door".
+
+**Handwritten cash references are not compared.** A rider's receipt number is reused freely,
+so two COD rows sharing `55` is not a duplicate — only electronic references are compared, and
+blank ones are not duplicates of each other.
+
+**Failures are not discrepancies.** A declined card is a fact about an attempt, not an open
+question about the bookkeeping, so the failed row stays visible and contributes nothing to the
+arithmetic.
+
+The verdict for every row is computed in one pass (`states()`) rather than per row: the screen
+shows two hundred payments, and asking "is this a duplicate?" by rescanning the whole set each
+time is the kind of thing that makes a page feel slow for no visible reason.
+
+### Result
+
+**`350/350 checks · 15,976 assertions`** — `PaymentLedgerTest` (15) and `PaymentsScreenTest`
+(7) pin the comparison, the COD exemptions and the absence of any write.

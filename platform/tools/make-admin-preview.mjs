@@ -255,6 +255,47 @@ const attributeSummary = {
   rail: allOptions.filter((o) => o.state === "used" && o.variants + o.products > 0).length,
 };
 
+/* ── Payments ───────────────────────────────────────────────────────────────────────────
+ *
+ * One payment row per order, plus the two cases the screen exists for: a bank transfer
+ * nobody has checked yet, and an order whose payment row and recorded total disagree.
+ */
+const payments = orders.flatMap((row, index) => {
+  const base = {
+    order: row.number,
+    gateway: row.gateway === "cod" ? "cod" : "bank",
+    amount: row.grand,
+    status: row.gateway === "cod" ? "pending" : "paid",
+    paidAt: row.placed,
+    reference: row.gateway === "cod" ? null : `TRX-${88200 + index}`,
+  };
+
+  // WDX-000039 is the awaiting case: money sent, nobody has looked at the account yet.
+  if (row.number === "WDX-000039") return [{ ...base, status: "pending" }];
+
+  return [base];
+});
+
+const recordedPaid = Object.fromEntries(orders.map((row) => [row.number, row.gateway === "cod" ? 0 : row.grand]));
+recordedPaid["WDX-000041"] = 0; // the order was never updated after the transfer landed
+
+const paymentStates = payments.map((payment) => {
+  const recorded = recordedPaid[payment.order] ?? 0;
+  const received = payments.filter((p) => p.order === payment.order && p.status === "paid").reduce((sum, p) => sum + p.amount, 0);
+
+  if (payment.status === "pending" && payment.gateway !== "cod") return "awaiting";
+  if (payment.status === "paid" && received !== recorded) return "drift";
+  return "settled";
+});
+
+const paymentSummary = {
+  received: payments.filter((p) => p.status === "paid").reduce((sum, p) => sum + p.amount, 0),
+  pending: payments.filter((p) => p.status === "pending" && p.gateway !== "cod").length,
+  pendingAmount: payments.filter((p) => p.status === "pending" && p.gateway !== "cod").reduce((sum, p) => sum + p.amount, 0),
+  drift: paymentStates.filter((s) => s === "drift").length,
+  codPending: payments.filter((p) => p.gateway === "cod" && p.status === "pending").reduce((sum, p) => sum + p.amount, 0),
+};
+
 const countNodes = (nodes) => nodes.reduce((total, node) => total + 1 + countNodes(node.children), 0);
 const depthOf = (nodes) => (nodes.length === 0 ? 0 : 1 + Math.max(...nodes.map((node) => depthOf(node.children))));
 
@@ -326,6 +367,32 @@ const esc = (text) =>
   String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 const badge = (tone, label) => `<span class="badge badge-${tone}">${esc(label)}</span>`;
+
+const paymentStateBadge = {
+  awaiting: ["warning", "Awaiting a check"],
+  drift: ["error", "Does not match"],
+  duplicate: ["error", "Repeated reference"],
+  overpaid: ["warning", "Overpaid"],
+};
+
+const paymentRows = payments
+  .map((payment, index) => {
+    const state = paymentStates[index];
+    const [tone, label] = paymentStateBadge[state] ?? [];
+    const statusTone = payment.status === "paid" ? "success" : payment.status === "failed" ? "error" : "info";
+
+    return `<tr>
+      <td class="mono">${esc(payment.order)}</td>
+      <td>${esc(payment.gateway)}</td>
+      <td class="mono muted">${esc(payment.reference ?? "—")}</td>
+      <td class="right mono">${rupees(payment.amount)}</td>
+      <td>${badge(statusTone, payment.status === "paid" ? "Paid" : "Pending")}</td>
+      <td>${tone ? badge(tone, label) : '<span class="muted" style="font-size:11px">agrees with the order</span>'}</td>
+      <td class="muted">${esc(payment.paidAt)}</td>
+    </tr>`;
+  })
+  .join("\n");
+
 
 const attributeRows = attributeGroups
   .map((group) => {
@@ -504,7 +571,7 @@ const nav = [
   ["Inventory", "folder", "inventory", true],
   ["Orders", "invoice", "orders", true],
   ["Invoices", "file", "invoices", true],
-  ["Payments", "wallet", "soon", false],
+  ["Payments", "wallet", "payments", true],
   ["Refunds & returns", "refresh", "soon", false],
   ["Promotions", "megaphone", "soon", false],
   ["Shipping & tax", "globe", "soon", false],
@@ -1044,22 +1111,63 @@ const html = `<!doctype html>
       </p>
     </section>
 
+    <!-- ── Payments ───────────────────────────────────────────────────────── -->
+    <section class="screen" id="payments">
+      <div class="page-head">
+        <div>
+          <div class="crumbs">Commerce / Payments</div>
+          <h1>Payments</h1>
+          <p>What actually arrived, against what the orders say arrived. The two are written by
+             different code — the bank check sets one, the delivery step sets the other — so this
+             screen compares them and names the orders where they disagree.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-4">
+        ${stat("Received", rupees(paymentSummary.received), "PKR confirmed")}
+        ${stat("Awaiting a check", paymentSummary.pending, rupees(paymentSummary.pendingAmount) + " in bank transfers", paymentSummary.pending > 0 ? "warning" : "success")}
+        ${stat("Bookkeeping drift", paymentSummary.drift, "orders whose payments disagree", paymentSummary.drift > 0 ? "error" : "success")}
+        ${stat("Cash on delivery", rupees(paymentSummary.codPending), "PKR to collect at the door")}
+      </div>
+
+      <div class="notice">
+        ${paymentSummary.pending > 0 ? `<p>${paymentSummary.pending} ${paymentSummary.pending === 1 ? "bank transfer is" : "bank transfers are"} waiting to be checked against the account.</p>` : ""}
+        ${paymentSummary.drift > 0 ? `<p>${paymentSummary.drift} ${paymentSummary.drift === 1 ? "order has" : "orders have"} payments and a recorded total that do not agree. The invoice screen is reading the recorded number.</p>` : ""}
+      </div>
+
+      <div class="toolbar" style="margin-top:14px">
+        <input class="field grow" placeholder="Order, reference or gateway…" aria-label="Search payments">
+        <select class="field" aria-label="Show"><option>Every payment</option><option>Waiting to be checked</option><option>Does not match the order</option><option>Repeated reference</option><option>Cash to collect</option></select>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>Order</th><th>Gateway</th><th>Reference</th><th class="right">Amount</th><th>Status</th><th>Check</th><th>When</th></tr></thead>
+          <tbody>${paymentRows}</tbody>
+        </table>
+      </div>
+
+      <p class="muted" style="font-size:12px;margin-top:10px">
+        Confirming a bank transfer is a separate, permissioned action taken with the statement
+        open — it moves money and changes an invoice, so it is not a table row you can click.
+      </p>
+    </section>
+
     <!-- ── Coming soon ────────────────────────────────────────────────────── -->
     <section class="screen" id="soon">
       <div class="page-head">
         <div>
           <div class="crumbs">Commerce</div>
           <h1>Coming in a later slice</h1>
-          <p>Six commerce screens are routed, permissioned and in the sidebar. They open onto this
+          <p>Five commerce screens are routed, permissioned and in the sidebar. They open onto this
              page in the real admin too — honest about status rather than empty.</p>
         </div>
       </div>
       <div class="soon-card">
-        <h2>Payments · Refunds · Promotions · Shipping &amp; tax · Reports · Settings</h2>
+        <h2>Refunds · Promotions · Shipping &amp; tax · Reports · Settings</h2>
         <p class="muted">Already underneath: the catalog tables, the money calculator, checkout
            services and the media pipeline. What is missing is the screen.</p>
         <ul>
-          <li>Payments: verify a bank transfer against an order</li>
           <li>Reports: sales by day, by category, by series</li>
         </ul>
       </div>
