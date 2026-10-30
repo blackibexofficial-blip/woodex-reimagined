@@ -3,9 +3,9 @@
 Planning documents for **Reimagin OS** — turning the WOODEX storefront into a complete commerce platform on the
 existing Laravel **WOODEX OS** backend, hosted on Hostinger shared hosting.
 
-**Locked decisions (v3):** shared hosting · reuse WOODEX OS · native Commerce domain · simple products at launch ·
-bank/COD first with Safepay in parallel · Puck page builder · agent autonomous within limits · no Supabase data
-migration · 3 developers, 16–20 weeks.
+**Locked decisions (v4):** shared hosting · reuse WOODEX OS · native Commerce domain · **Puck Studio replaces the
+file-based frontend (142 pages)** · simple products at launch · bank/COD first with Safepay in parallel · agent
+autonomous within limits · no Supabase data migration · 3 developers, 18–22 weeks.
 
 | Document | Purpose |
 |---|---|
@@ -15,7 +15,10 @@ migration · 3 developers, 16–20 weeks.
 | [`OS-BASELINE.md`](./OS-BASELINE.md) | Measured audit of the WOODEX OS codebase (Laravel 13 / Livewire 4) |
 | [`COMMERCE-DOMAIN.md`](./COMMERCE-DOMAIN.md) | Schema, actions, endpoints and acceptance tests for the new Commerce domain |
 | [`HOSTINGER-RUNTIME.md`](./HOSTINGER-RUNTIME.md) | Shared-hosting rules: cron queues, storage, budgets, runbooks |
-| [`PUCK-BUILDER.md`](./PUCK-BUILDER.md) | Puck live page builder: storage, registry, PHP renderer, tests |
+| [`PUCK-BUILDER.md`](./PUCK-BUILDER.md) | Replacing the file-based frontend with Puck Studio (Pages & Builder + Content), 142-page migration |
+| [`ADMIN-UI-AUDIT.md`](./ADMIN-UI-AUDIT.md) | Screenshot vs code: control-centre IA, nav deltas, undefined `Preview Owner` |
+| [`FRONTEND-API.md`](./FRONTEND-API.md) | Complete API inventory (11 today → 30 target), gaps, advanced features, S0–S5 stages |
+| [`OPEN-QUESTIONS.md`](./OPEN-QUESTIONS.md) | The 10 answers needed before storefront work starts |
 | [`REPO-INTAKE.md`](./REPO-INTAKE.md) | Intake checklist (completed — kept as the method record) |
 
 ## Status of the requested import
