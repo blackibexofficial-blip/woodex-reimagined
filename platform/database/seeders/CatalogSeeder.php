@@ -314,6 +314,14 @@ class CatalogSeeder extends Seeder
                 throw new RuntimeException("Variant {$row['sku']} points at unknown product [{$row['product_sku']}].");
             }
 
+            // A product that owns variants is configurable, not simple. The product row is
+            // created as simple because the seed does not know yet whether variants will follow;
+            // the first variant is what makes it configurable, and the admin's stock column
+            // reads variants only for configurable products.
+            if (! $product->isConfigurable()) {
+                $product->update(['type' => Product::TYPE_CONFIGURABLE]);
+            }
+
             $variant = ProductVariant::query()->updateOrCreate(
                 ['sku' => $row['sku']],
                 [
