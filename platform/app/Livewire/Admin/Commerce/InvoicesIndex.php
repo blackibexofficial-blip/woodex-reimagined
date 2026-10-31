@@ -76,10 +76,12 @@ class InvoicesIndex extends Component
             ->join('commerce_orders', 'commerce_orders.id', '=', 'commerce_invoices.order_id')
             ->selectRaw('COUNT(*) as count')
             ->selectRaw('COALESCE(SUM(commerce_invoices.total_minor), 0) as total')
-            ->selectRaw('COALESCE(SUM(LEAST(commerce_orders.paid_minor, commerce_invoices.total_minor) - commerce_orders.refunded_minor), 0) as paid')
-            ->selectRaw('COALESCE(SUM(GREATEST(0, commerce_invoices.total_minor - (commerce_orders.paid_minor - commerce_orders.refunded_minor))), 0) as outstanding')
-            ->selectRaw('COALESCE(SUM(CASE WHEN commerce_invoices.status <> ? AND commerce_invoices.due_at IS NOT NULL AND commerce_invoices.due_at < NOW() AND commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor THEN GREATEST(0, commerce_invoices.total_minor - (commerce_orders.paid_minor - commerce_orders.refunded_minor)) ELSE 0 END), 0) as overdue', [Invoice::VOID])
-            ->selectRaw('COALESCE(SUM(CASE WHEN commerce_invoices.status <> ? AND commerce_invoices.due_at IS NOT NULL AND commerce_invoices.due_at < NOW() AND commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor THEN 1 ELSE 0 END), 0) as overdue_count', [Invoice::VOID])
+            // LEAST/GREATEST/NOW() are MySQL-only. This suite runs on SQLite in the sandbox
+            // and MySQL on Hostinger, so every expression here is a portable CASE.
+            ->selectRaw('COALESCE(SUM((CASE WHEN commerce_orders.paid_minor < commerce_invoices.total_minor THEN commerce_orders.paid_minor ELSE commerce_invoices.total_minor END) - commerce_orders.refunded_minor), 0) as paid')
+            ->selectRaw('COALESCE(SUM(CASE WHEN commerce_invoices.total_minor - (commerce_orders.paid_minor - commerce_orders.refunded_minor) > 0 THEN commerce_invoices.total_minor - (commerce_orders.paid_minor - commerce_orders.refunded_minor) ELSE 0 END), 0) as outstanding')
+            ->selectRaw('COALESCE(SUM(CASE WHEN commerce_invoices.status <> ? AND commerce_invoices.due_at IS NOT NULL AND commerce_invoices.due_at < CURRENT_TIMESTAMP AND commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor THEN CASE WHEN commerce_invoices.total_minor - (commerce_orders.paid_minor - commerce_orders.refunded_minor) > 0 THEN commerce_invoices.total_minor - (commerce_orders.paid_minor - commerce_orders.refunded_minor) ELSE 0 END ELSE 0 END), 0) as overdue', [Invoice::VOID])
+            ->selectRaw('COALESCE(SUM(CASE WHEN commerce_invoices.status <> ? AND commerce_invoices.due_at IS NOT NULL AND commerce_invoices.due_at < CURRENT_TIMESTAMP AND commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor THEN 1 ELSE 0 END), 0) as overdue_count', [Invoice::VOID])
             ->first();
 
         return [
@@ -109,19 +111,19 @@ class InvoicesIndex extends Component
                                 ->orWhere('phone', 'like', $term)));
                 });
             })
-            ->when($this->from !== '', fn (Builder $query) => $query->whereDate('issued_at', '>=', $this->from))
-            ->when($this->to !== '', fn (Builder $query) => $query->whereDate('issued_at', '<=', $this->to))
-            ->when($this->state === 'void', fn (Builder $query) => $query->where('status', Invoice::VOID))
+            ->when($this->from !== '', fn (Builder $query) => $query->whereDate('commerce_invoices.issued_at', '>=', $this->from))
+            ->when($this->to !== '', fn (Builder $query) => $query->whereDate('commerce_invoices.issued_at', '<=', $this->to))
+            ->when($this->state === 'void', fn (Builder $query) => $query->where('commerce_invoices.status', Invoice::VOID))
             ->when($this->state === 'paid', fn (Builder $query) => $query
-                ->where('status', '<>', Invoice::VOID)
+                ->where('commerce_invoices.status', '<>', Invoice::VOID)
                 ->whereRaw('commerce_orders.paid_minor - commerce_orders.refunded_minor >= commerce_invoices.total_minor'))
             ->when($this->state === 'outstanding', fn (Builder $query) => $query
-                ->where('status', '<>', Invoice::VOID)
+                ->where('commerce_invoices.status', '<>', Invoice::VOID)
                 ->whereRaw('commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor'))
             ->when($this->state === 'overdue', fn (Builder $query) => $query
-                ->where('status', '<>', Invoice::VOID)
-                ->whereNotNull('due_at')
-                ->where('due_at', '<', now())
+                ->where('commerce_invoices.status', '<>', Invoice::VOID)
+                ->whereNotNull('commerce_invoices.due_at')
+                ->where('commerce_invoices.due_at', '<', now())
                 ->whereRaw('commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor'))
             // The joins are done with an explicit subquery-free join so the raw comparisons
             // above read columns from the same row set the summary does.

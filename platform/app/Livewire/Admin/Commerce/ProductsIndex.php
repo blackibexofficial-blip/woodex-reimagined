@@ -149,7 +149,10 @@ class ProductsIndex extends Component
     /** @return Collection<int, Category> */
     public function categories(): Collection
     {
-        return Category::query()->orderBy('position')->get();
+        // `translation` must be eager loaded. The admin host disables lazy loading outside
+        // production, so a category named through `displayName()` would throw rather than
+        // fall back to its slug.
+        return Category::query()->with('translation')->orderBy('position')->get();
     }
 
     /** @return Builder<Product> */

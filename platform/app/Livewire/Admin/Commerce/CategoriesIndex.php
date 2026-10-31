@@ -8,6 +8,7 @@ use App\Domain\Commerce\Catalog\CategoryTree;
 use App\Domain\Commerce\Models\Category;
 use App\Domain\Commerce\Models\CategoryTranslation;
 use App\Domain\Commerce\Models\Product;
+use App\Livewire\Concerns\InteractsWithAdmin;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -37,6 +38,8 @@ use Livewire\Component;
 #[Title('Categories')]
 class CategoriesIndex extends Component
 {
+    use InteractsWithAdmin;
+
     #[Url]
     public string $search = '';
 

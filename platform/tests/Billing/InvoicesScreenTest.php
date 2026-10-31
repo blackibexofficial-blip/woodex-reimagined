@@ -71,7 +71,13 @@ final class InvoicesScreenTest
             str_contains($source, 'commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor'),
             'outstanding is computed from the money',
         );
-        Assert::true(str_contains($source, "where('due_at', '<', now())"), 'overdue is computed from the deadline');
+        // CURRENT_TIMESTAMP, not NOW(): the sandbox runs SQLite and Hostinger runs MySQL, and
+        // the overdue filter has to answer the same question on both.
+        Assert::true(
+            str_contains($source, "where('commerce_invoices.due_at', '<', now())")
+            || str_contains($source, 'commerce_invoices.due_at < CURRENT_TIMESTAMP'),
+            'overdue is computed from the deadline',
+        );
         Assert::true(str_contains($source, 'resetPage'), 'a filter change returns to page one');
     }
 
