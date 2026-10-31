@@ -3,10 +3,10 @@
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/index.ts
-import { defineMcp } from "npm:@lovable.dev/mcp-js@3.4.0";
+import { defineMcp } from "npm:@lovable.dev/mcp-js@3.0.4";
 
 // src/lib/mcp/tools/catalog.ts
-import { defineTool, ToolError } from "npm:@lovable.dev/mcp-js@3.4.0";
+import { defineTool, ToolError } from "npm:@lovable.dev/mcp-js@3.0.4";
 import { z } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/data.json
@@ -8664,7 +8664,7 @@ var listCategories = defineTool({
 });
 
 // src/lib/mcp/tools/content.ts
-import { defineTool as defineTool2, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@3.4.0";
+import { defineTool as defineTool2, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@3.0.4";
 import { z as z2 } from "npm:zod@^3.25.76";
 var services = data_default.services;
 var blogPosts = data_default.blogPosts;
@@ -8722,5 +8722,5 @@ var mcp_default = defineMcp({
 });
 
 // lovable-mcp-supabase-entry.ts
-import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@3.4.0/stacks/supabase";
+import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@3.0.4/stacks/supabase";
 Deno.serve(createSupabaseHandler(mcp_default, { functionName: "mcp" }));
