@@ -58,8 +58,10 @@ $tokensChecked = 0;
 foreach ($lintFiles as $file) {
     $tokensChecked++;
 
+    $source = (string) file_get_contents($file);
+
     try {
-        token_get_all((string) file_get_contents($file), TOKEN_PARSE);
+        token_get_all($source, TOKEN_PARSE);
     } catch (ParseError $e) {
         $lintFailures[] = sprintf(
             '%s:%d — %s',
@@ -67,6 +69,37 @@ foreach ($lintFiles as $file) {
             $e->getLine(),
             $e->getMessage(),
         );
+
+        continue;
+    }
+
+    // `TOKEN_PARSE` stops at the parser; importing the same short name twice is a compiler
+    // error, so it parsed cleanly and the app died on boot. It shipped past a fully green suite
+    // once, which is exactly the kind of failure this lint exists to prevent — a fatal on a
+    // page nobody opened during the run.
+    $imported = [];
+
+    foreach (preg_split('/\R/', $source) ?: [] as $lineNumber => $line) {
+        // Only top-level `use Some\Thing;` / `use Some\Thing as Alias;` lines are imports.
+        if (preg_match('/^use\s+([A-Za-z_\x80-\xff][\w\x80-\xff\\\\]*)(?:\s+as\s+(\w+))?\s*;/u', $line, $m) !== 1) {
+            continue;
+        }
+
+        $short = ($m[2] ?? '') !== '' ? $m[2] : substr((string) strrchr('\\'.$m[1], '\\'), 1);
+
+        if (isset($imported[$short])) {
+            $lintFailures[] = sprintf(
+                '%s:%d — %s is imported twice (first on line %d)',
+                str_replace($root.'/', '', $file),
+                $lineNumber + 1,
+                $short,
+                $imported[$short],
+            );
+
+            continue;
+        }
+
+        $imported[$short] = $lineNumber + 1;
     }
 }
 

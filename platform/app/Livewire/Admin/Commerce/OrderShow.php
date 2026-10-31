@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin\Commerce;
 
+use App\Domain\Commerce\Billing\PaymentToLedger;
 use App\Domain\Commerce\Checkout\Models\Order;
 use App\Domain\Commerce\Checkout\OrderStatus;
 use App\Livewire\Concerns\InteractsWithAdmin;
@@ -47,6 +48,11 @@ class OrderShow extends Component
 
     public ?string $invoiceNumber = null;
 
+    /** The receipt that settled this order, once money is real. */
+    public ?string $receiptNumber = null;
+
+    public string $settleNote = '';
+
     public function mount(Order $order): void
     {
         abort_unless($this->user()->can('commerce.orders.view'), 403);
@@ -57,6 +63,13 @@ class OrderShow extends Component
 
         $this->invoiceId = $invoice?->id;
         $this->invoiceNumber = $invoice?->number;
+        $this->readSettlement();
+    }
+
+    /** What the ledger says about this order's money, if it says anything. */
+    private function readSettlement(): void
+    {
+        $this->receiptNumber = app(PaymentToLedger::class)->summaryFor($this->order)['receipt'];
     }
 
     /** Advance the order one legal step along the fulfilment path. */
@@ -81,7 +94,50 @@ class OrderShow extends Component
         }
 
         $this->order->refresh()->load(['items', 'addresses', 'payments', 'history']);
+
+        // Delivering a cash order is the moment the courier hands over the money, so it is also
+        // the moment the ledger is told. Doing this here, rather than in a nightly job, keeps the
+        // books from lagging the shop by a day — and a failure rolls nothing back that the
+        // operator cannot see, because the settlement reports its own error.
+        if ($this->order->payment_status === OrderStatus::PAYMENT_PAID) {
+            $this->settle(silent: true);
+        }
+
         $this->toast("Order {$this->order->number} is now {$next}.");
+    }
+
+    /**
+     * Record the money against the invoice.
+     *
+     * Separate from advancing the order because the two are separate facts: a bank transfer is
+     * paid while the parcel is still on a shelf, and a COD order can be delivered by a courier
+     * who has not returned with the cash yet. The screen allows either order of events and the
+     * bridge refuses to settle the same attempt twice.
+     */
+    public function settle(bool $silent = false): void
+    {
+        abort_unless($this->user()->can('commerce.orders.manage'), 403);
+
+        try {
+            $receipt = app(PaymentToLedger::class)->settle($this->order, $this->user());
+        } catch (\Throwable $e) {
+            $this->addError('settle', $e->getMessage());
+
+            return;
+        }
+
+        if ($receipt === null) {
+            $this->addError('settle', 'This install has no ledger to settle into.');
+
+            return;
+        }
+
+        $this->order->refresh()->load(['items', 'addresses', 'payments', 'history']);
+        $this->readSettlement();
+
+        if (! $silent) {
+            $this->toast("Receipt {$receipt->receipt_number} recorded against {$this->invoiceNumber}.");
+        }
     }
 
     public function cancel(): void

@@ -197,6 +197,26 @@ checkout each produced exactly one `WFI-` invoice, one balanced journal entry an
 PDF; the trial balance moves; running the bridge twice leaves one invoice and one entry; and all
 eighteen admin screens answer 200.
 
+**The other half of the ledger — money arriving.** Booking the sale leaves every invoice at full
+balance, which for a shop that takes cash on delivery is wrong from the first delivery. A COD
+order that is marked delivered now settles itself, and any order can be settled by hand:
+
+```
+order WDX-000001 (COD, delivered)
+  -> receipt RC-2026-0001        (method cash, reference = the order number)
+  -> payment 01M6...             allocated 125,220 against WFI-2026-0001
+  -> journal JE-2026-0002
+       DR 1010 Cash in hand           125,220
+       CR 1100 Accounts receivable    125,220
+  -> receipt PDF frozen, invoice balance 0, status paid
+```
+
+`PaymentToLedger` does this by calling the OS's own `RecordPayment` — the same action a showroom
+sale uses, so the numbering, the receipt, the PDF, the posting and the team notification are the
+same code. `payments.commerce_payment_id` (unique) is the join: one attempt, one receipt, and a
+second confirmation returns the first rather than paying twice. An overpayment allocates what the
+invoice can take and leaves the rest as a 1150 advance rather than being refused.
+
 ---
 
 ## 4. Database plan

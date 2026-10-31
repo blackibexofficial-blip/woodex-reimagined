@@ -164,10 +164,11 @@ final class SchemaTest
         $names = array_keys($this->migrations());
         sort($names);
 
-        // Six: catalog, attributes, variant/inventory, puck columns, checkout, and the one that
-        // drops the commerce invoice tables now that the OS owns the invoice. The link migration
-        // (2026_10_28_105000) sits between the last two and counts as well.
-        Assert::same(6, count($names), "six commerce migrations");
+        // Seven: catalog, attributes, variant/inventory, puck columns, checkout, the link to the
+        // OS invoice, the drop of the commerce invoice tables, and the link to the OS receipt.
+        // The two link migrations are inert where the OS is absent, which is why they still ship
+        // with the slice.
+        Assert::same(7, count($names), "seven commerce migrations");
 
         $previous = '';
 

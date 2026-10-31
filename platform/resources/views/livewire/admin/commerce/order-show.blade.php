@@ -129,6 +129,33 @@
                     </div>
                 </dl>
 
+                {{-- The money half of the order. Until this says settled, the invoice in
+                     Accounts is still chasing a customer who has already paid. --}}
+                <div class="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
+                    @if ($receiptNumber !== null)
+                        <p class="flex items-center gap-2 text-theme-sm text-gray-600 dark:text-gray-300">
+                            <span class="inline-flex size-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                                <x-icon name="check" class="size-3" />
+                            </span>
+                            Settled — receipt
+                            <span class="font-mono text-theme-xs text-navy-700 dark:text-navy-200">{{ $receiptNumber }}</span>
+                        </p>
+                    @else
+                        <p class="mb-2 text-theme-xs text-gray-500">
+                            The invoice is booked, but no money has been recorded against it yet.
+                        </p>
+                        @if ($canManage)
+                            <button type="button" wire:click="settle" wire:loading.attr="disabled"
+                                    class="inline-flex h-9 items-center rounded-lg border border-navy-400 px-4 text-theme-sm font-medium text-navy-700 hover:bg-navy-50 disabled:opacity-60 dark:border-navy-500 dark:text-navy-200 dark:hover:bg-navy-900/40">
+                                Record payment
+                            </button>
+                        @endif
+                        @error('settle')
+                            <p class="mt-2 text-theme-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    @endif
+                </div>
+
                 @if ($canManage && $canCancel)
                     <div class="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
                         <label for="cancelReason" class="mb-1.5 block text-theme-xs font-medium uppercase tracking-wide text-gray-500">
