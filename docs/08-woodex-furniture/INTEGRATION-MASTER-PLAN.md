@@ -1,344 +1,344 @@
-# WOODEX Furniture — Integration Master Plan
+# WOODEX Furniture — Reimagined CMS Master Plan
 
-**Frontend ↔ WOODEX OS · full runtime audit · 28 admin screens · 4 domains**
+**The reimagined storefront (image 1) · master CRM page builder · 14 admin screens · redevelopment into WOODEX OS**
 
 | | |
 |---|---|
-| **Business** | WOODEX **Furniture** — office furniture, manufacture + delivery, Karachi/Lahore |
-| **Storefront** | `woodex-reimagined` React SPA, built and installed at `platform/public/` — live at `/` |
-| **Admin** | WOODEX OS, Laravel 13 + Livewire 4, dark interface, **28/28 audited screens answering 200** |
-| **Hosting** | Hostinger **shared** — no Node at runtime, ~30 PHP workers, 2 MB/s I/O, no Redis |
-| **Audited** | 1 November 2026, against the **running** app on `:8081`, not the source tree |
-| **Scope** | Commerce (14) · Pages & builder (4) · Content (3) · Website (7) |
-| **Verdict** | **The storefront sells. The website half of the OS no longer has a website.** |
+| **The site** | `woodex-reimagined` React SPA — 22 routes, live at `/` — **this is the site to manage** |
+| **The admin** | WOODEX OS, Laravel 13 + Livewire 4, dark interface — all 14 Website screens answer `200` |
+| **The gap** | the admin still manages the **old interior** website; the reimagined furniture site is **hardcoded** in React |
+| **Hosting** | Hostinger shared — no Node at runtime, ~30 PHP workers, no Redis |
+| **Date** | 1 November 2026 · supersedes the interim screen notes of the same date |
 
 ---
 
-## 0. How this was verified
+## Part 0 — Your question, answered exactly
 
-Every claim below was read from the running application or its database today — not from source alone and not from a previous document.
+### "Are the 142 pages the reimagined frontend?"
 
-| Method | What it produced |
-|---|---|
-| `GET` all 28 admin URLs with a real owner session | **28/28 → 200.** Nothing is missing a route; every screen renders |
-| `POST /api/forms.php` live | **Lead #27 · `L-2026-000001` · contact #29** — the lead pipeline works end to end |
-| `POST /api/storefront/v1/checkout` live | **WDX-000003 · WFI-2026-0003 · JE-2026-0004 balanced** — money reaches the ledger |
-| `POST /admin/website/studio/api` live | `cms_list` returns real posts (id 229, 228…), `cms_forms` counts a live submission |
-| `PRAGMA table_info` + row counts on every `website_*` / `commerce_*` table | The inventory in §1 |
-| `BuilderFile::pages()` on disk | **1** — the SPA shell |
+**No — and not just "no": they belong to a different business.**
+
+| | The 142 pages | The reimagined frontend (image 1) |
+|---|---|---|
+| Rows | 142 in `pages` + 1,442 `page_blocks` | React SPA, 22 routes, 0 database rows |
+| Business | **WOODEX Interior** — house design, 3D visualisation, fit-out | **WOODEX Furniture** — office desks, chairs, workstations |
+| Proof | `service` pages titled *"1 Kanal House Design Lahore"*, *"3D Visualization"*; 12 city + 8 area pages for interior work | nav reads *Products · Markets · Series · Projects · Services · Blog*; hero says *"Design For Your Workspace"* |
+| Served by | nothing — its HTML files were deleted | the web server at `/` |
+| Status | **stranded interior content** | **live** |
+
+So the confusion is real and it has a cause: **we replaced an interior site with a furniture store, but the CMS still points at the interior content.** Every Website screen in the OS is looking at the wrong business.
+
+### "Delete the v1 HTML frontend, keep the HTML builder as an option"
+
+Done, and built into the plan as three page kinds:
+
+| Page kind | How it is served | Edited by |
+|---|---|---|
+| **Route page** | the SPA's own built-in route (`/about`) — settings + editable sections | Puck (visual) |
+| **Puck page** | new URL, JSON in the database, rendered by the SPA catch-all | Puck (visual) |
+| **HTML page** | a raw `.html` file the web server answers directly | **HTML builder — kept as an option**, exactly as you asked |
+
+The HTML builder (`BuilderApi`: `load`, `save`, `backups`, `restore`, `page_new`, `blocks_*`, theme) is **not deleted**. It becomes the third option, for hand-written pages.
 
 ---
 
-## 1. The finding that decides everything
+## Part 1 — What the reimagined site actually is
 
-### 1.1 A page is a file — and the file is gone
+### 1.1 The nav on image 1, mapped to its real data source
 
-The OS was deliberately rebuilt around one rule, written into `app/Domain/Website/Services/SiteRouter.php`:
-
-> **A page is a file.** Since Woodex OS 1 every public page is `public/<path>/index.html`, which the web server answers before Laravel runs. This class used to render a page from its database row… **The renderer, its Blade layout and its 20 section views are gone (owner, 21 Oct 2026).**
-
-That was a sound decision for a static site. Then, in the previous step, we deleted all 141 page directories and the root `index.html`, and installed the SPA in their place.
-
-**Consequence:** every screen in the Website domain still points at `public/**/index.html`. There is now exactly **one** such file — the SPA shell.
-
-| Screen | What it actually reads | Result today |
-|---|---|---|
-| All pages | `BuilderFile::pages()` → filesystem | **1 page** ("WOODEX - Premium Office Furniture") |
-| Page builder | same | can only edit the SPA shell |
-| Find & replace | same | searches 1 file |
-| SEO overview / SEO agent | `Seo\FileAudit` → files | audits **1 file** |
-| Site health | `FileAudit` link graph | a site with one page |
-
-None of these are broken code. They are correct code reading a website that no longer exists.
-
-### 1.2 The content is not lost — it is stranded
-
-The database still holds the entire former site, fully structured:
-
-| Table | Rows | Meaning |
-|---|---|---|
-| `pages` | **142** | 59 service · 48 insight (blog) · 12 city · 8 area · 6 project · 3 listing · home, about, contact, booking, estimator, legal |
-| `page_blocks` | **1,442** | the actual section content, ~10 blocks per page |
-| `page_versions` | **142** | full snapshots — `{title, excerpt, seo, blocks}`, 7–11 KB each |
-| `page_templates` | **50** | reusable layouts |
-| `theme_tokens` | **28** | design tokens |
-
-But:
-
-| Column | Value |
-|---|---|
-| `pages.builder` | `'file'` on **all 142** |
-| `pages.canvas_html` | empty on **all 142** |
-| `pages.puck_data` | null on **all 142** |
-
-So the rows are inert by the current architecture: rich, correct, and unrenderable. **This is the single most valuable asset in the system and it is currently unreachable** — 127 SEO-critical pages (59 services + 12 cities + 8 areas + 48 insights) of real copy, meta, and internal links.
-
-### 1.3 The other half is genuinely empty
-
-| Table | Rows | Verdict |
-|---|---|---|
-| `website_media` | **105** | the Media screen is full… **of 105 records whose files do not exist.** `file_exists` → **0 on disk / 105 missing** |
-| `redirects` | 0 | screen works (add, CSV import/export), nothing to redirect |
-| `content_entries` | 0 | **unused** — content lives in `pages`, not here |
-| `media` | 0 | **unused** — the model in use is `website_media` |
-| `navigation_items` | 0 | menus are not built |
-| `saved_sections` | 0 | the builder's section library is empty |
-| `team_members` | 0 | not built |
-| `pagespeed_runs` | 0 | Speed screen works, has never run |
-
-Two of my earlier assumptions were wrong and are corrected here: **media is not empty** (it has 105 rows), and **blog/portfolio are not empty** (they are `Page` rows of type `insight`/`project`, not `content_entries`).
-
----
-
-## 2. Verdict — every screen
-
-Legend: ✅ real and populated · 🟡 real but cannot do the job its name promises · ⚠️ correct code, wrong target · ❌ absent
-
-### 2.1 Commerce (14)
-
-| # | Screen | Lines | Backing data | Verdict |
-|---|---|---|---|---|
-| 1 | Dashboard | 80 | orders, stock, ledger | ✅ |
-| 2 | Products | 193 | 20 products · 28 variants · 24 categories | ✅ — except **0 images** |
-| 3 | Attributes | 191 | 3 attributes · 17 options · 20 values | ✅ |
-| 4 | Categories | 293 | 24 categories + 24 translations | ✅ |
-| 5 | Inventory | 193 | 84 items · 3 sources · 3 reservations | ✅ |
-| 6 | Orders | 111 | 3 (`WDX-000001`…`003`) + detail | ✅ |
-| 7 | Invoices | 201 | 3 · frozen PDF · posted to ledger | ✅ |
-| 8 | Payments | 177 | 1 payment · 1 allocation · `RC-2026-0001` | ✅ |
-| 9 | Refunds | 150 | queries `Order` | 🟡 **read-only list.** No refund can be initiated, approved, or posted from here |
-| 10 | Customers | 164 | 29 contacts | ✅ |
-| 11 | Promotions | 96 | queries `Order` for `coupon_code` | 🟡 **coupon usage ledger, not a coupon manager.** No code can be created; the storefront has no coupon field |
-| 12 | Shipping & tax | 114 | queries `Order` | 🟡 **derived view.** The real values are constants: `DEFAULT_TAX_RATE_BP = 1800`, flat `Rs 2,500`, free over `Rs 200,000` |
-| 13 | Reports | 117 | order/P&L aggregation | ✅ |
-| 14 | Settings | 123 | `commerce_sequences` (1 row) | 🟡 numbering + formatting only; no tax, shipping, or store config |
-
-**Commerce score: 9 solid · 3 read-only stand-ins · 1 images gap · 1 config gap.**
-The transactional core is genuinely done and proven — an order placed from the public API produced an invoice, a journal entry, and a settle-able payment.
-
-### 2.2 Pages & builder (4)
-
-| # | Screen | Verdict |
-|---|---|---|
-| 15 | All pages | ⚠️ lists **1** file; 142 DB pages invisible to it |
-| 16 | Page builder | 🟡 real HTML-canvas editor (`load`, `save`, `backups`, `restore`, `page_new`, block library, theme) — with nothing left to edit |
-| 17 | Find & replace | ⚠️ site-wide text replace across files → 1 file |
-| 18 | Redirects | ✅ add / remove / CSV import / CSV export — 0 rows |
-
-### 2.3 Content (3)
-
-| # | Screen | Verdict |
-|---|---|---|
-| 19 | Blog | 🟡 the studio really reads and writes `Page[type=insight]` (48 posts, versioned, publish/unpublish, delete). Nothing renders them |
-| 20 | Portfolio | 🟡 same for `Page[type=project]` (6 studies) |
-| 21 | Forms | ✅ `cms_forms` counts real submissions per key (contact, brief, estimator, website) and links to leads |
-
-**Not built at all — and this is the gap in your own words "location page, services page, project":**
-
-| Content type | Rows | Admin screen |
-|---|---|---|
-| Service pages | **59** | ❌ none |
-| City pages | **12** | ❌ none |
-| Area pages | **8** | ❌ none |
-| Home / about / contact / booking / estimator / legal | 6 | ❌ none |
-
-`StudioContent::TYPES` declares exactly two: `post` and `study`. The other 116 pages were only ever editable through the file builder.
-
-### 2.4 Website (7)
-
-| # | Screen | Verdict |
-|---|---|---|
-| 22 | Media | ⚠️ upload / edit alt / delete all work — **105 rows, 0 files, every thumbnail broken** |
-| 23 | SEO overview | ⚠️ `FileAudit`, 438 lines, real checks — against 1 file |
-| 24 | SEO agent | ⚠️ same audit, filtered by issue code |
-| 25 | Speed | ✅ keyless local metrics + optional Google PageSpeed key; 0 runs recorded |
-| 26 | Site health | ⚠️ broken links / orphans / redirect targets — over 1 file |
-| 27 | Theme | 🟡 28 tokens, presets, groups, reset — **no consumer**: the SPA never reads them |
-| 28 | Website settings | 🟡 real settings for a website that is no longer served from files |
-
----
-
-## 3. The decision to make before any code
-
-Three coherent futures. Only one fits Hostinger shared + 127 SEO pages + an editor-updatable CMS.
-
-### Option A — SPA owns everything
-All content moves into React, fed by a new content API.
-
-- ❌ blog/services/city pages render client-side only → weak SEO on exactly the pages that earn traffic
-- ❌ no build-time generation on shared hosting means no static content
-- ✔ one codebase
-
-### Option B — files own everything, SPA retreats
-Rebuild the static site, keep the SPA only for checkout.
-
-- ❌ throws away the reimagined design that was just built and approved
-- ✔ fastest serving on Hostinger
-
-### Option C — **RECOMMENDED: database is the source, HTML is the build output, SPA is the app**
-
-Two surfaces, one source of truth:
-
-```
-publish (admin action)                    request (web server)
-──────────┬──────────                     ──────────┬──────────
-pages + page_blocks                       PHP renderer writes     public/services/x/index.html
-(or Puck JSON)  ──► PHP block renderer ──► static HTML  ──►  answered by the web server, 0 PHP
-                                                               (home, services, cities, areas,
-                                                                insights, projects, about)
-commerce_*  ◄──── /api/storefront/v1 ◄──── React SPA at /shop, /shop/:slug,
-                                            /checkout, /quotation, /account
-```
-
-**Why this one:**
-
-| Constraint | How C satisfies it |
-|---|---|
-| Hostinger shared, no Node at runtime | content pages are **static files** — no PHP boot, no Node |
-| 127 SEO pages | full HTML + schema on first byte, written at publish |
-| Editor updates content | publish re-renders only the pages that changed |
-| The reimagined design stays | it is the SPA, and the content templates are rebuilt to match it |
-| The owner's "a page is a file" rule | kept — files are still the thing served; the DB becomes source instead of a parallel truth |
-| Puck required | Puck edits in the admin, saves JSON to `pages.puck_data`, the same renderer turns it into HTML |
-
-**The one rule that keeps it honest:** the renderer is a **publish step**, never a request-time fallback. A missing file must 404, exactly as `SiteRouter` says today. That is what caused the two-frontends bug in October and must not come back.
-
----
-
-## 4. Phase plan
-
-3 developers · ~6 weeks · every phase ships something usable.
-
-### Phase 0 — Stop the screens lying (2 days, 1 dev)
-
-| Task | Detail |
-|---|---|
-| 0.1 Banner on file-based screens | All pages, builder, find & replace, SEO ×2, health: state plainly that the site is now served by the storefront, with a link to the new content screens (Phase 1) |
-| 0.2 Repair Media | 105 rows, 0 files. Either re-import the images from the original site or mark the rows `missing` so the library stops showing broken tiles |
-| 0.3 Freeze the stranded 142 | Keep the rows, add `pages.legacy_file = true`, exclude them from "All pages" until the renderer exists |
-| 0.4 Route ownership map (below) | Write down which URL belongs to the SPA and which to a content page |
-
-**Route ownership map — decide once, enforce in `.htaccess`:**
-
-| URL | Owner |
-|---|---|
-| `/`, `/about`, `/contact`, `/projects`, `/services`, `/materials`, `/showrooms`, `/warranty`, `/blog` | **content** (static HTML, Phase 1) |
-| `/shop`, `/shop/:slug`, `/checkout`, `/quotation`, `/account/*` | **SPA** |
-| `/admin`, `/api`, `/media`, `/build`, `/front` | **app** (already excluded in `htaccess.txt`) |
-
-### Phase 1 — The content backbone (1.5 weeks, 2 devs)
-
-| Task | Detail |
-|---|---|
-| 1.1 Restore a block → HTML renderer | `pages` + `page_blocks` → Blade partials → `public/<path>/index.html`. The 1,442 blocks and 142 `page_versions` snapshots are the test corpus |
-| 1.2 Publish action | `PublishPage` (queue-safe on shared hosting: one page per request, chunked). Writes only changed pages |
-| 1.3 Five content screens | Services (59), Locations (city 12 + area 8), Insights (48, exists), Projects (6, exists), Pages (6 singletons). One shared editor, not five |
-| 1.4 Content API | `GET /api/storefront/v1/content/{type}` so the SPA and the renderer read the same rows |
-| 1.5 Seed redirects | 141 old URLs → new ones. `RedirectsIndex` already imports CSV |
-
-**Exit test:** publish a service page in admin → `curl /services/<slug>` returns that page's H1 from static HTML.
-
-### Phase 2 — Finish the storefront (1 week, 2 devs)
-
-Ranked by revenue.
-
-| # | Task | Why it matters |
-|---|---|---|
-| 2.1 | **Product images** — `commerce_product_media` is 0; every product returns `"image": null` | a furniture shop with no photographs cannot sell |
-| 2.2 | **Contact form → `/api/forms.php`** — today `handleSubmit` just calls `setSubmitted(true)` | enquiries are being thrown away. The endpoint, honeypot, rate limit and lead→contact wiring already work |
-| 2.3 | Quotation page → `POST /checkout/quote` | the quote exists in the API and is unused by `/quotation` |
-| 2.4 | Customer accounts + order history | guest-only today; `contacts` (29) already exist to hang them on |
-| 2.5 | Server-side cart | `localStorage` only; an abandoned cart is invisible to the OS |
-| 2.6 | Checkout success page | show `WDX-…`, invoice number, ETA — the API returns them |
-
-### Phase 3 — Commerce completion (1 week, 1 dev)
-
-| # | Task |
-|---|---|
-| 3.1 | **Coupons**: `coupons` table + create/edit screen + `/checkout` acceptance (Promotions becomes the usage view it already is) |
-| 3.2 | **Shipping rates**: replace `CartService::cashOnDelivery()` constants with rows; city/weight/free-over rules |
-| 3.3 | **Tax rates**: replace `DEFAULT_TAX_RATE_BP = 1800` with a table (per category, per city) |
-| 3.4 | **Refunds**: initiate → approve → post reversal to the ledger, reusing the proven `RecordPayment` pattern |
-| 3.5 | **Product media manager** inside Products (upload, order, alt text) |
-| 3.6 | Website Settings: store name, currency, phone, hours — read by both surfaces |
-
-### Phase 4 — Website operations (1 week, 1 dev)
-
-| # | Task |
-|---|---|
-| 4.1 | Repoint SEO overview / SEO agent / Site health at **DB rows** (`PageAudit` + `PageValidator` already exist), not files |
-| 4.2 | Speed: record `pagespeed_runs` against published HTML; keep the keyless local metrics |
-| 4.3 | Theme tokens → CSS custom properties consumed by **both** the SPA and the rendered HTML |
-| 4.4 | Menus: `navigation_items` + a menu editor; the header/footer for both surfaces |
-| 4.5 | Find & replace over DB rows (`SiteWideReplace` already implements it — point it at `pages`) |
-
-### Phase 5 — Puck (1 week, 1 dev)
-
-| # | Task |
-|---|---|
-| 5.1 | Puck in `resources/js/admin/puck` → Vite build copied to `public/builder/puck.js`, mounted in the existing builder route |
-| 5.2 | 10–15 components matching the storefront design; each maps to one Blade partial |
-| 5.3 | `puck_data` ⇄ HTML: save JSON, publish renders HTML. The `puck_data` / `puck_version` columns already exist |
-| 5.4 | Retire the HTML-canvas builder for content pages once Puck covers them |
-
-> Puck is MIT and ships a React `<Render>`, but rendering must happen in **PHP** to stay static on shared hosting. That means one Blade partial per Puck component — this is the work, not the integration.
-
-### Phase 6 — Cutover (3 days)
-
-See §6.
-
----
-
-## 5. Complexity and cost
-
-| Area | Existing | To build | Risk |
+| Nav item | Route | Data today | Verdict |
 |---|---|---|---|
-| Commerce | 9 screens, ledger, settle, invoices | coupons, rates, refunds, media | **Low** — patterns proven |
-| Content | 142 pages, 1,442 blocks, 2 screens | renderer + 3 screens | **Medium** — the renderer is the crux |
-| Website | 7 screens, real checks | repointing, theme, menus | **Low–Medium** |
-| Storefront | 22 routes, checkout, catalog | images, accounts, forms, cart | **Medium** |
-| Builder | canvas editor + API | Puck + partials | **Medium** |
-| Data | 20 products, 29 contacts, 142 pages | real catalogue from you, real photos | **Blocked on you** |
+| Products | `/shop` → `/shop/:slug` | `GET /api/storefront/v1/products` | ✅ **the only fully integrated page** |
+| Markets | category menus | **29 categories hardcoded** in `src/data/products.ts` | ⚠️ duplicates the OS's 24 `commerce_categories` |
+| Series | `/series` → `/series/:id` | **153 series hardcoded** | ⚠️ no such thing in the OS |
+| Projects | `/projects` → `/projects/:id` | **hardcoded array** in `Projects.tsx` | ⚠️ none in the OS |
+| Services | `/services` → `/services/:slug` | **8 services hardcoded** (`custom-design`, `b2b-office-solutions`, `custom-manufacturing`, `delivery-installation`, `space-planning-design`, `after-sales-support`, `project-management`) | ⚠️ none in the OS |
+| Blog | `/blog` → `/blog/:id` | **7 posts hardcoded** | ⚠️ OS has 48 interior posts instead |
+| About · Contact · Custom Design · Showrooms · Warranty · B2B | their routes | hardcoded in each page; 5 showrooms hardcoded | ⚠️ no CMS |
+| Materials | `/materials` | `GET /api/storefront/v1/materials` | ✅ integrated |
+| E-Quotation | `/quotation` | `POST /checkout/quote` | ✅ integrated |
+| Cart · Checkout | `/checkout` | `localStorage` + `POST /checkout` | 🟡 works, guest-only |
+
+**Score: 4 of 12 content areas are real. The other 8 are hardcoded and cannot be edited by anyone.**
+
+### 1.2 And the SEO is one page wearing 22 hats
+
+| Fact | Value |
+|---|---|
+| `.html` files produced by the build | **1** — `dist/index.html` |
+| `<title>` for every route at first byte | *"WOODEX - Premium Office Furniture \| Pakistan"* |
+| Per-page titles | set by `document.title` in JavaScript — **invisible to crawlers that don't execute JS** |
+| `og:image` | `https://lovable.dev/opengraph-image-p98pqg.png` — **a leftover from the prototype**, wrong brand |
+| Sitemap | none |
+
+This is the single largest SEO defect in the system, and the CMS plan fixes it as a by-product.
 
 ---
 
-## 6. Hostinger cutover checklist
+## Part 2 — The decision this forces (answer before building)
 
-| # | Check | Why |
+**Whose website does this WOODEX OS admin serve?**
+
+| Option | Means | Consequence |
 |---|---|---|
-| 1 | `php artisan migrate --force` + `woodex:install` | schema on the live DB |
-| 2 | Upload `public/` **without** `public.v1-pages.txt` | 141 dead dirs are already gone |
-| 3 | Run `tools/furniture-commerce/connect-storefront.sh` | idempotent: removes v1 pages, installs `dist/`, verifies `.htaccess` |
-| 4 | Confirm `.htaccess` exclusions | `admin|install|up|api|livewire|webhooks|media|portal|vendor|storage|build|builder|assets|font|front|site|q|i|p` |
-| 5 | `APP_DEBUG=false`, `APP_ENV=production` | a stack trace on checkout is a data leak |
-| 6 | Queue = `sync` or cron (max 5 on Hostinger) | no workers on shared hosting; the publish step must be chunked |
-| 7 | Throttles on `/api/storefront/v1/checkout` | 30 entry processes; a crawler must not exhaust them |
-| 8 | Verify `storage/` and `bootstrap/cache` writable | install step fails silently otherwise |
-| 9 | Cache config + route, not views | `view:clear` breaks the php-wasm harness (see Errors) |
-| 10 | Smoke: place one real COD order, settle it, confirm the JE | the only proof that matters |
-| 11 | 301 map live from `redirects` | the 141 old URLs must not 404 |
-| 12 | Google Search Console re-submit sitemap | after Phase 1 publishes static HTML |
+| **A. Furniture OS** *(recommended)* | the OS becomes WOODEX **Furniture**'s admin; the 142 interior rows are exported and archived | clean; every screen points at the live site; interior can get its own OS later |
+| B. Both businesses, one OS | interior site on its own domain, furniture shop here | two frontends, two content trees, double the SEO surface — heavy |
+| C. Reuse the interior rows as furniture content | rewrite 142 interior pages into furniture copy | 59 pages about house design cannot become office furniture; only the 48 blog posts have partial value |
+
+**Recommendation: A.** The 142 rows are not waste — they are the proof that this CMS works (142 pages, 1,442 blocks, 50 templates, 142 version snapshots). Export them, keep the machinery, point it at the furniture site.
 
 ---
 
-## 7. What I would do first
+## Part 3 — Architecture
 
-1. **Phase 0.1 + 0.2 (half a day).** Right now a person opening Media sees 105 broken images and opening All pages sees one page. Neither tells them the truth.
-2. **Phase 2.1 + 2.2 (two days).** Product photos and a working contact form are the only two items on this list that change revenue this week.
-3. **Phase 1.1 (the renderer).** Everything in the Website domain is downstream of it. Until it exists, 127 pages of real content stay unreachable and six screens stay pointed at a single file.
+```
+                      ┌──────────────────────── WOODEX OS admin ────────────────────────┐
+                      │  All pages · Page builder (Puck | HTML) · Find&replace · Redirects │
+                      │  Content (Blog · Portfolio · Services · Series · Showrooms)        │
+                      │  Media · SEO · SEO agent · Speed · Site health · Theme · Settings  │
+                      └───────────────┬─────────────────────────────────────────────────┘
+                                      │ writes JSON rows (site_pages, content_items, theme_tokens)
+                                      ▼
+   ┌──────────────┐        ┌──────────────────────┐        ┌──────────────────────────────┐
+   │ HTML page    │        │  /api/site/v1        │        │  The SPA (image 1)           │
+   │ raw .html    │        │  pages · records     │───────►│  <Render data={puck_data}/>  │
+   │ served direct│        │  theme · menus       │        │  records → /blog /services…  │
+   └──────────────┘        └──────────────────────┘        └──────────────────────────────┘
+                                      ▲
+                                      │  injected into index.html before send
+                            ┌─────────┴──────────┐
+                            │ PHP shell renderer │  title · description · canonical ·
+                            │ (per URL, no Node) │  OG · JSON-LD · sitemap.xml
+                            └────────────────────┘
+```
+
+### Three rules
+
+1. **Editors change content, never code.** Every word on image 1 comes from a row.
+2. **Puck renders in React.** The SPA already *is* React — Puck's `<Render>` works natively, so there is **no PHP block renderer to rebuild** and no publish step for visual pages. (This is why the furniture plan is far cheaper than the interior one would have been.)
+3. **SEO is served by PHP, not by JavaScript.** A thin shell renderer rewrites `<title>`, meta, canonical, OG and JSON-LD into `index.html` per URL before it is sent. No Node, no headless browser, works on Hostinger.
+
+### Why not static HTML per page?
+
+Because the site is an SPA with a live catalogue, cart and checkout. Publishing 142 static files would fork the design a second time. The only pages that stay static are the **HTML pages** — which is precisely where the HTML builder earns its place.
 
 ---
 
-## 8. Decisions I need from you
+## Part 4 — The content model
 
-| # | Question | Default if you don't answer |
+### 4.1 Records (many rows, one template)
+
+| Record | Rows today | Route | Screen |
+|---|---|---|---|
+| Product | 20 (+28 variants) | `/shop/:slug` | **Commerce → Products** ✅ exists |
+| Category / Market | 24 | menus, `/shop?category=` | **Commerce → Categories** ✅ exists |
+| **Series** | 153 hardcoded → import | `/series/:id` | **new** |
+| **Service** | 8 hardcoded → import | `/services/:slug` | **new** |
+| **Blog post** | 7 hardcoded → import | `/blog/:id` | Blog ✅ screen, wrong rows |
+| **Project** | 6→ import | `/projects/:id` | Portfolio ✅ screen, wrong rows |
+| **Showroom** | 5 hardcoded | `/showrooms` | **new** |
+| Material / finish | 14 in catalog attributes | `/materials` | catalog ✅, no screen needed |
+| Lead / enquiry | 27 | forms | Forms ✅ exists |
+
+### 4.2 Pages (one row, one URL)
+
+`home` · `about` · `contact` · `custom-design` · `warranty` · `b2b` · `showrooms` · `shop` (listing header) · `materials` · `projects` (listing) · `services` (listing) · `blog` (listing) · `quotation`
+
+= **13 pages**, each a Puck document.
+
+### 4.3 App pages (not CMS)
+
+`/checkout`, `/cart`, `/account` — configured by **Website Settings**, never built in a page editor.
+
+---
+
+## Part 5 — The 14 screens
+
+Verdicts from the running app. Legend: ✅ real and populated · 🟡 real, cannot do the job · ⚠️ correct code, wrong target · ❌ absent
+
+### Pages & builder
+
+| # | Screen | Today | Rebuild |
+|---|---|---|---|
+| 1 | **All pages** | ⚠️ `BuilderFile::pages()` → filesystem → **1 page** (the SPA shell) | list `site_pages` + system routes + HTML pages. Columns: title, URL, kind (route/Puck/HTML), status, sections, updated, SEO score, publish state. Actions: Edit visual · Edit HTML · Edit SEO · Duplicate · Publish · Unpublish · View live |
+| 2 | **Page builder** | 🟡 full HTML canvas editor with nothing to open | **Puck (visual) as default + HTML mode as option, per page.** 11 section components. Device preview, page settings, versions, draft preview via `preview_token`, SEO panel |
+| 3 | **Find & replace** | ⚠️ `runPreview`/`apply`/`undo` exist, over 1 file | run over Puck JSON + records (`content_items`); scope by type; snapshot before apply so undo is real; then "publish 12 changed pages" |
+| 4 | **Redirects** | ✅ add / remove / CSV import / export — 0 rows | import the old URLs; auto-suggest a 301 when a slug changes; conflict check against real routes; hit counter; chain flattening |
+
+### Content
+
+| # | Screen | Today | Rebuild |
+|---|---|---|---|
+| 5 | **Blog** | 🟡 studio reads `Page[type=insight]` — **48 interior posts** | furniture posts: title, slug, cover, category, tags, author, schedule, body sections (Puck), SEO, related → `/blog/:id` |
+| 6 | **Portfolio** | 🟡 `Page[type=project]` — 6 interior studies | client, sector, city, year, gallery, story, testimonial, `Project` schema → `/projects/:id` |
+| 7 | **Forms** | ✅ `cms_forms` counts real submissions; lead pipeline proven (lead #27) | form definitions per key (contact, quotation, B2B, custom-design), submissions list, CSV export, spam log, notifications — **and make the SPA actually POST** (today `handleSubmit` only sets a flag) |
+
+### Website
+
+| # | Screen | Today | Rebuild |
+|---|---|---|---|
+| 8 | **Media** | ⚠️ works — **105 rows, 0 files**, every tile broken | purge/repair the 105 interior files; import furniture photos; folders, alt text enforced, WebP + derivatives, replace-in-place, **real usage tracking** (`media_usage` returns `[]` today) |
+| 9 | **SEO** | ⚠️ `FileAudit` (438 lines of real checks) over 1 file | audit per URL: title, description, H1, canonical, OG, schema, alt text, thin content, duplicates, orphans. Per-page **score**, filters, bulk fix |
+| 10 | **SEO agent** | ⚠️ same audit, filtered by issue | turn into a **queue**: issue → page → why it costs traffic → Fix button. Generate `sitemap.xml`, edit `robots.txt`, preview JSON-LD, measure before/after |
+| 11 | **Speed** | ✅ real (keyless local metrics + optional PageSpeed key) — 0 runs | run against live URLs, keep history in `pagespeed_runs`, budget per page, asset weight from the build, flag oversized images, cache headers |
+| 12 | **Site health** | ⚠️ broken links / orphans over 1 file | links across published output + records, orphan pages, **missing media** (would have caught the 105), stale pages, 404 log, sitemap validity |
+| 13 | **Theme** | 🟡 28 tokens, presets, groups — **no consumer**; the SPA never reads them | tokens → CSS custom properties → consumed by the SPA **and** Puck preview **and** HTML pages. Fonts, palette, radii, spacing, container width, live preview, presets |
+| 14 | **Website Settings** | 🟡 real but narrow | business identity (name, logo, phone, WhatsApp, email, address, hours), social, analytics (GA4/GTM/pixel), Search Console, sitemap/robots, publish policy, currency, maintenance mode, checkout copy |
+
+---
+
+## Part 6 — The page builder
+
+### 6.1 Two modes, one record
+
+| Mode | Audience | Storage | Render |
+|---|---|---|---|
+| **Visual (Puck)** — default | anyone on the team | `site_pages.puck_data` (JSON) | SPA `<Render>` at request time |
+| **HTML** — option, per page | full control, pasted markup, one-off pages | `site_pages.canvas_html` → file | web server serves the `.html` directly |
+
+Both are the same page record; `site_pages.kind` decides which wins. Switching modes never loses the other (both columns persist).
+
+### 6.2 The 11 section components
+
+The Os's block vocabulary is already closed — reuse the same names so legacy content can be imported:
+
+| Section | Used for | Props |
 |---|---|---|
-| 1 | **Phase 1 renderer vs SPA-owned content** — confirm Option C | Option C |
-| 2 | **Where do product photographs come from?** The live site has 24 products with `assets/images/products/…` | re-import from `woodexfurniture.pk` |
-| 3 | **Are the 142 existing pages copy to keep?** 59 services + 48 insights + 12 cities + 8 areas is real SEO value | keep and re-publish, do not delete |
-| 4 | **Coupons at launch?** | yes — Phase 3 |
-| 5 | **Customer accounts at launch, or guest checkout only?** | guest + optional account |
+| `hero` | top of every page | eyebrow, heading, sub, image, 2 CTAs, overlay, height |
+| `intro` | opening statement | heading, rich text, image side, stats |
+| `text` | body copy | heading, rich text, 1–2 columns, width |
+| `services` | what we do | list of {icon, title, text, link}, columns |
+| `price_table` | pricing / packages | rows of {label, price, note}, footnote |
+| `process` | how it works | steps of {number, title, text} |
+| `gallery` | photos | images[], columns, captions, lightbox |
+| `specs` | specifications | key/value pairs |
+| `faq` | questions | {q, a}[], schema toggle |
+| `related` | internal links | record type + count, manual override |
+| `form` | enquiry | form key, heading, fields, success copy |
+
+That is 11 React components for the SPA and 11 for Puck — the *same* components, wrapped.
+
+### 6.3 The builder screen
+
+```
+┌──── toolbar: page · kind · mode [Visual | HTML] · device · ⋯ · Save · Publish · View ───────┐
+│ sections palette │           canvas (real page, real width)        │ inspector            │
+│ hero · intro     │      drag, drop, reorder, click to edit        │ content / style      │
+│ text · services  │                                                │ advanced · SEO       │
+│ price_table ...  │                                                │ image ← media        │
+└────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Every save writes a version — `page_versions` already holds 142 snapshots and the restore flow exists. Draft preview uses `preview_token`. Publish clears the cache and updates `sitemap.xml`.
+
+> **Acceptance:** add a hero + services + FAQ to `/services/custom-design` in Puck, save, reload the live URL — the sections render with no build step. Switch the same page to HTML mode, edit raw markup, save, and the file serves directly.
 
 ---
 
-*Audited against the running application on 1 November 2026. This plan supersedes no existing document; it sits beside `MASTER-PLAN.md` and covers the integration layer that document did not.*
+## Part 7 — Theme, settings, SEO, speed, media, forms
+
+### 7.1 Theme — the one place design is decided
+
+`theme_tokens` (28 rows) → CSS custom properties → three consumers:
+
+| Consumer | How |
+|---|---|
+| the SPA | `GET /api/site/v1/theme` → injected as `:root` vars at boot |
+| Puck preview | same vars inside the admin preview frame |
+| HTML pages | a generated `theme.css` linked by those files |
+
+Tokens: colours (brand, accent, ink, surfaces), type scale, font families, radii, shadows, spacing, container width, breakpoints. Live preview, presets, per-page override.
+
+### 7.2 SEO — the fix that pays for itself
+
+| Problem today | Fix |
+|---|---|
+| 1 `<title>` for 22 routes | PHP shell renderer injects per-URL title/description/canonical/OG |
+| `og:image` = lovable.dev | real image from Media, per page |
+| titles set by `document.title` only | rendered server-side **and** kept in sync client-side |
+| no sitemap | generated from published pages on publish |
+| no JSON-LD | `Organization`, `Product`, `Service`, `BlogPosting`, `Project`, `LocalBusiness` (showrooms), `FAQPage`, `BreadcrumbList` |
+
+### 7.3 Speed
+
+Keep the existing keyless metrics; add: history per URL (`pagespeed_runs`), budget per page, asset weight from the built bundle (874 kB JS / 240 kB gzip — worth watching), image weight, cache-header check.
+
+### 7.4 Media
+
+1. **Reconcile the 105** — re-import or mark `missing` (0 of 105 exist on disk).
+2. Import furniture photography for the 20 products (`commerce_product_media` = 0, so **every product returns `"image": null`**).
+3. WebP + derivatives on upload, folders, alt text enforced, replace-in-place, usage guard before delete.
+
+### 7.5 Forms
+
+The pipeline is **already proven**: `POST /api/forms.php` → lead #27 · `L-2026-000001` · contact #29, with honeypot, per-IP rate limits, WhatsApp-click and booking actions. What's missing is only the front end: point the SPA's Contact, Quotation, B2B and Custom Design forms at it. Today `handleSubmit` does nothing but `setSubmitted(true)`.
+
+---
+
+## Part 8 — Migration of the current content
+
+| Source | Rows | Destination |
+|---|---|---|
+| Interior pages (service/city/area/insight/project) | 142 | **export → archive** (decision A) |
+| Interior blocks | 1,442 | export with the pages, as the import format for the new site |
+| Interior media | 105 | purge records; files already gone |
+| Furniture catalogue | 20 products, 28 variants, 24 categories | already in the OS ✅ |
+| SPA hardcoded series | 153 | import → `content_items[series]` |
+| SPA hardcoded categories | 29 | reconcile into `commerce_categories` (24) |
+| SPA hardcoded services | 8 | import → `content_items[service]` |
+| SPA hardcoded posts | 7 | import → `content_items[post]` |
+| SPA hardcoded projects | 6+ | import → `content_items[project]` |
+| SPA hardcoded showrooms | 5 | import → `content_items[showroom]` |
+
+The SPA's own data files become the **seed** — which is honest: they are real furniture copy, already written and approved.
+
+---
+
+## Part 9 — Phases
+
+| Phase | Work | Days | Exit test |
+|---|---|---|---|
+| **A. Truth** | reconcile media, purge/repair 105, banner off the interior screens, freeze the 142, decide A/B/C | 2 | no screen shows a broken file |
+| **B. Spine** | `site_pages` + `content_items` + `/api/site/v1` (pages, records, theme) + PHP shell renderer (title/meta/OG/JSON-LD/sitemap) | 8 | `curl /services/custom-design` returns the right `<title>` and JSON-LD |
+| **C. Screens** | All pages, Find & replace, Blog, Portfolio, Services, Series, Showrooms | 10 | create a post, publish, see it at `/blog` |
+| **D. Builder** | Puck + 11 sections + HTML mode toggle + versions + preview + SEO panel | 9 | edit a page visually, publish, reload live |
+| **E. Ops** | Media upgrades, SEO, SEO agent, Site health, Speed, Theme export, Settings, Redirects import | 9 | theme change appears on the live site; SEO queue fixes a page |
+| **F. Storefront** | forms → leads, product images, accounts, server cart, checkout polish | 7 | a real enquiry lands in CRM; shop has photos |
+| **G. Cutover** | Hostinger checklist, 301s, sitemap, smoke order | 3 | real order + real lead on the live domain |
+
+**≈48 dev-days ≈ 3.5 weeks with 3 developers.** C is playable after B; D after B; E after C.
+
+---
+
+## Part 10 — Hostinger cutover
+
+| # | Check |
+|---|---|
+| 1 | `migrate --force` + `woodex:install` on the live DB |
+| 2 | Upload `public/` (storefront build already installed) |
+| 3 | `tools/furniture-commerce/connect-storefront.sh` — idempotent, verifies `.htaccess` |
+| 4 | `.htaccess` exclusions: `admin|install|up|api|livewire|webhooks|media|portal|vendor|storage|build|builder|assets|font|front|site|q|i|p` |
+| 5 | `APP_DEBUG=false`, `APP_ENV=production` |
+| 6 | No queue worker — publish must be chunked per request |
+| 7 | Throttles on `/api/storefront/v1/checkout` (30 entry processes) |
+| 8 | `storage/` + `bootstrap/cache` writable |
+| 9 | Cache config + routes, **not views** |
+| 10 | Smoke: one COD order → invoice → settle → journal entry |
+| 11 | 301 map live; sitemap submitted to Search Console |
+
+---
+
+## Part 11 — Decisions
+
+| # | Question | Default if unanswered |
+|---|---|---|
+| 1 | **Does this OS serve Furniture only (A), or Interior + Furniture (B)?** | **A** — archive the 142 |
+| 2 | Puck visual as the default builder, HTML as the option? | **yes** |
+| 3 | Product & content photography — from `woodexfurniture.pk`? | re-import |
+| 4 | Seed the CMS from the SPA's hardcoded data (153 series, 8 services, 7 posts…)? | **yes** |
+| 5 | Customer accounts at launch? | guest + optional account |
+| 6 | Explicit Publish button, or auto-publish on save? | **explicit** |
+
+---
+
+*Every "today" claim was verified against the running application and the current SPA source on 1 November 2026: 28/28 admin URLs return 200; a live lead was captured (`L-2026-000001`); a live order reached the ledger; and the storefront build produces exactly one HTML file.*
