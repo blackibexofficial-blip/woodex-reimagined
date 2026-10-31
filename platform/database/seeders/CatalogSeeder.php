@@ -55,6 +55,13 @@ class CatalogSeeder extends Seeder
             $sources = $this->seedSources($data['sources']);
             $products = $this->seedProducts($data['products'], $sources);
             $this->seedVariants($data['variants'], $attributes, $sources, $products);
+
+            // Then the ones that trade in a single configuration. Stock lives against a variant
+            // and nowhere else (`commerce_inventory_items` has no `product_id`), so a product
+            // with no variant cannot hold stock and cannot be added to a cart. Sixteen of these
+            // twenty were in exactly that state: the data said `in_stock: true`, the shop said
+            // "Out of Stock", and checkout would have had nothing to add.
+            $this->seedDefaultVariants($products, $sources);
         });
     }
 
@@ -347,6 +354,50 @@ class CatalogSeeder extends Seeder
             // Stock is split across warehouses: most in Lahore, a little in Karachi, none
             // online for made-to-order lines.
             $allocation = ['lahore' => (int) $row['stock'], 'karachi' => (int) intdiv($row['stock'], 2), 'online' => 0];
+
+            foreach ($allocation as $code => $qty) {
+                InventoryItem::query()->updateOrCreate(
+                    ['variant_id' => $variant->id, 'source_id' => $sources[$code]->id],
+                    ['qty' => $qty, 'reserved' => 0, 'low_stock_threshold' => 3],
+                );
+            }
+        }
+    }
+
+    /**
+     * Give every product that has no variants one plain variant, so it can hold stock.
+     *
+     * The product stays `simple`: "simple" is a statement about what the customer chooses — no
+     * finish, no size — not about how the stock is stored. Underneath, one row in
+     * `commerce_product_variants` means the cart, the inventory table and the order lines all
+     * keep working the way they already do, with no special case anywhere.
+     *
+     * The SKU is the product's own, so an operator reading a purchase order sees one code.
+     *
+     * @param  array<string, Product>  $products
+     * @param  array<string, InventorySource>  $sources
+     */
+    private function seedDefaultVariants(array $products, array $sources): void
+    {
+        // Enough to fill a showroom and a few orders, small enough that a re-seed is obvious in
+        // the inventory screen. The real numbers arrive with the owner's catalogue.
+        $allocation = ['lahore' => 24, 'karachi' => 12, 'online' => 12];
+
+        foreach ($products as $sku => $product) {
+            if ($product->variants()->exists()) {
+                continue;
+            }
+
+            $variant = ProductVariant::query()->updateOrCreate(
+                ['sku' => $sku],
+                [
+                    'product_id' => $product->id,
+                    'name' => $product->displayName(),
+                    'price_minor' => (int) $product->price_minor,
+                    'status' => 'active',
+                    'position' => 0,
+                ],
+            );
 
             foreach ($allocation as $code => $qty) {
                 InventoryItem::query()->updateOrCreate(

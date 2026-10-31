@@ -143,7 +143,11 @@
 
                                 <td class="px-3 py-3 text-right">
                                     @php($available = $product->variants->sum(fn ($variant) => $variant->availableQty()))
-                                    @if ($product->isConfigurable())
+                                    {{-- Every product holds stock, because every product has at least one
+                                         variant underneath — a simple one for a simple product. The gate
+                                         used to be on the type, so sixteen products showed "—" while
+                                         their stock sat in the inventory table unread. --}}
+                                    @if ($product->variants->isNotEmpty())
                                         <span class="tabular-nums {{ $available === 0 ? 'text-error-600' : 'text-gray-700 dark:text-gray-300' }}">{{ $available }}</span>
                                         <span class="text-theme-xs text-gray-400">total</span>
                                     @else

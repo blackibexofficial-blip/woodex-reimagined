@@ -37,6 +37,11 @@ final readonly class ProductCard
         public string $summary,
         public ?string $category,
         public ?string $categorySlug,
+        // The trail from the root category down: ['office-tables', 'executive-tables']. The SPA
+        // uses it for breadcrumbs and for filtering without a second request. It was documented
+        // and passed by `fromModel()` for months while the constructor did not declare it, which
+        // is a fatal the moment a real product is mapped — and no test mapped one.
+        public array $categoryPath,
         public ?string $series,
         public int $priceMinor,
         public ?int $compareAtMinor,

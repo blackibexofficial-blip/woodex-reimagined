@@ -43,7 +43,21 @@ final readonly class CatalogService
             ->get();
 
         return [
-            'items' => $products->map(fn (Product $product): ProductCard => ProductCard::fromModel($product, $this->paths))->all(),
+            // Arrays, not objects, and that is two bugs prevented at once.
+            //
+            // `toArray()` is the only place the wire keys are decided — `price_minor`,
+            // `in_stock`, `available_qty`. The controller passed the card itself, so
+            // json_encode emitted its public properties instead: `priceMinor`, `inStock`.
+            // Every product crossed the wire in a shape the storefront does not read, and it
+            // showed twenty products, all out of stock, all at no price.
+            //
+            // And the result is cached. A cache holding objects is a cache that breaks on the
+            // next deploy that touches the class: PHP unserialises it as an incomplete class
+            // and the response gains a `__PHP_Incomplete_Class_Name` key nobody asked for.
+            // Plain arrays survive any change to the class and cannot go stale that way.
+            'items' => $products
+                ->map(fn (Product $product): array => ProductCard::fromModel($product, $this->paths)->toArray())
+                ->all(),
             'total' => $total,
             'page' => $query->page,
             'per_page' => $query->perPage,
@@ -51,14 +65,14 @@ final readonly class CatalogService
         ];
     }
 
-    /** A single product by slug, or null. */
-    public function find(string $slug): ?ProductCard
+    /** A single product by slug, as the wire shape, or null. */
+    public function find(string $slug): ?array
     {
         $product = $this->baseQuery(new CatalogQuery)
             ->where('slug', $slug)
             ->first();
 
-        return $product !== null ? ProductCard::fromModel($product, $this->paths) : null;
+        return $product !== null ? ProductCard::fromModel($product, $this->paths)->toArray() : null;
     }
 
     /**
@@ -68,13 +82,13 @@ final readonly class CatalogService
      * pages: a card list wants twenty-four shallow rows, a product page wants one deep one.
      * Same query builder, same eager loads, so a product can never look different in the two.
      */
-    public function findDetail(string $slug): ?ProductDetail
+    public function findDetail(string $slug): ?array
     {
         $product = $this->baseQuery(new CatalogQuery)
             ->where('slug', $slug)
             ->first();
 
-        return $product !== null ? ProductDetail::fromModel($product, $this->paths) : null;
+        return $product !== null ? ProductDetail::fromModel($product, $this->paths)->toArray() : null;
     }
 
     /**

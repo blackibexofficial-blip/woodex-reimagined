@@ -196,7 +196,12 @@ final class CheckoutController
         foreach (array_values($lines) as $index => $line) {
             $product = Product::query()
                 ->published()
-                ->with(['translation', 'variants' => static fn ($query) => $query->where('is_active', true)->orderBy('position')])
+                // `status`, not `is_active`: the variants table has no boolean, it has a status
+                // string, and `ProductVariant::scopeActive()` already says so. Filtering on a
+                // column that does not exist returned no variants at all, so every quote and
+                // every checkout answered "That product cannot be ordered right now" — a
+                // message that reads like a stock problem and was a column problem.
+                ->with(['translation', 'variants' => static fn ($query) => $query->active()->orderBy('position')])
                 ->where('slug', $line['slug'])
                 ->first();
 

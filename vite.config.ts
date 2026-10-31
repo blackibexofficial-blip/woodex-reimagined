@@ -30,4 +30,13 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // `assets/` is the OS's own directory — theme.css, fonts, the admin bundle all live there.
+    // A Vite build writing into it would either be silently overwritten by the next OS deploy
+    // or, worse, overwrite the theme stylesheet every live page links. Everything this app
+    // emits goes under `front/`, which nothing else claims.
+    assetsDir: "front",
+    // Hashed filenames are already cache-safe; this keeps the HTML small and readable.
+    sourcemap: false,
+  },
 }));

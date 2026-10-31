@@ -1,0 +1,19 @@
+    # ---------------------------------------------------------------------------------------
+    # Furniture storefront — the reimagined single-page app.
+    #
+    # public/index.html plus hashed assets under public/front/. Its addresses (/shop,
+    # /shop/ballmer-executive-desk, /projects/house-42) exist only inside the browser, so the
+    # server must answer them with index.html, or a visitor who refreshes a product page gets a
+    # 404 the app can never see.
+    #
+    # The app's own paths are excluded first, and the order matters: a route that reached
+    # index.html would render the shop instead of the admin login and no client-side routing
+    # could recover it. /assets and /front are excluded so a missing image is an honest 404
+    # rather than a page of HTML sent with an image's Content-Type.
+    #
+    # Place this immediately BEFORE the "Send Requests To Front Controller" rule.
+    # ---------------------------------------------------------------------------------------
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_URI} !^/(admin|install|up|api|livewire|webhooks|media|portal|vendor|storage|build|builder|assets|font|front|site|q|i|p)(/|$)
+    RewriteRule ^ index.html [L]
