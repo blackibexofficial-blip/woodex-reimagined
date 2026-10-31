@@ -172,6 +172,28 @@ The OS has accounting tables (`invoices`, `payments`, `payment_allocations`, `jo
 
 This is more work than pasting the screens in, and it is the only version that survives an audit.
 
+**Status: built and proven (F2 core).** `OrderToLedger` raises the OS invoice for a placed order:
+
+```
+commerce order WDX-000001  (Rs 125,220)
+   -> CRM contact #27            (matched on a normalised phone)
+   -> invoice WFI-2026-0001      (kind = furniture_sale, status = issued)
+   -> PDF frozen                 (invoices/01M6.../invoice-WFI-2026-0001.pdf)
+   -> journal entry JE-2026-0001
+        DR 1100 Accounts receivable   125,220
+        CR 4020 Furniture revenue     106,500
+        CR 2100 Taxes payable          18,720
+        balanced
+```
+
+Verified in the running OS, not in a fixture: the invoice appears in **Accounts -> Invoices**, the
+amounts move the **trial balance**, and running the bridge twice leaves one invoice and one
+journal entry (the unique index on `commerce_order_id` plus a row lock on the order).
+
+Still open in F2: the Commerce screens (Invoices, Payments, Refunds, Reports) still read
+`commerce_invoices`. They must read the OS ledger, which is now the only place a furniture sale
+is booked.
+
 ---
 
 ## 4. Database plan

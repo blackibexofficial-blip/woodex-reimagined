@@ -25,12 +25,24 @@ abstract class TestCase
      */
     protected static function sitePath(string $relative): ?string
     {
-        $candidates = [
-            dirname(__DIR__, 2).'/'.$relative,   // a real checkout: platform/../src/...
-            '/repo/'.$relative,                 // the wasm runner's staged copy
+        // Two roots, in both worlds:
+        //   repo-root-relative     ('src/...', 'platform/...')
+        //   platform-relative      ('app/...', 'database/...', 'resources/...')
+        //
+        // On disk that is dirname(__DIR__, 2) and dirname(__DIR__). In the wasm runner the
+        // frontend is staged at /repo and the platform at /app, so both forms are tried there
+        // too — and /app is the platform root, which is why a platform-relative path repeats
+        // 'app/' under it.
+        $bases = [
+            '/repo',                 // staged repo root
+            dirname(__DIR__, 2),     // real repo root
+            '/app',                  // staged platform root
+            dirname(__DIR__),        // real platform root
         ];
 
-        foreach ($candidates as $candidate) {
+        foreach ($bases as $base) {
+            $candidate = rtrim($base, '/').'/'.ltrim($relative, '/');
+
             if (is_file($candidate)) {
                 return $candidate;
             }
