@@ -127,14 +127,23 @@ final class CommerceHostCompatibilityTest extends TestCase
         }
     }
 
-    public function testTheInvoiceScreenComputesTheSameCaseExpressionsEitherWay(): void
+    /**
+     * The invoice screen joins `commerce_orders` and sums the ledger's own balance.
+     *
+     * It used to do the arithmetic inline — `LEAST(paid, total) - refunded` — which is MySQL
+     * only, so the same screen had to be written twice. Now the ledger keeps `balance_minor` and
+     * the screen reads it; what is left to keep portable is the void exclusion and today's date.
+     */
+    public function testTheInvoiceScreenStaysPortableOnceItJoinsOrders(): void
     {
         $source = (string) file_get_contents(
             dirname(__DIR__, 2).'/app/Livewire/Admin/Commerce/InvoicesIndex.php',
         );
 
-        Assert::same(true, str_contains($source, 'CASE WHEN commerce_orders.paid_minor <'), 'paid is a portable CASE');
-        Assert::same(false, str_contains($source, 'SUM(LEAST('), 'paid is not MySQL LEAST');
-        Assert::same(true, str_contains($source, 'CURRENT_TIMESTAMP'), 'overdue compares against a portable timestamp');
+        Assert::same(true, str_contains($source, 'CASE WHEN invoices.status <>'), 'void rows are excluded with a CASE');
+        Assert::same(true, str_contains($source, 'CURRENT_DATE'), 'overdue compares against a portable date');
+        Assert::same(false, str_contains($source, 'NOW()'), 'not MySQL NOW()');
+        Assert::same(false, str_contains($source, 'LEAST('), 'and not MySQL LEAST');
+        Assert::same(true, str_contains($source, 'balance_minor'), 'the balance is the ledger\'s, not re-derived here');
     }
 }

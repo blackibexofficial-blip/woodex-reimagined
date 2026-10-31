@@ -132,7 +132,10 @@ final class CheckoutController
             'total' => $this->money($order->grand_total_minor),
             'amount_due_minor' => $order->amountDueMinor(),
             'placed_at' => $order->placed_at?->toIso8601String(),
-            'invoice_number' => $order->invoices()->value('number'),
+            // The ledger's number, when this install has a ledger. The checkout used to mint its
+            // own `INV-` number here, so a customer was told a different one from the invoice
+            // that was actually posted and printed.
+            'invoice_number' => $order->ledgerInvoice()?->number,
             'lines' => $order->items()->get()->map(static fn ($item): array => [
                 'slug' => $item->sku,
                 'name' => $item->name,

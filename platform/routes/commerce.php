@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Admin\InvoiceDocumentController;
 use App\Livewire\Admin\Commerce\AttributesIndex;
 use App\Livewire\Admin\Commerce\CategoriesIndex;
 use App\Livewire\Admin\Commerce\CustomersIndex;
@@ -44,11 +43,8 @@ Route::get('/orders', OrdersIndex::class)->name('orders');
 Route::get('/orders/{order}', OrderShow::class)->name('orders.show');
 Route::get('/invoices', InvoicesIndex::class)->name('invoices');
 
-// The printable document. A route rather than a modal: an invoice is printed, emailed and
 // filed, and all three need a page with no chrome on it.
-Route::get('/invoices/{invoice}/print', InvoiceDocumentController::class)
-    ->whereNumber('invoice')
-    ->name('invoices.print');
+
 Route::get('/payments', PaymentsIndex::class)->name('payments');
 Route::get('/refunds', RefundsIndex::class)->name('refunds');
 

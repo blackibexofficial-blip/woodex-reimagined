@@ -10,9 +10,9 @@ use Tests\Support\Assert;
  * The invoices screen, read as source text.
  *
  * The arithmetic is tested in InvoiceBalanceTest without a database. What is pinned here is the
- * boundary: that the screen asks the value object instead of trusting the status column, that
- * the printable document is a real page and not a screenshot of the admin, and that neither can
- * be reached without the permission.
+ * boundary, and it changed with the ledger rebinding: the screen no longer reads a table the
+ * commerce package writes for itself. It reads the OS invoices that name a commerce order, so
+ * the list and the accountant's receivable are the same rows.
  */
 final class InvoicesScreenTest
 {
@@ -42,6 +42,24 @@ final class InvoicesScreenTest
         );
     }
 
+    /**
+     * The whole point of the rebinding. `commerce_invoices` was a second set of books: the same
+     * sale had a row here and a different number in Sales, and only one of them was ever posted
+     * to the ledger. Nothing on this screen may read that table again.
+     */
+    public function testTheScreenReadsTheLedgerAndNotTheCommerceInvoiceTable(): void
+    {
+        $source = $this->source('/app/Livewire/Admin/Commerce/InvoicesIndex.php');
+
+        Assert::true(str_contains($source, 'App\\Domain\\Sales\\Models\\Invoice'), 'it reads the ledger invoices');
+        Assert::true(str_contains($source, 'commerce_order_id'), 'limited to the furniture orders');
+        // Asserted on code shapes, not on the bare table name: the docblock on this class
+        // explains what `commerce_invoices` was, and a substring check would fail on the
+        // explanation rather than on a query.
+        Assert::same(false, str_contains($source, "from('commerce_invoices')"), 'and never queries the commerce table');
+        Assert::same(false, str_contains($source, 'Commerce\\Checkout\\Models\\Invoice'), 'nor uses its model');
+    }
+
     public function testTheStatusIsDerivedAndNotReadFromTheColumn(): void
     {
         $source = $this->source('/app/Livewire/Admin/Commerce/InvoicesIndex.php');
@@ -51,9 +69,9 @@ final class InvoicesScreenTest
         Assert::true(str_contains($view, '$balance->label()'), 'the badge shows the derived label');
         Assert::true(str_contains($view, '$balance->outstandingMinor()'), 'and the derived balance');
 
-        // The stored column is consulted for exactly one thing: knowing whether a row is void.
+        // The stored status is consulted for exactly one thing: knowing whether a row is void.
         Assert::true(
-            str_contains($source, '$invoice->status === Invoice::VOID'),
+            str_contains($source, '$invoice->status === InvoiceStatus::Void'),
             'the stored status is only used to detect a void',
         );
         Assert::same(
@@ -67,60 +85,46 @@ final class InvoicesScreenTest
     {
         $source = $this->source('/app/Livewire/Admin/Commerce/InvoicesIndex.php');
 
+        // `balance_minor` is written by the ledger, so filtering on it asks the question the
+        // user is asking — who owes money — instead of "which rows still say issued".
         Assert::true(
-            str_contains($source, 'commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor'),
-            'outstanding is computed from the money',
+            str_contains($source, "->where('invoices.balance_minor', '>', 0)"),
+            'outstanding is the money still owed',
         );
-        // CURRENT_TIMESTAMP, not NOW(): the sandbox runs SQLite and Hostinger runs MySQL, and
-        // the overdue filter has to answer the same question on both.
         Assert::true(
-            str_contains($source, "where('commerce_invoices.due_at', '<', now())")
-            || str_contains($source, 'commerce_invoices.due_at < CURRENT_TIMESTAMP'),
+            str_contains($source, "->whereDate('invoices.due_date', '<', now()->toDateString())"),
             'overdue is computed from the deadline',
         );
         Assert::true(str_contains($source, 'resetPage'), 'a filter change returns to page one');
     }
 
-    public function testThePrintableDocumentIsItsOwnPage(): void
+    /**
+     * The printable document moved: the frozen PDF and the invoice page belong to the OS, where
+     * the number, the snapshot and the journal entry live. Keeping a second renderer here is how
+     * the paper and the ledger drift apart.
+     */
+    public function testTheDocumentIsServedByTheOneInvoiceTheStudioKeeps(): void
     {
-        $view = $this->source('/resources/views/admin/commerce/invoice-document.blade.php');
+        $source = $this->source('/app/Livewire/Admin/Commerce/InvoicesIndex.php');
+        $view = $this->source('/resources/views/livewire/admin/commerce/invoices-index.blade.php');
+        $routes = $this->source('/routes/commerce.php');
 
-        Assert::true(str_contains($view, '<!doctype html>'), 'it is a whole document');
-        Assert::same(false, str_contains($view, '<x-app-layout'), 'not wrapped in the admin layout');
-        Assert::same(false, str_contains($view, '<x-admin.'), 'and carries no admin chrome');
-        Assert::true(str_contains($view, '@media print'), 'with print rules');
-        Assert::true(str_contains($view, '@page'), 'and page margins');
-        Assert::true(str_contains($view, '.actions { display: none; }'), 'buttons are not printed');
+        Assert::true(str_contains($view, "route('admin.invoices.show'"), 'the row links to the OS invoice');
+        Assert::same(false, str_contains($routes, 'invoices/{invoice}/print'), 'and no second renderer is routed');
+        Assert::same(false, is_file($this->root().'/app/Http/Controllers/Admin/InvoiceDocumentController.php'), 'the controller is gone');
+        Assert::same(false, is_file($this->root().'/resources/views/admin/commerce/invoice-document.blade.php'), 'and so is its view');
     }
 
-    public function testTheDocumentAndTheScreenCannotDisagree(): void
-    {
-        $controller = $this->source('/app/Http/Controllers/Admin/InvoiceDocumentController.php');
-        $view = $this->source('/resources/views/admin/commerce/invoice-document.blade.php');
-
-        Assert::true(str_contains($controller, 'new InvoiceBalance('), 'the paper uses the same value object');
-        Assert::true(str_contains($view, '$balance->outstandingMinor()'), 'and shows the same balance');
-        Assert::true(str_contains($view, '$balance->label()'), 'with the same label');
-
-        // Line totals come from the invoice's own items when they exist, and from the order
-        // only when the invoice has none — never recalculated from today's prices.
-        Assert::true(str_contains($controller, '$invoice->items->isNotEmpty()'), 'invoice items win');
-        Assert::true(str_contains($controller, 'Money::ofMinor'), 'and money is formatted, not divided');
-    }
-
-    public function testBothRoutesArePermissioned(): void
+    public function testTheScreenIsPermissioned(): void
     {
         $screen = $this->source('/app/Livewire/Admin/Commerce/InvoicesIndex.php');
-        $controller = $this->source('/app/Http/Controllers/Admin/InvoiceDocumentController.php');
         $routes = $this->source('/routes/commerce.php');
 
         Assert::true(str_contains($screen, "can('commerce.orders.view')"), 'the list checks the permission');
-        Assert::true(str_contains($controller, "can('commerce.orders.view')"), 'and so does the printed document');
-        Assert::true(str_contains($routes, "invoices/{invoice}/print"), 'the print route exists');
-        Assert::true(str_contains($routes, "->whereNumber('invoice')"), 'and only accepts a numeric id');
+        Assert::true(str_contains($routes, "Route::get('/invoices'"), 'the route exists');
         Assert::same(
             false,
-            str_contains($routes, "invoices.{invoice}.print')->withoutMiddleware"),
+            str_contains($routes, "withoutMiddleware"),
             'no middleware is stripped to make it reachable',
         );
     }

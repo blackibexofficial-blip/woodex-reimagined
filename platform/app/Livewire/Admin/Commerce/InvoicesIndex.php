@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Admin\Commerce;
 
 use App\Domain\Commerce\Billing\InvoiceBalance;
-use App\Domain\Commerce\Checkout\Models\Invoice;
+use App\Domain\Sales\Enums\InvoiceStatus;
+use App\Domain\Sales\Models\Invoice;
 use App\Livewire\Concerns\InteractsWithAdmin;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,17 +18,18 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Every invoice, and what is still owed on it.
+ * The furniture slice of the studio's receivables.
  *
- * The list is filtered on money, not on the status column. `invoice.status` is written once at
- * issue and never moves, so a filter on it answers the wrong question — "which rows say
- * issued" instead of "who owes us money". `InvoiceBalance` derives the truth from the amount,
- * what has been paid and what has been refunded, and the screen's filters run against the same
- * columns that derivation reads.
+ * This screen used to list `commerce_invoices` — a table the commerce package wrote itself, with
+ * its own `INV-` counter. That was a second set of books: the same sale had an invoice here and
+ * a different one in Sales, and only the second was ever posted to the ledger or turned into a
+ * PDF. The table is gone; this screen reads the OS invoices that name a commerce order
+ * (`commerce_order_id`), so what it lists is exactly what the accountant sees.
  *
- * Nothing here edits an invoice. Waiving, voiding and correcting a document a customer has
- * already been sent is a deliberate, permissioned flow with a reason attached, and it belongs
- * on the invoice itself where the line items and the payment history are visible together.
+ * Nothing here edits an invoice. Voiding, waiving and correcting a document a customer has
+ * already been sent is a deliberate, permissioned flow with a reason attached, and it belongs on
+ * the invoice itself — `admin.invoices.show` — where the lines and the payment history are
+ * visible together. Every row links there.
  */
 #[Layout('layouts::admin')]
 #[Title('Invoices')]
@@ -61,90 +63,117 @@ class InvoicesIndex extends Component
     }
 
     /**
-     * The money summary, computed in SQL against the same rules as InvoiceBalance.
+     * The money summary.
      *
-     * `paid_minor - refunded_minor` is the net received; anything less than the total is
-     * outstanding. Rows whose invoice is void are excluded from "outstanding" because a
-     * cancelled document is not a claim — but they are still counted, so the numbers reconcile
-     * with the list below.
+     * `balance_minor` is written by the ledger when the invoice is raised and by the payment
+     * flow when money arrives, so summing it is summing the receivables — not re-deriving them
+     * from another table's opinion. A void document carries no claim and is excluded from
+     * outstanding, but it is still counted, so the header reconciles with the list below.
      *
      * @return array{count: int, total: int, paid: int, outstanding: int, overdue: int, overdue_count: int}
      */
     public function summary(): array
     {
-        $row = Invoice::query()
-            ->join('commerce_orders', 'commerce_orders.id', '=', 'commerce_invoices.order_id')
+        $row = $this->base()
             ->selectRaw('COUNT(*) as count')
-            ->selectRaw('COALESCE(SUM(commerce_invoices.total_minor), 0) as total')
-            // LEAST/GREATEST/NOW() are MySQL-only. This suite runs on SQLite in the sandbox
-            // and MySQL on Hostinger, so every expression here is a portable CASE.
-            ->selectRaw('COALESCE(SUM((CASE WHEN commerce_orders.paid_minor < commerce_invoices.total_minor THEN commerce_orders.paid_minor ELSE commerce_invoices.total_minor END) - commerce_orders.refunded_minor), 0) as paid')
-            ->selectRaw('COALESCE(SUM(CASE WHEN commerce_invoices.total_minor - (commerce_orders.paid_minor - commerce_orders.refunded_minor) > 0 THEN commerce_invoices.total_minor - (commerce_orders.paid_minor - commerce_orders.refunded_minor) ELSE 0 END), 0) as outstanding')
-            ->selectRaw('COALESCE(SUM(CASE WHEN commerce_invoices.status <> ? AND commerce_invoices.due_at IS NOT NULL AND commerce_invoices.due_at < CURRENT_TIMESTAMP AND commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor THEN CASE WHEN commerce_invoices.total_minor - (commerce_orders.paid_minor - commerce_orders.refunded_minor) > 0 THEN commerce_invoices.total_minor - (commerce_orders.paid_minor - commerce_orders.refunded_minor) ELSE 0 END ELSE 0 END), 0) as overdue', [Invoice::VOID])
-            ->selectRaw('COALESCE(SUM(CASE WHEN commerce_invoices.status <> ? AND commerce_invoices.due_at IS NOT NULL AND commerce_invoices.due_at < CURRENT_TIMESTAMP AND commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor THEN 1 ELSE 0 END), 0) as overdue_count', [Invoice::VOID])
+            ->selectRaw('COALESCE(SUM(invoices.total_minor), 0) as total')
+            ->selectRaw('COALESCE(SUM(invoices.total_minor - invoices.balance_minor), 0) as paid')
+            ->selectRaw('COALESCE(SUM(CASE WHEN invoices.status <> ? THEN invoices.balance_minor ELSE 0 END), 0) as outstanding', [InvoiceStatus::Void->value])
+            ->selectRaw('COALESCE(SUM(CASE WHEN invoices.status <> ? AND invoices.due_date IS NOT NULL AND invoices.due_date < CURRENT_DATE THEN invoices.balance_minor ELSE 0 END), 0) as overdue', [InvoiceStatus::Void->value])
+            ->selectRaw('COALESCE(SUM(CASE WHEN invoices.status <> ? AND invoices.due_date IS NOT NULL AND invoices.due_date < CURRENT_DATE AND invoices.balance_minor > 0 THEN 1 ELSE 0 END), 0) as overdue_count', [InvoiceStatus::Void->value])
             ->first();
 
         return [
             'count' => (int) ($row->count ?? 0),
             'total' => (int) ($row->total ?? 0),
-            'paid' => max(0, (int) ($row->paid ?? 0)),
+            'paid' => (int) ($row->paid ?? 0),
             'outstanding' => (int) ($row->outstanding ?? 0),
             'overdue' => (int) ($row->overdue ?? 0),
             'overdue_count' => (int) ($row->overdue_count ?? 0),
         ];
     }
 
-    /** @return \Illuminate\Pagination\LengthAwarePaginator<int, Invoice> */
+    /**
+     * The page of invoices.
+     *
+     * The order and its shipping address are joined rather than loaded through relations: this
+     * screen needs two columns from the order, and a join answers "whose invoice is this" in one
+     * query instead of one per row on a list that is always read with a paginator.
+     *
+     * @return \Illuminate\Pagination\LengthAwarePaginator<int, Invoice>
+     */
     public function invoices()
     {
-        return Invoice::query()
-            ->with(['order.addresses'])
+        return $this->base()
             ->when($this->search !== '', function (Builder $query): void {
                 $term = '%'.trim($this->search).'%';
 
                 $query->where(function (Builder $inner) use ($term): void {
-                    $inner->where('number', 'like', $term)
-                        ->orWhereHas('order', static fn (Builder $order) => $order
-                            ->where('number', 'like', $term)
-                            ->orWhereHas('addresses', static fn (Builder $address) => $address
-                                ->where('name', 'like', $term)
-                                ->orWhere('phone', 'like', $term)));
+                    $inner->where('invoices.number', 'like', $term)
+                        ->orWhere('commerce_orders.number', 'like', $term)
+                        ->orWhere('commerce_order_addresses.name', 'like', $term)
+                        ->orWhere('commerce_order_addresses.phone', 'like', $term);
                 });
             })
-            ->when($this->from !== '', fn (Builder $query) => $query->whereDate('commerce_invoices.issued_at', '>=', $this->from))
-            ->when($this->to !== '', fn (Builder $query) => $query->whereDate('commerce_invoices.issued_at', '<=', $this->to))
-            ->when($this->state === 'void', fn (Builder $query) => $query->where('commerce_invoices.status', Invoice::VOID))
+            ->when($this->from !== '', fn (Builder $query) => $query->whereDate('invoices.issue_date', '>=', $this->from))
+            ->when($this->to !== '', fn (Builder $query) => $query->whereDate('invoices.issue_date', '<=', $this->to))
+            ->when($this->state === 'void', fn (Builder $query) => $query->where('invoices.status', InvoiceStatus::Void->value))
             ->when($this->state === 'paid', fn (Builder $query) => $query
-                ->where('commerce_invoices.status', '<>', Invoice::VOID)
-                ->whereRaw('commerce_orders.paid_minor - commerce_orders.refunded_minor >= commerce_invoices.total_minor'))
+                ->where('invoices.status', '<>', InvoiceStatus::Void->value)
+                ->where('invoices.balance_minor', '<=', 0))
             ->when($this->state === 'outstanding', fn (Builder $query) => $query
-                ->where('commerce_invoices.status', '<>', Invoice::VOID)
-                ->whereRaw('commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor'))
+                ->where('invoices.status', '<>', InvoiceStatus::Void->value)
+                ->where('invoices.balance_minor', '>', 0))
             ->when($this->state === 'overdue', fn (Builder $query) => $query
-                ->where('commerce_invoices.status', '<>', Invoice::VOID)
-                ->whereNotNull('commerce_invoices.due_at')
-                ->where('commerce_invoices.due_at', '<', now())
-                ->whereRaw('commerce_orders.paid_minor - commerce_orders.refunded_minor < commerce_invoices.total_minor'))
-            // The joins are done with an explicit subquery-free join so the raw comparisons
-            // above read columns from the same row set the summary does.
-            ->join('commerce_orders', 'commerce_orders.id', '=', 'commerce_invoices.order_id')
-            ->orderByDesc('commerce_invoices.issued_at')
-            ->orderByDesc('commerce_invoices.id')
-            ->select('commerce_invoices.*')
+                ->where('invoices.status', '<>', InvoiceStatus::Void->value)
+                ->where('invoices.balance_minor', '>', 0)
+                ->whereNotNull('invoices.due_date')
+                ->whereDate('invoices.due_date', '<', now()->toDateString()))
+            ->select([
+                'invoices.*',
+                'commerce_orders.number as order_number',
+                'commerce_orders.refunded_minor as order_refunded_minor',
+                'commerce_order_addresses.name as customer_name',
+                'commerce_order_addresses.phone as customer_phone',
+            ])
+            ->orderByDesc('invoices.issue_date')
+            ->orderByDesc('invoices.id')
             ->paginate(20);
     }
 
-    /** Derive what the row shows. The stored status is passed in only to detect a void. */
+    /**
+     * One query shape, so the summary and the rows can never disagree.
+     *
+     * @return Builder<Invoice>
+     */
+    private function base(): Builder
+    {
+        return Invoice::query()
+            ->whereNotNull('invoices.commerce_order_id')
+            ->join('commerce_orders', 'commerce_orders.id', '=', 'invoices.commerce_order_id')
+            ->leftJoin('commerce_order_addresses', function ($join): void {
+                $join->on('commerce_order_addresses.order_id', '=', 'commerce_orders.id')
+                    ->where('commerce_order_addresses.type', '=', 'shipping');
+            });
+    }
+
+    /**
+     * Derive what the row shows.
+     *
+     * `InvoiceBalance` is the framework-free derivation, kept because the same rules decide the
+     * badge here and the wording of the chase letter. It is fed from the ledger rather than
+     * from the order: `paid_minor` on the invoice is what was actually received, and the order's
+     * counter is a commerce-side record that may lag it by one confirmation.
+     */
     public function balance(Invoice $invoice): InvoiceBalance
     {
-        $order = $invoice->order;
-        $dueAt = $invoice->due_at;
+        $dueAt = $invoice->due_date;
 
         return new InvoiceBalance(
             totalMinor: (int) $invoice->total_minor,
-            paidMinor: (int) ($order->paid_minor ?? 0),
-            refundedMinor: (int) ($order->refunded_minor ?? 0),
-            isVoid: $invoice->status === Invoice::VOID,
+            paidMinor: (int) $invoice->paid_minor,
+            refundedMinor: (int) ($invoice->order_refunded_minor ?? 0),
+            isVoid: $invoice->status === InvoiceStatus::Void,
             daysUntilDue: $dueAt === null ? null : (int) now()->startOfDay()->diffInDays($dueAt->startOfDay(), false),
         );
     }

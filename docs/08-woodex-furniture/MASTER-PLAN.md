@@ -172,7 +172,8 @@ The OS has accounting tables (`invoices`, `payments`, `payment_allocations`, `jo
 
 This is more work than pasting the screens in, and it is the only version that survives an audit.
 
-**Status: built and proven (F2 core).** `OrderToLedger` raises the OS invoice for a placed order:
+**Status: done (F2).** `OrderToLedger` raises the OS invoice for a placed order, and the
+checkout calls it inside the placement transaction:
 
 ```
 commerce order WDX-000001  (Rs 125,220)
@@ -186,13 +187,15 @@ commerce order WDX-000001  (Rs 125,220)
         balanced
 ```
 
-Verified in the running OS, not in a fixture: the invoice appears in **Accounts -> Invoices**, the
-amounts move the **trial balance**, and running the bridge twice leaves one invoice and one
-journal entry (the unique index on `commerce_order_id` plus a row lock on the order).
+The second ledger is gone, not merely unused. `commerce_invoices`, `commerce_invoice_items`,
+the `INV-` counter and the commerce printable document were removed; `commerce_payments` keeps
+the gateway attempt and lost the invoice link; Commerce -> Invoices reads the OS invoices that
+name a commerce order, and every row opens `admin.invoices.show`, where the document already is.
 
-Still open in F2: the Commerce screens (Invoices, Payments, Refunds, Reports) still read
-`commerce_invoices`. They must read the OS ledger, which is now the only place a furniture sale
-is booked.
+Verified in the running OS rather than in a fixture: three orders placed through the real
+checkout each produced exactly one `WFI-` invoice, one balanced journal entry and one frozen
+PDF; the trial balance moves; running the bridge twice leaves one invoice and one entry; and all
+eighteen admin screens answer 200.
 
 ---
 

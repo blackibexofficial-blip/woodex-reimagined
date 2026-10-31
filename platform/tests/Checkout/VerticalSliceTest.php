@@ -20,12 +20,12 @@ use Tests\Support\Assert;
 use Tests\TestCase;
 
 /**
- * T11's acceptance test: a product becomes a cart, the cart becomes a COD order, and the order
- * becomes an invoice — with every number reconciling.
+ * T11's acceptance test: a product becomes a cart, and the cart becomes a COD order, with every
+ * number reconciling.
  *
  * What this proves is the part that is expensive to get wrong: the paisa. Prices, a coupon, an
- * 18% tax, a delivery charge and the stock decrement all meet here, and the invoice, the
- * payment and the order must agree to the last unit.
+ * 18% tax, a delivery charge and the stock decrement all meet here, and the order and the
+ * payment must agree to the last unit.
  *
  * What it does not prove is the transaction. Locking, rollback and "ten parallel orders for one
  * unit, exactly one succeeds" need a database and belong to T12's load probe. This suite is the
@@ -95,14 +95,13 @@ final class VerticalSliceTest extends TestCase
         Assert::same('WX-1002: 1 available, 2 requested', $plan->summary(), 'and the customer is told why');
     }
 
-    public function testTheCodOrderInvoiceAndPaymentAllCarryTheSameTotal(): void
+    public function testTheCodOrderAndItsPaymentCarryTheSameTotal(): void
     {
         [, $totals] = $this->scenario();
 
         $draft = OrderDraft::assemble(
             totals: $totals,
             number: OrderNumber::order(127),
-            invoiceNumber: OrderNumber::invoice(127),
             gateway: 'cod',
             addresses: [self::address()],
             source: 'web',
@@ -110,15 +109,16 @@ final class VerticalSliceTest extends TestCase
         );
 
         $order = $draft->toOrderRow();
-        $invoice = $draft->toInvoiceRow();
         $payment = $draft->toPaymentRow();
 
         Assert::same('WDX-000127', $order['number'], 'the order number a customer reads out');
         Assert::same(20_852_800, $order['grand_total_minor'], 'the order total');
-        Assert::same(20_852_800, $invoice['total_minor'], 'the invoice says the same');
         Assert::same(20_852_800, $payment['amount_minor'], 'and the payment is for the same money');
-        Assert::same('INV-000127', $invoice['number'], 'invoices keep pace with orders');
-        Assert::same('issued', $invoice['status'], 'the invoice is issued on placement');
+
+        // No invoice is drafted here any more. The checkout used to mint `INV-000127` beside the
+        // order; the invoice is now raised from the saved order by the ledger bridge, with the
+        // OS's own number, and it copies these totals rather than recomputing them.
+        Assert::same(false, method_exists(OrderDraft::class, 'toInvoiceRow'), 'the draft mints no invoice number');
     }
 
     public function testACodOrderStartsUnpaidAndUnfulfilled(): void
@@ -128,7 +128,6 @@ final class VerticalSliceTest extends TestCase
         $order = OrderDraft::assemble(
             totals: $totals,
             number: OrderNumber::order(1),
-            invoiceNumber: OrderNumber::invoice(1),
             gateway: 'cod',
             addresses: [self::address()],
         )->toOrderRow();
@@ -140,14 +139,13 @@ final class VerticalSliceTest extends TestCase
         Assert::same(['EID10 · Eid sale'], $order['applied_rules'], 'the customer can see what was applied');
     }
 
-    public function testTheOrderItemsAddUpToTheOrderAndTheInvoiceItemsAddUpToTheInvoice(): void
+    public function testTheOrderItemsAddUpToTheOrderTotal(): void
     {
         [, $totals] = $this->scenario();
 
         $draft = OrderDraft::assemble(
             totals: $totals,
             number: OrderNumber::order(2),
-            invoiceNumber: OrderNumber::invoice(2),
             gateway: 'cod',
             addresses: [self::address()],
         );
@@ -169,15 +167,6 @@ final class VerticalSliceTest extends TestCase
             'lines + delivery = the order total',
         );
 
-        $invoiceItems = $draft->toInvoiceItemRows($items);
-
-        Assert::same(3, count($invoiceItems), 'two lines and the delivery charge');
-        Assert::same('Delivery', $invoiceItems[2]['description'], 'delivery is itemised, not hidden in a line');
-        Assert::same(
-            20_852_800,
-            array_sum(array_column($invoiceItems, 'amount_minor')),
-            'the invoice items add up to the invoice',
-        );
     }
 
     public function testTheAddressIsCopiedOntoTheOrderAtPlacement(): void
@@ -187,7 +176,6 @@ final class VerticalSliceTest extends TestCase
         $draft = OrderDraft::assemble(
             totals: $totals,
             number: OrderNumber::order(3),
-            invoiceNumber: OrderNumber::invoice(3),
             gateway: 'cod',
             addresses: [self::address(), self::address('billing', '35202-1234567-1')],
         );
@@ -208,7 +196,6 @@ final class VerticalSliceTest extends TestCase
             static fn () => OrderDraft::assemble(
                 totals: $totals,
                 number: OrderNumber::order(4),
-                invoiceNumber: OrderNumber::invoice(4),
                 gateway: 'cod',
                 addresses: [],
             ),
@@ -223,7 +210,6 @@ final class VerticalSliceTest extends TestCase
         $history = OrderDraft::assemble(
             totals: $totals,
             number: OrderNumber::order(5),
-            invoiceNumber: OrderNumber::invoice(5),
             gateway: 'cod',
             addresses: [self::address()],
         )->toHistoryRow();
@@ -240,7 +226,6 @@ final class VerticalSliceTest extends TestCase
         $order = OrderDraft::assemble(
             totals: $totals,
             number: OrderNumber::order(6),
-            invoiceNumber: OrderNumber::invoice(6),
             gateway: 'cod',
             addresses: [self::address()],
         )->toOrderRow();

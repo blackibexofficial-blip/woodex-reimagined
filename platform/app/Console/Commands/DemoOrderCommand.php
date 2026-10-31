@@ -75,7 +75,7 @@ final class DemoOrderCommand extends Command
 
     private function renderOrder(Order $order): void
     {
-        $order->loadMissing(['items', 'invoices', 'payments', 'addresses']);
+        $order->loadMissing(['items', 'payments', 'addresses']);
 
         $this->info("Order {$order->number} placed — {$order->status}, payment {$order->payment_status}");
 
@@ -98,10 +98,10 @@ final class DemoOrderCommand extends Command
             ['Total', number_format($order->grand_total_minor / 100, 2)],
         ]);
 
-        $invoice = $order->invoices->first();
+        $invoice = $order->ledgerInvoice();
         $payment = $order->payments->first();
 
-        $this->line('Invoice: '.($invoice->number ?? '—'));
+        $this->line('Invoice: '.($invoice->number ?? 'not booked — no ledger in this install'));
         $this->line(sprintf(
             'Payment: %s — ₨%s due on delivery',
             $payment->gateway ?? '—',

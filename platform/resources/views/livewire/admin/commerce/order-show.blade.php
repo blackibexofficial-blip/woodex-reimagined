@@ -9,6 +9,12 @@
         ]"
     >
         <x-slot:actions>
+            @if ($invoiceNumber !== null)
+                <a href="{{ route('admin.invoices.show', (int) $invoiceId) }}"
+                   class="inline-flex h-9 items-center rounded-lg border border-gray-300 px-4 font-mono text-theme-xs text-gray-700 hover:border-navy-400 dark:border-gray-700 dark:text-gray-200">
+                    {{ $invoiceNumber }}
+                </a>
+            @endif
             @if ($canManage && $next)
                 <button type="button" wire:click="advance" wire:loading.attr="disabled"
                         class="inline-flex h-9 items-center rounded-lg bg-navy-900 px-4 text-theme-sm font-medium text-white hover:bg-navy-800 disabled:opacity-60">

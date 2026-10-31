@@ -87,10 +87,11 @@ final class AdminWiringTest
 
         preg_match_all('/Route::get\\([^,]+, ([A-Za-z]+)::class\\)/', $routes, $matches);
 
-        // Fourteen screens, the per-order detail view from T11, and the printable invoice
-        // document from T17 — which is a controller, not a Livewire component, because it
-        // renders once and has no state to keep.
-        Assert::same(16, count($matches[1]), 'fifteen screens and the printable document are declared');
+        // Fourteen screens and the per-order detail view from T11. There used to be a
+        // sixteenth route here for the printable invoice — a controller rather than a component,
+        // because it rendered once and kept no state. It is gone: the document belongs to the
+        // OS now and is served from `admin.invoices.show`.
+        Assert::same(15, count($matches[1]), 'fifteen screens are declared');
 
         foreach ($matches[1] as $class) {
             $component = $this->root().'/app/Livewire/Admin/Commerce/'.$class.'.php';

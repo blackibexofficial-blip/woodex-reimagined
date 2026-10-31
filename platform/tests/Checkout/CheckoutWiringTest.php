@@ -35,7 +35,10 @@ final class CheckoutWiringTest
         $migration = $this->source('/database/migrations/2026_10_28_104000_create_commerce_checkout_tables.php');
         $models = glob($this->root().'/app/Domain/Commerce/Checkout/Models/*.php') ?: [];
 
-        Assert::true(count($models) >= 12, 'the slice ships its models');
+        // Ten, not twelve: `Invoice` and `InvoiceItem` pointed at `commerce_invoices`, the second
+        // set of books this change removes. The invoice comes from the OS ledger now, so no
+        // commerce model claims to own one.
+        Assert::true(count($models) >= 10, 'the slice ships its models');
 
         foreach ($models as $file) {
             $source = (string) file_get_contents($file);
@@ -71,7 +74,8 @@ final class CheckoutWiringTest
         Assert::true(str_contains($service, 'lockForUpdate()'), 'stock rows are locked, not just read');
         Assert::true(str_contains($service, 'new CartCalculator'), 'prices come from the one calculator');
         Assert::true(str_contains($service, 'OrderDraft::assemble'), 'the order is assembled by the tested class');
-        Assert::true(str_contains($service, '->pair()'), 'order and invoice numbers are taken together, under lock');
+        Assert::true(str_contains($service, '$this->numbers->order()'), 'the order number is taken under its own lock');
+        Assert::same(false, str_contains($service, '->pair()'), 'and the invoice number is not minted here');
     }
 
     public function testTheCartTotalsAreWrittenBackToTheRow(): void
@@ -96,7 +100,7 @@ final class CheckoutWiringTest
     {
         $migration = $this->source('/database/migrations/2026_10_28_104000_create_commerce_checkout_tables.php');
 
-        foreach (['commerce_carts', 'commerce_orders', 'commerce_invoices', 'commerce_payments', 'commerce_inventory_reservations', 'commerce_sequences'] as $table) {
+        foreach (['commerce_carts', 'commerce_orders', 'commerce_payments', 'commerce_inventory_reservations', 'commerce_sequences'] as $table) {
             Assert::true(str_contains($migration, "Schema::create('{$table}'"), "creates {$table}");
             Assert::true(str_contains($migration, "Schema::dropIfExists('{$table}'"), "drops {$table}");
         }

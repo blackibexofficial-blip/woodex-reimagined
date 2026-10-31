@@ -164,10 +164,10 @@ final class SchemaTest
         $names = array_keys($this->migrations());
         sort($names);
 
-        // Five: catalog, attributes, variant/inventory, puck columns, checkout.
-        // The ledger-link migration (2026_10_28_105000) belongs to the OS, where `invoices`
-        // exists, so it is deliberately not counted here.
-        Assert::same(5, count($names), "five commerce migrations");
+        // Six: catalog, attributes, variant/inventory, puck columns, checkout, and the one that
+        // drops the commerce invoice tables now that the OS owns the invoice. The link migration
+        // (2026_10_28_105000) sits between the last two and counts as well.
+        Assert::same(6, count($names), "six commerce migrations");
 
         $previous = '';
 

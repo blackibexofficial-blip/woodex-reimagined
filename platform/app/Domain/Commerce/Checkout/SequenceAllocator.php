@@ -7,7 +7,12 @@ namespace App\Domain\Commerce\Checkout;
 use App\Domain\Commerce\Checkout\Models\Sequence;
 
 /**
- * Hands out the next order and invoice numbers.
+ * Hands out the next order number.
+ *
+ * It used to hand out invoice numbers too — `INV-000001`, from a counter of its own. That
+ * counter is gone: an invoice now takes its number from the OS (`WFI-2026-0001`), which is
+ * where the document, the PDF and the journal entry live. Two counters produced two
+ * identities for one sale, and a customer quoting the wrong one could not be found.
  *
  * Must be called inside the checkout transaction: `lockForUpdate()` is what makes two
  * simultaneous checkouts produce 127 and 128 rather than two 127s. The lock is held for the
@@ -43,19 +48,4 @@ final class SequenceAllocator
         return $this->next('order', 'WDX');
     }
 
-    public function invoice(): OrderNumber
-    {
-        return $this->next('invoice', 'INV');
-    }
-
-    /**
-     * An order and its invoice share a counter in the numbers a customer sees, because
-     * "WDX-000127 / INV-000127" is one order, not two documents with unrelated ids.
-     *
-     * @return array{0: OrderNumber, 1: OrderNumber}
-     */
-    public function pair(): array
-    {
-        return [$this->order(), $this->invoice()];
-    }
 }

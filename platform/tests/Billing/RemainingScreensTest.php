@@ -181,7 +181,7 @@ final class RemainingScreensTest
         $source = $this->source('/app/Livewire/Admin/Commerce/SettingsIndex.php');
 
         Assert::true(str_contains($source, 'Order::query()->pluck(\'number\')'), 'orders are read from the orders');
-        Assert::true(str_contains($source, 'Invoice::query()->pluck(\'number\')'), 'and invoices from the invoices');
+        Assert::same(false, str_contains($source, "Invoice::query()->pluck('number')"), 'and nothing reads a commerce invoice counter');
         Assert::true(str_contains($source, 'SequenceHealth'), 'so the counter is checked, not trusted');
         Assert::true(
             str_contains($source, 'preg_match'),

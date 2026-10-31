@@ -6,7 +6,7 @@ namespace App\Domain\Commerce\Checkout;
 
 use App\Domain\Commerce\Checkout\Models\Cart;
 use App\Domain\Commerce\Checkout\Models\InventoryReservation;
-use App\Domain\Commerce\Checkout\Models\Invoice;
+use App\Domain\Commerce\Billing\OrderToLedger;
 use App\Domain\Commerce\Checkout\Models\Order;
 use App\Domain\Commerce\Checkout\Models\Payment;
 use App\Domain\Commerce\Models\InventoryItem;
@@ -14,6 +14,7 @@ use App\Domain\Commerce\Pricing\CartCalculator;
 use App\Domain\Commerce\Pricing\DiscountRule;
 use App\Domain\Commerce\Pricing\ShippingMethod;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 use LogicException;
 
@@ -26,8 +27,15 @@ use LogicException;
  *   2. plan the allocation against what is really available;
  *   3. refuse the order if the plan is short — before any row is written;
  *   4. price the cart with the same calculator the cart page used;
- *   5. take the order and invoice numbers under their own lock;
- *   6. write order, items, addresses, invoice, payment and history together.
+ *   5. take the order number under its own lock;
+ *   6. write order, items, addresses, payment and history together;
+ *   7. raise the invoice in the OS ledger, from the order that was just written.
+ *
+ * Step 7 is the only step that may not happen. `OrderToLedger` needs the OS — an `invoices`
+ * table, a chart of accounts, a sequence. A bare commerce install has none of those, so the
+ * bridge stands down rather than blocking the sale. What it must never do is invent a second
+ * invoice of its own to fill the gap; that is the arrangement this class used to have, and it
+ * meant a shop could take money and book it nowhere.
  *
  * Step 3 before step 4 matters: refusing after pricing costs a calculation that threw away a
  * plausible-looking total, and a customer who is shown a total and then told "out of stock" has
@@ -104,13 +112,13 @@ final class CheckoutService
                 PricedCart::fromRows($rows, currency: $cart->currency, shipping: $shipping ?? CartService::cashOnDelivery(), rules: $rules),
             );
 
-            // 5. Numbers, under their own row locks.
-            [$orderNumber, $invoiceNumber] = $this->numbers->pair();
+            // 5. The order number, under its own row lock. The invoice number is not taken
+            // here: it comes from the OS sequence, inside the ledger bridge below.
+            $orderNumber = $this->numbers->order();
 
             $draft = OrderDraft::assemble(
                 totals: $totals,
                 number: $orderNumber,
-                invoiceNumber: $invoiceNumber,
                 gateway: $gateway,
                 addresses: $addresses,
                 source: (string) $source,
@@ -125,20 +133,16 @@ final class CheckoutService
                 'placed_at' => now(),
             ]));
 
-            $orderItems = $this->writeItems($order, $draft, $items->all());
+            $this->writeItems($order, $draft, $items->all());
 
             $order->addresses()->createMany($draft->toAddressRows());
 
-            $invoice = Invoice::create(array_merge($draft->toInvoiceRow(), [
-                'order_id' => $order->id,
-                'issued_at' => now(),
-            ]));
-
-            $invoice->items()->createMany($draft->toInvoiceItemRows($orderItems));
-
+            // No invoice row is written here, and the payment no longer carries an
+            // `invoice_id`: that column pointed at the commerce table this change drops. What
+            // records the gateway attempt is this row; what records the money is the ledger,
+            // and the two are joined by the order.
             Payment::create(array_merge($draft->toPaymentRow(), [
                 'order_id' => $order->id,
-                'invoice_id' => $invoice->id,
             ]));
 
             $order->history()->create($draft->toHistoryRow());
@@ -150,8 +154,34 @@ final class CheckoutService
 
             $cart->update(['status' => Cart::CONVERTED, 'shipping_method_code' => $shipping?->code ?? 'cod']);
 
+            // 7. One sale, one document. Raised from the order as written, so every amount is
+            // copied rather than recomputed, and inside this transaction so a failure to book
+            // rolls the sale back rather than leaving an order with no invoice.
+            $this->ledger()?->handle($order, alreadyPaid: false);
+
             return $order->refresh();
         });
+    }
+
+    /**
+     * The ledger bridge, when this install has one.
+     *
+     * Deliberately resolved here and not injected in the constructor. A class-typed constructor
+     * parameter with a default is never autowired — Laravel returns the default to preserve what
+     * the developer wrote — so an injected `?OrderToLedger $ledger = null` is null forever, and
+     * the sale would be booked nowhere while the code looked like it booked it. This was exactly
+     * that bug for one order: the command printed "not booked" and nothing said why.
+     *
+     * The guard is the schema, not the class: a bare commerce install ships this file and has no
+     * `invoices` table, so there is nothing to book into and no OS classes to build against.
+     */
+    private function ledger(): ?OrderToLedger
+    {
+        if (! Schema::hasTable('invoices') || ! Schema::hasColumn('invoices', 'commerce_order_id')) {
+            return null;
+        }
+
+        return app(OrderToLedger::class);
     }
 
     /**
@@ -209,9 +239,8 @@ final class CheckoutService
 
     /**
      * @param  list<\App\Domain\Commerce\Checkout\Models\CartItem>  $items
-     * @return list<array<string, mixed>>  the created order item rows, with their ids
      */
-    private function writeItems(Order $order, OrderDraft $draft, array $items): array
+    private function writeItems(Order $order, OrderDraft $draft, array $items): void
     {
         $references = [];
 
@@ -223,14 +252,9 @@ final class CheckoutService
             ];
         }
 
-        $created = [];
-
         foreach ($draft->toItemRows($references) as $row) {
-            $model = $order->items()->create($row);
-            $created[] = array_merge($row, ['id' => $model->id]);
+            $order->items()->create($row);
         }
-
-        return $created;
     }
 
     /**

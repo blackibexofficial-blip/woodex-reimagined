@@ -38,12 +38,6 @@ class Payment extends Model
         return $this->belongsTo(Order::class);
     }
 
-    /** @return BelongsTo<Invoice, $this> */
-    public function invoice(): BelongsTo
-    {
-        return $this->belongsTo(Invoice::class);
-    }
-
     public function markPaid(?string $reference = null): void
     {
         $this->status = OrderStatus::PAYMENT_PAID;

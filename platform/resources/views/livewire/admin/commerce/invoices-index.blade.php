@@ -1,7 +1,7 @@
 <div>
     <x-admin.page-header
         title="Invoices"
-        description="Every invoice, and what is still owed on it. The status is worked out from the money — paid, refunded and outstanding — not from the column that was written when it was issued."
+        description="Furniture invoices from the studio ledger, and what is still owed on each. These are the same documents Accounts works from — one sale, one invoice, one set of books."
         :breadcrumbs="['Commerce' => route('admin.commerce.dashboard'), 'Invoices' => null]"
     />
 
@@ -74,50 +74,49 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @foreach ($invoices as $invoice)
                             @php($balance = $this->balance($invoice))
-                            @php($customer = $invoice->order?->addresses->firstWhere('type', 'shipping'))
                             <tr wire:key="invoice-{{ $invoice->id }}">
                                 <td class="px-5 py-3 font-mono text-theme-xs text-gray-800 dark:text-white/90">{{ $invoice->number }}</td>
                                 <td class="px-3 py-3">
-                                    @if ($invoice->order !== null)
-                                        <a href="{{ route('admin.commerce.orders.show', $invoice->order) }}"
+                                    @if ($invoice->commerce_order_id !== null)
+                                        <a href="{{ route('admin.commerce.orders.show', (int) $invoice->commerce_order_id) }}"
                                            class="font-mono text-theme-xs text-navy-600 hover:underline dark:text-navy-300">
-                                            {{ $invoice->order->number }}
+                                            {{ $invoice->order_number }}
                                         </a>
                                     @else
                                         <span class="text-gray-400">—</span>
                                     @endif
                                 </td>
                                 <td class="px-3 py-3">
-                                    {{ $customer?->name ?? '—' }}
-                                    @if ($customer?->phone)
-                                        <div class="text-theme-xs text-gray-500">{{ $customer->phone }}</div>
+                                    {{ $invoice->customer_name ?? '—' }}
+                                    @if ($invoice->customer_phone !== null)
+                                        <div class="text-theme-xs text-gray-500">{{ $invoice->customer_phone }}</div>
                                     @endif
                                 </td>
                                 <td class="px-3 py-3 text-gray-500">
-                                    {{ $invoice->issued_at?->format('j M Y') ?? '—' }}
-                                    @if ($invoice->due_at !== null && $balance->isOverdue())
+                                    {{ $invoice->issue_date?->format('j M Y') ?? '—' }}
+                                    @if ($invoice->due_date !== null && $balance->isOverdue())
                                         <div class="text-theme-xs font-medium text-error-600">
                                             {{ $balance->daysOverdue() }} {{ $balance->daysOverdue() === 1 ? 'day' : 'days' }} late
                                         </div>
-                                    @elseif ($invoice->due_at !== null)
-                                        <div class="text-theme-xs text-gray-400">due {{ $invoice->due_at->format('j M') }}</div>
+                                    @elseif ($invoice->due_date !== null)
+                                        <div class="text-theme-xs text-gray-400">due {{ $invoice->due_date->format('j M') }}</div>
                                     @endif
                                 </td>
                                 <td class="px-3 py-3 text-right tabular-nums text-gray-800 dark:text-white/90">
-                                    {{ \App\Domain\Commerce\Support\Money::ofMinor((int) $invoice->total_minor, (string) ($invoice->order?->currency ?? 'PKR'))->format() }}
+                                    {{ \App\Domain\Commerce\Support\Money::ofMinor((int) $invoice->total_minor, (string) ($invoice->currency ?? 'PKR'))->format() }}
                                 </td>
                                 <td class="px-3 py-3 text-right tabular-nums {{ $balance->outstandingMinor() > 0 ? 'font-semibold text-warning-600' : 'text-gray-400' }}">
                                     {{ $balance->outstandingMinor() > 0
-                                        ? \App\Domain\Commerce\Support\Money::ofMinor($balance->outstandingMinor(), (string) ($invoice->order?->currency ?? 'PKR'))->format()
+                                        ? \App\Domain\Commerce\Support\Money::ofMinor($balance->outstandingMinor(), (string) ($invoice->currency ?? 'PKR'))->format()
                                         : '—' }}
                                 </td>
                                 <td class="px-3 py-3">
                                     <x-admin.badge :tone="$balance->tone()">{{ $balance->label() }}</x-admin.badge>
                                 </td>
                                 <td class="px-5 py-3 text-right">
-                                    <a href="{{ route('admin.commerce.invoices.print', $invoice) }}"
+                                    <a href="{{ route('admin.invoices.show', $invoice) }}"
                                        class="text-theme-xs font-medium text-navy-600 hover:underline dark:text-navy-300">
-                                        Print
+                                        Open
                                     </a>
                                 </td>
                             </tr>
@@ -133,7 +132,8 @@
     </x-admin.card>
 
     <p class="mt-3 text-theme-xs text-gray-500">
-        Invoices are issued automatically with an order and are never edited here. Voiding or
-        correcting one is a separate, permissioned action that records a reason.
+        An invoice is raised automatically with the order and is never edited here. Opening one
+        takes you to the studio's own invoice, where voiding or correcting it is a separate,
+        permissioned action that records a reason.
     </p>
 </div>

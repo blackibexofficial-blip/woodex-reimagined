@@ -15,8 +15,9 @@ use LogicException;
  * decided here, in a class with no database and no framework, so the arithmetic that becomes
  * an invoice can be tested to the paisa. What the service adds is a transaction and a row lock.
  *
- * The invoice and the payment are assembled at the same moment as the order because they must
- * agree with it. An invoice generated later, from a fresh read of the catalog, is how a
+ * The payment is assembled at the same moment as the order because it must agree with it. An
+ * invoice is not assembled here: it is raised from the saved order by the ledger bridge, which
+ * copies these amounts rather than re-deriving them from the catalog. Re-deriving is how a
  * customer ends up with a document that does not match what they were charged.
  */
 final readonly class OrderDraft
@@ -26,7 +27,6 @@ final readonly class OrderDraft
      */
     public function __construct(
         public OrderNumber $number,
-        public OrderNumber $invoiceNumber,
         public CartTotals $totals,
         public string $currency,
         public string $gateway,
@@ -47,14 +47,13 @@ final readonly class OrderDraft
     public static function assemble(
         CartTotals $totals,
         OrderNumber $number,
-        OrderNumber $invoiceNumber,
         string $gateway,
         array $addresses,
         string $source = 'web',
         ?string $couponCode = null,
         string $currency = 'PKR',
     ): self {
-        return new self($number, $invoiceNumber, $totals, $currency, $gateway, $addresses, $source, $couponCode);
+        return new self($number, $totals, $currency, $gateway, $addresses, $source, $couponCode);
     }
 
     public function grandTotalMinor(): int
@@ -114,35 +113,6 @@ final readonly class OrderDraft
         return $rows;
     }
 
-    /**
-     * @param  list<array<string, mixed>>  $orderItemRows  rows as returned by toItemRows(), after ids exist
-     * @return list<array<string, mixed>>
-     */
-    public function toInvoiceItemRows(array $orderItemRows): array
-    {
-        $rows = [];
-
-        foreach ($orderItemRows as $index => $item) {
-            $rows[] = [
-                'order_item_id' => $item['id'] ?? null,
-                'description' => $item['name'].' ('.$item['sku'].')',
-                'qty' => (int) $item['qty'],
-                'amount_minor' => (int) $item['line_total_minor'],
-            ];
-        }
-
-        if ($this->totals->shippingTotal->minor > 0) {
-            $rows[] = [
-                'order_item_id' => null,
-                'description' => 'Delivery',
-                'qty' => 1,
-                'amount_minor' => $this->totals->shippingTotal->minor,
-            ];
-        }
-
-        return $rows;
-    }
-
     /** @return list<array<string, mixed>> */
     public function toAddressRows(): array
     {
@@ -157,17 +127,6 @@ final readonly class OrderDraft
             'postcode' => $address['postcode'] ?? null,
             'country' => $address['country'] ?? 'PK',
         ], $this->addresses);
-    }
-
-    /** @return array<string, mixed> */
-    public function toInvoiceRow(): array
-    {
-        return [
-            'number' => $this->invoiceNumber->value(),
-            'status' => 'issued',
-            'total_minor' => $this->grandTotalMinor(),
-            'due_at' => null,
-        ];
     }
 
     /** @return array<string, mixed> */

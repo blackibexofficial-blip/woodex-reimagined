@@ -36,11 +36,27 @@ class OrderShow extends Component
 
     public string $cancelReason = '';
 
+    /**
+     * The invoice raised for this sale, if the install has a ledger.
+     *
+     * Held as two scalars rather than as a model: the document belongs to Sales, and a Livewire
+     * property typed with a class a bare commerce install does not have would break the
+     * component's hydration there — for a screen that would otherwise work fine without it.
+     */
+    public ?int $invoiceId = null;
+
+    public ?string $invoiceNumber = null;
+
     public function mount(Order $order): void
     {
         abort_unless($this->user()->can('commerce.orders.view'), 403);
 
-        $this->order = $order->load(['items', 'addresses', 'payments', 'invoices.items', 'history']);
+        $this->order = $order->load(['items', 'addresses', 'payments', 'history']);
+
+        $invoice = $order->ledgerInvoice();
+
+        $this->invoiceId = $invoice?->id;
+        $this->invoiceNumber = $invoice?->number;
     }
 
     /** Advance the order one legal step along the fulfilment path. */
@@ -64,7 +80,7 @@ class OrderShow extends Component
             return;
         }
 
-        $this->order->refresh()->load(['items', 'addresses', 'payments', 'invoices.items', 'history']);
+        $this->order->refresh()->load(['items', 'addresses', 'payments', 'history']);
         $this->toast("Order {$this->order->number} is now {$next}.");
     }
 
@@ -90,7 +106,7 @@ class OrderShow extends Component
         }
 
         $this->cancelReason = '';
-        $this->order->refresh()->load(['items', 'addresses', 'payments', 'invoices.items', 'history']);
+        $this->order->refresh()->load(['items', 'addresses', 'payments', 'history']);
         $this->toast("Order {$this->order->number} cancelled.");
     }
 

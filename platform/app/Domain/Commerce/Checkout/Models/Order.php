@@ -8,6 +8,7 @@ use App\Domain\Commerce\Checkout\OrderStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 use LogicException;
 
 /**
@@ -63,10 +64,23 @@ class Order extends Model
         return $this->hasMany(OrderStatusHistory::class)->orderBy('created_at');
     }
 
-    /** @return HasMany<Invoice, $this> */
-    public function invoices(): HasMany
+    /**
+     * The OS invoice raised for this order, or null when this install has no ledger.
+     *
+     * Deliberately a method and not a relation. The class it reaches lives in Sales, which a
+     * bare commerce install does not have — and a relation that names a missing class is a
+     * fatal error the moment the model is loaded, on pages that never ask about invoices.
+     * A method costs one query, only when something actually wants the document.
+     */
+    public function ledgerInvoice(): ?\App\Domain\Sales\Models\Invoice
     {
-        return $this->hasMany(Invoice::class);
+        if (! Schema::hasTable('invoices') || ! Schema::hasColumn('invoices', 'commerce_order_id')) {
+            return null;
+        }
+
+        return \App\Domain\Sales\Models\Invoice::query()
+            ->where('commerce_order_id', $this->id)
+            ->first();
     }
 
     /** @return HasMany<Payment, $this> */

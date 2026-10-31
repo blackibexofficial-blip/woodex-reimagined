@@ -6,7 +6,6 @@ namespace App\Livewire\Admin\Commerce;
 
 use App\Domain\Commerce\Billing\SequenceHealth;
 use App\Domain\Commerce\Checkout\CartService;
-use App\Domain\Commerce\Checkout\Models\Invoice;
 use App\Domain\Commerce\Checkout\Models\Order;
 use App\Domain\Commerce\Models\InventorySource;
 use App\Domain\Commerce\Support\Money;
@@ -61,9 +60,11 @@ class SettingsIndex extends Component
             ])
             ->all();
 
+        // Only one series lives here now. Invoices are numbered by the OS (`WFI-2026-0001`),
+        // from the studio's own sequence, so checking a commerce invoice counter against
+        // commerce invoices would be checking a list nothing writes to.
         $used = [
             'order' => $this->numbersFrom(Order::query()->pluck('number')->all()),
-            'invoice' => $this->numbersFrom(Invoice::query()->pluck('number')->all()),
         ];
 
         return new SequenceHealth($sequences, $used);
