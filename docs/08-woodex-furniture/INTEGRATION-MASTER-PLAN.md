@@ -96,6 +96,20 @@ it. Columns are the truth; `payload` carries the type's extra fields only.
 
 ---
 
+### 0.4 Two corrections — and a sign-in fix
+
+| I said | Truth | How it was found |
+|---|---|---|
+| "105 media records, 0 files on disk — every thumbnail broken" | The files are on the `public` disk (210 of them) and are served at `/media/{id}/…` with a 200. I checked `public_path()` instead of the disk the model actually uses | opened the Media screen and fetched a tile |
+| "the SPA still draws every content page from `src/data/*.ts`" | Services, blog posts and showrooms now read `/api/site/v1` (Phase C). Projects and series do not, yet | edited a service row and watched the live `<h1>` change |
+
+**Sign-in was broken and is fixed.** The preview prints the demo password from `.env`; the account row had been
+lost when the sandbox database was replaced during a sync. `php artisan woodex:owner --force` now recreates or
+repairs the owner from `OWNER_EMAIL` / `OWNER_PASSWORD` — deliberately *not* `woodex:install`, which would have
+imported the interior website again. Verified: `owner@woodex.test / Woodex-Preview-2026` → 302 → `/admin`, 200.
+
+---
+
 ## Part 1 — What the reimagined site actually is
 
 ### 1.1 The nav on image 1, mapped to its real data source
@@ -231,7 +245,7 @@ Verdicts from the running app. Legend: ✅ real and populated · 🟡 real, cann
 
 | # | Screen | Today | Rebuild |
 |---|---|---|---|
-| 8 | **Media** | ⚠️ works — **105 rows, 0 files**, every tile broken | purge/repair the 105 interior files; import furniture photos; folders, alt text enforced, WebP + derivatives, replace-in-place, **real usage tracking** (`media_usage` returns `[]` today) |
+| 8 | **Media** | ✅ works — 105 records, files on the `public` disk, tiles answer 200 | add furniture photography for the 20 products (`commerce_product_media` = 0); folders, alt text enforced, WebP + derivatives, replace-in-place, real usage tracking (`media_usage` returns `[]` today); a guard now flags and can remove a record whose file is genuinely gone |
 | 9 | **SEO** | ⚠️ `FileAudit` (438 lines of real checks) over 1 file | audit per URL: title, description, H1, canonical, OG, schema, alt text, thin content, duplicates, orphans. Per-page **score**, filters, bulk fix |
 | 10 | **SEO agent** | ⚠️ same audit, filtered by issue | turn into a **queue**: issue → page → why it costs traffic → Fix button. Generate `sitemap.xml`, edit `robots.txt`, preview JSON-LD, measure before/after |
 | 11 | **Speed** | ✅ real (keyless local metrics + optional PageSpeed key) — 0 runs | run against live URLs, keep history in `pagespeed_runs`, budget per page, asset weight from the build, flag oversized images, cache headers |

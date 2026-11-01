@@ -23,6 +23,8 @@ for path in \
     app/Domain/Website/Content \
     app/Livewire/Admin/Commerce \
     app/Livewire/Admin/Website/PagesIndex.php \
+    app/Livewire/Admin/Website/MediaLibrary.php \
+    app/Console/Commands/OwnerAccountCommand.php \
     app/Http/Controllers/Admin/PageDocumentController.php \
     app/Http/Controllers/Api/Storefront \
     app/Http/Controllers/Api/Site \
@@ -32,6 +34,7 @@ for path in \
     resources/views/livewire/admin/commerce \
     resources/views/admin/commerce \
     resources/views/livewire/admin/website/pages-index.blade.php \
+    resources/views/livewire/admin/website/media-library.blade.php \
     database/seeders/CommercePermissionsSeeder.php \
     database/seeders/CatalogSeeder.php \
     database/seeders/data/catalog.json \
@@ -92,6 +95,8 @@ Next, in the OS checkout:
     php artisan db:seed --class=SiteContentSeeder --force  # the reimagined site's 16 pages + 30 records
     php artisan website:archive-interior                   # export + stamp the 142 interior pages
     php artisan website:publish                            # write the static shells + sitemap.xml
+    php artisan storage:link                               # /storage/... for uploaded media
+    php artisan woodex:owner --force                       # (re)create the owner from OWNER_EMAIL / OWNER_PASSWORD
 
 Then open /admin/commerce and /admin/commerce/orders/{id}.
 NEXT
