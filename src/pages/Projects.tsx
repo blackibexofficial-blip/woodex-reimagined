@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { orderedProjects } from "@/data/projects";
+import { useProjects } from "@/hooks/useSite";
 import projectsHero from "@/assets/projects-hero.jpg";
 import { Link } from "react-router-dom";
 import { ArrowRight, Filter } from "lucide-react";
@@ -6,28 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import proj1 from "@/assets/project-1.jpg";
-import proj2 from "@/assets/project-2.jpg";
-import proj3 from "@/assets/project-3.jpg";
-import proj4 from "@/assets/project-4.jpg";
-import proj5 from "@/assets/project-5.jpg";
-import proj6 from "@/assets/project-6.jpg";
-import projSalon from "@/assets/project-hair-salon.jpg";
-
-const projects = [
-  { id: 7, title: "Gents Grooming Lounge — DHA Lahore", client: "Private Boutique Salon", category: "Hospitality", image: projSalon, location: "DHA Phase 5, Lahore", sqft: "3,500 sq ft", description: "Concept-to-execution turnkey fit-out of a premium men's hair salon — walnut joinery, brass-framed mirrors, deep forest green feature wall, custom barber stations and private grooming alcoves." },
-  { id: 1, title: "DHA Corporate Tower", client: "DHA Developers", category: "Corporate", image: proj1, location: "Lahore", sqft: "12,000 sq ft", description: "Complete C-suite office fit-out with custom executive furniture, meeting rooms, and collaborative spaces." },
-  { id: 2, title: "TechHub Karachi", client: "TechHub Pakistan", category: "Tech", image: proj2, location: "Karachi", sqft: "8,500 sq ft", description: "Modern open-plan tech office with agile workstations, standing desks, and vibrant breakout areas." },
-  { id: 3, title: "Shaukat Khanum Clinic", client: "SKMT Foundation", category: "Healthcare", image: proj3, location: "Islamabad", sqft: "4,200 sq ft", description: "Healthcare-grade furniture for waiting areas, consultation rooms, and staff offices." },
-  { id: 4, title: "LUMS Library Expansion", client: "LUMS University", category: "Education", image: proj4, location: "Lahore", sqft: "6,800 sq ft", description: "Academic furniture including collaborative study tables, individual pods, and faculty offices." },
-  { id: 5, title: "FBR Regional Office", client: "Federal Board of Revenue", category: "Government", image: proj5, location: "Islamabad", sqft: "15,000 sq ft", description: "Government-standard office furniture for multiple floors of the regional headquarters." },
-  { id: 6, title: "PC Hotel Business Center", client: "Pearl Continental", category: "Hospitality", image: proj6, location: "Lahore", sqft: "3,500 sq ft", description: "Luxury lounge and business center furniture for a 5-star hospitality environment." },
-];
-
 const categories = ["All", "Corporate", "Tech", "Healthcare", "Education", "Government", "Hospitality"];
 
 const Projects = () => {
   const [activeCategory, setActiveCategory] = useState("All");
+  // Rows come from the CMS; the bundled copy fills in for the half-second before it answers.
+  const projects = orderedProjects(useProjects());
 
   useEffect(() => {
     document.title = "Our Projects — WOODEX Pakistan | Portfolio & Case Studies";
@@ -104,7 +90,7 @@ const Projects = () => {
                     </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">{project.description}</p>
                     <Button variant="ghost" size="sm" className="mt-3 px-0 text-accent hover:text-hon-green-dark hover:bg-transparent" asChild>
-                      <Link to={`/projects/${project.id}`}>View Case Study <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
+                      <Link to={`/projects/${project.slug ?? project.id}`}>View Case Study <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
                     </Button>
                   </div>
                 </div>

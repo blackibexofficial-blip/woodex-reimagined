@@ -145,3 +145,15 @@ export async function fetchSitePage(key: string, options: { signal?: AbortSignal
 
   return body.data;
 }
+
+/** The theme as the admin edits it: a token list and the same tokens as a `:root` block. */
+export interface SiteTheme {
+  tokens: Array<{ group: string; key: string; value: string; label: string; type: string }>;
+  css: string;
+}
+
+export async function fetchSiteTheme(options: { signal?: AbortSignal } = {}): Promise<SiteTheme> {
+  const body = await getJson<Envelope<SiteTheme>>(`${SITE_API_BASE_URL}/theme`, options);
+
+  return { tokens: Array.isArray(body.data?.tokens) ? body.data.tokens : [], css: String(body.data?.css ?? "") };
+}

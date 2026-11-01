@@ -91,6 +91,50 @@ final class ContentApi
      *
      * @return array{tokens: list<array<string, mixed>>, css: string}
      */
+    /**
+     * A stored token value, in the form the stylesheet needs.
+     *
+     * Colours are saved as `#RRGGBB` (that is what `<input type="color">` produces); Tailwind's
+     * `hsl(var(--x))` needs the three channels without the wrapper. Anything that is not a hex colour —
+     * a shadow, a font stack — passes through untouched.
+     */
+    public static function cssValue(string $value): string
+    {
+        if (preg_match('/^#([0-9a-f]{6})$/i', trim($value), $matches) !== 1) {
+            return $value;
+        }
+
+        $hex = $matches[1];
+        $r = hexdec(substr($hex, 0, 2)) / 255;
+        $g = hexdec(substr($hex, 2, 2)) / 255;
+        $b = hexdec(substr($hex, 4, 2)) / 255;
+
+        $max = max($r, $g, $b);
+        $min = min($r, $g, $b);
+        $lightness = ($max + $min) / 2;
+        $delta = $max - $min;
+
+        // `1 - 1` is an int in PHP and `0 === 0.0` is false, so white (#FFFFFF) used to fall through
+        // to the saturation division and answer 500. Compare with a tolerance, not with identity.
+        if ($delta < 1e-9) {
+            $hue = 0.0;
+            $saturation = 0.0;
+        } else {
+            $saturation = $lightness > 0.5 ? $delta / (2 - $max - $min) : $delta / ($max + $min);
+            $hue = match ($max) {
+                $r => fmod(($g - $b) / $delta, 6.0),
+                $g => ($b - $r) / $delta + 2,
+                default => ($r - $g) / $delta + 4,
+            };
+            $hue *= 60;
+            if ($hue < 0) {
+                $hue += 360;
+            }
+        }
+
+        return round($hue).' '.round($saturation * 100).'% '.round($lightness * 100).'%';
+    }
+
     public function theme(): array
     {
         if (! Schema::hasTable('theme_tokens')) {
@@ -104,7 +148,9 @@ final class ContentApi
             ->map(static fn (object $row): array => [
                 'group' => (string) $row->group,
                 'key' => (string) $row->key,
-                'value' => (string) $row->value,
+                // The Theme Builder edits a native colour picker, so the row is hex. The storefront's
+                // stylesheet is `hsl(var(--token))`, so what leaves here is a bare `H S% L%` triplet.
+                'value' => self::cssValue((string) $row->value),
                 'label' => (string) $row->label,
                 'type' => (string) $row->type,
             ])

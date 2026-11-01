@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchSiteContent, fetchSiteContentItem, type SiteContentCard, type SiteContentDetail } from "@/lib/api/site";
+import { fetchSiteContent, fetchSiteContentItem, fetchSiteTheme, type SiteContentCard, type SiteContentDetail } from "@/lib/api/site";
 import { services as serviceSnapshot, type ServiceData } from "@/data/services";
+import { projectSnapshot, projectSlugs, type Project } from "@/data/projects";
+import { seriesList as seriesSnapshot } from "@/data/products";
 import { blogPosts as postSnapshot, type BlogPost } from "@/data/blogPosts";
 import defaultServiceHero from "@/assets/service-custom-design.jpg";
 import defaultPostImage from "@/assets/blog-ergonomic.jpg";
@@ -25,6 +27,8 @@ const QUERY = {
 } as const;
 
 type ServicePayload = Partial<ServiceData>;
+type ProjectPayload = Partial<Project>;
+export type SeriesData = (typeof seriesSnapshot)[number];
 type PostPayload = Partial<BlogPost> & { tags?: string[] };
 
 function emptyService(card: SiteContentCard): ServiceData {
@@ -250,5 +254,149 @@ export function useShowrooms(): Showroom[] {
         isHQ: Boolean(payload.isHQ ?? base?.isHQ ?? false),
       };
     });
+  }, [data]);
+}
+
+/**
+ * Projects, merged the way the services are.
+ *
+ * The API's identity for a project is its slug; the bundled copy still keys on the numeric id the old
+ * `/projects/1` links used. `projectSlugs` bridges the two, so a row edited in the admin lands on the right
+ * card and a link that has already been shared keeps working.
+ */
+function mergeProjects(cards: SiteContentCard[] | undefined): Project[] {
+  if (!cards || cards.length === 0) return projectSnapshot;
+
+  const bySlug = new Map<string, Project>();
+
+  for (const project of projectSnapshot) {
+    const slug = projectSlugs[project.id];
+
+    if (slug) bySlug.set(slug, project);
+  }
+
+  return cards.map((card) => {
+    const base = bySlug.get(card.slug);
+    const payload = ((card as SiteContentCard & { payload?: ProjectPayload }).payload ?? {}) as ProjectPayload;
+
+    return {
+      ...(base ?? {
+        id: card.slug,
+        title: card.title,
+        client: "",
+        category: "Corporate",
+        image: card.image || projectSnapshot[0].image,
+        location: "",
+        sqft: "",
+        description: card.excerpt,
+      }),
+      ...payload,
+      id: base?.id ?? card.slug,
+      slug: card.slug,
+      title: card.title,
+      // The column is what an editor changes; the payload fills everything the API does not carry yet.
+      description: (payload.description as string) || card.excerpt || base?.description || "",
+      image: base?.image ?? (card.image || projectSnapshot[0].image),
+    } as Project;
+  });
+}
+
+export function useProjects(): Project[] {
+  const { data } = useQuery({
+    queryKey: ["site", "content", "project"],
+    queryFn: ({ signal }) => fetchSiteContent("project", { signal }),
+    ...QUERY,
+  });
+
+  return useMemo(() => mergeProjects(data), [data]);
+}
+
+/**
+ * One project, by CMS slug — or by the numeric id the first build of this page used.
+ *
+ * The console of an already-published page may still point at `/projects/3`; translating instead of 404ing
+ * costs one line and keeps those visitors.
+ */
+export function useProject(idOrSlug: string | undefined): Project | undefined {
+  const slug = idOrSlug ? (projectSlugs[idOrSlug] ?? idOrSlug) : undefined;
+  const projects = useProjects();
+
+  return useMemo(() => projects.find((project) => project.slug === slug || project.id === idOrSlug), [projects, slug, idOrSlug]);
+}
+
+function mergeSeries(cards: SiteContentCard[] | undefined): SeriesData[] {
+  if (!cards || cards.length === 0) return seriesSnapshot;
+
+  const byId = new Map(seriesSnapshot.map((series) => [series.id, series]));
+
+  return cards.map((card) => {
+    const base = byId.get(card.slug);
+    const payload = ((card as SiteContentCard & { payload?: Partial<SeriesData> }).payload ?? {}) as Partial<SeriesData>;
+
+    return {
+      ...(base ?? {
+        id: card.slug,
+        name: card.title,
+        tagline: card.excerpt,
+        badge: "",
+        description: card.excerpt,
+        features: [] as string[],
+        products: 0,
+        color: "#5a7a3a",
+      }),
+      ...payload,
+      id: card.slug,
+      name: card.title,
+      tagline: card.excerpt || payload.tagline || base?.tagline || "",
+      description: (payload.description as string) || base?.description || card.excerpt,
+      features: (payload.features as string[]) ?? base?.features ?? [],
+    } as SeriesData;
+  });
+}
+
+export function useSeriesList(): SeriesData[] {
+  const { data } = useQuery({
+    queryKey: ["site", "content", "series"],
+    queryFn: ({ signal }) => fetchSiteContent("series", { signal }),
+    ...QUERY,
+  });
+
+  return useMemo(() => mergeSeries(data), [data]);
+}
+
+export function useSeries(id: string | undefined): SeriesData | undefined {
+  const series = useSeriesList();
+
+  return useMemo(() => (id ? series.find((row) => row.id === id) : undefined), [series, id]);
+}
+
+/**
+ * Applies the theme the admin edits, as CSS custom properties.
+ *
+ * The storefront is built on Tailwind's `hsl(var(--primary))` variables, so a token row is not decoration:
+ * it is the colour. `:root` is what `index.css` already declares, which means the bundled palette is the
+ * floor — an API that is down, or a theme with no rows, leaves the design exactly as built.
+ */
+export function useTheme(): void {
+  const { data } = useQuery({
+    queryKey: ["site", "theme"],
+    queryFn: ({ signal }) => fetchSiteTheme({ signal }),
+    ...QUERY,
+  });
+
+  useEffect(() => {
+    const css = data?.css?.trim();
+
+    if (!css) return;
+
+    let style = document.getElementById("woodex-theme") as HTMLStyleElement | null;
+
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "woodex-theme";
+      document.head.appendChild(style);
+    }
+
+    style.textContent = css;
   }, [data]);
 }

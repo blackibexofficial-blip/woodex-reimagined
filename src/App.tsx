@@ -28,14 +28,28 @@ import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
+import { useTheme } from "@/hooks/useSite";
 
 const queryClient = new QueryClient();
+
+/**
+ * Applies the palette the admin edits, once for every route.
+ *
+ * It has to live *inside* the query provider — `useTheme` is a query — and a theme with no rows changes
+ * nothing, so the bundled stylesheet stays the floor.
+ */
+const ThemeVars = () => {
+  useTheme();
+
+  return null;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <QuoteProvider>
       <CartProvider>
       <TooltipProvider>
+        <ThemeVars />
         <Toaster />
         <Sonner />
         <BrowserRouter>

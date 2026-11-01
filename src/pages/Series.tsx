@@ -11,8 +11,8 @@ import execImg from "@/assets/series-executive.jpg";
 import modernImg from "@/assets/series-modern.jpg";
 import ecoImg from "@/assets/series-eco.jpg";
 import novaImg from "@/assets/series-nova.jpg";
-import { seriesList } from "@/data/products";
 import { useCatalogProducts } from "@/hooks/useCatalog";
+import { useSeriesList } from "@/hooks/useSite";
 import SeoContentBlock from "@/components/SeoContentBlock";
 import { getSeriesSeo } from "@/data/seoContent";
 
@@ -26,6 +26,7 @@ const seriesImages: Record<string, string> = {
 
 const Series = () => {
   const { products } = useCatalogProducts();
+  const seriesList = useSeriesList();
   const [activeTab, setActiveTab] = useState("woodex-series");
   const tabProducts = products.filter((product) => product.series === activeTab).slice(0, 4);
   const activeSeo = getSeriesSeo(activeTab);

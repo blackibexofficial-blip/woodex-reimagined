@@ -38,6 +38,7 @@ for path in \
     resources/views/livewire/admin/website/pages-index.blade.php \
     resources/views/livewire/admin/website/media-library.blade.php \
     database/seeders/CommercePermissionsSeeder.php \
+    database/seeders/ThemeTokensSeeder.php \
     database/seeders/CatalogSeeder.php \
     database/seeders/data/catalog.json \
     database/seeders/SiteContentSeeder.php \
@@ -156,6 +157,7 @@ Next, in the OS checkout:
     php artisan commerce:demo-order --qty=2                # proves the whole path end to end
     php artisan commerce:import-images --force             # 20 products, 3 sizes each, into storage/app/public
     php artisan db:seed --class=SiteContentSeeder --force  # the reimagined site's 16 pages + 30 records
+    php artisan db:seed --class=ThemeTokensSeeder --force   # the storefront palette, editable in Website → Theme
     php artisan website:archive-interior                   # export + stamp the 142 interior pages
     php artisan website:publish                            # write the static shells + sitemap.xml
     php artisan storage:link                               # /storage/... for uploaded media
