@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin\Website;
 
+use App\Domain\Commerce\Models\Product;
 use App\Domain\Website\Builder\PageImageAlt;
 use App\Domain\Website\Models\Media;
 use App\Domain\Website\Services\Menus;
@@ -39,6 +40,15 @@ class MediaLibrary extends Component
 
     /** Only the records whose file is gone — left behind by the v1 site, which was deleted in October. */
     public bool $onlyMissingFiles = false;
+
+    /**
+     * Show the photographs imported from the interior site.
+     *
+     * All 105 of them carry `folder = imported` and not one is on the storefront any more: the interior site
+     * was retired in October and the storefront's photographs live with its products. Opening this screen on
+     * them read as "the site is still the old one", so they are one click away rather than the first thing seen.
+     */
+    public bool $withImported = false;
 
     /** @var array<int, string> */
     public array $alt = [];
@@ -199,7 +209,10 @@ class MediaLibrary extends Component
     {
         $missing = $this->missingIds();
 
+        $importedTotal = Media::query()->where('folder', 'imported')->count();
+
         $images = Media::query()
+            ->when(! $this->withImported, fn ($query) => $query->where('folder', '!=', 'imported'))
             ->when($this->onlyMissingFiles, fn ($query) => $query->whereIn('id', $missing))
             ->when($this->search !== '', fn ($query) => $query->where(fn ($q) => $q
                 ->where('alt', 'like', '%'.$this->search.'%')
@@ -216,10 +229,47 @@ class MediaLibrary extends Component
 
         return view('livewire.admin.website.media-library', [
             'images' => $images,
-            'missingAlt' => Media::query()->where('alt', '')->count(),
-            'total' => Media::query()->count(),
+            'photos' => $this->productPhotos(),
+            'missingAlt' => Media::query()->where('folder', '!=', 'imported')->where('alt', '')->count(),
+            'total' => Media::query()->where('folder', '!=', 'imported')->count(),
+            'importedTotal' => $importedTotal,
             'missingIds' => $missing,
             'missingFiles' => count($missing),
         ]);
+    }
+
+    /**
+     * The photographs the shop actually shows, one per product.
+     *
+     * They are not rows of `website_media` — a product owns its own picture (`commerce_product_media`, streamed
+     * by the `commerce.media.product` route) — so this screen used to be the only place an owner could look and
+     * see no product photograph at all.
+     *
+     * @return list<array{name: string, sku: string, url: string, page: string}>
+     */
+    private function productPhotos(): array
+    {
+        return Product::query()
+            ->published()
+            ->with(['translation', 'media'])
+            ->orderBy('position')
+            ->get()
+            ->map(function (Product $product): ?array {
+                $photo = $product->media->firstWhere('is_primary', true) ?? $product->media->first();
+
+                if ($photo === null) {
+                    return null;
+                }
+
+                return [
+                    'name' => $product->displayName(),
+                    'sku' => (string) $product->sku,
+                    'url' => route('commerce.media.product', ['sku' => $product->sku, 'file' => basename((string) $photo->path)]),
+                    'page' => '/shop/'.$product->slug,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 }

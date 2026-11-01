@@ -612,7 +612,10 @@ catalogue: §11 still says the owner supplies the real photography, and replacin
 
 Still open in this section:
 
-1. **Reconcile the 105** — `website_media` rows whose files are gone; mark `missing` rather than deleting.
+1. **The 105 are not broken — they are the wrong brand.** All 105 files are present on the `public` disk; every
+   one was imported from the retired interior site (`folder = imported`) and not one is used by the storefront.
+   Mark them archived rather than deleting them, and stop opening the screen on them — **done 1 Nov**: the screen
+   now leads with the 20 product photographs and the archive is one checkbox away.
 2. Alt text enforced at upload, folders, replace-in-place, usage guard before delete.
 3. A real photograph per SKU (waits on the owner's catalogue).
 
@@ -641,7 +644,7 @@ The pipeline is **already proven**: `POST /api/forms.php` → lead #27 · `L-202
 |---|---|---|
 | Interior pages (service/city/area/insight/project) | 142 | **export → archive** (decision A) |
 | Interior blocks | 1,442 | export with the pages, as the import format for the new site |
-| Interior media | 105 | purge records; files already gone |
+| Interior media | 105 | **all files present**; interior photography, unused by the storefront — archived, hidden behind a toggle |
 | Furniture catalogue | 20 products, 28 variants, 24 categories | already in the OS ✅ |
 | SPA hardcoded series | 153 | import → `content_items[series]` |
 | SPA hardcoded categories | 29 | reconcile into `commerce_categories` (24) |
@@ -658,7 +661,7 @@ The SPA's own data files become the **seed** — which is honest: they are real 
 
 | Phase | Work | Days | Exit test |
 |---|---|---|---|
-| **A. Truth** | reconcile media, purge/repair 105, banner off the interior screens, freeze the 142, decide A/B/C | 2 | no screen shows a broken file |
+| **A. Truth** | separate the archive from the site (media, builder, pages), freeze the 142, decide A/B/C | 2 | no screen shows the old site as if it were the new one |
 | **B. Spine** | `site_pages` + `content_items` + `/api/site/v1` (pages, records, theme) + PHP shell renderer (title/meta/OG/JSON-LD/sitemap) | 8 | `curl /services/custom-design` returns the right `<title>` and JSON-LD |
 | **C. Screens** | All pages, Find & replace, Blog, Portfolio, Services, Series, Showrooms | 10 | create a post, publish, see it at `/blog` |
 | **D. Builder** | Puck + 11 sections + HTML mode toggle + versions + preview + SEO panel | 9 | edit a page visually, publish, reload live |

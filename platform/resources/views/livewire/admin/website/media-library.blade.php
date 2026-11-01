@@ -15,6 +15,43 @@
         <div wire:loading wire:target="uploads" class="mt-2 text-theme-xs text-gray-500">Reading images…</div>
     </x-admin.card>
 
+    <x-admin.card title="Product photography" description="The photographs the shop actually shows: one per product, streamed from storage. A product's picture belongs to the product, so it is changed in Commerce → Products, not here.">
+        @if ($photos === [])
+            <p class="text-theme-sm text-gray-500">No product has a photograph yet.</p>
+        @else
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                @foreach ($photos as $photo)
+                    <a href="{{ $photo['page'] }}" class="group overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+                        <img src="{{ $photo['url'] }}" alt="{{ $photo['name'] }}" loading="lazy"
+                             class="aspect-[4/3] w-full bg-gray-50 object-cover transition group-hover:opacity-90">
+                        <div class="space-y-0.5 px-2 py-1.5">
+                            <div class="truncate text-theme-xs font-medium text-gray-900 dark:text-white">{{ $photo['name'] }}</div>
+                            <div class="text-theme-xs text-gray-500">{{ $photo['sku'] }}</div>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        @endif
+    </x-admin.card>
+
+    @if ($importedTotal > 0)
+        <div class="mt-6 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-theme-sm text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300">
+            <div class="font-semibold text-gray-900 dark:text-white">
+                {{ $importedTotal }} photographs are from the retired interior site
+                @if ($withImported) — shown below @endif
+            </div>
+            <p class="mt-1">
+                They were imported when the interior website was archived in October. The storefront does not use
+                any of them; its photographs live with the products, above. They are kept only so the archive is
+                not lost.
+            </p>
+            <label class="mt-3 flex items-center gap-2">
+                <input type="checkbox" wire:model.live="withImported" class="rounded border-gray-300">
+                Show the {{ $importedTotal }} archived photographs in this list
+            </label>
+        </div>
+    @endif
+
     @if ($missingFiles > 0)
         <div class="mt-6 rounded-xl border border-warning-300 bg-warning-50 px-5 py-4 text-theme-sm text-warning-900 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-200">
             <div class="font-semibold">{{ $missingFiles }} of {{ $total }} records have no file.</div>
@@ -89,7 +126,12 @@
             </div>
         @empty
             <div class="sm:col-span-2 xl:col-span-3">
-                <x-admin.empty icon="image" title="No images yet" description="Upload the studio photographs, then give each one a description." />
+                @if (! $withImported && $importedTotal > 0)
+                    <x-admin.empty icon="image" title="Nothing current in this library"
+                                    description="The storefront's photographs live with its products, above. The {{ $importedTotal }} archived photographs from the interior site are one click away in the grey panel." />
+                @else
+                    <x-admin.empty icon="image" title="No images yet" description="Upload the studio photographs, then give each one a description." />
+                @endif
             </div>
         @endforelse
     </div>

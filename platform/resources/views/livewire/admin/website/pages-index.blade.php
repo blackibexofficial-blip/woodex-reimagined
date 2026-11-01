@@ -3,7 +3,9 @@
                          description="Every address of the reimagined storefront: its 16 URLs and the records behind the rest. Publishing writes the static shell a visitor and a crawler receive — the SPA takes over in the browser."
                          :breadcrumbs="['Website' => null, 'Pages' => null]">
         <x-slot:actions>
-            <x-admin.button icon="panel" :href="route('admin.website.builder')">Page builder</x-admin.button>
+            {{-- The builder edits the generated HTML files, not the record — a screenshot of it looks like a page
+                 editor and is not one, so the label says what it opens. --}}
+            <x-admin.button icon="panel" :href="route('admin.website.builder')">HTML files</x-admin.button>
         </x-slot:actions>
     </x-admin.page-header>
 
