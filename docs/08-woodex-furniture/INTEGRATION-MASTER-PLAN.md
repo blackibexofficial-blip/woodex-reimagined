@@ -128,6 +128,33 @@ reads 0 on a broken gallery, which is why the count kept incriminating the image
 The rule this leaves: **a guard must cover the loading state, not just the empty one.** `if (!product)` now
 returns a skeleton while the lookup is in flight and the "not found" panel only when it has settled.
 
+### 0.6 The admin panel had no JavaScript in production, and nothing looked wrong
+
+Found by pressing **Edit** on the new Content screen and getting silence. The console said:
+
+```
+Refused to execute script from '…/livewire-42833516/livewire.js?id=…'
+because its MIME type ('text/html') is not executable
+```
+
+`public/.htaccess` answers anything that is not a file with the storefront's `index.html`, *unless* its first
+segment is one the app owns: `admin|install|up|api|livewire|…`. Livewire 3 does not serve its script at
+`/livewire/…`; it serves it at `/livewire-42833516/livewire.js`, and `|livewire|` in that list is followed by
+`(/|$)`, so a hyphen did not match. The panel's own script fell through to the SPA fallback and the browser was
+handed HTML under a `.js` URL, which it correctly refused to run.
+
+The failure mode is what makes this worth a page of its own: **every admin screen rendered perfectly.** The
+server sends the HTML; only the interactivity was missing. Edit, Save, Publish, filters, the sign-in button — all
+of them were inert, and all of them looked like they worked. Any test that asserts on rendered HTML passes.
+
+Two files carried the same copy of that regex — the real `.htaccess` and the sandbox preview server — so the
+preview had the bug too, which is the only reason it was caught. Both now allow `livewire(-[^/]*)?`;
+`tools/furniture-commerce/apply.sh` patches the OS's `.htaccess` on every run, and the check is idempotent.
+
+The lesson is narrower than "test in a browser": the admin is a Livewire application, so **a 200 is not
+evidence that a screen works.** The probes for this screen now click Edit, type into the title, press Save and
+assert the toast — see §5b.
+
 ---
 
 ## Part 1 — What the reimagined site actually is
@@ -257,8 +284,8 @@ Verdicts from the running app. Legend: ✅ real and populated · 🟡 real, cann
 
 | # | Screen | Today | Rebuild |
 |---|---|---|---|
-| 5 | **Blog** | 🟡 studio reads `Page[type=insight]` — **48 interior posts** | furniture posts: title, slug, cover, category, tags, author, schedule, body sections (Puck), SEO, related → `/blog/:id` |
-| 6 | **Portfolio** | 🟡 `Page[type=project]` — 6 interior studies | client, sector, city, year, gallery, story, testimonial, `Project` schema → `/projects/:id` |
+| 5 | **Blog** | 🟡 studio reads `Page[type=insight]` — **48 interior posts**; the six real posts are edited on **Content** (§5b) ✅ | cover, category, tags, author, schedule, Puck body, related → `/blog/:id` |
+| 6 | **Portfolio** | 🟡 `Page[type=project]` — 6 interior studies; the seven real studies are edited on **Content** (§5b) ✅ | client, sector, city, year, gallery, story, testimonial, `Project` schema → `/projects/:id` |
 | 7 | **Forms** | ✅ `cms_forms` counts real submissions; lead pipeline proven (lead #27) | form definitions per key (contact, quotation, B2B, custom-design), submissions list, CSV export, spam log, notifications — **and make the SPA actually POST** (today `handleSubmit` only sets a flag) |
 
 ### Website
@@ -272,6 +299,45 @@ Verdicts from the running app. Legend: ✅ real and populated · 🟡 real, cann
 | 12 | **Site health** | ⚠️ broken links / orphans over 1 file | links across published output + records, orphan pages, **missing media** (would have caught the 105), stale pages, 404 log, sitemap validity |
 | 13 | **Theme** | 🟡 28 tokens, presets, groups — **no consumer**; the SPA never reads them | tokens → CSS custom properties → consumed by the SPA **and** Puck preview **and** HTML pages. Fonts, palette, radii, spacing, container width, live preview, presets |
 | 14 | **Website Settings** | 🟡 real but narrow | business identity (name, logo, phone, WhatsApp, email, address, hours), social, analytics (GA4/GTM/pixel), Search Console, sitemap/robots, publish policy, currency, maintenance mode, checkout copy |
+
+### 5b Content — shipped: the screen that edits the rows the site reads
+
+`/admin/website/content` (`ContentIndex`, commit `8f2a1c4`-or-later) lists the 30 `content_items` the storefront
+actually serves — 7 services, 6 posts, 7 projects, 5 series, 5 showrooms — behind a stat row per type, a type
+filter and a search across title, address and summary. **Edit** opens an inline card: title, address, summary,
+status, SEO title and description, body. **Publish site** runs `website:publish`, so an edit reaches the file a
+crawler reads in one deliberate keystroke instead of as a side effect of Save.
+
+Two things about it are decided, not accidental.
+
+**The address is validated, not derived.** Saving re-checks `path` for shape (`starts_with:/`, lower-case
+slugs) and uniqueness against `content_items` ignoring the row itself, then rewrites `slug` from the last
+segment. Changing a title therefore cannot silently move a URL that Google has indexed; changing the address
+is a separate, deliberate edit. Changing an address should later offer a 301 — that is the Redirects screen's
+job (§5 #4), not a hidden one here.
+
+**The body field edits prose, and only prose.** A record's `sections` is not a list of paragraphs: a service
+opens with a `hero` (heading + standfirst), lists six `process` steps and ends in six `faq` items. A textarea
+can round-trip headings and paragraphs; it would flatten the rest. So `BodyText::from()` renders *only* the
+`text` blocks, and `BodyText::merge()` writes the edited paragraphs back **over the text blocks they came
+from**, leaving hero, steps and FAQ exactly where they were, and appending anything new after them. The field
+carries a note naming what it is keeping — *"Kept as they are: Hero · Process steps (6) · FAQ (6)"* — because
+otherwise the screen would look like it had deleted them.
+
+That invariant is the whole reason the screen is shippable, so it is tested rather than asserted:
+`Tests\Site\ContentEditingTest` opens a seeded service, saves it untouched and requires the body to come back
+byte-identical; edits one paragraph and requires the block *order and kinds* to be unchanged; deletes a
+paragraph and requires the FAQ between them to survive (`8 tests`, part of the 36-test `Tests\Site` suite).
+
+Verified against the running app, not just in tests: filtered to Services, opened `/services/custom-design`,
+pressed Save without touching anything — the stored body hash was unchanged (`d936023a…` before and after) —
+then edited a post's title and watched the toast, the row and the timestamp change while its address stayed
+`/blog/ergonomic-office-guide-2025`. Publishing from the screen rewrote all 46 shells (0 files without an
+`h1`).
+
+Still to do here: cover image, category, tags, author and schedule are not on the form yet (they live in
+`payload`), and the studio Blog/Portfolio screens still list the interior rows — they should be retired in
+favour of this screen, not kept beside it.
 
 ---
 

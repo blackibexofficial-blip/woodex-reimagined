@@ -23,6 +23,7 @@ for path in \
     app/Domain/Website/Content \
     app/Livewire/Admin/Commerce \
     app/Livewire/Admin/Website/PagesIndex.php \
+    app/Livewire/Admin/Website/ContentIndex.php \
     app/Livewire/Admin/Website/MediaLibrary.php \
     app/Console/Commands/OwnerAccountCommand.php \
     app/Console/Commands/ImportProductImagesCommand.php \
@@ -36,6 +37,7 @@ for path in \
     resources/views/livewire/admin/commerce \
     resources/views/admin/commerce \
     resources/views/livewire/admin/website/pages-index.blade.php \
+    resources/views/livewire/admin/website/content-index.blade.php \
     resources/views/livewire/admin/website/media-library.blade.php \
     database/seeders/CommercePermissionsSeeder.php \
     database/seeders/ThemeTokensSeeder.php \
@@ -132,6 +134,53 @@ if [ -f "$ROUTER" ] && ! grep -qF "'media'," "$ROUTER"; then
     echo "   SiteRouter RESERVED: added media"
 else
     echo "   SiteRouter RESERVED: already there"
+fi
+
+# The Content screen edits the rows the storefront reads; its route and its sidebar entry live in two
+# OS-owned files, so both are inserted once by anchor rather than replaced.
+ADMIN_ROUTES="$PLATFORM/routes/admin.php"
+if [ -f "$ADMIN_ROUTES" ]; then
+    insert_before "$ADMIN_ROUTES" \
+        "use App\\Livewire\\Admin\\Website\\MediaLibrary;" \
+        "use App\\Livewire\\Admin\\Website\\ContentIndex;" \
+        "admin.php import" \
+        "Livewire\\Admin\\Website\\ContentIndex;"
+
+    insert_before "$ADMIN_ROUTES" \
+        "Route::livewire('/website/media', MediaLibrary::class)" \
+        "Route::livewire('/website/content', ContentIndex::class)->name('website.content')->middleware('can:website.edit');" \
+        "admin.php route" \
+        "'/website/content'"
+else
+    echo "   routes/admin.php missing — skipped"
+fi
+
+NAV="$PLATFORM/app/Support/AdminNavigation.php"
+if [ -f "$NAV" ]; then
+    insert_before "$NAV" \
+        "self::item('Forms', 'file', 'admin.website.forms', 'website.edit')," \
+        "                self::item('Content', 'file', 'admin.website.content', 'website.edit')," \
+        "sidebar: content item" \
+        "admin.website.content"
+else
+    echo "   AdminNavigation.php missing — skipped"
+fi
+
+# Livewire 3 serves its own script from /livewire-<hash>/livewire.js, and the storefront fallback rule in
+# public/.htaccess excluded only the bare word `livewire` — so production answered the app's own script with
+# index.html: HTML sent as JavaScript, which the browser refuses. Every page still rendered, so nothing looked
+# wrong, but no button on an admin screen did anything. The rule now allows the `-<hash>` tail.
+HTACCESS="$PLATFORM/public/.htaccess"
+if [ -f "$HTACCESS" ]; then
+    if grep -qF '|livewire|' "$HTACCESS"; then
+        tmp="$HTACCESS.wx-tmp"
+        awk '{ gsub(/[|]livewire[|]/, "|livewire(-[^/]*)?|"); print }' "$HTACCESS" > "$tmp" && mv "$tmp" "$HTACCESS"
+        echo "== .htaccess: /livewire-<hash>/ now reaches the app instead of index.html"
+    else
+        echo "== .htaccess: already allows /livewire-<hash>/"
+    fi
+else
+    echo "== .htaccess missing — skipped"
 fi
 
 echo "== sidebar and routes"
