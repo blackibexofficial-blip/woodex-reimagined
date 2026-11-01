@@ -223,4 +223,51 @@ final class ShellPublisherTest extends TestCase
             fn () => (new ShellPublisher($this->root))->ensureShell(),
         );
     }
+
+    /**
+     * The file a crawler gets must contain the page, not an empty div.
+     *
+     * React draws the storefront a moment later, but until it does — and for every crawler that does not run
+     * JavaScript — the file is the page. Before this, all 46 published files had no `<h1>` at all.
+     */
+    public function testItPutsThePageInsideRootForAReaderWithoutJavaScript(): void
+    {
+        $publisher = new ShellPublisher($this->root);
+        $publisher->ensureShell();
+
+        $html = $publisher->render(
+            ['title' => 'Our Projects — WOODEX Pakistan', 'description' => 'Case studies.'],
+            [
+                'heading' => 'Our Projects',
+                'lead' => 'Case studies across Pakistan.',
+                'links' => [
+                    ['label' => 'About', 'href' => '/about'],
+                    ['label' => 'Shop', 'href' => '/shop'],
+                ],
+            ],
+        );
+
+        $publisher->write('/projects', $html);
+        $written = (string) file_get_contents($this->root.'/projects/index.html');
+
+        Assert::same(1, substr_count($written, '<h1>'), 'exactly one headline');
+        Assert::true(str_contains($written, '<h1>Our Projects</h1>'), 'the headline is the page');
+        Assert::true(str_contains($written, '<a href="/about">About</a>'), 'the site nav is in the file');
+        Assert::same(
+            1,
+            preg_match('/<div id="root">\s*<article class="wx-fallback"/', $written),
+            'the fallback sits inside #root, where React replaces it on mount',
+        );
+    }
+
+    public function testAFallbackIsOptional(): void
+    {
+        // HTML pages written straight from `canvas_html` must not gain an injected article.
+        $publisher = new ShellPublisher($this->root);
+        $publisher->ensureShell();
+
+        $html = $publisher->render(['title' => 'Plain — WOODEX']);
+
+        Assert::same(0, substr_count($html, 'wx-fallback'), 'no fallback when none was given');
+    }
 }

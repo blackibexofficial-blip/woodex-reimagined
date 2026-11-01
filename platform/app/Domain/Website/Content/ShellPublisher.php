@@ -101,17 +101,88 @@ final class ShellPublisher
     }
 
     /**
-     * The shell with one page's head applied.
+     * The shell with one page's head applied — and, when given one, its content for a reader without JavaScript.
      *
      * @param  array{title: string, description?: string, canonical?: string, image?: string,
      *               type?: string, schema?: array<string, mixed>|null}  $meta
+     * @param  array{heading?: string, lead?: string, paragraphs?: list<string>,
+     *               links?: list<array{label: string, href: string}>}|null  $fallback
      */
-    public function render(array $meta): string
+    public function render(array $meta, ?array $fallback = null): string
     {
         $html = $this->shell();
         $html = $this->strip($html);
+        $html = $this->inject($html, $meta);
 
-        return $this->inject($html, $meta);
+        return $fallback === null ? $html : $this->injectFallback($html, $fallback);
+    }
+
+    /**
+     * Put the page's own words inside `#root`, where React will replace them on mount.
+     *
+     * Without this the file a crawler (or a reader with JavaScript off) receives is a script tag and an empty
+     * div: no headline, no links, nothing to rank. That is not a hypothetical — the SEO audit reads these
+     * files and reported `No H1` on all 46 of them.
+     *
+     * This is progressive enhancement, not cloaking: the same heading, the same summary and the site's own
+     * links that a visitor ends up looking at, delivered first and replaced by the storefront a moment later.
+     */
+    private function injectFallback(string $html, array $fallback): string
+    {
+        $block = $this->fallbackHtml($fallback);
+
+        if (preg_match('/<div id="root"\s*>\s*<\/div>/i', $html) === 1) {
+            return (string) preg_replace('/<div id="root"\s*>\s*<\/div>/i', '<div id="root">'.$block.'</div>', $html, 1);
+        }
+
+        return (string) preg_replace('/<\/body>/i', $block.'</body>', $html, 1);
+    }
+
+    /** @param  array{heading?: string, lead?: string, paragraphs?: list<string>, links?: list<array{label: string, href: string}>}  $fallback */
+    private function fallbackHtml(array $fallback): string
+    {
+        $heading = $this->text((string) ($fallback['heading'] ?? ''));
+        $lead = (string) ($fallback['lead'] ?? '');
+        $paragraphs = (array) ($fallback['paragraphs'] ?? []);
+        $links = (array) ($fallback['links'] ?? []);
+
+        $html = "\n<article class=\"wx-fallback\" style=\"max-width:64rem;margin:0 auto;padding:2rem 1rem;font:400 1rem/1.6 system-ui,sans-serif;color:#1F1F1F\">\n";
+
+        if ($heading !== '') {
+            $html .= '  <h1>'.$heading."</h1>\n";
+        }
+
+        if ($lead !== '') {
+            $html .= '  <p>'.$this->text($lead)."</p>\n";
+        }
+
+        foreach ($paragraphs as $paragraph) {
+            $text = trim((string) $paragraph);
+
+            if ($text !== '') {
+                $html .= '  <p>'.$this->text($text)."</p>\n";
+            }
+        }
+
+        if ($links !== []) {
+            $html .= "  <nav aria-label=\"WOODEX\">\n    <ul>\n";
+
+            foreach ($links as $link) {
+                $href = $this->attr((string) $link['href']);
+                $label = $this->text((string) $link['label']);
+
+                if ($href !== '' && $label !== '') {
+                    $html .= '      <li><a href="'.$href.'">'.$label."</a></li>\n";
+                }
+            }
+
+            $html .= "    </ul>\n  </nav>\n";
+        }
+
+        $html .= "  <p><a href=\"/shop\">Browse the catalogue</a></p>\n";
+        $html .= "</article>\n";
+
+        return $html;
     }
 
     /** The pristine shell. */
