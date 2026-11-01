@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import contactHero from "@/assets/contact-hero.jpg";
+import { enquiryErrorMessage, submitEnquiry } from "@/lib/api/enquiry";
 
 const showrooms = [
   { city: "Lahore (HQ)", address: "123 Gulberg III, Main Boulevard, Lahore", phone: "+92 42 111 WOODEX", hours: "Mon–Sat: 9am–7pm" },
@@ -23,17 +24,40 @@ const faqs = [
 ];
 
 const Contact = () => {
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [reference, setReference] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
     document.title = "Contact Us — WOODEX Pakistan | Showrooms in Lahore, Karachi, Islamabad";
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // The message is written into the CRM before this says it was sent. The form used to call
+  // setSubmitted(true) and nothing else — no request, no row, no enquiry.
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
+    const data = new FormData(e.currentTarget);
+
+    setStatus("sending");
+    setError(null);
+
+    try {
+      const receipt = await submitEnquiry({
+        form: "contact",
+        name: String(data.get("name") ?? "").trim(),
+        email: String(data.get("email") ?? "").trim() || undefined,
+        phone: String(data.get("phone") ?? "").trim() || undefined,
+        service: String(data.get("subject") ?? "").trim() || undefined,
+        message: String(data.get("message") ?? "").trim(),
+      });
+
+      setReference(receipt.reference);
+      setStatus("sent");
+    } catch (err) {
+      setError(enquiryErrorMessage(err));
+      setStatus("idle");
+    }
   };
 
   return (
@@ -87,42 +111,76 @@ const Contact = () => {
                 <h2 className="text-xl font-bold mb-6">Send a Message</h2>
                 <Card className="border shadow-sm">
                   <CardContent className="pt-6">
-                    {submitted ? (
-                      <div className="text-center py-12">
+                    {status === "sent" ? (
+                      <div className="text-center py-12" role="status">
                         <div className="w-16 h-16 rounded-full bg-hon-green-pale flex items-center justify-center mx-auto mb-4">
                           <Send className="h-8 w-8 text-accent" />
                         </div>
                         <h3 className="text-xl font-bold mb-2">Message Sent!</h3>
                         <p className="text-muted-foreground">We'll get back to you within 24 hours.</p>
+                        {reference && (
+                          <p className="mt-4 text-sm">
+                            Your reference: <span className="font-mono font-semibold">{reference}</span>
+                          </p>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="mt-6"
+                          onClick={() => {
+                            setStatus("idle");
+                            setReference("");
+                          }}
+                        >
+                          Send another message
+                        </Button>
                       </div>
                     ) : (
                       <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="grid md:grid-cols-2 gap-5">
                           <div className="space-y-1.5">
                             <Label htmlFor="name">Full Name *</Label>
-                            <Input id="name" placeholder="Muhammad Ali" required />
+                            <Input id="name" name="name" autoComplete="name" placeholder="Muhammad Ali" required />
                           </div>
                           <div className="space-y-1.5">
                             <Label htmlFor="email">Email *</Label>
-                            <Input id="email" type="email" placeholder="your@email.com" required />
+                            <Input id="email" name="email" type="email" autoComplete="email" placeholder="your@email.com" required />
                           </div>
                         </div>
                         <div className="grid md:grid-cols-2 gap-5">
                           <div className="space-y-1.5">
                             <Label htmlFor="phone">Phone</Label>
-                            <Input id="phone" type="tel" placeholder="+92 300 1234567" />
+                            <Input id="phone" name="phone" type="tel" autoComplete="tel" placeholder="+92 300 1234567" />
                           </div>
                           <div className="space-y-1.5">
                             <Label htmlFor="subject">Subject</Label>
-                            <Input id="subject" placeholder="Product inquiry" />
+                            <Input id="subject" name="subject" placeholder="Product inquiry" />
                           </div>
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="message">Message *</Label>
-                          <Textarea id="message" placeholder="Tell us about your project..." className="min-h-[140px]" required />
+                          <Textarea id="message" name="message" placeholder="Tell us about your project..." className="min-h-[140px]" required />
                         </div>
-                        <Button type="submit" className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground font-semibold">
-                          Send Message
+                        {/* A bot fills this; a person never sees it. */}
+                        <input
+                          type="text"
+                          name="_hp"
+                          tabIndex={-1}
+                          autoComplete="off"
+                          aria-hidden="true"
+                          className="hidden"
+                        />
+                        {error && (
+                          <p role="alert" className="text-sm text-red-600">
+                            {error}
+                          </p>
+                        )}
+                        <Button
+                          type="submit"
+                          disabled={status === "sending"}
+                          className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground font-semibold"
+                        >
+                          {status === "sending" ? "Sending…" : "Send Message"}
                         </Button>
                       </form>
                     )}

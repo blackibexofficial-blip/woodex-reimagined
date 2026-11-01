@@ -14,6 +14,7 @@ import { useEffect } from "react";
 import PrintableInvoice, { ClientInfo } from "@/components/quotation/PrintableInvoice";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { enquiryErrorMessage, submitEnquiry } from "@/lib/api/enquiry";
 
 const benefits = [
   { icon: Clock, title: "24-Hour Response", description: "Receive detailed quotes within one business day" },
@@ -24,7 +25,9 @@ const benefits = [
 
 
 const Quotation = () => {
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [reference, setReference] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
   const [showProductSearch, setShowProductSearch] = useState(false);
   // The quote builder searches the live catalogue: a quote for a product that has been
@@ -48,10 +51,37 @@ const Quotation = () => {
     document.title = "Get E-Quotation — WOODEX Pakistan | Free Quote Request";
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // A quote request is an enquiry with a basket attached: it is written into the CRM (with the basket
+  // spelled out in the message) before the page says anything arrived.
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
+    const data = new FormData(e.currentTarget);
+
+    const basket =
+      items.length === 0
+        ? ""
+        : `\n\nQuote basket (${totalItems} item${totalItems === 1 ? "" : "s"}, ${formatPKR(totalPrice)} estimated):\n` +
+          items.map((item) => `- ${item.name} × ${item.quantity}${item.color ? ` (${item.color})` : ""}`).join("\n");
+
+    setStatus("sending");
+    setError(null);
+
+    try {
+      const receipt = await submitEnquiry({
+        form: "quote",
+        name: String(data.get("name") ?? "").trim(),
+        email: String(data.get("email") ?? "").trim() || undefined,
+        phone: String(data.get("phone") ?? "").trim() || undefined,
+        service: String(data.get("project-type") ?? "").trim() || undefined,
+        message: `Company: ${String(data.get("company") ?? "").trim()}${basket}`,
+      });
+
+      setReference(receipt.reference);
+      setStatus("sent");
+    } catch (err) {
+      setError(enquiryErrorMessage(err));
+      setStatus("idle");
+    }
   };
 
   const isClientInfoValid = clientInfo.name.trim() && clientInfo.location.trim() && clientInfo.contactNumber.trim() && clientInfo.whatsapp.trim();
@@ -351,8 +381,8 @@ const Quotation = () => {
               <div className="grid lg:grid-cols-5 gap-12">
                 {/* Form — 3 cols */}
                 <div className="lg:col-span-3">
-                  {submitted ? (
-                    <div className="text-center py-16 border border-border rounded-sm bg-section-light">
+                  {status === "sent" ? (
+                    <div className="text-center py-16 border border-border rounded-sm bg-section-light" role="status">
                       <div className="w-20 h-20 rounded-full bg-hon-green-pale flex items-center justify-center mx-auto mb-5">
                         <CheckCircle className="h-10 w-10 text-accent" />
                       </div>
@@ -360,6 +390,22 @@ const Quotation = () => {
                       <p className="text-muted-foreground max-w-sm mx-auto">
                         Thank you! Our team will review your requirements and get back to you within 24 business hours.
                       </p>
+                      {reference && (
+                        <p className="mt-4 text-sm">
+                          Your reference: <span className="font-mono font-semibold">{reference}</span>
+                        </p>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-6"
+                        onClick={() => {
+                          setStatus("idle");
+                          setReference("");
+                        }}
+                      >
+                        Send another request
+                      </Button>
                     </div>
                   ) : (
                     <form onSubmit={handleSubmit} className="space-y-5">
@@ -373,29 +419,41 @@ const Quotation = () => {
                       <div className="grid md:grid-cols-2 gap-5">
                         <div className="space-y-1.5">
                           <Label htmlFor="name">Full Name *</Label>
-                          <Input id="name" placeholder="John Doe" required />
+                          <Input id="name" name="name" autoComplete="name" placeholder="John Doe" required />
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="company">Company Name *</Label>
-                          <Input id="company" placeholder="Company Inc." required />
+                          <Input id="company" name="company" autoComplete="organization" placeholder="Company Inc." required />
                         </div>
                       </div>
                       <div className="grid md:grid-cols-2 gap-5">
                         <div className="space-y-1.5">
                           <Label htmlFor="email">Email Address *</Label>
-                          <Input id="email" type="email" placeholder="john@company.com" required />
+                          <Input id="email" name="email" type="email" autoComplete="email" placeholder="john@company.com" required />
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="phone">Phone Number *</Label>
-                          <Input id="phone" type="tel" placeholder="+92 300 1234567" required />
+                          <Input id="phone" name="phone" type="tel" autoComplete="tel" placeholder="+92 300 1234567" required />
                         </div>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="project-type">Project Type *</Label>
-                        <Input id="project-type" placeholder="e.g., New office setup, Office renovation" required />
+                        <Input id="project-type" name="project-type" placeholder="e.g., New office setup, Office renovation" required />
                       </div>
-                      <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 gap-2 uppercase tracking-wider text-xs">
-                        <ArrowRight className="h-4 w-4" /> Download Quote!
+                      {/* A bot fills this; a person never sees it. */}
+                      <input type="text" name="_hp" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
+                      {error && (
+                        <p role="alert" className="text-sm text-red-600">
+                          {error}
+                        </p>
+                      )}
+                      <Button
+                        type="submit"
+                        size="lg"
+                        disabled={status === "sending"}
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 gap-2 uppercase tracking-wider text-xs"
+                      >
+                        <ArrowRight className="h-4 w-4" /> {status === "sending" ? "Sending…" : "Request Quote!"}
                       </Button>
                       <p className="text-xs text-muted-foreground">
                         By submitting this form, you agree to our privacy policy. We'll only use your information to provide the requested quotation.

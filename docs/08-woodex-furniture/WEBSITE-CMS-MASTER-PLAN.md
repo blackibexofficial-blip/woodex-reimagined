@@ -248,12 +248,23 @@ that service's page.
 
 ### 2.7 Forms — `/admin/website/forms`
 
-**Today:** the pipeline is proven — `POST /api/forms.php` → lead → contact, with honeypot, per-IP limits,
-WhatsApp-click and booking actions. The screen shows counts; the storefront's `handleSubmit` does nothing but
-`setSubmitted(true)`. **A visitor is told "thank you" and no record is written.** That is the worst defect on the
-site.
+**Shipped 1 November.** The storefront's Contact and Quotation forms post to the bridge and the leads land in the
+CRM, verified end to end in a browser:
 
-**What it becomes.**
+| Form | Lead | Reference | What was stored |
+|---|---|---|---|
+| Contact | #1 | `L-2026-000001` | Ayesha Khan · `website_form` · detail `contact` · service "Executive desk bulk order" · message · landing `/contact` |
+| Quotation | #2 | `L-2026-000002` | Bilal Ahmed · `website_form` · detail `quote` · company + the quote basket spelled out (2 items, PKR 104,000) |
+
+`src/lib/api/enquiry.ts` is the only thing that posts; both forms show a sending state, the server's error
+message when it fails, and the lead's reference only after the server confirms it. The bridge now reads `line`
+so a furniture enquiry is booked on the furniture line (it was hard-coded to interior).
+
+**Two seeders the sample database was missing** — `NumberSequenceSeeder` and `PipelineStageSeeder`. Without them
+the first real enquiry answers 500 "Number sequence [lead] is not configured". `php artisan install` runs both
+(`ProductionSeeder`); a database migrated by hand does not. Any fresh deploy must run the installer.
+
+**What remains on this screen.**
 
 1. **Wire the SPA** (Contact, Quotation, B2B, Custom Design) to `POST /api/forms.php`. This is the one item worth
    doing before anything else in this document.
