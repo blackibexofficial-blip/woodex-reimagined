@@ -327,15 +327,31 @@ Every save writes a version — `page_versions` already holds 142 snapshots and 
 
 ### 7.1 Theme — the one place design is decided
 
-`theme_tokens` (28 rows) → CSS custom properties → three consumers:
+`theme_tokens` → CSS custom properties → three consumers:
 
-| Consumer | How |
-|---|---|
-| the SPA | `GET /api/site/v1/theme` → injected as `:root` vars at boot |
-| Puck preview | same vars inside the admin preview frame |
-| HTML pages | a generated `theme.css` linked by those files |
+| Consumer | How | State |
+|---|---|---|
+| the SPA | `GET /api/site/v1/theme` → `:root` block injected at boot (`useTheme`) | ✅ shipped |
+| Puck preview | same vars inside the admin preview frame | ⬜ waits on Puck (§6) |
+| HTML pages | a generated `theme.css` linked by those files | ⬜ |
 
-Tokens: colours (brand, accent, ink, surfaces), type scale, font families, radii, shadows, spacing, container width, breakpoints. Live preview, presets, per-page override.
+**Shipped (`1fb80f2`).** The table had rows with no reader and a screen that saved into nothing. Now:
+`ThemeTokensSeeder` describes the palette the storefront already ships (25 tokens, **hex** — the panel edits a
+native colour picker), `ContentApi::cssValue()` converts each hex to the `H S% L%` triplet Tailwind's
+`hsl(var(--x))` needs, and the SPA applies the result as one `<style id="woodex-theme">` on boot. Proven by
+changing `--accent` to `#F35116` in the database and watching the E-Quotation button turn orange on reload.
+
+Two things worth knowing:
+
+* **The vocabulary replaced v1's.** `--navy`, `--wood`, `--paper` styled the interior site, which is archived.
+  The tokens are now the storefront's own (`--primary`, `--accent`, `--hon-green*`, `--utility-*`). The Theme
+  screen's copy still says "v1's own palette" and its "Back to v1 palette" button now restores the *storefront*
+  palette — a wording fix in an OS-owned Blade, tracked, not yet done.
+* **`:root` only.** The tokens override the light theme; the `.dark` block in `src/index.css` is untouched. There
+  is no dark-mode toggle on the storefront, so nothing today depends on the second set.
+
+Still to do here: type scale, radii, spacing and container width as tokens (the SPA hardcodes them in
+`tailwind.config.ts`), a Puck preview frame, and per-page overrides.
 
 ### 7.2 SEO — the fix that pays for itself
 
@@ -346,6 +362,29 @@ Tokens: colours (brand, accent, ink, surfaces), type scale, font families, radii
 | titles set by `document.title` only | rendered server-side **and** kept in sync client-side |
 | no sitemap | generated from published pages on publish |
 | no JSON-LD | `Organization`, `Product`, `Service`, `BlogPosting`, `Project`, `LocalBusiness` (showrooms), `FAQPage`, `BreadcrumbList` |
+
+**Shipped:** `website:publish` writes 46 files — a shell per URL (16 pages + 30 records) with its own title,
+description, canonical, Open Graph tags and JSON-LD, plus `sitemap.xml`. Verified per URL: `/about`,
+`/services/custom-design` and `/projects/dha-corporate-tower` each answer their own `<title>` and canonical.
+
+### 7.2b The audit screens now report the truth about a lie
+
+Worth writing down before somebody "fixes" the site to satisfy them. `SeoOverview`, `SeoAgent`, `SiteHealth` and
+Find & replace all read **files in `public/`** — they were built for v1, where a page was real HTML. Today each of
+the 46 files is a shell: `<div id="root">` and a `<script>` tag. So the audit says:
+
+```
+Pages checked 46 · With findings 46 · Findings 109
+No H1 (46) · Thin content (45) · Pages nothing links to (45)
+```
+
+Every one of those is true of the *file* and false of the *page*: React draws the H1, the prose and the nav a few
+hundred milliseconds later. The findings are not noise to be suppressed — they are a real SEO problem, because a
+crawler that does not run JavaScript sees exactly what the audit sees.
+
+The fix is in the publisher, not the auditor: give each shell a crawlable document inside `#root` (the H1, the
+summary, and the site's own links) which React replaces on mount. That is progressive enhancement, not cloaking —
+the same content a visitor gets — and it would take `No H1` from 46 to 0 honestly.
 
 ### 7.3 Speed
 
