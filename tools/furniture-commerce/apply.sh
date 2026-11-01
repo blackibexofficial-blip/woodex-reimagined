@@ -137,7 +137,9 @@ else
 fi
 
 # The Content screen edits the rows the storefront reads; its route and its sidebar entry live in two
-# OS-owned files, so both are inserted once by anchor rather than replaced.
+# OS-owned files, so both are inserted once by anchor rather than replaced. It goes *above* Blog and
+# Portfolio, and ahead of the comment that says "the six screens still to port": this one is ported, and
+# the two beneath it still list the archived interior rows.
 ADMIN_ROUTES="$PLATFORM/routes/admin.php"
 if [ -f "$ADMIN_ROUTES" ]; then
     insert_before "$ADMIN_ROUTES" \
@@ -158,7 +160,7 @@ fi
 NAV="$PLATFORM/app/Support/AdminNavigation.php"
 if [ -f "$NAV" ]; then
     insert_before "$NAV" \
-        "self::item('Forms', 'file', 'admin.website.forms', 'website.edit')," \
+        "self::item('Blog', 'book', 'admin.website.blog', 'website.edit')," \
         "                self::item('Content', 'file', 'admin.website.content', 'website.edit')," \
         "sidebar: content item" \
         "admin.website.content"
