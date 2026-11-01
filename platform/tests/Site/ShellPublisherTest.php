@@ -160,4 +160,67 @@ final class ShellPublisherTest extends TestCase
         Assert::true(str_contains($xml, '&amp;'), 'an ampersand must be escaped, or the sitemap is invalid XML');
         Assert::same(2, substr_count($xml, '<url>'), 'two URLs');
     }
+
+    /**
+     * A rebuild replaces the hashed bundle, and the pristine copy must follow it.
+     *
+     * This is not hypothetical: `public/index.html` names `front/index-<hash>.js`, a new build emits a new file
+     * and deletes the old one, and a copy captured "once" kept naming the file that no longer existed. Every
+     * page published from it then loaded no script at all — the shop answered 200 with an empty `<div id="root">`.
+     */
+    public function testItFollowsARebuildInsteadOfKeepingTheDeadBundle(): void
+    {
+        $document = static fn (string $entry): string => <<<HTML
+            <!doctype html>
+            <html lang="en">
+              <head><meta charset="UTF-8" /><title>Built</title></head>
+              <body><div id="root"></div><script type="module" src="{$entry}"></script></body>
+            </html>
+            HTML;
+
+        mkdir($this->root.'/front', 0o775, true);
+        file_put_contents($this->root.'/front/index-aaaaaaaa.js', 'console.log("first build")');
+        file_put_contents($this->root.'/index.html', $document('/front/index-aaaaaaaa.js'));
+
+        $publisher = new ShellPublisher($this->root);
+        $publisher->ensureShell();
+
+        Assert::true(
+            str_contains((string) file_get_contents($this->root.'/site/shell.html'), 'index-aaaaaaaa.js'),
+            'the first build is captured',
+        );
+
+        // The rebuild: a new bundle, the old one deleted, a new document naming it.
+        unlink($this->root.'/front/index-aaaaaaaa.js');
+        file_put_contents($this->root.'/front/index-bbbbbbbb.js', 'console.log("second build")');
+        file_put_contents($this->root.'/index.html', $document('/front/index-bbbbbbbb.js'));
+
+        (new ShellPublisher($this->root))->ensureShell();
+        $shell = (string) file_get_contents($this->root.'/site/shell.html');
+
+        Assert::true(str_contains($shell, 'index-bbbbbbbb.js'), 'the copy must name the bundle that exists');
+        Assert::true(! str_contains($shell, "index-aaaaaaaa.js"), 'the dead bundle must not survive in the copy');
+    }
+
+    public function testItRefusesToRefreshFromAPublishedHomePage(): void
+    {
+        // A stale copy and the only other document carrying one page's head: publishing from it would give every
+        // page the home page's title, so the deploy must stop here instead.
+        mkdir($this->root.'/front', 0o775, true);
+        mkdir($this->root.'/site', 0o775, true);
+        file_put_contents(
+            $this->root.'/site/shell.html',
+            '<html><head><title>Built</title></head><body><script type="module" src="/front/index-old00000.js"></script></body></html>',
+        );
+        file_put_contents(
+            $this->root.'/index.html',
+            '<html><head>'.ShellPublisher::START.'<title>Home</title>'.ShellPublisher::END
+            .'</head><body><script type="module" src="/front/index-new00000.js"></script></body></html>',
+        );
+
+        Assert::throws(
+            RuntimeException::class,
+            fn () => (new ShellPublisher($this->root))->ensureShell(),
+        );
+    }
 }

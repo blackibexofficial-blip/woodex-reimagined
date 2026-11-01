@@ -46,14 +46,19 @@ final class ShellPublisher
     }
 
     /**
-     * Take a pristine copy of the built document, once.
+     * Take a pristine copy of the built document, once — and again after a rebuild.
      *
      * Refuses to capture from an already-injected `index.html`: that would bake one page's title into every
      * other page for ever. The home page must be published from the copy, never from itself.
+     *
+     * "Once" was too literal. `public/index.html` names the built bundle by content hash, and a rebuild
+     * replaces that file: the copy kept naming `front/index-<old>.js`, so every page published afterwards
+     * linked a script that no longer existed and the storefront rendered as an empty `<div id="root">`.
+     * A shell whose bundle is gone is therefore refreshed from the freshly installed build.
      */
     public function ensureShell(): bool
     {
-        if (is_file($this->shellFile())) {
+        if (is_file($this->shellFile()) && ! $this->shellIsStale()) {
             return true;
         }
 
@@ -66,7 +71,10 @@ final class ShellPublisher
         $built = (string) file_get_contents($index);
 
         if (str_contains($built, self::START)) {
-            throw new RuntimeException('public/index.html already carries an SEO block, so it cannot be used as the pristine shell. Restore the Vite build and run this again.');
+            throw new RuntimeException(
+                'public/index.html is the published home page and the pristine shell is missing or stale, so there is '
+                .'nothing clean to capture. Install the Vite build over public/ (index.html and front/) and run this again.'
+            );
         }
 
         if (! is_dir(dirname($this->shellFile())) && ! mkdir(dirname($this->shellFile()), 0o775, true) && ! is_dir(dirname($this->shellFile()))) {
@@ -76,6 +84,20 @@ final class ShellPublisher
         file_put_contents($this->shellFile(), $built);
 
         return true;
+    }
+
+    /** The bundle the document boots (`/front/index-<hash>.js`), or null when it is built some other way. */
+    private function entryOf(string $html): ?string
+    {
+        return preg_match('#/front/index-[A-Za-z0-9_-]+\.js#', $html, $matches) === 1 ? $matches[0] : null;
+    }
+
+    /** True when the pristine copy names a bundle this installation no longer has. */
+    private function shellIsStale(): bool
+    {
+        $entry = $this->entryOf((string) file_get_contents($this->shellFile()));
+
+        return $entry !== null && ! is_file($this->root.$entry);
     }
 
     /**

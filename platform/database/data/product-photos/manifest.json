@@ -1,0 +1,25 @@
+{
+ "note": "Placeholder photography drawn from the storefront's own approved assets. Replace any of these in Products -> Photos; the importer never overwrites a product that already has one unless --force is given.",
+ "photos": {
+  "WX-1001": "category-executive.jpg",
+  "WX-1002": "category-executive.jpg",
+  "WX-1003": "desk-product.jpg",
+  "WX-1019": "desk-product.jpg",
+  "WX-1020": "category-executive.jpg",
+  "WX-1004": "desk-product.jpg",
+  "WX-1005": "category-tables.jpg",
+  "WX-1006": "chair-product.jpg",
+  "WX-1007": "chair-product.jpg",
+  "WX-1008": "category-chairs.jpg",
+  "WX-1009": "chair-product.jpg",
+  "WX-1010": "category-chairs.jpg",
+  "WX-1011": "category-workstations.jpg",
+  "WX-1012": "category-workstations.jpg",
+  "WX-1013": "category-workstations.jpg",
+  "WX-1014": "configurator-room-open.jpg",
+  "WX-1015": "category-workstations.jpg",
+  "WX-1016": "category-bedroom.jpg",
+  "WX-1017": "category-storage.jpg",
+  "WX-1018": "category-living.jpg"
+ }
+}

@@ -45,14 +45,14 @@ const ProductDetail = () => {
   // conditionally — the "not found" branch is a different render, not a different component.
   const relatedProducts = useRelatedProducts(product?.category, product?.id, 4);
 
-  const [selectedColor, setSelectedColor] = useState(product?.colors[0]);
+  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0]);
   const [quantity, setQuantity] = useState(1);
 
   // The product arrives from the snapshot first and the API second. The colour selection is
   // reset only when the product itself changes, or picking a finish would be undone by a
   // background refetch.
   useEffect(() => {
-    setSelectedColor(product?.colors[0]);
+    setSelectedColor(product?.colors?.[0]);
     setQuantity(1);
   }, [product?.id]);
   const [addedToQuote, setAddedToQuote] = useState(false);
@@ -90,7 +90,32 @@ const ProductDetail = () => {
     setTimeout(() => setAddedToCart(false), 2500);
   };
 
-  if (!product && !isLoading) {
+  // Nothing below this line may run without a product. The previous guard only fired once
+  // loading had finished, which let the loading render fall through to `product.category`
+  // and blank the whole page — a white screen instead of a product.
+  if (!product) {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen flex flex-col">
+          <Header />
+          <main className="flex-1 container mx-auto px-4 py-8" aria-busy="true" aria-live="polite">
+            <div className="h-4 w-64 rounded bg-muted mb-8" />
+            <div className="grid lg:grid-cols-2 gap-12">
+              <div className="aspect-square rounded-lg bg-muted animate-pulse" />
+              <div className="space-y-4">
+                <div className="h-10 w-3/4 rounded bg-muted animate-pulse" />
+                <div className="h-5 w-1/3 rounded bg-muted animate-pulse" />
+                <div className="h-8 w-1/2 rounded bg-muted animate-pulse" />
+                <div className="h-24 rounded bg-muted animate-pulse" />
+              </div>
+            </div>
+            <span className="sr-only">Loading product details…</span>
+          </main>
+          <Footer />
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
@@ -185,22 +210,26 @@ const ProductDetail = () => {
               {/* Title & Rating */}
               <div>
                 <h1 className="text-3xl lg:text-4xl font-bold mb-3">{product.name}</h1>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-5 w-5 ${
-                          i < Math.floor(product.rating)
-                            ? "fill-amber-400 text-amber-400"
-                            : "fill-muted text-muted"
-                        }`}
-                      />
-                    ))}
-                    <span className="ml-2 font-medium">{product.rating}</span>
+                {/* The catalogue carries no reviews yet, and a row of empty stars reading
+                    "( reviews)" is worse than no rating at all. Show it only when it is real. */}
+                {product.reviews > 0 && (
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-5 w-5 ${
+                            i < Math.floor(product.rating)
+                              ? "fill-amber-400 text-amber-400"
+                              : "fill-muted text-muted"
+                          }`}
+                        />
+                      ))}
+                      <span className="ml-2 font-medium">{product.rating}</span>
+                    </div>
+                    <span className="text-muted-foreground">({product.reviews} reviews)</span>
                   </div>
-                  <span className="text-muted-foreground">({product.reviews} reviews)</span>
-                </div>
+                )}
               </div>
 
               {/* Price */}

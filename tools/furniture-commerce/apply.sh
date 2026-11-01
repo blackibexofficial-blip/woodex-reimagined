@@ -25,6 +25,8 @@ for path in \
     app/Livewire/Admin/Website/PagesIndex.php \
     app/Livewire/Admin/Website/MediaLibrary.php \
     app/Console/Commands/OwnerAccountCommand.php \
+    app/Console/Commands/ImportProductImagesCommand.php \
+    app/Http/Controllers/Site \
     app/Http/Controllers/Admin/PageDocumentController.php \
     app/Http/Controllers/Api/Storefront \
     app/Http/Controllers/Api/Site \
@@ -40,6 +42,7 @@ for path in \
     database/seeders/data/catalog.json \
     database/seeders/SiteContentSeeder.php \
     database/seeders/data/site-content.json \
+    database/data/product-photos \
     routes/commerce.php \
     routes/site.php
 do
@@ -71,6 +74,65 @@ do
     [ -f "$suite" ] && cp "$suite" "$PLATFORM/tests/Billing/" && echo "   $(basename "$suite")"
 done
 
+# Two lines in files the OS already owns: the import and the route that answers the URL every
+# ProductCard has always printed. Neither file is replaced — a line is added, once, and the
+# anchor is checked so a future OS rewrite is reported instead of silently patched wrong.
+#
+#   insert_before FILE ANCHOR TEXT LABEL [GUARD]
+#
+# GUARD is what proves the edit is already present. It defaults to TEXT, but a multi-line block
+# in the OS never equals the one-line text we insert, so callers pass the shortest distinctive
+# fragment instead — otherwise re-running would add the route a second time.
+insert_before() {
+    file=$1; anchor=$2; text=$3; label=$4; guard=${5:-$3}
+
+    if grep -qF "$guard" "$file"; then
+        echo "   $label: already there"
+        return
+    fi
+
+    if ! grep -qF "$anchor" "$file"; then
+        echo "   $label: ANCHOR MISSING in $file — add manually: $text" >&2
+        return
+    fi
+
+    tmp="$file.wx-tmp"
+    awk -v anchor="$anchor" -v text="$text" '
+        !done && index($0, anchor) { print text; done=1 } { print }
+    ' "$file" > "$tmp" && mv "$tmp" "$file"
+    echo "   $label: added"
+}
+
+echo "== product media route"
+WEB="$PLATFORM/routes/web.php"
+if [ -f "$WEB" ]; then
+    insert_before "$WEB" \
+        "use App\\Http\\Controllers\\Site\\SitemapController;" \
+        "use App\\Http\\Controllers\\Site\\ProductImageController;" \
+        "web.php import" \
+        "Site\\ProductImageController;"
+
+    insert_before "$WEB" \
+        "Route::get('/robots.txt'" \
+        "Route::get('/media/products/{sku}/{file}', ProductImageController::class)->name('commerce.media.product');" \
+        "web.php route" \
+        "'/media/products/{sku}/{file}'"
+else
+    echo "   routes/web.php missing — skipped"
+fi
+
+# `media` must be a reserved first segment, or a photograph that does not exist is redirected to
+# its trailing-slash "canonical" page form before it ever 404s (SiteRouter::respond).
+ROUTER="$PLATFORM/app/Domain/Website/Services/SiteRouter.php"
+if [ -f "$ROUTER" ] && ! grep -qF "'media'," "$ROUTER"; then
+    tmp="$ROUTER.wx-tmp"
+    awk "!/done/ && /'portal', 'admin',/ { print; print \"        'media',\"; done=1; next } { print }" \
+        "$ROUTER" > "$tmp" && mv "$tmp" "$ROUTER"
+    echo "   SiteRouter RESERVED: added media"
+else
+    echo "   SiteRouter RESERVED: already there"
+fi
+
 echo "== sidebar and routes"
 grep -q "admin.commerce.dashboard" "$PLATFORM/app/Support/AdminNavigation.php" \
     && echo "   sidebar: already has the Commerce group" \
@@ -92,6 +154,7 @@ Next, in the OS checkout:
     php artisan db:seed --class=CommercePermissionsSeeder --force
     php artisan db:seed --class=CatalogSeeder --force      # placeholder catalogue, not the real one
     php artisan commerce:demo-order --qty=2                # proves the whole path end to end
+    php artisan commerce:import-images --force             # 20 products, 3 sizes each, into storage/app/public
     php artisan db:seed --class=SiteContentSeeder --force  # the reimagined site's 16 pages + 30 records
     php artisan website:archive-interior                   # export + stamp the 142 interior pages
     php artisan website:publish                            # write the static shells + sitemap.xml
