@@ -375,12 +375,41 @@ the service rules, the home page never redirecting, and the importer being safe 
   dropped (`website:publish --skip-redirects`) and `SiteRouter` answers from the table again — one command,
   same data.
 
-**Still open, and it is the bigger half.** Everything that is *not* in the map still answers **200**: a typo, a
-retired product, `/shop/{sku}` for a SKU that was deleted. The fallback cannot tell "a route React owns" from
-"nothing owns this". Fixing it means either publishing a shell per product (which is also the SEO win for 20
-product pages — title, price, `Product` JSON-LD) or letting the app answer unmatched paths and serve the shell
-only for addresses it can prove exist. Until then the sitemap is honest, the 137 redirects are honest, and the
-rest of the web is told everything is fine.
+**Still open.** Everything that is *not* in the map and *not* a published page still answers **200**: a typo, a
+retired product, `/shop/{slug}` for a SKU that was deleted. The fallback cannot tell "a route React owns" from
+"nothing owns this". The 20 product pages are published now (§5d), so every address the SPA can render has a file
+— which means the fallback is only reachable for addresses nothing owns, and removing it is the last step. What
+stops it today is `/checkout`: a real route, deliberately not a page, with no file of its own.
+
+### 5d Products — shipped: 20 pages that carry a price
+
+`/shop/{slug}` existed only in the browser. There was no file, so the SPA fallback answered all twenty products
+with the same shell: no price, no availability, no `Product` schema — and a **200** telling Google that twenty
+different products were one page. A product page is the page a shop sells, so `website:publish` writes it like any
+other: 16 pages + 30 records + **20 products = 66 files**, and 66 sitemap URLs.
+
+| In the file | Detail |
+|---|---|
+| `<title>` | `BALLMER Executive Desk — Executive Tables | WOODEX` |
+| Description / OG | the product's own summary; `og:image` is the real WebP the storefront shows |
+| `<link rel="canonical">` | the product's own URL |
+| `Product` JSON-LD | `sku`, `brand`, `image`, `offers` with `price: "52000.00"`, `priceCurrency: PKR`, `availability: InStock/OutOfStock`, and `aggregateRating` **only when `review_count > 0`** — a rating with no reviews behind it is a rich-result penalty, not a feature |
+| Body | heading, summary, `Rs 52,000 (was Rs 65,000, save Rs 13,000)`, availability, the specification table as sentences, the colours as one sentence, the lead time, eight sibling products, the site nav |
+
+The price is stored in **minor units** (PKR paisa) because money is never a float; it is divided exactly once, in
+`productMeta()`, and formatted with a dot whatever the server's locale is. `Tests\Site` holds that (`52000.00`,
+not `5200000` or `52,000.00`), plus the out-of-stock switch and the rating gate.
+
+Two bugs surfaced on the way and are fixed:
+
+* **The Content screen was erasing canonicals.** Saving a record wrote `seo.canonical = ''`, and the publisher
+  read `''` as "this page has no canonical" and omitted the tag. Two records published without one — caught by
+  auditing the output, not by a test. The screen now drops blanks and keeps the existing value, and the publisher
+  treats a blank as absent, because there are already rows in the world holding one.
+* **Sibling links were labelled with slugs** (`ballmer-executive-desk`), because the products query selected only
+  `slug` and `updated_at`. It selects the translation now and labels with `displayName()`.
+
+`Tests\Site`: **50 passed / 514 assertions** (6 new for the product head and body, 1 for the canonical).
 
 ---
 
@@ -472,8 +501,8 @@ Still to do here: type scale, radii, spacing and container width as tokens (the 
 | no sitemap | generated from published pages on publish |
 | no JSON-LD | `Organization`, `Product`, `Service`, `BlogPosting`, `Project`, `LocalBusiness` (showrooms), `FAQPage`, `BreadcrumbList` |
 
-**Shipped:** `website:publish` writes 46 files — a shell per URL (16 pages + 30 records) with its own title,
-description, canonical, Open Graph tags and JSON-LD, plus `sitemap.xml`. Verified per URL: `/about`,
+**Shipped:** `website:publish` writes 66 files — a shell per URL (16 pages + 30 records + 20 products, §5d) with
+its own title, description, canonical, Open Graph tags and JSON-LD, plus `sitemap.xml`. Verified per URL: `/about`,
 `/services/custom-design` and `/projects/dha-corporate-tower` each answer their own `<title>` and canonical.
 
 ### 7.2b The audit screens now report the truth about a lie
@@ -492,7 +521,8 @@ hundred milliseconds later. The findings are not noise to be suppressed — they
 crawler that does not run JavaScript sees exactly what the audit sees.
 
 The fix was in the publisher, not the auditor, and it shipped (`64e4f00`): each shell now carries the heading, the
-summary, the page's children and the site's own links inside `#root`, and React replaces all of it on mount.
+summary, the page's children and the site's own links inside `#root`, and React replaces all of it on mount. The
+numbers below are from that day; there are 66 files now, and 0 without an `h1` or a canonical.
 
 | Check | Before | After |
 |---|---|---|

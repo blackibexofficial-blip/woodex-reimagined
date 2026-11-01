@@ -128,10 +128,15 @@ final class ContentIndex extends Component
             // Only the paragraphs are replaced; a post's hero, a service's steps and an article's FAQ are
             // structured blocks this field never showed, and they keep their place in the body.
             'sections' => BodyText::merge((string) ($data['sections'] ?? ''), $item->sections),
+            // Blanks are dropped, not stored as empty strings: a stored `canonical: ''` reads as "this page has
+            // no canonical" to the publisher, which then writes no <link rel="canonical"> at all. The record keeps
+            // the canonical and schema it already had.
             'seo' => array_filter([
                 'title' => trim((string) ($data['seo_title'] ?? '')),
                 'description' => trim((string) ($data['seo_description'] ?? '')),
-            ]) + ['canonical' => '', 'schema' => ''],
+                'canonical' => trim((string) ($item->seo['canonical'] ?? '')),
+                'schema' => trim((string) ($item->seo['schema'] ?? '')),
+            ], static fn (string $value): bool => $value !== ''),
             'published_at' => $data['status'] === ContentItem::STATUS_PUBLISHED
                 ? ($item->published_at ?? now())
                 : null,

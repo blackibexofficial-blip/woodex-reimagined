@@ -163,6 +163,33 @@ final class ContentEditingTest extends TestCase
         Assert::true(str_contains($source, "starts_with:/"), 'an address must start with a slash');
     }
 
+    public function testABlankCanonicalIsNotWrittenToThePage(): void
+    {
+        // The screen used to store `canonical: ''` alongside a new title. The publisher read that as a real value
+        // and wrote no <link rel="canonical"> at all — two records lost theirs that way, and only an audit of the
+        // published files caught it.
+        $item = new \App\Domain\Website\Content\Models\ContentItem([
+            'type' => 'post',
+            'slug' => 'a-post',
+            'path' => '/blog/a-post',
+            'title' => 'A post',
+            'excerpt' => 'Short.',
+            'seo' => ['canonical' => '', 'title' => 'A post'],
+        ]);
+
+        $command = new \App\Console\Commands\PublishSiteCommand;
+        $method = new \ReflectionMethod($command, 'itemMeta');
+        $method->setAccessible(true);
+        $meta = $method->invoke($command, $item, 'https://woodex.test');
+
+        Assert::same('https://woodex.test/blog/a-post', $meta['canonical'], 'a blank canonical falls back to the URL');
+
+        $item->seo = ['canonical' => 'https://woodex.test/elsewhere'];
+        $meta = $method->invoke($command, $item, 'https://woodex.test');
+
+        Assert::same('https://woodex.test/elsewhere', $meta['canonical'], 'a real one is kept');
+    }
+
     /**
      * @param  array<int, array<string, mixed>>  $sections
      * @return array<int, array<string, mixed>>

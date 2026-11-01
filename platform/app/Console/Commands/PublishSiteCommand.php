@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domain\Commerce\Api\CatalogService;
+use App\Domain\Commerce\Models\Product;
 use App\Domain\Website\Content\Models\ContentItem;
 use App\Domain\Website\Content\RedirectPublisher;
 use App\Domain\Website\Content\Models\SitePage;
 use App\Domain\Website\Content\ShellPublisher;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * Turns published rows into the files a visitor and a crawler actually receive.
@@ -117,6 +120,47 @@ final class PublishSiteCommand extends Command
             }
         }
 
+        // Twenty product pages, which had no file at all: `/shop/ballmer-executive-desk` was answered by the
+        // SPA fallback — 200, the shop's shell, and no price, no availability and no Product schema anywhere a
+        // crawler could read them. A product is a page the site sells, so publishing writes it like any other.
+        $catalog = app(CatalogService::class);
+
+        // With their translation, because a sibling link labelled `ballmer-executive-desk` is a slug pretending
+        // to be a name; `displayName()` falls back to the SKU when there is no translation.
+        $products = Product::query()
+            ->published()
+            ->with('translation')
+            ->orderBy('position')
+            ->get();
+
+        foreach ($products as $product) {
+            $url = '/shop/'.ltrim((string) $product->slug, '/');
+            $detail = $catalog->findDetail((string) $product->slug);
+
+            if ($detail === null) {
+                $failed++;
+                $this->components->twoColumnDetail($url, '<fg=red>the catalogue returned no product</>');
+
+                continue;
+            }
+
+            try {
+                $publisher->write($url, $publisher->render(
+                    $this->productMeta($detail, $base),
+                    $this->productFallback($detail, $products, $nav),
+                ));
+                $written++;
+                $urls[] = [
+                    'loc' => $base.$url,
+                    'lastmod' => $product->updated_at?->toDateString(),
+                    'priority' => '0.7',
+                ];
+            } catch (\Throwable $e) {
+                $failed++;
+                $this->components->twoColumnDetail($url, '<fg=red>'.$e->getMessage().'</>');
+            }
+        }
+
         // The redirects come after the pages on purpose: a redirect from an address that now has a file can never
         // fire, and the publisher is what makes the file exist.
         if (! $this->option('skip-redirects')) {
@@ -137,6 +181,7 @@ final class PublishSiteCommand extends Command
         $this->newLine();
         $this->components->twoColumnDetail('Pages', (string) $pages->count());
         $this->components->twoColumnDetail('Records', (string) $items->count());
+        $this->components->twoColumnDetail('Products', (string) $products->count());
         $this->components->twoColumnDetail('Files written', (string) $written);
         $this->components->twoColumnDetail('Failures', $failed > 0 ? '<fg=red>'.$failed.'</>' : '0');
         $this->components->twoColumnDetail('Base URL', $base);
@@ -274,7 +319,9 @@ final class PublishSiteCommand extends Command
         return [
             'title' => $page->metaTitle(),
             'description' => $page->metaDescription(),
-            'canonical' => (string) ($seo['canonical'] ?? $url),
+            // An empty string is not a canonical. Rows written by an older screen carry `''` here, and trusting
+            // it writes a page with no <link rel="canonical"> at all — which is how two records lost theirs.
+            'canonical' => trim((string) ($seo['canonical'] ?? '')) !== '' ? (string) $seo['canonical'] : $url,
             'image' => $image,
             'type' => 'website',
             'schema' => [
@@ -327,10 +374,155 @@ final class PublishSiteCommand extends Command
         return [
             'title' => $item->metaTitle(),
             'description' => $item->metaDescription(),
-            'canonical' => (string) ($seo['canonical'] ?? $url),
+            'canonical' => trim((string) ($seo['canonical'] ?? '')) !== '' ? (string) $seo['canonical'] : $url,
             'image' => (string) ($seo['og_image'] ?? ($payload['image'] ?? '')),
             'type' => $item->type === 'post' ? 'article' : 'website',
             'schema' => $schema,
+        ];
+    }
+
+    /**
+     * A product's head: its own title, its price and availability, and `Product` schema with an `Offer`.
+     *
+     * `Product` is the one schema Google reads for a shopping result, and the three fields that decide whether a
+     * product page can earn one are `name`, `offers.price` and `offers.availability`. The price is stored in
+     * minor units (PKR paisa) because money is never a float; schema.org wants a decimal string, so it is divided
+     * exactly once, here, and formatted with a dot whatever the server's locale is.
+     *
+     * @param  array<string, mixed>  $product  a `CatalogService::findDetail()` payload
+     * @return array{title: string, description: string, canonical: string, image: string, type: string, schema: array<string, mixed>}
+     */
+    private function productMeta(array $product, string $base): array
+    {
+        $name = trim((string) ($product['name'] ?? ''));
+        $url = $base.(string) ($product['url'] ?? '');
+        $image = (string) ($product['image'] ?? '');
+        $summary = trim((string) ($product['summary'] ?? ''));
+        $category = trim((string) ($product['category'] ?? ''));
+        $reviews = (int) ($product['review_count'] ?? 0);
+
+        $schema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Product',
+            'name' => $name,
+            'url' => $url,
+            'sku' => (string) ($product['sku'] ?? ''),
+            'description' => $summary,
+            'brand' => ['@type' => 'Brand', 'name' => 'WOODEX'],
+            'offers' => [
+                '@type' => 'Offer',
+                'price' => number_format(((int) ($product['price_minor'] ?? 0)) / 100, 2, '.', ''),
+                'priceCurrency' => 'PKR',
+                'availability' => ($product['in_stock'] ?? false)
+                    ? 'https://schema.org/InStock'
+                    : 'https://schema.org/OutOfStock',
+                'url' => $url,
+            ],
+        ];
+
+        if ($image !== '') {
+            $schema['image'] = $base.$image;
+        }
+
+        // Only when there are reviews: a 5.0 with no reviews behind it is a rich result Google penalises.
+        if ($reviews > 0) {
+            $schema['aggregateRating'] = [
+                '@type' => 'AggregateRating',
+                'ratingValue' => (string) ($product['rating'] ?? ''),
+                'reviewCount' => $reviews,
+            ];
+        }
+
+        return [
+            'title' => $name.($category !== '' ? ' — '.$category : '').' | WOODEX',
+            'description' => Str::limit($summary !== '' ? $summary : $name, 155),
+            'canonical' => $url,
+            'image' => $image === '' ? '' : $base.$image,
+            'type' => 'product',
+            'schema' => $schema,
+        ];
+    }
+
+    /**
+     * A product's fallback document: the name, the price, the facts, and a way back to the shop.
+     *
+     * The facts matter more here than elsewhere: this is what a crawler and a reader without JavaScript receive
+     * for a page whose real content is a React gallery. Price and availability are the two things a person came
+     * for, so they lead; the specification table follows as sentences.
+     *
+     * @param  array<string, mixed>  $product
+     * @param  Collection<int, Product>  $products
+     * @param  list<array{label: string, href: string}>  $nav
+     * @return array{heading: string, lead: string, paragraphs: list<string>, links: list<array{label: string, href: string}>}
+     */
+    private function productFallback(array $product, Collection $products, array $nav): array
+    {
+        $price = ((int) ($product['price_minor'] ?? 0)) / 100;
+        $was = ((int) ($product['compare_at_minor'] ?? 0)) / 100;
+
+        $paragraphs = [];
+
+        $money = 'Rs '.number_format($price, 0);
+
+        $paragraphs[] = $was > $price
+            ? $money.' (was Rs '.number_format($was, 0).', save Rs '.number_format($was - $price, 0).').'
+            : $money.'.';
+
+        $paragraphs[] = ($product['in_stock'] ?? false)
+            ? 'In stock — '.((int) ($product['available_qty'] ?? 0)).' available.'
+            : 'Out of stock.';
+
+        foreach ((array) ($product['specifications'] ?? []) as $spec) {
+            $label = trim((string) ($spec['label'] ?? ''));
+            $value = trim((string) ($spec['value'] ?? ''));
+
+            if ($label !== '' && $value !== '') {
+                $paragraphs[] = $label.': '.$value.'.';
+            }
+        }
+
+        // One sentence, not one per colour: three lines reading "Also available in …" is a list rendered as prose.
+        $colours = array_values(array_filter(array_map(
+            static fn (array $colour): string => trim((string) ($colour['name'] ?? '')),
+            (array) ($product['colors'] ?? []),
+        )));
+
+        if ($colours !== []) {
+            $last = count($colours) > 1 ? ' and '.array_pop($colours) : '';
+
+            $paragraphs[] = 'Also available in '.implode(', ', $colours).$last.'.';
+        }
+
+        // The specification table often already says this; a second sentence repeating it reads like a bug.
+        $warrantyInSpecs = false;
+
+        foreach ((array) ($product['specifications'] ?? []) as $spec) {
+            $warrantyInSpecs = $warrantyInSpecs || str_contains(strtolower((string) ($spec['label'] ?? '')), 'warranty');
+        }
+
+        if (! $warrantyInSpecs && (int) ($product['warranty_months'] ?? 0) > 0) {
+            $paragraphs[] = (int) $product['warranty_months'].'-month warranty.';
+        }
+
+        if ((int) ($product['lead_time_days'] ?? 0) > 0) {
+            $paragraphs[] = 'Delivered in about '.(int) $product['lead_time_days'].' days.';
+        }
+
+        $siblings = $products
+            ->where('slug', '!=', $product['slug'])
+            ->take(8)
+            ->map(fn (Product $sibling): array => [
+                'label' => $sibling->displayName(),
+                'href' => '/shop/'.ltrim((string) $sibling->slug, '/'),
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'heading' => (string) ($product['name'] ?? ''),
+            'lead' => trim((string) ($product['summary'] ?? '')),
+            'paragraphs' => array_slice($paragraphs, 0, 12),
+            'links' => array_merge([['label' => 'All office furniture', 'href' => '/shop']], $siblings, $nav),
         ];
     }
 }
