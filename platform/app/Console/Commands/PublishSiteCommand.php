@@ -30,6 +30,25 @@ use Illuminate\Support\Str;
  */
 final class PublishSiteCommand extends Command
 {
+    /**
+     * Routes the storefront owns that are not pages: no CMS row, no sitemap entry, and `noindex`.
+     *
+     * `/checkout` is a real address — a customer can reach it, and it must not 404 — but a search result for it
+     * would send somebody to an empty basket. Publishing a shell for it is what lets the SPA fallback disappear:
+     * once every address React can render has a file, the fallback is only reachable for addresses nothing owns,
+     * and those deserve a 404.
+     *
+     * @var array<string, array{title: string, description: string, heading: string, lead: string}>
+     */
+    private const array APP_PAGES = [
+        '/checkout' => [
+            'title' => 'Checkout — WOODEX',
+            'description' => 'Complete your order: delivery details, payment and confirmation.',
+            'heading' => 'Checkout',
+            'lead' => 'Your basket, delivery and payment, in one step.',
+        ],
+    ];
+
     protected $signature = 'website:publish
                             {--base= : Absolute base URL for canonicals (defaults to APP_URL)}
                             {--only=* : Publish only these page keys}
@@ -158,6 +177,32 @@ final class PublishSiteCommand extends Command
             } catch (\Throwable $e) {
                 $failed++;
                 $this->components->twoColumnDetail($url, '<fg=red>'.$e->getMessage().'</>');
+            }
+        }
+
+        // The addresses React owns but the CMS does not — today just the checkout. Published, so nothing a
+        // visitor can reach is left to a fallback; `noindex`, because an empty basket is not a search result.
+        foreach (self::APP_PAGES as $path => $page) {
+            try {
+                $publisher->write($path, $publisher->render(
+                    [
+                        'title' => $page['title'],
+                        'description' => $page['description'],
+                        'canonical' => $base.$path,
+                        'robots' => 'noindex, follow',
+                        'type' => 'website',
+                    ],
+                    [
+                        'heading' => $page['heading'],
+                        'lead' => $page['lead'],
+                        // A reader without JavaScript cannot check out; the shop is where they can start.
+                        'links' => array_merge([['label' => 'Continue shopping', 'href' => '/shop']], $nav),
+                    ],
+                ));
+                $written++;
+            } catch (\Throwable $e) {
+                $failed++;
+                $this->components->twoColumnDetail($path, '<fg=red>'.$e->getMessage().'</>');
             }
         }
 

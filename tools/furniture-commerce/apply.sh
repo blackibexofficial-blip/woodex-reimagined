@@ -37,6 +37,7 @@ for path in \
     app/Console/Commands/DemoOrderCommand.php \
     resources/views/livewire/admin/commerce \
     resources/views/admin/commerce \
+    resources/views/errors/404.blade.php \
     resources/views/livewire/admin/website/pages-index.blade.php \
     resources/views/livewire/admin/website/content-index.blade.php \
     resources/views/livewire/admin/website/media-library.blade.php \
@@ -181,6 +182,19 @@ if [ -f "$HTACCESS" ]; then
         echo "== .htaccess: /livewire-<hash>/ now reaches the app instead of index.html"
     else
         echo "== .htaccess: already allows /livewire-<hash>/"
+    fi
+    # The storefront fallback is gone: every address the app can render is published (`website:publish`), so an
+    # unknown path should reach Laravel — where the 137 legacy 301s are applied — and 404 honestly. While the
+    # fallback existed, a typo, a retired product and every archived interior URL answered 200 with the shop.
+    if grep -qF 'RewriteRule ^ index.html [L]' "$HTACCESS"; then
+        awk '
+            /# Furniture storefront/ { skip = 1 }
+            skip && /RewriteRule \^ index\.html \[L\]/ { skip = 0; next }
+            !skip { print }
+        ' "$HTACCESS" > "$HTACCESS.wx-tmp" && mv "$HTACCESS.wx-tmp" "$HTACCESS"
+        echo "== .htaccess: unknown paths now reach the app (404s are real, legacy 301s fire)"
+    else
+        echo "== .htaccess: no storefront fallback to remove"
     fi
 else
     echo "== .htaccess missing — skipped"

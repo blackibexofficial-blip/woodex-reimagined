@@ -104,7 +104,7 @@ final class ShellPublisher
      * The shell with one page's head applied — and, when given one, its content for a reader without JavaScript.
      *
      * @param  array{title: string, description?: string, canonical?: string, image?: string,
-     *               type?: string, schema?: array<string, mixed>|null}  $meta
+     *               type?: string, robots?: string, schema?: array<string, mixed>|null}  $meta
      * @param  array{heading?: string, lead?: string, paragraphs?: list<string>,
      *               links?: list<array{label: string, href: string}>}|null  $fallback
      */
@@ -258,12 +258,13 @@ final class ShellPublisher
             '/<meta\s+property="og:[^"]*"[^>]*>\s*/i',
             '/<meta\s+name="twitter:image"[^>]*>\s*/i',
             '/<link\s+rel="canonical"[^>]*>\s*/i',
+            '/<meta\s+name="robots"[^>]*>\s*/i',
         ];
 
         return (string) preg_replace($patterns, '', $html);
     }
 
-    /** @param  array{title: string, description?: string, canonical?: string, image?: string, type?: string, schema?: array<string, mixed>|null}  $meta */
+    /** @param  array{title: string, description?: string, canonical?: string, image?: string, type?: string, robots?: string, schema?: array<string, mixed>|null}  $meta */
     private function inject(string $html, array $meta): string
     {
         // Element text, not an attribute: escaping the apostrophe would show `&apos;` in a search result.
@@ -276,6 +277,14 @@ final class ShellPublisher
 
         $block = self::START."\n";
         $block .= '    <title>'.$title."</title>\n";
+
+        // `noindex` is a decision about one page, not a site-wide setting: the checkout is a real address a
+        // visitor can reach and a search result nobody should get.
+        $robots = trim((string) ($meta['robots'] ?? ''));
+
+        if ($robots !== '') {
+            $block .= '    <meta name="robots" content="'.$this->attr($robots)."\">\n";
+        }
 
         if ($description !== '') {
             $block .= '    <meta name="description" content="'.$description."\">\n";

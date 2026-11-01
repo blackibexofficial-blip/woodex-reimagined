@@ -375,18 +375,17 @@ the service rules, the home page never redirecting, and the importer being safe 
   dropped (`website:publish --skip-redirects`) and `SiteRouter` answers from the table again — one command,
   same data.
 
-**Still open.** Everything that is *not* in the map and *not* a published page still answers **200**: a typo, a
-retired product, `/shop/{slug}` for a SKU that was deleted. The fallback cannot tell "a route React owns" from
-"nothing owns this". The 20 product pages are published now (§5d), so every address the SPA can render has a file
-— which means the fallback is only reachable for addresses nothing owns, and removing it is the last step. What
-stops it today is `/checkout`: a real route, deliberately not a page, with no file of its own.
+**Was still open, now closed (§5e).** Anything that is neither in the map nor a published page — a typo, a
+retired product, `/shop/{slug}` for a SKU that was deleted — used to answer **200** with the shop, because the
+fallback could not tell "a route React owns" from "nothing owns this".
 
 ### 5d Products — shipped: 20 pages that carry a price
 
 `/shop/{slug}` existed only in the browser. There was no file, so the SPA fallback answered all twenty products
 with the same shell: no price, no availability, no `Product` schema — and a **200** telling Google that twenty
 different products were one page. A product page is the page a shop sells, so `website:publish` writes it like any
-other: 16 pages + 30 records + **20 products = 66 files**, and 66 sitemap URLs.
+other: 16 pages + 30 records + **20 products = 66 files**, and 66 sitemap URLs (plus `/checkout`, a shell with
+`noindex` that is deliberately not in the sitemap — §5e).
 
 | In the file | Detail |
 |---|---|
@@ -410,6 +409,50 @@ Two bugs surfaced on the way and are fixed:
   `slug` and `updated_at`. It selects the translation now and labels with `displayName()`.
 
 `Tests\Site`: **50 passed / 514 assertions** (6 new for the product head and body, 1 for the canonical).
+
+### 5e Unknown URLs answer 404 — the fallback is gone
+
+The storefront's `index.html` fallback was the last lie the site told. It answered **every** address that was not
+a file with the shop and a 200: a typo, a retired product, `/services/kitchen-renovation` (an interior URL that
+never existed on the furniture site), and — before §5c — all 137 archived addresses. A crawler could not tell a
+real page from a dead one, and neither could the owner.
+
+It is removed from both places it lived: `public/.htaccess` (patched by `apply.sh`, idempotently) and the sandbox
+preview server, which mirrored it. Keeping it in one and not the other would have been worse than either — the
+preview would pass and production would 404 every deep link.
+
+Two things had to be true first, and both are now:
+
+| Requirement | State |
+|---|---|
+| Every address the app can render has a file | 16 pages + 30 records + 20 products + **`/checkout`** = 67 files (§5d) |
+| The 404 is presentable | `resources/views/errors/404.blade.php` ships with the slice — the page Laravel served before was the **archived interior's**, with a nav of dead links |
+
+`/checkout` is the interesting one: a real route, deliberately not a page, so it gets a shell with
+`<meta name="robots" content="noindex, follow">` and no sitemap entry — the publisher grew `robots` support for
+exactly this, and strips its own tag before rewriting so a second publish cannot leave two.
+
+Verified on the running app:
+
+| Request | Before | Now |
+|---|---|---|
+| `/nonsense-page` | 200 + shop | **404** + the branded page |
+| `/shop/does-not-exist` | 200 + shop | **404** |
+| `/blog/no-such-post` | 200 + shop | **404** |
+| `/checkout` | 200 (fallback) | **200**, `noindex`, no sitemap entry |
+| `/kitchen-renovation/` | 200 + shop | **301** → `/services/` |
+| `/`, `/shop`, `/shop/ballmer-executive-desk`, `/about` | 200 | 200, unchanged |
+
+Also removed: `SiteRouter`'s trailing-slash hop. It existed so `/about` and `/about/` could be one canonical URL
+when a page was a database row; a page is a file now, the web server answers both forms, and the only URLs left in
+that class are ones nothing owns. Redirecting those to a slash form first turned one 404 into a 301 and a 404.
+
+`Tests\Site`: **55 passed / 529 assertions** (5 new: noindex written and stripped, a page without robots getting
+none, `/checkout` published but absent from the sitemap, and the 404 page being the storefront's own).
+
+One consequence worth writing down: a **new** product 404s until the next `website:publish`. That is the same
+trade as everything else here — publishing is a deliberate keystroke, not a side effect of saving — and it is the
+reason the admin's Content screen carries a **Publish site** button.
 
 ---
 
@@ -501,7 +544,8 @@ Still to do here: type scale, radii, spacing and container width as tokens (the 
 | no sitemap | generated from published pages on publish |
 | no JSON-LD | `Organization`, `Product`, `Service`, `BlogPosting`, `Project`, `LocalBusiness` (showrooms), `FAQPage`, `BreadcrumbList` |
 
-**Shipped:** `website:publish` writes 66 files — a shell per URL (16 pages + 30 records + 20 products, §5d) with
+**Shipped:** `website:publish` writes 67 files — a shell per URL (16 pages + 30 records + 20 products, §5d, and
+`/checkout` with `noindex`, §5e) with
 its own title, description, canonical, Open Graph tags and JSON-LD, plus `sitemap.xml`. Verified per URL: `/about`,
 `/services/custom-design` and `/projects/dha-corporate-tower` each answer their own `<title>` and canonical.
 
@@ -522,7 +566,7 @@ crawler that does not run JavaScript sees exactly what the audit sees.
 
 The fix was in the publisher, not the auditor, and it shipped (`64e4f00`): each shell now carries the heading, the
 summary, the page's children and the site's own links inside `#root`, and React replaces all of it on mount. The
-numbers below are from that day; there are 66 files now, and 0 without an `h1` or a canonical.
+numbers below are from that day; there are 67 files now, and 0 without an `h1` or a canonical.
 
 | Check | Before | After |
 |---|---|---|
