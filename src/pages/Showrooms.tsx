@@ -4,62 +4,15 @@ import { MapPin, Phone, Clock, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useShowrooms } from "@/hooks/useSite";
 import showroomImg from "@/assets/virtual-showroom-hero.jpg";
 
-const showrooms = [
-  {
-    city: "Lahore (HQ)",
-    address: "123 Gulberg III, Main Boulevard, Lahore",
-    phone: "+92 42 111 WOODEX",
-    whatsapp: "+923001234567",
-    hours: "Mon–Sat: 9am–7pm",
-    lat: 31.5204,
-    lng: 74.3587,
-    isHQ: true,
-  },
-  {
-    city: "Karachi",
-    address: "456 Clifton Block 5, Karachi",
-    phone: "+92 21 111 WOODEX",
-    whatsapp: "+923001234567",
-    hours: "Mon–Sat: 9am–7pm",
-    lat: 24.8607,
-    lng: 67.0011,
-    isHQ: false,
-  },
-  {
-    city: "Islamabad",
-    address: "789 Blue Area, F-7 Markaz, Islamabad",
-    phone: "+92 51 111 WOODEX",
-    whatsapp: "+923001234567",
-    hours: "Mon–Sat: 10am–6pm",
-    lat: 33.7294,
-    lng: 73.0931,
-    isHQ: false,
-  },
-  {
-    city: "Rawalpindi",
-    address: "44 Saddar Road, Committee Chowk, Rawalpindi",
-    phone: "+92 51 222 WOODEX",
-    whatsapp: "+923001234567",
-    hours: "Mon–Sat: 9am–7pm",
-    lat: 33.6007,
-    lng: 73.0679,
-    isHQ: false,
-  },
-  {
-    city: "Faisalabad",
-    address: "12 D-Ground, Faisalabad",
-    phone: "+92 41 333 WOODEX",
-    whatsapp: "+923001234567",
-    hours: "Mon–Sat: 9am–6pm",
-    lat: 31.4504,
-    lng: 73.135,
-    isHQ: false,
-  },
-];
+// Showroom rows come from the CMS (content type `showroom`); see useShowrooms().
 
 const Showrooms = () => {
+  // Addresses, hours and phones live in the CMS; the bundled copy is the floor.
+  const showrooms = useShowrooms();
+
   useEffect(() => {
     document.title = "Showroom Locations — WOODEX Pakistan";
   }, []);

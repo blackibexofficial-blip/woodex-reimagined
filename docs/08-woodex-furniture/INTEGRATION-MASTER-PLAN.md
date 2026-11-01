@@ -54,7 +54,10 @@ Option A was chosen. These are built, applied to the OS, and proved against the 
 | 4 | **`/api/site/v1`** — `pages`, `pages/{key}`, `content/{type}`, `content/{type}/{slug}`, `theme` | 5 routes registered; live 200s |
 | 5 | **`website:publish`** — writes `public/<path>/index.html` per published page with its own title, description, canonical, OG tags and JSON-LD, plus `sitemap.xml` | *"16 pages · 30 records · 46 files · 0 failures"* |
 | 6 | **All pages screen** — repointed from the deleted filesystem to `site_pages`, with a Publish action and an archived-interior notice | `/admin/website/pages` renders all 16 URLs, 4 stats, publish buttons |
-| 7 | **Tests** — 2 classes, 16 tests, 366 assertions | `passed 16 · failed 0` |
+| 7 | **Tests** — 2 classes, 17 tests, 368 assertions | `passed 17 · failed 0` |
+| 8 | **The SPA reads the CMS** — `src/lib/api/site.ts` + `src/hooks/useSite.ts`, with the bundled copy as the floor | 5 pages now call `/api/site/v1` |
+| 9 | **Services, Service detail, Blog, Blog post, Showrooms** — drawn from `content_items`, not from `src/data/*.ts` | edited a service title in the database → the live `<h1>` changed, then reverted |
+| 10 | **Cards carry `payload`** — a blog list needs author and date, a showroom needs its phone, without 30 extra requests | verified in the JSON: `payload` on every card |
 
 **The SEO defect is gone.** Before: one `<title>` for all 22 routes, `og:image` = `lovable.dev`. After:
 
@@ -71,13 +74,25 @@ Each with its own canonical and schema (`WebPage`, `Service`, `BlogPosting` + `P
 Verified in a browser: the SPA still mounts on every published shell (h1 present, 3 root children, `/about`
 highlighted in the nav).
 
-**Two things this proves, and one it does not:**
-- ✅ Editing a row and publishing changes what a crawler receives, with no rebuild and no Node.
-- ✅ The site's 16 URLs, 30 records and their meta now live in the database, editable from the OS.
-- ❌ The SPA still draws its pages from `src/data/*.ts` — pointing the components at `/api/site/v1` is Phase C.
-  Until then the static head and the client-side title can differ (e.g. `/shop`: static says *"Shop Office
-  Furniture"*, React says *"Shop Office & Home Furniture"*). The fix is to delete the `document.title` calls
-  and read the API.
+**What is now true.**
+- ✅ Editing a row changes the live page, with no rebuild and no deploy. Proved end to end: set a service
+  title to *"CMS-EDITED: …"* in the database, reload `/services/custom-design` in Chromium, the `<h1>` was
+  the new text; reverted afterwards.
+- ✅ Publishing writes the head a crawler receives, per URL, with canonical and schema.
+- ✅ Services, blog posts and showrooms are no longer frozen in React — 18 records are editable today.
+
+**What is still hardcoded, and why.**
+- ❌ **Projects.** `ProjectDetail.tsx` carries fields the seed does not have — before/after images, year,
+  duration, challenge, solution, furniture used, testimonial, rating — for 7 studies. Wiring the list would
+  break its `/projects/{id}` links (the records use slugs). The seed must be enriched from that file first.
+- ❌ **Series.** Its pages join records to live products; that is a different job.
+- ❌ **`document.title` calls remain**, so a client title can still differ from the static one (`/shop`:
+  static *"Shop Office Furniture"*, React *"Shop Office & Home Furniture"*). Delete them once every page
+  reads its `seo.title` from the API.
+
+**One bug worth remembering.** The first version let `payload.title` win over the row's own `title` column,
+so an edit saved correctly and changed nothing on the page — the seeded copy in `payload` quietly overrode
+it. Columns are the truth; `payload` carries the type's extra fields only.
 
 ---
 

@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { blogPosts, getBlogPost } from "@/data/blogPosts";
+import { useBlogPost, useBlogPosts } from "@/hooks/useSite";
 
 const BlogPost = () => {
   const { postId } = useParams<{ postId: string }>();
-  const post = postId ? getBlogPost(postId) : undefined;
+  const post = useBlogPost(postId);
+  const blogPosts = useBlogPosts();
 
   useEffect(() => {
     if (post) {

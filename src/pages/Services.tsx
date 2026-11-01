@@ -4,7 +4,7 @@ import { ArrowRight, Star, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { services } from "@/data/services";
+import { useServices } from "@/hooks/useSite";
 import heroImg from "@/assets/services-main-hero.jpg";
 
 const WA_PHONE = "923001234567";
@@ -26,6 +26,8 @@ const testimonials = [
 ];
 
 const Services = () => {
+  // The list is CMS data; the bundled copy renders first so the page is never empty.
+  const services = useServices();
   useEffect(() => {
     document.title = "Office Furniture Services Pakistan — Design, Manufacture, Install | WOODEX";
     const meta = document.querySelector('meta[name="description"]') || (() => {

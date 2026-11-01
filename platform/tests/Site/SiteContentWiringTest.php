@@ -142,6 +142,19 @@ final class SiteContentWiringTest extends TestCase
         Assert::true(str_contains($source, 'sitemap.xml'), 'publishing must be able to write the sitemap');
     }
 
+    public function testEveryCardCarriesItsPayload(): void
+    {
+        // The SPA reads a card's payload straight into its components (author, date, phone), so a card
+        // without one turns the blog list into six rows with no byline.
+        $api = self::sitePath('app/Domain/Website/Content/ContentApi.php');
+
+        Assert::true($api !== null, 'the content api must exist');
+        Assert::true(
+            substr_count((string) file_get_contents((string) $api), "'payload' =>") >= 2,
+            'both the card and the detail must carry the payload',
+        );
+    }
+
     public function testTheArchiveCommandNeverDeletesAnything(): void
     {
         $path = self::sitePath('app/Console/Commands/ArchiveInteriorCommand.php');

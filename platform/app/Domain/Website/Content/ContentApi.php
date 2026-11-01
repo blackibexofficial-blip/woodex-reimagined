@@ -150,6 +150,9 @@ final class ContentApi
             'title' => (string) $item->title,
             'excerpt' => (string) ($item->excerpt ?? ''),
             'image' => (string) (($item->payload ?? [])['image'] ?? ''),
+            // The type's own fields travel with the card: a blog list needs author and date, a showroom
+            // needs its phone, and asking for each record individually would be 30 requests for a page.
+            'payload' => (array) ($item->payload ?? []),
             'seo' => [
                 'title' => $item->metaTitle(),
                 'description' => $item->metaDescription(),

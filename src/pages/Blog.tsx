@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { blogPosts } from "@/data/blogPosts";
+import { useBlogPosts } from "@/hooks/useSite";
 import blogErgonomic from "@/assets/blog-ergonomic.jpg";
 
 const categories = ["All", "Ergonomics", "Workspace Design", "Sustainability", "Interior Design", "Case Study"];
@@ -15,6 +15,7 @@ const Blog = () => {
     document.title = "Blog — WOODEX Pakistan | Office Design Tips, Trends & Case Studies";
   }, []);
 
+  const blogPosts = useBlogPosts();
   const featured = blogPosts.find((p) => p.featured);
   const rest = blogPosts.filter((p) => !p.featured);
 

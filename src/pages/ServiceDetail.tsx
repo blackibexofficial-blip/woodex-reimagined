@@ -4,13 +4,15 @@ import { ArrowRight, ChevronRight, CheckCircle2, MessageCircle, Plus, Minus, Quo
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { getService, getRelated, services } from "@/data/services";
+import { getRelated } from "@/data/services";
+import { useService, useServices } from "@/hooks/useSite";
 
 const WA_PHONE = "923001234567";
 
 const ServiceDetail = () => {
   const { slug } = useParams<{ slug: string }>();
-  const service = slug ? getService(slug) : undefined;
+  const service = useService(slug);
+  const allServices = useServices();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   useEffect(() => {
@@ -44,7 +46,11 @@ const ServiceDetail = () => {
 
   if (!service) return <Navigate to="/services" replace />;
 
-  const related = getRelated(service.related);
+  // Prefer the links the record declares; fall back to the curated graph in the bundled copy.
+  const declared = service.related
+    .map((entry) => allServices.find((candidate) => candidate.slug === entry || candidate.title === entry))
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+  const related = declared.length > 0 ? declared : getRelated([]);
   const waText = encodeURIComponent(`Hi WOODEX, I'm interested in your ${service.title} service.`);
 
   return (
