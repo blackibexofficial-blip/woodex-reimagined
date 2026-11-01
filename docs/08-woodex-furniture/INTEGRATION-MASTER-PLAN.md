@@ -42,6 +42,45 @@ The HTML builder (`BuilderApi`: `load`, `save`, `backups`, `restore`, `page_new`
 
 ---
 
+## Part 0b — What shipped on 1 November 2026 (Phase A + B spine)
+
+Option A was chosen. These are built, applied to the OS, and proved against the running app — not planned.
+
+| # | Built | Proof |
+|---|---|---|
+| 1 | **`website:archive-interior`** — exports the 142 interior pages + 1,442 blocks to `storage/app/private/archive/interior-pages-2026-11-01-050348.json` (1.98 MB) and stamps `pages.archived_at`. Deletes nothing | ran live: *"Pages found 142 · Blocks attached 1442 · Stamped archived 142"* |
+| 2 | **`site_pages` + `content_items`** — the reimagined site's tables, with `archived_at` added to `pages` | migration `2026_11_01_200000` applied |
+| 3 | **`SiteContentSeeder`** — 16 URLs + 30 records, extracted from the SPA's own TypeScript (`src/data/*.ts`, `Projects.tsx`, `Showrooms.tsx`) rather than retyped | *"16 page(s) and 30 record(s) created"* |
+| 4 | **`/api/site/v1`** — `pages`, `pages/{key}`, `content/{type}`, `content/{type}/{slug}`, `theme` | 5 routes registered; live 200s |
+| 5 | **`website:publish`** — writes `public/<path>/index.html` per published page with its own title, description, canonical, OG tags and JSON-LD, plus `sitemap.xml` | *"16 pages · 30 records · 46 files · 0 failures"* |
+| 6 | **All pages screen** — repointed from the deleted filesystem to `site_pages`, with a Publish action and an archived-interior notice | `/admin/website/pages` renders all 16 URLs, 4 stats, publish buttons |
+| 7 | **Tests** — 2 classes, 16 tests, 366 assertions | `passed 16 · failed 0` |
+
+**The SEO defect is gone.** Before: one `<title>` for all 22 routes, `og:image` = `lovable.dev`. After:
+
+```
+/                          WOODEX — Pakistan's Premium Office & Home Furniture Manufacturer
+/about                     About WOODEX — Pakistan's Leading Office Furniture Manufacturer
+/shop                      Shop Office Furniture — WOODEX Pakistan
+/blog                      Blog — WOODEX Pakistan | Office Design Tips, Trends & Case Studies
+/services/custom-design    Custom Office Furniture Design Pakistan — Bespoke Desks & Workstations
+/showrooms/karachi         WOODEX Showroom Karachi — Address, Hours & Phone
+```
+
+Each with its own canonical and schema (`WebPage`, `Service`, `BlogPosting` + `Person`, `FurnitureStore`).
+Verified in a browser: the SPA still mounts on every published shell (h1 present, 3 root children, `/about`
+highlighted in the nav).
+
+**Two things this proves, and one it does not:**
+- ✅ Editing a row and publishing changes what a crawler receives, with no rebuild and no Node.
+- ✅ The site's 16 URLs, 30 records and their meta now live in the database, editable from the OS.
+- ❌ The SPA still draws its pages from `src/data/*.ts` — pointing the components at `/api/site/v1` is Phase C.
+  Until then the static head and the client-side title can differ (e.g. `/shop`: static says *"Shop Office
+  Furniture"*, React says *"Shop Office & Home Furniture"*). The fix is to delete the `document.title` calls
+  and read the API.
+
+---
+
 ## Part 1 — What the reimagined site actually is
 
 ### 1.1 The nav on image 1, mapped to its real data source

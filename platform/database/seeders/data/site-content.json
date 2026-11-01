@@ -1,0 +1,2376 @@
+{
+ "version": 1,
+ "source": "woodex-reimagined src/data/*.ts (extracted)",
+ "pages": [
+  {
+   "key": "home",
+   "path": "/",
+   "title": "WOODEX — Pakistan's Premium Office & Home Furniture Manufacturer",
+   "kind": "route",
+   "status": "published",
+   "sort": 0,
+   "seo": {
+    "title": "WOODEX — Pakistan's Premium Office & Home Furniture Manufacturer",
+    "description": "Office furniture manufactured in Lahore and delivered across Pakistan — ergonomic chairs, executive desks, workstations and reception counters, built to fit your floor.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "shop",
+   "path": "/shop",
+   "title": "Shop Office Furniture — WOODEX Pakistan",
+   "kind": "route",
+   "status": "published",
+   "sort": 10,
+   "seo": {
+    "title": "Shop Office Furniture — WOODEX Pakistan",
+    "description": "Browse executive desks, ergonomic chairs, workstations, meeting tables and storage. Prices in PKR with delivery and installation across Pakistan.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "series",
+   "path": "/series",
+   "title": "Furniture Series in Pakistan — Ek, Infinity, Woodex, Cubicle & Nova | WOODEX",
+   "kind": "route",
+   "status": "published",
+   "sort": 20,
+   "seo": {
+    "title": "Furniture Series in Pakistan — Ek, Infinity, Woodex, Cubicle & Nova | WOODEX",
+    "description": "Five furniture series for five budgets and five ways of working — from budget workstations to executive-grade boardroom collections.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "projects",
+   "path": "/projects",
+   "title": "Our Projects — WOODEX Pakistan | Portfolio & Case Studies",
+   "kind": "route",
+   "status": "published",
+   "sort": 30,
+   "seo": {
+    "title": "Our Projects — WOODEX Pakistan | Portfolio & Case Studies",
+    "description": "Corporate towers, tech offices, clinics, universities and government floors furnished end to end. See what we have built and for whom.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "services",
+   "path": "/services",
+   "title": "Office Furniture Services Pakistan — Design, Manufacture, Install | WOODEX",
+   "kind": "route",
+   "status": "published",
+   "sort": 40,
+   "seo": {
+    "title": "Office Furniture Services Pakistan — Design, Manufacture, Install | WOODEX",
+    "description": "Space planning, custom manufacturing, delivery, installation and after-sales support — the whole path from first drawing to handover.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "blog",
+   "path": "/blog",
+   "title": "Blog — WOODEX Pakistan | Office Design Tips, Trends & Case Studies",
+   "kind": "route",
+   "status": "published",
+   "sort": 50,
+   "seo": {
+    "title": "Blog — WOODEX Pakistan | Office Design Tips, Trends & Case Studies",
+    "description": "Practical writing on ergonomics, hybrid workplaces, materials and office fit-out budgets in Pakistan.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "about",
+   "path": "/about",
+   "title": "About WOODEX — Pakistan's Leading Office Furniture Manufacturer",
+   "kind": "route",
+   "status": "published",
+   "sort": 60,
+   "seo": {
+    "title": "About WOODEX — Pakistan's Leading Office Furniture Manufacturer",
+    "description": "A Lahore factory, an in-house design studio and a national delivery network. How WOODEX makes office furniture in Pakistan.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "contact",
+   "path": "/contact",
+   "title": "Contact Us — WOODEX Pakistan | Showrooms in Lahore, Karachi, Islamabad",
+   "kind": "route",
+   "status": "published",
+   "sort": 70,
+   "seo": {
+    "title": "Contact Us — WOODEX Pakistan | Showrooms in Lahore, Karachi, Islamabad",
+    "description": "Talk to a furniture consultant, book a showroom visit or send a floor plan for a quote. Showrooms in Lahore, Karachi, Islamabad and Rawalpindi.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "custom-design",
+   "path": "/custom-design",
+   "title": "Custom Office Furniture Design — WOODEX Pakistan",
+   "kind": "route",
+   "status": "published",
+   "sort": 80,
+   "seo": {
+    "title": "Custom Office Furniture Design — WOODEX Pakistan",
+    "description": "Bespoke desks, reception counters and workstations engineered around your brand, your dimensions and the way your team actually works.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "showrooms",
+   "path": "/showrooms",
+   "title": "Showroom Locations — WOODEX Pakistan",
+   "kind": "route",
+   "status": "published",
+   "sort": 90,
+   "seo": {
+    "title": "Showroom Locations — WOODEX Pakistan",
+    "description": "Visit a WOODEX showroom to sit in the chairs, open the drawers and compare finishes in person.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "materials",
+   "path": "/materials",
+   "title": "Materials & Colors — WOODEX Pakistan",
+   "kind": "route",
+   "status": "published",
+   "sort": 100,
+   "seo": {
+    "title": "Materials & Colors — WOODEX Pakistan",
+    "description": "The laminates, veneers, fabrics and metal finishes we build in, with the colours and textures you can choose from.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "warranty",
+   "path": "/warranty",
+   "title": "Warranty Information — WOODEX Pakistan",
+   "kind": "route",
+   "status": "published",
+   "sort": 110,
+   "seo": {
+    "title": "Warranty Information — WOODEX Pakistan",
+    "description": "What WOODEX covers, for how long, and what to do when something needs fixing.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "b2b",
+   "path": "/b2b",
+   "title": "B2B Partner Program — WOODEX Pakistan | Volume Pricing & Corporate Solutions",
+   "kind": "route",
+   "status": "published",
+   "sort": 120,
+   "seo": {
+    "title": "B2B Partner Program — WOODEX Pakistan | Volume Pricing & Corporate Solutions",
+    "description": "Volume pricing, dedicated account management and staged delivery for companies furnishing ten desks or a thousand.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "quotation",
+   "path": "/quotation",
+   "title": "Get E-Quotation — WOODEX Pakistan | Free Quote Request",
+   "kind": "route",
+   "status": "published",
+   "sort": 130,
+   "seo": {
+    "title": "Get E-Quotation — WOODEX Pakistan | Free Quote Request",
+    "description": "Send your requirement and receive a written quotation with models, finishes and delivered prices.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "room-packages",
+   "path": "/room-packages",
+   "title": "Room Packages — WOODEX Pakistan | Bundled Office Furniture Solutions",
+   "kind": "route",
+   "status": "published",
+   "sort": 140,
+   "seo": {
+    "title": "Room Packages — WOODEX Pakistan | Bundled Office Furniture Solutions",
+    "description": "Complete room sets — a boardroom, a reception, a startup floor — priced as one package instead of thirty line items.",
+    "schema": "WebPage"
+   }
+  },
+  {
+   "key": "virtual-showroom",
+   "path": "/virtual-showroom",
+   "title": "Virtual Showroom — WOODEX Pakistan | 3D Room Configurator",
+   "kind": "route",
+   "status": "published",
+   "sort": 150,
+   "seo": {
+    "title": "Virtual Showroom — WOODEX Pakistan | 3D Room Configurator",
+    "description": "Configure a room in 3D, swap the finishes and see the furniture in place before you order.",
+    "schema": "WebPage"
+   }
+  }
+ ],
+ "content": [
+  {
+   "type": "service",
+   "slug": "custom-design",
+   "path": "/services/custom-design",
+   "title": "Custom Office Furniture Design",
+   "excerpt": "Bespoke executive desks, reception counters and workstations — engineered around how your team actually works.",
+   "status": "published",
+   "sort": 0,
+   "seo": {
+    "title": "Custom Office Furniture Design Pakistan — Bespoke Desks & Workstations | WOODEX",
+    "description": "Bespoke custom office furniture design in Lahore, Karachi & Islamabad. Executive desks, reception counters, workstations & boardroom tables tailored to your brand and floor plate. Free 3D renders.",
+    "schema": "Service"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Custom Office Furniture Design",
+     "sub": "Bespoke executive desks, reception counters and workstations — engineered around how your team actually works."
+    },
+    {
+     "type": "text",
+     "heading": "Furniture engineered around your business",
+     "text": "Off-the-shelf furniture forces your team to adapt to a generic product. Custom-designed furniture does the opposite — it adapts to your team. We start by studying how your people actually work: meeting cadence, storage needs, cable routing, ergonomic posture, even the way light moves across your floor through the day. That field data becomes scaled CAD drawings, real material samples and photoreal 3D renders, all approved before a single board is cut. Every WOODEX bespoke piece is then built in our 45,000 sq ft Lahore facility by craftsmen averaging 15+ years on the floor — and shipped with a 5-year structural warranty."
+    },
+    {
+     "type": "process",
+     "steps": [
+      {
+       "step": "01",
+       "title": "Brief & Site Visit",
+       "description": "Free on-site consultation with a senior designer in Lahore, Karachi or Islamabad."
+      },
+      {
+       "step": "02",
+       "title": "Concept & 3D Render",
+       "description": "Scaled CAD drawings, photoreal 3D renders and material / finish options for sign-off."
+      },
+      {
+       "step": "03",
+       "title": "Material & Prototype Approval",
+       "description": "Physical swatches and a working prototype before bulk production starts."
+      },
+      {
+       "step": "04",
+       "title": "Precision Production",
+       "description": "CNC-cut, edge-banded and assembled in our Lahore facility under two-stage QC."
+      },
+      {
+       "step": "05",
+       "title": "Delivery & Install",
+       "description": "White-glove installation by uniformed in-house crews, with on-site walk-through."
+      },
+      {
+       "step": "06",
+       "title": "Warranty & Care",
+       "description": "5-year structural warranty plus optional annual maintenance for fleets."
+      }
+     ]
+    },
+    {
+     "type": "text",
+     "heading": "What is included",
+     "text": "Free on-site design consultation, Unlimited revisions before production sign-off, Scaled 2D CAD floor plans, Photoreal 3D visualisation, Physical material & finish sample kit, Dedicated project designer, Pantone / RAL brand colour matching, 5-year structural warranty"
+    },
+    {
+     "type": "faq",
+     "items": [
+      {
+       "q": "How long does a custom design project take in Pakistan?",
+       "a": "Typical end-to-end lead time is 4–6 weeks from approved design to installation. Single executive pieces can ship in 2–3 weeks; full-floor fit-outs of 200+ workstations run 6–9 weeks."
+      },
+      {
+       "q": "What is the minimum order for custom work?",
+       "a": "There is no minimum — we accept single bespoke executive desks for CEO offices as well as multi-city corporate rollouts of 1,000+ pieces."
+      },
+      {
+       "q": "Can you match my office colour palette and brand?",
+       "a": "Yes — we colour-match laminates, fabrics, leathers and powder-coated metalwork against any Pantone, RAL or NCS reference, and we can inlay logos in brass, wood or laser-etched acrylic."
+      },
+      {
+       "q": "Do you provide 3D renders before production?",
+       "a": "Yes. Every custom project ships with photoreal 3D renders so you (and your board) can sign off on look, scale and finish before manufacturing begins."
+      },
+      {
+       "q": "Is the custom design service available outside Lahore?",
+       "a": "Yes — site visits, design and installation are available across Pakistan, with dedicated teams in Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad and Multan."
+      },
+      {
+       "q": "How much does custom office furniture cost vs ready-made?",
+       "a": "Custom typically runs 15–30% above comparable ready-made furniture, but delivers 2–3x the lifespan and is sized exactly to your floor — which usually saves money overall."
+      }
+     ]
+    }
+   ],
+   "payload": {
+    "slug": "custom-design",
+    "number": "01",
+    "title": "Custom Office Furniture Design",
+    "shortTitle": "Custom Design",
+    "tagline": "Bespoke executive desks, reception counters and workstations — engineered around how your team actually works.",
+    "intro": "Every workspace is unique. WOODEX's in-house design studio translates your brand, dimensions and workflow into precision-engineered office furniture — from a single sculptural executive desk to a 500-seat floor of brand-aligned workstations, built right here in Lahore.",
+    "metaTitle": "Custom Office Furniture Design Pakistan — Bespoke Desks & Workstations | WOODEX",
+    "metaDescription": "Bespoke custom office furniture design in Lahore, Karachi & Islamabad. Executive desks, reception counters, workstations & boardroom tables tailored to your brand and floor plate. Free 3D renders.",
+    "overview": {
+     "heading": "Furniture engineered around your business",
+     "body": "Off-the-shelf furniture forces your team to adapt to a generic product. Custom-designed furniture does the opposite — it adapts to your team. We start by studying how your people actually work: meeting cadence, storage needs, cable routing, ergonomic posture, even the way light moves across your floor through the day. That field data becomes scaled CAD drawings, real material samples and photoreal 3D renders, all approved before a single board is cut. Every WOODEX bespoke piece is then built in our 45,000 sq ft Lahore facility by craftsmen averaging 15+ years on the floor — and shipped with a 5-year structural warranty."
+    },
+    "process": [
+     {
+      "step": "01",
+      "title": "Brief & Site Visit",
+      "description": "Free on-site consultation with a senior designer in Lahore, Karachi or Islamabad."
+     },
+     {
+      "step": "02",
+      "title": "Concept & 3D Render",
+      "description": "Scaled CAD drawings, photoreal 3D renders and material / finish options for sign-off."
+     },
+     {
+      "step": "03",
+      "title": "Material & Prototype Approval",
+      "description": "Physical swatches and a working prototype before bulk production starts."
+     },
+     {
+      "step": "04",
+      "title": "Precision Production",
+      "description": "CNC-cut, edge-banded and assembled in our Lahore facility under two-stage QC."
+     },
+     {
+      "step": "05",
+      "title": "Delivery & Install",
+      "description": "White-glove installation by uniformed in-house crews, with on-site walk-through."
+     },
+     {
+      "step": "06",
+      "title": "Warranty & Care",
+      "description": "5-year structural warranty plus optional annual maintenance for fleets."
+     }
+    ],
+    "benefits": [
+     {
+      "title": "Brand-Aligned",
+      "description": "Pantone-matched laminates, logo inlays and signature finishes that reinforce your identity."
+     },
+     {
+      "title": "Space-Optimised",
+      "description": "Custom dimensions that squeeze every usable inch out of your floor plate."
+     },
+     {
+      "title": "Ergonomic by Default",
+      "description": "BIFMA and ISO-compliant heights, clearances and posture support built in."
+     },
+     {
+      "title": "Built to Last",
+      "description": "Imported hardware, hardwood frames and a 5-year structural warranty."
+     }
+    ],
+    "inclusions": [
+     "Free on-site design consultation",
+     "Unlimited revisions before production sign-off",
+     "Scaled 2D CAD floor plans",
+     "Photoreal 3D visualisation",
+     "Physical material & finish sample kit",
+     "Dedicated project designer",
+     "Pantone / RAL brand colour matching",
+     "5-year structural warranty"
+    ],
+    "faqs": [
+     {
+      "q": "How long does a custom design project take in Pakistan?",
+      "a": "Typical end-to-end lead time is 4–6 weeks from approved design to installation. Single executive pieces can ship in 2–3 weeks; full-floor fit-outs of 200+ workstations run 6–9 weeks."
+     },
+     {
+      "q": "What is the minimum order for custom work?",
+      "a": "There is no minimum — we accept single bespoke executive desks for CEO offices as well as multi-city corporate rollouts of 1,000+ pieces."
+     },
+     {
+      "q": "Can you match my office colour palette and brand?",
+      "a": "Yes — we colour-match laminates, fabrics, leathers and powder-coated metalwork against any Pantone, RAL or NCS reference, and we can inlay logos in brass, wood or laser-etched acrylic."
+     },
+     {
+      "q": "Do you provide 3D renders before production?",
+      "a": "Yes. Every custom project ships with photoreal 3D renders so you (and your board) can sign off on look, scale and finish before manufacturing begins."
+     },
+     {
+      "q": "Is the custom design service available outside Lahore?",
+      "a": "Yes — site visits, design and installation are available across Pakistan, with dedicated teams in Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad and Multan."
+     },
+     {
+      "q": "How much does custom office furniture cost vs ready-made?",
+      "a": "Custom typically runs 15–30% above comparable ready-made furniture, but delivers 2–3x the lifespan and is sized exactly to your floor — which usually saves money overall."
+     }
+    ],
+    "caseStudy": {
+     "client": "Habib Bank Limited — Karachi HQ",
+     "sector": "Banking & Finance",
+     "result": "120 custom-designed workstations and 14 brand-aligned executive cabins delivered in 5 weeks, with zero on-site rework."
+    },
+    "related": [
+     "custom-manufacturing",
+     "space-planning-design",
+     "project-management"
+    ]
+   }
+  },
+  {
+   "type": "service",
+   "slug": "b2b-office-solutions",
+   "path": "/services/b2b-office-solutions",
+   "title": "B2B Office Furniture Solutions",
+   "excerpt": "End-to-end office furniture for banks, hospitals, tech parks and government — at scale, on schedule.",
+   "status": "published",
+   "sort": 10,
+   "seo": {
+    "title": "B2B Office Furniture Solutions Pakistan | Bulk Supply WOODEX",
+    "description": "Enterprise office furniture for Pakistani banks, hospitals, IT parks & government. Volume pricing, project management & nationwide installation.",
+    "schema": "Service"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "B2B Office Furniture Solutions",
+     "sub": "End-to-end office furniture for banks, hospitals, tech parks and government — at scale, on schedule."
+    },
+    {
+     "type": "text",
+     "heading": "Trusted by Pakistan's leading enterprises",
+     "text": "We partner with corporate procurement teams to standardise furniture across multiple branches, manage phased rollouts and stay aligned with budget cycles. Net-30 terms available for verified businesses, with a dedicated KAM for every account."
+    },
+    {
+     "type": "process",
+     "steps": [
+      {
+       "step": "01",
+       "title": "Needs Assessment",
+       "description": "Branch audit, headcount mapping and standardisation review."
+      },
+      {
+       "step": "02",
+       "title": "Master Spec & Pricing",
+       "description": "Locked specifications with tiered volume pricing."
+      },
+      {
+       "step": "03",
+       "title": "Pilot Rollout",
+       "description": "First-site installation as a working reference."
+      },
+      {
+       "step": "04",
+       "title": "Phased Deployment",
+       "description": "Synchronised delivery across cities and branches."
+      },
+      {
+       "step": "05",
+       "title": "Account Management",
+       "description": "Quarterly reviews, spares and replenishment."
+      }
+     ]
+    },
+    {
+     "type": "text",
+     "heading": "What is included",
+     "text": "Dedicated Key Account Manager, Volume discount structure, Nationwide installation, Multi-branch standardisation, Quarterly account reviews, Priority replacement & spares"
+    },
+    {
+     "type": "faq",
+     "items": [
+      {
+       "q": "Do you serve government tenders?",
+       "a": "Yes — WOODEX is registered with PPRA and regularly supplies federal and provincial departments."
+      },
+      {
+       "q": "What's your largest project?",
+       "a": "A 1,400-seat tech park fit-out in Islamabad delivered across 9 weeks."
+      },
+      {
+       "q": "Can you match existing furniture?",
+       "a": "Yes — we reverse-engineer and produce matching pieces for legacy office programmes."
+      }
+     ]
+    }
+   ],
+   "payload": {
+    "slug": "b2b-office-solutions",
+    "number": "02",
+    "title": "B2B Office Furniture Solutions",
+    "shortTitle": "B2B Office Solutions",
+    "tagline": "End-to-end office furniture for banks, hospitals, tech parks and government — at scale, on schedule.",
+    "intro": "WOODEX supplies enterprise clients across Pakistan with complete office furniture programmes — from single floors to multi-city rollouts — backed by dedicated account management and volume pricing.",
+    "metaTitle": "B2B Office Furniture Solutions Pakistan | Bulk Supply WOODEX",
+    "metaDescription": "Enterprise office furniture for Pakistani banks, hospitals, IT parks & government. Volume pricing, project management & nationwide installation.",
+    "overview": {
+     "heading": "Trusted by Pakistan's leading enterprises",
+     "body": "We partner with corporate procurement teams to standardise furniture across multiple branches, manage phased rollouts and stay aligned with budget cycles. Net-30 terms available for verified businesses, with a dedicated KAM for every account."
+    },
+    "process": [
+     {
+      "step": "01",
+      "title": "Needs Assessment",
+      "description": "Branch audit, headcount mapping and standardisation review."
+     },
+     {
+      "step": "02",
+      "title": "Master Spec & Pricing",
+      "description": "Locked specifications with tiered volume pricing."
+     },
+     {
+      "step": "03",
+      "title": "Pilot Rollout",
+      "description": "First-site installation as a working reference."
+     },
+     {
+      "step": "04",
+      "title": "Phased Deployment",
+      "description": "Synchronised delivery across cities and branches."
+     },
+     {
+      "step": "05",
+      "title": "Account Management",
+      "description": "Quarterly reviews, spares and replenishment."
+     }
+    ],
+    "benefits": [
+     {
+      "title": "Volume Pricing",
+      "description": "Up to 22% off retail on orders over 50 workstations."
+     },
+     {
+      "title": "Net-30 Terms",
+      "description": "Flexible payment terms for verified corporate accounts."
+     },
+     {
+      "title": "Single Vendor",
+      "description": "One contract covering supply, install and after-sales nationwide."
+     },
+     {
+      "title": "GST-Compliant Invoicing",
+      "description": "FBR-registered invoices for full corporate compliance."
+     }
+    ],
+    "inclusions": [
+     "Dedicated Key Account Manager",
+     "Volume discount structure",
+     "Nationwide installation",
+     "Multi-branch standardisation",
+     "Quarterly account reviews",
+     "Priority replacement & spares"
+    ],
+    "faqs": [
+     {
+      "q": "Do you serve government tenders?",
+      "a": "Yes — WOODEX is registered with PPRA and regularly supplies federal and provincial departments."
+     },
+     {
+      "q": "What's your largest project?",
+      "a": "A 1,400-seat tech park fit-out in Islamabad delivered across 9 weeks."
+     },
+     {
+      "q": "Can you match existing furniture?",
+      "a": "Yes — we reverse-engineer and produce matching pieces for legacy office programmes."
+     }
+    ],
+    "caseStudy": {
+     "client": "Allied Bank Limited",
+     "sector": "Banking",
+     "result": "8 branches across Punjab refurnished on a single PO, completed in 11 weeks."
+    },
+    "related": [
+     "project-management",
+     "custom-manufacturing",
+     "delivery-installation"
+    ]
+   }
+  },
+  {
+   "type": "service",
+   "slug": "custom-manufacturing",
+   "path": "/services/custom-manufacturing",
+   "title": "Custom Manufacturing",
+   "excerpt": "In-house production at our Lahore facility — control, quality and speed under one roof.",
+   "status": "published",
+   "sort": 20,
+   "seo": {
+    "title": "Custom Office Furniture Manufacturing Lahore | WOODEX Pakistan",
+    "description": "WOODEX manufactures premium office furniture in Lahore. CNC precision, imported materials, 5-year warranty. ISO-certified facility.",
+    "schema": "Service"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Custom Manufacturing",
+     "sub": "In-house production at our Lahore facility — control, quality and speed under one roof."
+    },
+    {
+     "type": "text",
+     "heading": "From raw material to finished installation",
+     "text": "Vertical integration means no middlemen, no quality gaps, no surprises on lead time. We import boards, laminates and hardware directly from Germany, Turkey and Malaysia and process them on calibrated CNC routers, edge banders and powder-coat lines."
+    },
+    {
+     "type": "process",
+     "steps": [
+      {
+       "step": "01",
+       "title": "Material Selection",
+       "description": "Imported MDF, particle board, laminate and hardware."
+      },
+      {
+       "step": "02",
+       "title": "CNC Cutting",
+       "description": "Sub-millimetre precision on every component."
+      },
+      {
+       "step": "03",
+       "title": "Edge & Finish",
+       "description": "PUR edge banding and powder-coat metalwork."
+      },
+      {
+       "step": "04",
+       "title": "Assembly & QC",
+       "description": "Two-stage quality inspection before dispatch."
+      },
+      {
+       "step": "05",
+       "title": "Pack & Dispatch",
+       "description": "Protective packaging for nationwide shipping."
+      }
+     ]
+    },
+    {
+     "type": "text",
+     "heading": "What is included",
+     "text": "CNC-precision cutting, Imported raw materials, Two-stage quality control, Protective packaging, ISO 9001 process documentation, Material traceability"
+    },
+    {
+     "type": "faq",
+     "items": [
+      {
+       "q": "Can I tour the facility?",
+       "a": "Yes — corporate clients are welcome to schedule a facility visit before placing large orders."
+      },
+      {
+       "q": "What's your monthly capacity?",
+       "a": "Up to 800 workstations and 2,000 chairs per month at full utilisation."
+      },
+      {
+       "q": "Do you do export?",
+       "a": "We currently ship to UAE, Saudi Arabia and Bahrain for select corporate clients."
+      }
+     ]
+    }
+   ],
+   "payload": {
+    "slug": "custom-manufacturing",
+    "number": "03",
+    "title": "Custom Manufacturing",
+    "shortTitle": "Custom Manufacturing",
+    "tagline": "In-house production at our Lahore facility — control, quality and speed under one roof.",
+    "intro": "Our 45,000 sq ft manufacturing facility in Sundar Industrial Estate, Lahore combines German CNC precision with master craftsmanship to produce furniture engineered for Pakistani workplaces.",
+    "metaTitle": "Custom Office Furniture Manufacturing Lahore | WOODEX Pakistan",
+    "metaDescription": "WOODEX manufactures premium office furniture in Lahore. CNC precision, imported materials, 5-year warranty. ISO-certified facility.",
+    "overview": {
+     "heading": "From raw material to finished installation",
+     "body": "Vertical integration means no middlemen, no quality gaps, no surprises on lead time. We import boards, laminates and hardware directly from Germany, Turkey and Malaysia and process them on calibrated CNC routers, edge banders and powder-coat lines."
+    },
+    "process": [
+     {
+      "step": "01",
+      "title": "Material Selection",
+      "description": "Imported MDF, particle board, laminate and hardware."
+     },
+     {
+      "step": "02",
+      "title": "CNC Cutting",
+      "description": "Sub-millimetre precision on every component."
+     },
+     {
+      "step": "03",
+      "title": "Edge & Finish",
+      "description": "PUR edge banding and powder-coat metalwork."
+     },
+     {
+      "step": "04",
+      "title": "Assembly & QC",
+      "description": "Two-stage quality inspection before dispatch."
+     },
+     {
+      "step": "05",
+      "title": "Pack & Dispatch",
+      "description": "Protective packaging for nationwide shipping."
+     }
+    ],
+    "benefits": [
+     {
+      "title": "Vertical Integration",
+      "description": "Single supplier from design to installation."
+     },
+     {
+      "title": "Faster Lead Times",
+      "description": "Standard orders ship in 2–3 weeks."
+     },
+     {
+      "title": "Consistent Quality",
+      "description": "Two-stage QC on every batch."
+     },
+     {
+      "title": "Imported Materials",
+      "description": "German hardware, Turkish laminates, Malaysian board."
+     }
+    ],
+    "inclusions": [
+     "CNC-precision cutting",
+     "Imported raw materials",
+     "Two-stage quality control",
+     "Protective packaging",
+     "ISO 9001 process documentation",
+     "Material traceability"
+    ],
+    "faqs": [
+     {
+      "q": "Can I tour the facility?",
+      "a": "Yes — corporate clients are welcome to schedule a facility visit before placing large orders."
+     },
+     {
+      "q": "What's your monthly capacity?",
+      "a": "Up to 800 workstations and 2,000 chairs per month at full utilisation."
+     },
+     {
+      "q": "Do you do export?",
+      "a": "We currently ship to UAE, Saudi Arabia and Bahrain for select corporate clients."
+     }
+    ],
+    "caseStudy": {
+     "client": "Systems Limited",
+     "sector": "Information Technology",
+     "result": "320 workstations manufactured and delivered in 18 working days."
+    },
+    "related": [
+     "custom-design",
+     "delivery-installation",
+     "after-sales-support"
+    ]
+   }
+  },
+  {
+   "type": "service",
+   "slug": "delivery-installation",
+   "path": "/services/delivery-installation",
+   "title": "Delivery & Installation",
+   "excerpt": "Professional logistics and on-site assembly across every major city in Pakistan.",
+   "status": "published",
+   "sort": 30,
+   "seo": {
+    "title": "Office Furniture Delivery & Installation Pakistan | WOODEX",
+    "description": "Nationwide office furniture delivery & professional installation across Pakistan. In-house fleet, trained crews, zero damage guarantee.",
+    "schema": "Service"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Delivery & Installation",
+     "sub": "Professional logistics and on-site assembly across every major city in Pakistan."
+    },
+    {
+     "type": "text",
+     "heading": "Owned fleet, trained crews, zero damage",
+     "text": "From a single executive desk to a 500-piece corporate rollout, every WOODEX delivery is handled by our uniformed in-house team using padded transport and standardised assembly procedures."
+    },
+    {
+     "type": "process",
+     "steps": [
+      {
+       "step": "01",
+       "title": "Dispatch Schedule",
+       "description": "Confirmed delivery window 48 hours in advance."
+      },
+      {
+       "step": "02",
+       "title": "Protected Transport",
+       "description": "Padded shipping in WOODEX-owned vehicles."
+      },
+      {
+       "step": "03",
+       "title": "On-Site Survey",
+       "description": "Lift access, floor protection and route planning."
+      },
+      {
+       "step": "04",
+       "title": "Assembly",
+       "description": "Certified installers using factory torque specs."
+      },
+      {
+       "step": "05",
+       "title": "Walk-Through & Cleanup",
+       "description": "Client sign-off and full debris removal."
+      }
+     ]
+    },
+    {
+     "type": "text",
+     "heading": "What is included",
+     "text": "In-house fleet & crew, Floor & wall protection, Professional assembly, Debris removal, Warranty activation on-site, After-hours options"
+    },
+    {
+     "type": "faq",
+     "items": [
+      {
+       "q": "Do you deliver outside major cities?",
+       "a": "Yes — we deliver to all 4 provinces. A nominal logistics fee applies beyond our service hubs."
+      },
+      {
+       "q": "How long does installation take?",
+       "a": "A standard 50-workstation floor is installed and ready in 2 working days."
+      },
+      {
+       "q": "Can you install after office hours?",
+       "a": "Yes — we routinely install overnight and on weekends for banks and live offices."
+      }
+     ]
+    }
+   ],
+   "payload": {
+    "slug": "delivery-installation",
+    "number": "04",
+    "title": "Delivery & Installation",
+    "shortTitle": "Delivery & Installation",
+    "tagline": "Professional logistics and on-site assembly across every major city in Pakistan.",
+    "intro": "WOODEX operates its own fleet and in-house installation crews — no third-party movers, no damaged goods, no missed deadlines.",
+    "metaTitle": "Office Furniture Delivery & Installation Pakistan | WOODEX",
+    "metaDescription": "Nationwide office furniture delivery & professional installation across Pakistan. In-house fleet, trained crews, zero damage guarantee.",
+    "overview": {
+     "heading": "Owned fleet, trained crews, zero damage",
+     "body": "From a single executive desk to a 500-piece corporate rollout, every WOODEX delivery is handled by our uniformed in-house team using padded transport and standardised assembly procedures."
+    },
+    "process": [
+     {
+      "step": "01",
+      "title": "Dispatch Schedule",
+      "description": "Confirmed delivery window 48 hours in advance."
+     },
+     {
+      "step": "02",
+      "title": "Protected Transport",
+      "description": "Padded shipping in WOODEX-owned vehicles."
+     },
+     {
+      "step": "03",
+      "title": "On-Site Survey",
+      "description": "Lift access, floor protection and route planning."
+     },
+     {
+      "step": "04",
+      "title": "Assembly",
+      "description": "Certified installers using factory torque specs."
+     },
+     {
+      "step": "05",
+      "title": "Walk-Through & Cleanup",
+      "description": "Client sign-off and full debris removal."
+     }
+    ],
+    "benefits": [
+     {
+      "title": "Nationwide Reach",
+      "description": "Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad and Multan."
+     },
+     {
+      "title": "Zero Damage Guarantee",
+      "description": "Any transit damage replaced free of charge."
+     },
+     {
+      "title": "After-Hours Service",
+      "description": "Evening and weekend installs for live offices."
+     },
+     {
+      "title": "Floor & Wall Protection",
+      "description": "Padding and corner guards on every site."
+     }
+    ],
+    "inclusions": [
+     "In-house fleet & crew",
+     "Floor & wall protection",
+     "Professional assembly",
+     "Debris removal",
+     "Warranty activation on-site",
+     "After-hours options"
+    ],
+    "faqs": [
+     {
+      "q": "Do you deliver outside major cities?",
+      "a": "Yes — we deliver to all 4 provinces. A nominal logistics fee applies beyond our service hubs."
+     },
+     {
+      "q": "How long does installation take?",
+      "a": "A standard 50-workstation floor is installed and ready in 2 working days."
+     },
+     {
+      "q": "Can you install after office hours?",
+      "a": "Yes — we routinely install overnight and on weekends for banks and live offices."
+     }
+    ],
+    "caseStudy": {
+     "client": "Shifa International Hospital",
+     "sector": "Healthcare",
+     "result": "Phased installation across 4 wings completed without disrupting patient services."
+    },
+    "related": [
+     "project-management",
+     "after-sales-support",
+     "custom-manufacturing"
+    ]
+   }
+  },
+  {
+   "type": "service",
+   "slug": "space-planning-design",
+   "path": "/services/space-planning-design",
+   "title": "Space Planning & Design",
+   "excerpt": "Workplace strategy, CAD floor plans and 3D renders — before you commit to a single piece of furniture.",
+   "status": "published",
+   "sort": 40,
+   "seo": {
+    "title": "Office Space Planning & Interior Design Pakistan | WOODEX",
+    "description": "Professional office space planning, CAD layouts & 3D renders for Pakistani businesses. Ergonomic, scalable workplace design by WOODEX.",
+    "schema": "Service"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Space Planning & Design",
+     "sub": "Workplace strategy, CAD floor plans and 3D renders — before you commit to a single piece of furniture."
+    },
+    {
+     "type": "text",
+     "heading": "Design first, build once",
+     "text": "Most office fit-outs fail not in installation but in planning. WOODEX space planners use real data — headcount projections, BIFMA clearances, fire-egress rules — to produce layouts that flex with your business for the next 5 years."
+    },
+    {
+     "type": "process",
+     "steps": [
+      {
+       "step": "01",
+       "title": "Discovery",
+       "description": "Headcount, workflow and culture audit."
+      },
+      {
+       "step": "02",
+       "title": "Test-Fit",
+       "description": "Multiple layout options on your actual floor plate."
+      },
+      {
+       "step": "03",
+       "title": "3D Visualisation",
+       "description": "Photoreal renders of approved layouts."
+      },
+      {
+       "step": "04",
+       "title": "Specification",
+       "description": "Bill of materials, furniture schedule and budget."
+      },
+      {
+       "step": "05",
+       "title": "Implementation Support",
+       "description": "Site supervision during fit-out."
+      }
+     ]
+    },
+    {
+     "type": "text",
+     "heading": "What is included",
+     "text": "On-site space audit, 2D & 3D CAD layouts, Photoreal 3D renders, Furniture specification (BOM), Ergonomic compliance review, Phasing plan"
+    },
+    {
+     "type": "faq",
+     "items": [
+      {
+       "q": "Is space planning free?",
+       "a": "Initial consultation and concept layout are complimentary for projects above 25 workstations."
+      },
+      {
+       "q": "Do you work with our architect?",
+       "a": "Yes — we routinely collaborate with architects and PMC firms across Pakistan."
+      },
+      {
+       "q": "What software do you use?",
+       "a": "AutoCAD, SketchUp and 3ds Max with V-Ray for photoreal rendering."
+      }
+     ]
+    }
+   ],
+   "payload": {
+    "slug": "space-planning-design",
+    "number": "05",
+    "title": "Space Planning & Design",
+    "shortTitle": "Space Planning & Design",
+    "tagline": "Workplace strategy, CAD floor plans and 3D renders — before you commit to a single piece of furniture.",
+    "intro": "Our space planners study your team density, collaboration patterns and growth plans, then deliver scaled CAD layouts and photoreal 3D renders so you can see — and adjust — your office before it's built.",
+    "metaTitle": "Office Space Planning & Interior Design Pakistan | WOODEX",
+    "metaDescription": "Professional office space planning, CAD layouts & 3D renders for Pakistani businesses. Ergonomic, scalable workplace design by WOODEX.",
+    "overview": {
+     "heading": "Design first, build once",
+     "body": "Most office fit-outs fail not in installation but in planning. WOODEX space planners use real data — headcount projections, BIFMA clearances, fire-egress rules — to produce layouts that flex with your business for the next 5 years."
+    },
+    "process": [
+     {
+      "step": "01",
+      "title": "Discovery",
+      "description": "Headcount, workflow and culture audit."
+     },
+     {
+      "step": "02",
+      "title": "Test-Fit",
+      "description": "Multiple layout options on your actual floor plate."
+     },
+     {
+      "step": "03",
+      "title": "3D Visualisation",
+      "description": "Photoreal renders of approved layouts."
+     },
+     {
+      "step": "04",
+      "title": "Specification",
+      "description": "Bill of materials, furniture schedule and budget."
+     },
+     {
+      "step": "05",
+      "title": "Implementation Support",
+      "description": "Site supervision during fit-out."
+     }
+    ],
+    "benefits": [
+     {
+      "title": "Data-Driven Layouts",
+      "description": "Density and clearance based on actual usage patterns."
+     },
+     {
+      "title": "Photoreal Renders",
+      "description": "See your office before construction begins."
+     },
+     {
+      "title": "Budget Clarity",
+      "description": "Costed BOM at design sign-off — no surprises."
+     },
+     {
+      "title": "Future-Proof",
+      "description": "Layouts designed to flex with 5-year growth."
+     }
+    ],
+    "inclusions": [
+     "On-site space audit",
+     "2D & 3D CAD layouts",
+     "Photoreal 3D renders",
+     "Furniture specification (BOM)",
+     "Ergonomic compliance review",
+     "Phasing plan"
+    ],
+    "faqs": [
+     {
+      "q": "Is space planning free?",
+      "a": "Initial consultation and concept layout are complimentary for projects above 25 workstations."
+     },
+     {
+      "q": "Do you work with our architect?",
+      "a": "Yes — we routinely collaborate with architects and PMC firms across Pakistan."
+     },
+     {
+      "q": "What software do you use?",
+      "a": "AutoCAD, SketchUp and 3ds Max with V-Ray for photoreal rendering."
+     }
+    ],
+    "caseStudy": {
+     "client": "TechVentures Islamabad",
+     "sector": "Technology",
+     "result": "200-seat office designed and rendered in 8 days, fit-out completed in 6 weeks."
+    },
+    "related": [
+     "custom-design",
+     "project-management",
+     "b2b-office-solutions"
+    ]
+   }
+  },
+  {
+   "type": "service",
+   "slug": "after-sales-support",
+   "path": "/services/after-sales-support",
+   "title": "After-Sales Support",
+   "excerpt": "5-year warranty, on-call repair teams and spare parts always in stock.",
+   "status": "published",
+   "sort": 50,
+   "seo": {
+    "title": "Office Furniture After-Sales Support Pakistan | WOODEX Warranty",
+    "description": "5-year warranty, 24-hour response and on-site repair for WOODEX office furniture across Pakistan. Annual maintenance plans available.",
+    "schema": "Service"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "After-Sales Support",
+     "sub": "5-year warranty, on-call repair teams and spare parts always in stock."
+    },
+    {
+     "type": "text",
+     "heading": "Service that outlasts the sale",
+     "text": "Office furniture is a 7–10 year investment. WOODEX backs every product with a 5-year structural warranty, transparent spare parts pricing and optional annual maintenance contracts for corporate clients."
+    },
+    {
+     "type": "process",
+     "steps": [
+      {
+       "step": "01",
+       "title": "Raise a Ticket",
+       "description": "Call, WhatsApp or email — 24-hour acknowledgement."
+      },
+      {
+       "step": "02",
+       "title": "Remote Diagnosis",
+       "description": "Photo / video triage to dispatch the right technician."
+      },
+      {
+       "step": "03",
+       "title": "On-Site Visit",
+       "description": "Field engineer with spares within 48 hours."
+      },
+      {
+       "step": "04",
+       "title": "Repair or Replace",
+       "description": "Fix in place or full unit replacement under warranty."
+      },
+      {
+       "step": "05",
+       "title": "Follow-Up",
+       "description": "Quality check call 7 days after resolution."
+      }
+     ]
+    },
+    {
+     "type": "text",
+     "heading": "What is included",
+     "text": "5-year structural warranty, Dedicated service helpline, On-site repair across Pakistan, Transparent spares pricing, Optional AMC contracts, Free annual inspection (AMC)"
+    },
+    {
+     "type": "faq",
+     "items": [
+      {
+       "q": "What does the warranty cover?",
+       "a": "Structural frames, welds, mechanisms and manufacturing defects under normal commercial use."
+      },
+      {
+       "q": "How fast is on-site response?",
+       "a": "Within 48 hours in major cities; 72 hours elsewhere in Pakistan."
+      },
+      {
+       "q": "Is the AMC worth it?",
+       "a": "For offices with 100+ pieces, AMC pays for itself in extended life and zero downtime."
+      }
+     ]
+    }
+   ],
+   "payload": {
+    "slug": "after-sales-support",
+    "number": "06",
+    "title": "After-Sales Support",
+    "shortTitle": "After-Sales Support",
+    "tagline": "5-year warranty, on-call repair teams and spare parts always in stock.",
+    "intro": "When you buy WOODEX, you're buying into a long-term partnership. Our service desk responds within 24 hours and our technicians carry common spares for same-day fixes.",
+    "metaTitle": "Office Furniture After-Sales Support Pakistan | WOODEX Warranty",
+    "metaDescription": "5-year warranty, 24-hour response and on-site repair for WOODEX office furniture across Pakistan. Annual maintenance plans available.",
+    "overview": {
+     "heading": "Service that outlasts the sale",
+     "body": "Office furniture is a 7–10 year investment. WOODEX backs every product with a 5-year structural warranty, transparent spare parts pricing and optional annual maintenance contracts for corporate clients."
+    },
+    "process": [
+     {
+      "step": "01",
+      "title": "Raise a Ticket",
+      "description": "Call, WhatsApp or email — 24-hour acknowledgement."
+     },
+     {
+      "step": "02",
+      "title": "Remote Diagnosis",
+      "description": "Photo / video triage to dispatch the right technician."
+     },
+     {
+      "step": "03",
+      "title": "On-Site Visit",
+      "description": "Field engineer with spares within 48 hours."
+     },
+     {
+      "step": "04",
+      "title": "Repair or Replace",
+      "description": "Fix in place or full unit replacement under warranty."
+     },
+     {
+      "step": "05",
+      "title": "Follow-Up",
+      "description": "Quality check call 7 days after resolution."
+     }
+    ],
+    "benefits": [
+     {
+      "title": "5-Year Warranty",
+      "description": "Structural coverage on frames, mechanisms and welds."
+     },
+     {
+      "title": "24-Hour Response",
+      "description": "Service desk acknowledges every ticket within a day."
+     },
+     {
+      "title": "Spare Parts in Stock",
+      "description": "Common components always available, no import wait."
+     },
+     {
+      "title": "AMC Plans",
+      "description": "Annual maintenance contracts for fleets of 100+ pieces."
+     }
+    ],
+    "inclusions": [
+     "5-year structural warranty",
+     "Dedicated service helpline",
+     "On-site repair across Pakistan",
+     "Transparent spares pricing",
+     "Optional AMC contracts",
+     "Free annual inspection (AMC)"
+    ],
+    "faqs": [
+     {
+      "q": "What does the warranty cover?",
+      "a": "Structural frames, welds, mechanisms and manufacturing defects under normal commercial use."
+     },
+     {
+      "q": "How fast is on-site response?",
+      "a": "Within 48 hours in major cities; 72 hours elsewhere in Pakistan."
+     },
+     {
+      "q": "Is the AMC worth it?",
+      "a": "For offices with 100+ pieces, AMC pays for itself in extended life and zero downtime."
+     }
+    ],
+    "caseStudy": {
+     "client": "Engro Corporation",
+     "sector": "Industrial",
+     "result": "3-year AMC across 4 sites — zero unresolved tickets, 98% same-week closure."
+    },
+    "related": [
+     "delivery-installation",
+     "custom-manufacturing",
+     "b2b-office-solutions"
+    ]
+   }
+  },
+  {
+   "type": "service",
+   "slug": "project-management",
+   "path": "/services/project-management",
+   "title": "Project Management",
+   "excerpt": "One dedicated PM, one budget tracker, one timeline — from contract to keys.",
+   "status": "published",
+   "sort": 60,
+   "seo": {
+    "title": "Office Furniture Project Management Pakistan | WOODEX",
+    "description": "Certified project managers for office furniture rollouts across Pakistan. Timeline, budget & quality ownership from concept to handover.",
+    "schema": "Service"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Project Management",
+     "sub": "One dedicated PM, one budget tracker, one timeline — from contract to keys."
+    },
+    {
+     "type": "text",
+     "heading": "A single throat to choke",
+     "text": "Multi-vendor furniture projects fail because nobody owns the schedule. WOODEX appoints one PMP-style project lead who runs weekly status calls, maintains a live Gantt chart and escalates risks before they become delays."
+    },
+    {
+     "type": "process",
+     "steps": [
+      {
+       "step": "01",
+       "title": "Kickoff",
+       "description": "Charter, scope and stakeholder mapping."
+      },
+      {
+       "step": "02",
+       "title": "Detailed Plan",
+       "description": "Gantt chart, milestones and dependency mapping."
+      },
+      {
+       "step": "03",
+       "title": "Weekly Status",
+       "description": "Live dashboard and weekly stakeholder call."
+      },
+      {
+       "step": "04",
+       "title": "Risk Management",
+       "description": "Early flagging with mitigation options."
+      },
+      {
+       "step": "05",
+       "title": "Handover & Closeout",
+       "description": "Snag list resolved, warranty activated, lessons captured."
+      }
+     ]
+    },
+    {
+     "type": "text",
+     "heading": "What is included",
+     "text": "Dedicated certified PM, Weekly status reports, Live online Gantt tracker, Risk & issue register, Budget variance reporting, Formal handover & lessons learned"
+    },
+    {
+     "type": "faq",
+     "items": [
+      {
+       "q": "Is PM included or extra?",
+       "a": "Included free for projects above 50 workstations; optional add-on below that."
+      },
+      {
+       "q": "Can the PM coordinate with our contractors?",
+       "a": "Yes — we routinely interface with civil, MEP and IT contractors on live sites."
+      },
+      {
+       "q": "What if the project slips?",
+       "a": "We share the schedule risk: late delivery on our scope triggers contractual penalties."
+      }
+     ]
+    }
+   ],
+   "payload": {
+    "slug": "project-management",
+    "number": "07",
+    "title": "Project Management",
+    "shortTitle": "Project Management",
+    "tagline": "One dedicated PM, one budget tracker, one timeline — from contract to keys.",
+    "intro": "Every WOODEX project of 25+ workstations gets a dedicated certified project manager who owns the timeline, budget, communication and quality from day one.",
+    "metaTitle": "Office Furniture Project Management Pakistan | WOODEX",
+    "metaDescription": "Certified project managers for office furniture rollouts across Pakistan. Timeline, budget & quality ownership from concept to handover.",
+    "overview": {
+     "heading": "A single throat to choke",
+     "body": "Multi-vendor furniture projects fail because nobody owns the schedule. WOODEX appoints one PMP-style project lead who runs weekly status calls, maintains a live Gantt chart and escalates risks before they become delays."
+    },
+    "process": [
+     {
+      "step": "01",
+      "title": "Kickoff",
+      "description": "Charter, scope and stakeholder mapping."
+     },
+     {
+      "step": "02",
+      "title": "Detailed Plan",
+      "description": "Gantt chart, milestones and dependency mapping."
+     },
+     {
+      "step": "03",
+      "title": "Weekly Status",
+      "description": "Live dashboard and weekly stakeholder call."
+     },
+     {
+      "step": "04",
+      "title": "Risk Management",
+      "description": "Early flagging with mitigation options."
+     },
+     {
+      "step": "05",
+      "title": "Handover & Closeout",
+      "description": "Snag list resolved, warranty activated, lessons captured."
+     }
+    ],
+    "benefits": [
+     {
+      "title": "Single Owner",
+      "description": "One PM accountable for the entire programme."
+     },
+     {
+      "title": "Live Dashboard",
+      "description": "Online tracker visible to your team 24/7."
+     },
+     {
+      "title": "Budget Discipline",
+      "description": "Variance reported weekly, never quarterly."
+     },
+     {
+      "title": "Risk Transparency",
+      "description": "Issues raised early, not after they bite."
+     }
+    ],
+    "inclusions": [
+     "Dedicated certified PM",
+     "Weekly status reports",
+     "Live online Gantt tracker",
+     "Risk & issue register",
+     "Budget variance reporting",
+     "Formal handover & lessons learned"
+    ],
+    "faqs": [
+     {
+      "q": "Is PM included or extra?",
+      "a": "Included free for projects above 50 workstations; optional add-on below that."
+     },
+     {
+      "q": "Can the PM coordinate with our contractors?",
+      "a": "Yes — we routinely interface with civil, MEP and IT contractors on live sites."
+     },
+     {
+      "q": "What if the project slips?",
+      "a": "We share the schedule risk: late delivery on our scope triggers contractual penalties."
+     }
+    ],
+    "caseStudy": {
+     "client": "State Bank of Pakistan",
+     "sector": "Government / Banking",
+     "result": "Multi-floor regional office rollout delivered 4 days ahead of contractual milestone."
+    },
+    "related": [
+     "b2b-office-solutions",
+     "space-planning-design",
+     "after-sales-support"
+    ]
+   }
+  },
+  {
+   "type": "post",
+   "slug": "ergonomic-office-guide-2025",
+   "path": "/blog/ergonomic-office-guide-2025",
+   "title": "The Complete Guide to Ergonomic Office Furniture in 2025",
+   "excerpt": "Discover how the right office chair and desk setup can reduce back pain, boost productivity, and improve employee wellbeing. Expert tips from WOODEX's certified ergonomists.",
+   "status": "published",
+   "sort": 0,
+   "seo": {
+    "title": "The Complete Guide to Ergonomic Office Furniture in 2025 — WOODEX Blog",
+    "description": "Discover how the right office chair and desk setup can reduce back pain, boost productivity, and improve employee wellbeing. Expert tips from WOODEX's certified ergonomists.",
+    "schema": "BlogPosting"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "The Complete Guide to Ergonomic Office Furniture in 2025",
+     "sub": "Discover how the right office chair and desk setup can reduce back pain, boost productivity, and improve employee wellbeing. Expert tips from WOODEX's certified ergonomists."
+    },
+    {
+     "type": "text",
+     "heading": "",
+     "text": "Pakistani professionals spend an average of 9 hours a day at their desks. Yet most offices in Lahore, Karachi, and Islamabad are still equipped with furniture that hasn't evolved in decades — leading to chronic back pain, reduced focus, and rising healthcare costs for employers."
+    },
+    {
+     "type": "text",
+     "heading": "Why Ergonomics Matters in 2025",
+     "text": "Ergonomic furniture isn't a luxury — it's a productivity multiplier. Studies from the Cornell University Ergonomics Lab show that proper seating and desk height can increase output by up to 17.5% and reduce sick days by nearly a third."
+    },
+    {
+     "type": "text",
+     "heading": "The 5 Pillars of an Ergonomic Workstation",
+     "text": "1. Adjustable lumbar support that follows the natural S-curve of the spine.\n2. Seat depth and height that keep knees at a 90° angle.\n3. Monitor positioning at eye level, roughly an arm's length away.\n4. Keyboard and mouse placement that keeps wrists neutral.\n5. Adequate task lighting to reduce eye strain in Pakistan's variable daylight conditions."
+    },
+    {
+     "type": "text",
+     "heading": "WOODEX's Ergonomic Range",
+     "text": "Our Infinity and Nova series chairs are designed in consultation with certified ergonomists and tested for the Pakistani climate. Every chair ships with a 5-year structural warranty and free ergonomic assessment at our Lahore, Karachi, and Islamabad showrooms."
+    },
+    {
+     "type": "text",
+     "heading": "Final Thoughts",
+     "text": "Investing in ergonomic furniture pays for itself within 12–18 months through reduced absenteeism and higher engagement. Book a free consultation with our team to audit your workspace."
+    }
+   ],
+   "payload": {
+    "category": "Ergonomics",
+    "author": "Dr. Farah Khan",
+    "date": "Feb 15, 2025",
+    "readTime": "8 min read",
+    "tags": [
+     "Ergonomics",
+     "Office Chairs",
+     "Productivity",
+     "Health"
+    ]
+   }
+  },
+  {
+   "type": "post",
+   "slug": "hybrid-workspace-design",
+   "path": "/blog/hybrid-workspace-design",
+   "title": "Designing Hybrid Workspaces: Furniture That Adapts",
+   "excerpt": "How Pakistani companies are rethinking office layouts for hybrid work. Modular furniture, hot-desking solutions, and collaborative zones explained.",
+   "status": "published",
+   "sort": 10,
+   "seo": {
+    "title": "Designing Hybrid Workspaces: Furniture That Adapts — WOODEX Blog",
+    "description": "How Pakistani companies are rethinking office layouts for hybrid work. Modular furniture, hot-desking solutions, and collaborative zones explained.",
+    "schema": "BlogPosting"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Designing Hybrid Workspaces: Furniture That Adapts",
+     "sub": "How Pakistani companies are rethinking office layouts for hybrid work. Modular furniture, hot-desking solutions, and collaborative zones explained."
+    },
+    {
+     "type": "text",
+     "heading": "",
+     "text": "Hybrid work is no longer a trend — it's the default operating model for Pakistan's leading firms. The challenge: building offices that flex between solo focus, team collaboration, and visiting remote staff."
+    },
+    {
+     "type": "text",
+     "heading": "Modular by Default",
+     "text": "Modular workstations let teams reconfigure layouts in hours instead of weeks. WOODEX's Cubicle series supports tool-free reassembly and integrated power management."
+    },
+    {
+     "type": "text",
+     "heading": "Hot-Desking Done Right",
+     "text": "Successful hot-desking requires lockable storage, easy-clean surfaces, and a booking system. We help clients pair our furniture with simple SaaS booking tools."
+    },
+    {
+     "type": "text",
+     "heading": "Collaborative Zones",
+     "text": "Soft seating, writable surfaces, and acoustic panels turn corridors into productive collaboration pockets."
+    }
+   ],
+   "payload": {
+    "category": "Workspace Design",
+    "author": "Ahmed Raza",
+    "date": "Feb 8, 2025",
+    "readTime": "6 min read",
+    "tags": [
+     "Hybrid Work",
+     "Modular",
+     "Workspace"
+    ]
+   }
+  },
+  {
+   "type": "post",
+   "slug": "sustainable-furniture-pakistan",
+   "path": "/blog/sustainable-furniture-pakistan",
+   "title": "Sustainable Furniture Manufacturing in Pakistan",
+   "excerpt": "WOODEX's commitment to eco-friendly production — from FSC-certified wood sourcing to zero-waste manufacturing practices in our Lahore facility.",
+   "status": "published",
+   "sort": 20,
+   "seo": {
+    "title": "Sustainable Furniture Manufacturing in Pakistan — WOODEX Blog",
+    "description": "WOODEX's commitment to eco-friendly production — from FSC-certified wood sourcing to zero-waste manufacturing practices in our Lahore facility.",
+    "schema": "BlogPosting"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Sustainable Furniture Manufacturing in Pakistan",
+     "sub": "WOODEX's commitment to eco-friendly production — from FSC-certified wood sourcing to zero-waste manufacturing practices in our Lahore facility."
+    },
+    {
+     "type": "text",
+     "heading": "",
+     "text": "Sustainability is more than a marketing badge. At WOODEX, it's a manufacturing standard built into every step of our production line."
+    },
+    {
+     "type": "text",
+     "heading": "FSC-Certified Sourcing",
+     "text": "All hardwood used in our Ek and Woodex series is sourced from FSC-certified forests, ensuring responsible reforestation."
+    },
+    {
+     "type": "text",
+     "heading": "Zero-Waste Workshop",
+     "text": "Sawdust is repurposed into briquettes; offcuts become accessories. Our Lahore facility diverts 94% of waste from landfill."
+    },
+    {
+     "type": "text",
+     "heading": "Low-VOC Finishes",
+     "text": "We use water-based finishes that meet European EN 71-3 safety standards — safer for installers and end users alike."
+    }
+   ],
+   "payload": {
+    "category": "Sustainability",
+    "author": "Sara Malik",
+    "date": "Jan 28, 2025",
+    "readTime": "5 min read",
+    "tags": [
+     "Sustainability",
+     "FSC",
+     "Manufacturing"
+    ]
+   }
+  },
+  {
+   "type": "post",
+   "slug": "office-color-psychology",
+   "path": "/blog/office-color-psychology",
+   "title": "How Office Colors Affect Productivity: A Research-Backed Guide",
+   "excerpt": "Blue for focus, green for creativity, and warm tones for collaboration — the science behind choosing the right furniture finishes for your workspace.",
+   "status": "published",
+   "sort": 30,
+   "seo": {
+    "title": "How Office Colors Affect Productivity: A Research-Backed Guide — WOODEX Blog",
+    "description": "Blue for focus, green for creativity, and warm tones for collaboration — the science behind choosing the right furniture finishes for your workspace.",
+    "schema": "BlogPosting"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "How Office Colors Affect Productivity: A Research-Backed Guide",
+     "sub": "Blue for focus, green for creativity, and warm tones for collaboration — the science behind choosing the right furniture finishes for your workspace."
+    },
+    {
+     "type": "text",
+     "heading": "",
+     "text": "Color drives mood, attention, and even decision-making. The right palette can quietly transform how a team performs."
+    },
+    {
+     "type": "text",
+     "heading": "Blue: The Focus Color",
+     "text": "Deep blues lower heart rate and support analytical work — ideal for finance and engineering floors."
+    },
+    {
+     "type": "text",
+     "heading": "Green: The Creative Color",
+     "text": "Forest green (our signature accent) balances calm and energy, perfect for design studios and brainstorm rooms."
+    },
+    {
+     "type": "text",
+     "heading": "Warm Neutrals",
+     "text": "Walnut, terracotta, and soft beige humanize meeting rooms and reception areas."
+    }
+   ],
+   "payload": {
+    "category": "Interior Design",
+    "author": "Hina Javed",
+    "date": "Jan 20, 2025",
+    "readTime": "7 min read",
+    "tags": [
+     "Color",
+     "Design",
+     "Psychology"
+    ]
+   }
+  },
+  {
+   "type": "post",
+   "slug": "corporate-case-study-allied-bank",
+   "path": "/blog/corporate-case-study-allied-bank",
+   "title": "Case Study: Furnishing 8 Allied Bank Branches Across Punjab",
+   "excerpt": "How WOODEX delivered 200+ workstations, executive suites, and customer service counters across 8 branches in just 6 weeks — on time and on budget.",
+   "status": "published",
+   "sort": 40,
+   "seo": {
+    "title": "Case Study: Furnishing 8 Allied Bank Branches Across Punjab — WOODEX Blog",
+    "description": "How WOODEX delivered 200+ workstations, executive suites, and customer service counters across 8 branches in just 6 weeks — on time and on budget.",
+    "schema": "BlogPosting"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Case Study: Furnishing 8 Allied Bank Branches Across Punjab",
+     "sub": "How WOODEX delivered 200+ workstations, executive suites, and customer service counters across 8 branches in just 6 weeks — on time and on budget."
+    },
+    {
+     "type": "text",
+     "heading": "",
+     "text": "When Allied Bank needed to refresh 8 branches across Punjab within a single quarter, they turned to WOODEX for end-to-end execution."
+    },
+    {
+     "type": "text",
+     "heading": "The Brief",
+     "text": "200+ workstations, 16 executive suites, and 24 customer service counters — all matching the bank's new brand standards."
+    },
+    {
+     "type": "text",
+     "heading": "Our Approach",
+     "text": "Centralized manufacturing in Lahore, staggered logistics, and on-site installation crews per city allowed parallel delivery."
+    },
+    {
+     "type": "text",
+     "heading": "Results",
+     "text": "Delivered 4 days ahead of schedule, 0 safety incidents, and a 12% saving versus the original budget estimate."
+    }
+   ],
+   "payload": {
+    "category": "Case Study",
+    "author": "Bilal Ahmed",
+    "date": "Jan 12, 2025",
+    "readTime": "10 min read",
+    "tags": [
+     "Case Study",
+     "Banking",
+     "B2B"
+    ]
+   }
+  },
+  {
+   "type": "post",
+   "slug": "standing-desk-benefits",
+   "path": "/blog/standing-desk-benefits",
+   "title": "Standing Desks in Pakistan: Are They Worth the Investment?",
+   "excerpt": "A comprehensive analysis of sit-stand desks for Pakistani offices — health benefits, ROI calculations, and the best models for different budgets.",
+   "status": "published",
+   "sort": 50,
+   "seo": {
+    "title": "Standing Desks in Pakistan: Are They Worth the Investment? — WOODEX Blog",
+    "description": "A comprehensive analysis of sit-stand desks for Pakistani offices — health benefits, ROI calculations, and the best models for different budgets.",
+    "schema": "BlogPosting"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Standing Desks in Pakistan: Are They Worth the Investment?",
+     "sub": "A comprehensive analysis of sit-stand desks for Pakistani offices — health benefits, ROI calculations, and the best models for different budgets."
+    },
+    {
+     "type": "text",
+     "heading": "",
+     "text": "Sit-stand desks are gaining ground in Pakistani offices. Here's an honest look at whether they're worth the premium."
+    },
+    {
+     "type": "text",
+     "heading": "Proven Health Benefits",
+     "text": "Alternating posture every 30–60 minutes reduces lower-back load and improves circulation."
+    },
+    {
+     "type": "text",
+     "heading": "ROI in 14 Months",
+     "text": "Our enterprise clients report measurable productivity gains that offset the hardware cost in just over a year."
+    },
+    {
+     "type": "text",
+     "heading": "Choosing the Right Model",
+     "text": "Electric height adjustment is worth the extra cost — manual cranks rarely get used after the first month."
+    }
+   ],
+   "payload": {
+    "category": "Ergonomics",
+    "author": "Dr. Farah Khan",
+    "date": "Jan 5, 2025",
+    "readTime": "6 min read",
+    "tags": [
+     "Standing Desk",
+     "Ergonomics",
+     "Health"
+    ]
+   }
+  },
+  {
+   "type": "project",
+   "slug": "gents-grooming-lounge-dha-lahore",
+   "path": "/projects/gents-grooming-lounge-dha-lahore",
+   "title": "Gents Grooming Lounge — DHA Lahore",
+   "excerpt": "Concept-to-execution turnkey fit-out of a premium men's hair salon — walnut joinery, brass-framed mirrors, deep forest green feature wall, custom barber stations and private grooming alcoves.",
+   "status": "published",
+   "sort": 0,
+   "seo": {
+    "title": "Gents Grooming Lounge — DHA Lahore — WOODEX Project",
+    "description": "Concept-to-execution turnkey fit-out of a premium men's hair salon — walnut joinery, brass-framed mirrors, deep forest green feature wall, custom barber stations and private grooming alcoves.",
+    "schema": "CreativeWork"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Gents Grooming Lounge — DHA Lahore",
+     "sub": "Hospitality · DHA Phase 5, Lahore · 3,500 sq ft"
+    },
+    {
+     "type": "text",
+     "heading": "The brief",
+     "text": "Concept-to-execution turnkey fit-out of a premium men's hair salon — walnut joinery, brass-framed mirrors, deep forest green feature wall, custom barber stations and private grooming alcoves."
+    }
+   ],
+   "payload": {
+    "title": "Gents Grooming Lounge — DHA Lahore",
+    "client": "Private Boutique Salon",
+    "category": "Hospitality",
+    "location": "DHA Phase 5, Lahore",
+    "sqft": "3,500 sq ft",
+    "description": "Concept-to-execution turnkey fit-out of a premium men's hair salon — walnut joinery, brass-framed mirrors, deep forest green feature wall, custom barber stations and private grooming alcoves."
+   }
+  },
+  {
+   "type": "project",
+   "slug": "dha-corporate-tower",
+   "path": "/projects/dha-corporate-tower",
+   "title": "DHA Corporate Tower",
+   "excerpt": "Complete C-suite office fit-out with custom executive furniture, meeting rooms, and collaborative spaces.",
+   "status": "published",
+   "sort": 10,
+   "seo": {
+    "title": "DHA Corporate Tower — WOODEX Project",
+    "description": "Complete C-suite office fit-out with custom executive furniture, meeting rooms, and collaborative spaces.",
+    "schema": "CreativeWork"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "DHA Corporate Tower",
+     "sub": "Corporate · Lahore · 12,000 sq ft"
+    },
+    {
+     "type": "text",
+     "heading": "The brief",
+     "text": "Complete C-suite office fit-out with custom executive furniture, meeting rooms, and collaborative spaces."
+    }
+   ],
+   "payload": {
+    "title": "DHA Corporate Tower",
+    "client": "DHA Developers",
+    "category": "Corporate",
+    "location": "Lahore",
+    "sqft": "12,000 sq ft",
+    "description": "Complete C-suite office fit-out with custom executive furniture, meeting rooms, and collaborative spaces."
+   }
+  },
+  {
+   "type": "project",
+   "slug": "techhub-karachi",
+   "path": "/projects/techhub-karachi",
+   "title": "TechHub Karachi",
+   "excerpt": "Modern open-plan tech office with agile workstations, standing desks, and vibrant breakout areas.",
+   "status": "published",
+   "sort": 20,
+   "seo": {
+    "title": "TechHub Karachi — WOODEX Project",
+    "description": "Modern open-plan tech office with agile workstations, standing desks, and vibrant breakout areas.",
+    "schema": "CreativeWork"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "TechHub Karachi",
+     "sub": "Tech · Karachi · 8,500 sq ft"
+    },
+    {
+     "type": "text",
+     "heading": "The brief",
+     "text": "Modern open-plan tech office with agile workstations, standing desks, and vibrant breakout areas."
+    }
+   ],
+   "payload": {
+    "title": "TechHub Karachi",
+    "client": "TechHub Pakistan",
+    "category": "Tech",
+    "location": "Karachi",
+    "sqft": "8,500 sq ft",
+    "description": "Modern open-plan tech office with agile workstations, standing desks, and vibrant breakout areas."
+   }
+  },
+  {
+   "type": "project",
+   "slug": "shaukat-khanum-clinic",
+   "path": "/projects/shaukat-khanum-clinic",
+   "title": "Shaukat Khanum Clinic",
+   "excerpt": "Healthcare-grade furniture for waiting areas, consultation rooms, and staff offices.",
+   "status": "published",
+   "sort": 30,
+   "seo": {
+    "title": "Shaukat Khanum Clinic — WOODEX Project",
+    "description": "Healthcare-grade furniture for waiting areas, consultation rooms, and staff offices.",
+    "schema": "CreativeWork"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Shaukat Khanum Clinic",
+     "sub": "Healthcare · Islamabad · 4,200 sq ft"
+    },
+    {
+     "type": "text",
+     "heading": "The brief",
+     "text": "Healthcare-grade furniture for waiting areas, consultation rooms, and staff offices."
+    }
+   ],
+   "payload": {
+    "title": "Shaukat Khanum Clinic",
+    "client": "SKMT Foundation",
+    "category": "Healthcare",
+    "location": "Islamabad",
+    "sqft": "4,200 sq ft",
+    "description": "Healthcare-grade furniture for waiting areas, consultation rooms, and staff offices."
+   }
+  },
+  {
+   "type": "project",
+   "slug": "lums-library-expansion",
+   "path": "/projects/lums-library-expansion",
+   "title": "LUMS Library Expansion",
+   "excerpt": "Academic furniture including collaborative study tables, individual pods, and faculty offices.",
+   "status": "published",
+   "sort": 40,
+   "seo": {
+    "title": "LUMS Library Expansion — WOODEX Project",
+    "description": "Academic furniture including collaborative study tables, individual pods, and faculty offices.",
+    "schema": "CreativeWork"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "LUMS Library Expansion",
+     "sub": "Education · Lahore · 6,800 sq ft"
+    },
+    {
+     "type": "text",
+     "heading": "The brief",
+     "text": "Academic furniture including collaborative study tables, individual pods, and faculty offices."
+    }
+   ],
+   "payload": {
+    "title": "LUMS Library Expansion",
+    "client": "LUMS University",
+    "category": "Education",
+    "location": "Lahore",
+    "sqft": "6,800 sq ft",
+    "description": "Academic furniture including collaborative study tables, individual pods, and faculty offices."
+   }
+  },
+  {
+   "type": "project",
+   "slug": "fbr-regional-office",
+   "path": "/projects/fbr-regional-office",
+   "title": "FBR Regional Office",
+   "excerpt": "Government-standard office furniture for multiple floors of the regional headquarters.",
+   "status": "published",
+   "sort": 50,
+   "seo": {
+    "title": "FBR Regional Office — WOODEX Project",
+    "description": "Government-standard office furniture for multiple floors of the regional headquarters.",
+    "schema": "CreativeWork"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "FBR Regional Office",
+     "sub": "Government · Islamabad · 15,000 sq ft"
+    },
+    {
+     "type": "text",
+     "heading": "The brief",
+     "text": "Government-standard office furniture for multiple floors of the regional headquarters."
+    }
+   ],
+   "payload": {
+    "title": "FBR Regional Office",
+    "client": "Federal Board of Revenue",
+    "category": "Government",
+    "location": "Islamabad",
+    "sqft": "15,000 sq ft",
+    "description": "Government-standard office furniture for multiple floors of the regional headquarters."
+   }
+  },
+  {
+   "type": "project",
+   "slug": "pc-hotel-business-center",
+   "path": "/projects/pc-hotel-business-center",
+   "title": "PC Hotel Business Center",
+   "excerpt": "Luxury lounge and business center furniture for a 5-star hospitality environment.",
+   "status": "published",
+   "sort": 60,
+   "seo": {
+    "title": "PC Hotel Business Center — WOODEX Project",
+    "description": "Luxury lounge and business center furniture for a 5-star hospitality environment.",
+    "schema": "CreativeWork"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "PC Hotel Business Center",
+     "sub": "Hospitality · Lahore · 3,500 sq ft"
+    },
+    {
+     "type": "text",
+     "heading": "The brief",
+     "text": "Luxury lounge and business center furniture for a 5-star hospitality environment."
+    }
+   ],
+   "payload": {
+    "title": "PC Hotel Business Center",
+    "client": "Pearl Continental",
+    "category": "Hospitality",
+    "location": "Lahore",
+    "sqft": "3,500 sq ft",
+    "description": "Luxury lounge and business center furniture for a 5-star hospitality environment."
+   }
+  },
+  {
+   "type": "showroom",
+   "slug": "lahore",
+   "path": "/showrooms/lahore",
+   "title": "WOODEX Showroom — Lahore (HQ)",
+   "excerpt": "123 Gulberg III, Main Boulevard, Lahore",
+   "status": "published",
+   "sort": 0,
+   "seo": {
+    "title": "WOODEX Showroom Lahore (HQ) — Address, Hours & Phone",
+    "description": "123 Gulberg III, Main Boulevard, Lahore. Mon–Sat: 9am–7pm. +92 42 111 WOODEX.",
+    "schema": "FurnitureStore"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Lahore (HQ)",
+     "sub": "123 Gulberg III, Main Boulevard, Lahore"
+    },
+    {
+     "type": "text",
+     "heading": "Visit us",
+     "text": "123 Gulberg III, Main Boulevard, Lahore\nMon–Sat: 9am–7pm\n+92 42 111 WOODEX"
+    }
+   ],
+   "payload": {
+    "city": "Lahore (HQ)",
+    "address": "123 Gulberg III, Main Boulevard, Lahore",
+    "phone": "+92 42 111 WOODEX",
+    "whatsapp": "+923001234567",
+    "hours": "Mon–Sat: 9am–7pm",
+    "lat": 31.5204,
+    "lng": 74.3587,
+    "isHQ": true
+   }
+  },
+  {
+   "type": "showroom",
+   "slug": "karachi",
+   "path": "/showrooms/karachi",
+   "title": "WOODEX Showroom — Karachi",
+   "excerpt": "456 Clifton Block 5, Karachi",
+   "status": "published",
+   "sort": 10,
+   "seo": {
+    "title": "WOODEX Showroom Karachi — Address, Hours & Phone",
+    "description": "456 Clifton Block 5, Karachi. Mon–Sat: 9am–7pm. +92 21 111 WOODEX.",
+    "schema": "FurnitureStore"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Karachi",
+     "sub": "456 Clifton Block 5, Karachi"
+    },
+    {
+     "type": "text",
+     "heading": "Visit us",
+     "text": "456 Clifton Block 5, Karachi\nMon–Sat: 9am–7pm\n+92 21 111 WOODEX"
+    }
+   ],
+   "payload": {
+    "city": "Karachi",
+    "address": "456 Clifton Block 5, Karachi",
+    "phone": "+92 21 111 WOODEX",
+    "whatsapp": "+923001234567",
+    "hours": "Mon–Sat: 9am–7pm",
+    "lat": 24.8607,
+    "lng": 67.0011,
+    "isHQ": false
+   }
+  },
+  {
+   "type": "showroom",
+   "slug": "islamabad",
+   "path": "/showrooms/islamabad",
+   "title": "WOODEX Showroom — Islamabad",
+   "excerpt": "789 Blue Area, F-7 Markaz, Islamabad",
+   "status": "published",
+   "sort": 20,
+   "seo": {
+    "title": "WOODEX Showroom Islamabad — Address, Hours & Phone",
+    "description": "789 Blue Area, F-7 Markaz, Islamabad. Mon–Sat: 10am–6pm. +92 51 111 WOODEX.",
+    "schema": "FurnitureStore"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Islamabad",
+     "sub": "789 Blue Area, F-7 Markaz, Islamabad"
+    },
+    {
+     "type": "text",
+     "heading": "Visit us",
+     "text": "789 Blue Area, F-7 Markaz, Islamabad\nMon–Sat: 10am–6pm\n+92 51 111 WOODEX"
+    }
+   ],
+   "payload": {
+    "city": "Islamabad",
+    "address": "789 Blue Area, F-7 Markaz, Islamabad",
+    "phone": "+92 51 111 WOODEX",
+    "whatsapp": "+923001234567",
+    "hours": "Mon–Sat: 10am–6pm",
+    "lat": 33.7294,
+    "lng": 73.0931,
+    "isHQ": false
+   }
+  },
+  {
+   "type": "showroom",
+   "slug": "rawalpindi",
+   "path": "/showrooms/rawalpindi",
+   "title": "WOODEX Showroom — Rawalpindi",
+   "excerpt": "44 Saddar Road, Committee Chowk, Rawalpindi",
+   "status": "published",
+   "sort": 30,
+   "seo": {
+    "title": "WOODEX Showroom Rawalpindi — Address, Hours & Phone",
+    "description": "44 Saddar Road, Committee Chowk, Rawalpindi. Mon–Sat: 9am–7pm. +92 51 222 WOODEX.",
+    "schema": "FurnitureStore"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Rawalpindi",
+     "sub": "44 Saddar Road, Committee Chowk, Rawalpindi"
+    },
+    {
+     "type": "text",
+     "heading": "Visit us",
+     "text": "44 Saddar Road, Committee Chowk, Rawalpindi\nMon–Sat: 9am–7pm\n+92 51 222 WOODEX"
+    }
+   ],
+   "payload": {
+    "city": "Rawalpindi",
+    "address": "44 Saddar Road, Committee Chowk, Rawalpindi",
+    "phone": "+92 51 222 WOODEX",
+    "whatsapp": "+923001234567",
+    "hours": "Mon–Sat: 9am–7pm",
+    "lat": 33.6007,
+    "lng": 73.0679,
+    "isHQ": false
+   }
+  },
+  {
+   "type": "series",
+   "slug": "ek-series",
+   "path": "/series/ek-series",
+   "title": "Ek Series",
+   "excerpt": "Affordable quality for every workspace",
+   "status": "published",
+   "sort": 0,
+   "seo": {
+    "title": "Ek Series — Affordable quality for every workspace | WOODEX",
+    "description": "The Ek Series delivers reliable quality at an accessible price point. Perfect for startups, schools, and growing businesses that need functional furniture without breaking the budget.",
+    "schema": "CollectionPage"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Ek Series",
+     "sub": "Affordable quality for every workspace"
+    },
+    {
+     "type": "text",
+     "heading": "Budget-Friendly",
+     "text": "The Ek Series delivers reliable quality at an accessible price point. Perfect for startups, schools, and growing businesses that need functional furniture without breaking the budget."
+    }
+   ],
+   "payload": {
+    "id": "ek-series",
+    "name": "Ek Series",
+    "tagline": "Affordable quality for every workspace",
+    "badge": "Budget-Friendly",
+    "description": "The Ek Series delivers reliable quality at an accessible price point. Perfect for startups, schools, and growing businesses that need functional furniture without breaking the budget.",
+    "features": [
+     "Engineered wood construction",
+     "Powder-coated steel frames",
+     "Standard ergonomics",
+     "3-year warranty"
+    ],
+    "products": 18,
+    "color": "#5a7a3a"
+   }
+  },
+  {
+   "type": "series",
+   "slug": "infinity-series",
+   "path": "/series/infinity-series",
+   "title": "Infinity Series",
+   "excerpt": "Modular systems that grow with you",
+   "status": "published",
+   "sort": 10,
+   "seo": {
+    "title": "Infinity Series — Modular systems that grow with you | WOODEX",
+    "description": "The Infinity Series is built for flexibility. Every component connects seamlessly, allowing you to expand, reconfigure, and adapt your workspace as your team evolves.",
+    "schema": "CollectionPage"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Infinity Series",
+     "sub": "Modular systems that grow with you"
+    },
+    {
+     "type": "text",
+     "heading": "Modular",
+     "text": "The Infinity Series is built for flexibility. Every component connects seamlessly, allowing you to expand, reconfigure, and adapt your workspace as your team evolves."
+    }
+   ],
+   "payload": {
+    "id": "infinity-series",
+    "name": "Infinity Series",
+    "tagline": "Modular systems that grow with you",
+    "badge": "Modular",
+    "description": "The Infinity Series is built for flexibility. Every component connects seamlessly, allowing you to expand, reconfigure, and adapt your workspace as your team evolves.",
+    "features": [
+     "Fully modular components",
+     "Expandable layouts",
+     "Integrated cable management",
+     "5-year warranty"
+    ],
+    "products": 26,
+    "color": "#3a5a7a"
+   }
+  },
+  {
+   "type": "series",
+   "slug": "woodex-series",
+   "path": "/series/woodex-series",
+   "title": "Woodex Series",
+   "excerpt": "Premium flagship collection",
+   "status": "published",
+   "sort": 20,
+   "seo": {
+    "title": "Woodex Series — Premium flagship collection | WOODEX",
+    "description": "Our flagship Woodex Series represents the pinnacle of Pakistani craftsmanship. Designed for executives and discerning clients who demand nothing but the best.",
+    "schema": "CollectionPage"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Woodex Series",
+     "sub": "Premium flagship collection"
+    },
+    {
+     "type": "text",
+     "heading": "Premium",
+     "text": "Our flagship Woodex Series represents the pinnacle of Pakistani craftsmanship. Designed for executives and discerning clients who demand nothing but the best."
+    }
+   ],
+   "payload": {
+    "id": "woodex-series",
+    "name": "Woodex Series",
+    "tagline": "Premium flagship collection",
+    "badge": "Premium",
+    "description": "Our flagship Woodex Series represents the pinnacle of Pakistani craftsmanship. Designed for executives and discerning clients who demand nothing but the best.",
+    "features": [
+     "Solid hardwood & premium veneer",
+     "Full-grain leather options",
+     "Handcrafted detailing",
+     "10-year warranty"
+    ],
+    "products": 34,
+    "color": "#7a5a3a"
+   }
+  },
+  {
+   "type": "series",
+   "slug": "cubicle-series",
+   "path": "/series/cubicle-series",
+   "title": "Cubicle Series",
+   "excerpt": "Privacy-focused workstation solutions",
+   "status": "published",
+   "sort": 30,
+   "seo": {
+    "title": "Cubicle Series — Privacy-focused workstation solutions | WOODEX",
+    "description": "The Cubicle Series creates focused, private workspaces within open offices. Acoustic panels and intelligent layouts maximize productivity for individual contributors.",
+    "schema": "CollectionPage"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Cubicle Series",
+     "sub": "Privacy-focused workstation solutions"
+    },
+    {
+     "type": "text",
+     "heading": "Privacy",
+     "text": "The Cubicle Series creates focused, private workspaces within open offices. Acoustic panels and intelligent layouts maximize productivity for individual contributors."
+    }
+   ],
+   "payload": {
+    "id": "cubicle-series",
+    "name": "Cubicle Series",
+    "tagline": "Privacy-focused workstation solutions",
+    "badge": "Privacy",
+    "description": "The Cubicle Series creates focused, private workspaces within open offices. Acoustic panels and intelligent layouts maximize productivity for individual contributors.",
+    "features": [
+     "Acoustic privacy panels",
+     "Height-adjustable options",
+     "Personal storage integration",
+     "5-year warranty"
+    ],
+    "products": 22,
+    "color": "#5a5a7a"
+   }
+  },
+  {
+   "type": "series",
+   "slug": "nova-series",
+   "path": "/series/nova-series",
+   "title": "Nova Series",
+   "excerpt": "Minimalist design-forward furniture",
+   "status": "published",
+   "sort": 40,
+   "seo": {
+    "title": "Nova Series — Minimalist design-forward furniture | WOODEX",
+    "description": "Nova Series brings Scandinavian-inspired minimalism to Pakistani workspaces. Clean lines, hidden hardware, and slim profiles for design-conscious offices.",
+    "schema": "CollectionPage"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Nova Series",
+     "sub": "Minimalist design-forward furniture"
+    },
+    {
+     "type": "text",
+     "heading": "Minimal",
+     "text": "Nova Series brings Scandinavian-inspired minimalism to Pakistani workspaces. Clean lines, hidden hardware, and slim profiles for design-conscious offices."
+    }
+   ],
+   "payload": {
+    "id": "nova-series",
+    "name": "Nova Series",
+    "tagline": "Minimalist design-forward furniture",
+    "badge": "Minimal",
+    "description": "Nova Series brings Scandinavian-inspired minimalism to Pakistani workspaces. Clean lines, hidden hardware, and slim profiles for design-conscious offices.",
+    "features": [
+     "Hidden hardware",
+     "Slim steel frames",
+     "Push-to-open drawers",
+     "3-year warranty"
+    ],
+    "products": 15,
+    "color": "#7a7a5a"
+   }
+  },
+  {
+   "type": "showroom",
+   "slug": "faisalabad",
+   "path": "/showrooms/faisalabad",
+   "title": "WOODEX Showroom — Faisalabad",
+   "excerpt": "12 D-Ground, Faisalabad",
+   "status": "published",
+   "sort": 40,
+   "seo": {
+    "title": "WOODEX Showroom Faisalabad — Address, Hours & Phone",
+    "description": "12 D-Ground, Faisalabad. Mon–Sat: 9am–6pm. +92 41 333 WOODEX.",
+    "schema": "FurnitureStore"
+   },
+   "sections": [
+    {
+     "type": "hero",
+     "heading": "Faisalabad",
+     "sub": "12 D-Ground, Faisalabad"
+    },
+    {
+     "type": "text",
+     "heading": "Visit us",
+     "text": "12 D-Ground, Faisalabad\nMon–Sat: 9am–6pm\n+92 41 333 WOODEX"
+    }
+   ],
+   "payload": {
+    "city": "Faisalabad",
+    "address": "12 D-Ground, Faisalabad",
+    "phone": "+92 41 333 WOODEX",
+    "whatsapp": "+923001234567",
+    "hours": "Mon–Sat: 9am–6pm",
+    "lat": 31.4504,
+    "lng": 73.135,
+    "isHQ": false
+   }
+  }
+ ]
+}
