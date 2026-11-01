@@ -74,9 +74,9 @@
                     <textarea wire:model="form.sections" rows="10" class="wx-input w-full font-mono text-theme-xs"></textarea>
                     <span class="mt-1 block text-theme-xs text-gray-500">
                         Blank lines separate blocks. Start a block with <code>heading:</code> to give it a headline.
-                        @if (! empty($form['kept']))
+                        @if ($kept !== [])
                             <span class="mt-1 block">
-                                Kept as they are: {{ implode(' · ', $form['kept']) }} — structured blocks this field does not show.
+                                Kept as they are: {{ implode(' · ', $kept) }} — structured blocks this field does not show.
                             </span>
                         @endif
                     </span>

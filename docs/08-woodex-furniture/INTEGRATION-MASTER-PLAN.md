@@ -278,7 +278,7 @@ Verdicts from the running app. Legend: ✅ real and populated · 🟡 real, cann
 | 1 | **All pages** | ⚠️ `BuilderFile::pages()` → filesystem → **1 page** (the SPA shell) | list `site_pages` + system routes + HTML pages. Columns: title, URL, kind (route/Puck/HTML), status, sections, updated, SEO score, publish state. Actions: Edit visual · Edit HTML · Edit SEO · Duplicate · Publish · Unpublish · View live |
 | 2 | **Page builder** | 🟡 full HTML canvas editor with nothing to open | **Puck (visual) as default + HTML mode as option, per page.** 11 section components. Device preview, page settings, versions, draft preview via `preview_token`, SEO panel |
 | 3 | **Find & replace** | ⚠️ `runPreview`/`apply`/`undo` exist, over 1 file | run over Puck JSON + records (`content_items`); scope by type; snapshot before apply so undo is real; then "publish 12 changed pages" |
-| 4 | **Redirects** | ✅ add / remove / CSV import / export — 0 rows | import the old URLs; auto-suggest a 301 when a slug changes; conflict check against real routes; hit counter; chain flattening |
+| 4 | **Redirects** | ✅ add / remove / CSV import / export, **137 rows**, real 301s (§5c) | auto-suggest a 301 when a slug changes; conflict check against real routes; chain flattening; the hit counter is dead while redirects are static (see §5c) |
 
 ### Content
 
@@ -338,6 +338,49 @@ then edited a post's title and watched the toast, the row and the timestamp chan
 Still to do here: cover image, category, tags, author and schedule are not on the form yet (they live in
 `payload`), and the studio Blog/Portfolio screens still list the interior rows — they should be retired in
 favour of this screen, not kept beside it.
+
+### 5c Redirects — shipped: 137 legacy URLs now answer 301, not 200
+
+`website:import-redirects` writes the map, and `website:publish` renders it where the request is decided.
+
+The archived interior site answered 142 addresses. Five still exist as pages; the other 137 — 59 service pages,
+48 insights, 12 cities, 8 areas, 6 projects, the estimator, the booking page, the privacy policy and the old blog
+index — had no owner. Until this shipped they were answered by the storefront's SPA fallback, which is *worse than
+a 404*: a crawler received **200** and the same shop page 137 times.
+
+| Piece | What it does |
+|---|---|
+| `LegacyRedirects::target()` | The decision, one `match`, no database: insight → `/blog`, city/area → `/showrooms`, project → `/projects`, estimator → `/quotation`, booking → `/virtual-showroom`; services → the one of the storefront's seven that honestly answers them (`3d-visualization` → space planning, `office-fit-out` → B2B, `wardrobe-design` → custom design, everything else → the services index) |
+| `LegacyRedirects::plan()` | Drops anything that already answers (`/`, `/about`, `/contact`, `/services`, `/projects`), so the table never holds a redirect that cannot fire |
+| `website:import-redirects [--dry-run]` | 142 archived · **137 added** · 5 still answered. Re-running adds 0 — a row that exists is never overwritten or deleted, so an owner's edit survives |
+| `RedirectPublisher` (on publish) | Writes a generated block at the **top** of `public/.htaccess` (137 `RewriteRule`s) plus `public/redirects.json` for the preview server, which mirrors `.htaccess` and has no Apache to read it |
+
+Order is the whole trick: `.htaccess` rules run top to bottom, and the storefront's fallback sits at the bottom.
+A redirect appended to the end of that file would have been shadowed by `RewriteRule ^ index.html` and never
+fired — the row would exist, the admin would list it, and every visitor would still get the shop.
+
+Verified on the running app: `/kitchen-renovation/` → **301** → `/services/` (h1 "Our Services"),
+`/insights/1-kanal-house-interior-cost-lahore/` → `/blog/`, `/lahore/dha/` → `/showrooms/`,
+`/3d-visualization/` → `/services/space-planning-design/`, `/estimator/` → `/quotation/`,
+`/book-a-visit/` → `/virtual-showroom/`, `/privacy/` → `/about/`; `/about/` and `/projects/` stay 200.
+`Tests\Site` is **43 passed / 484 assertions** (7 new: normalisation, no self-redirects, no duplicate sources,
+the service rules, the home page never redirecting, and the importer being safe to re-run).
+
+**Two things this buys, and one it costs.**
+
+* Bought: a real status code for 137 URLs, and no PHP in the path of a redirect.
+* Cost: **the hit counter stops counting.** `RedirectsIndex` shows `hits` so the owner can see which old URLs
+  still receive visitors; a 301 decided by Apache (or by the preview server, which mirrors it) never reaches
+  `SiteRouter`, so the column stays at 0. If the counter matters more than the speed, the static block can be
+  dropped (`website:publish --skip-redirects`) and `SiteRouter` answers from the table again — one command,
+  same data.
+
+**Still open, and it is the bigger half.** Everything that is *not* in the map still answers **200**: a typo, a
+retired product, `/shop/{sku}` for a SKU that was deleted. The fallback cannot tell "a route React owns" from
+"nothing owns this". Fixing it means either publishing a shell per product (which is also the SEO win for 20
+product pages — title, price, `Product` JSON-LD) or letting the app answer unmatched paths and serve the shell
+only for addresses it can prove exist. Until then the sitemap is honest, the 137 redirects are honest, and the
+rest of the web is told everything is fine.
 
 ---
 
@@ -577,6 +620,52 @@ The SPA's own data files become the **seed** — which is honest: they are real 
 | 4 | Seed the CMS from the SPA's hardcoded data (153 series, 8 services, 7 posts…)? | **yes** |
 | 5 | Customer accounts at launch? | guest + optional account |
 | 6 | Explicit Publish button, or auto-publish on save? | **explicit** |
+
+## Appendix — Agent tooling installed, and what MySQL would add
+
+Three repositories were requested on 1 November 2026. Two are agent tooling; the third is not, and the honest
+answer is more useful than a clone.
+
+| Source | What it is | State here |
+|---|---|---|
+| `laravel/agent-skills` (official, 732★) | Claude/Cursor plugins: the `laravel-simplifier` agent plus `starter-kit-upgrade`, `deploying-to-cloud`, `configure-nightwatch` skills | **installed** — `.agents/skills/` (canonical) with `.claude/skills/` symlinks, `skills-lock.json` recording source and hash. `laravel-simplifier` was vendored to `.claude/agents/` (the CLI installs skills, not agents) and **run** over this turn's PHP, below |
+| `truthanb/laravel-ai-skills` | A **Composer package** (`laravel/ai` + `symfony/yaml`) that serves Agent Skills to a Laravel AI agent — plus two example skills | The two skills (`order-fulfillment`, `customer-support`) are installed. The package is **not** installed: it requires `laravel/ai`, which this app does not use, and Packagist is unreachable from this sandbox. It would only matter if a screen ever called an LLM |
+| `mysql/mysql-server` | The MySQL **C++ server source**: 4.98 GB, no skills, nothing to install | **not cloned.** Not an agent skill, and building it needs cmake + Boost + ~30 minutes. What it is *for* is testing against MySQL, which is a separate question — see below |
+
+**What "run" produced.** The simplifier's checklist (explicit return types, no nested ternaries, no redundant
+abstraction, don't leave a value in a payload it doesn't belong to) found one real defect in the Content screen:
+the list of preserved blocks (`$kept`) was living inside `$form`, the array that is submitted and reset. A
+validation rule or a reset could have taken it with them; it is now its own typed property, reset in `cancel()`
+along with the form. Everything else it reviewed — `LegacyRedirects`, `RedirectPublisher`, `BodyText` — it left
+alone, which for a linter-shaped agent is the correct answer more often than not.
+
+The other four skills do not apply and were not forced: this is not a starter-kit project, the app is not on
+Laravel Cloud, Nightwatch is not installed, and the two example skills encode `$50` free shipping in USD — which
+would be actively wrong here (prices are PKR in minor units and the shipping threshold is not a $50 one), so
+they are kept as format examples, never as policy.
+
+**MySQL.** The app runs on SQLite here and the target is Hostinger (MySQL 8 / MariaDB). Nothing in this sandbox
+can run a MySQL server: no `mysqld`, no Docker, and apt/Packagist are unreachable. So the check is static, over
+every migration in `platform/database/migrations/`:
+
+| Risk | Finding |
+|---|---|
+| Index length under utf8mb4 | `site_pages.key` and `.path` are `varchar(255)` unique, `content_items` is unique on `(type, slug)` — 1020 and 2040 bytes. Fine on any MySQL 5.7+/8 with the default DYNAMIC row format (3072); would fail only on the pre-5.7 767-byte limit |
+| `json` columns | `puck_data`, `seo`, `sections`, `payload`, `meta` — native `JSON` on MySQL 8, `LONGTEXT` on MariaDB, `TEXT` on SQLite. Laravel's cast handles all three; no `->>` path queries are used anywhere, which is where dialects actually diverge |
+| `ONLY_FULL_GROUP_BY` | The one raw aggregate (`ContentIndex`, `selectRaw('type, count(*)')` + `groupBy('type')`) selects only the grouped column and is safe |
+| Case sensitivity | The admin's `LIKE` searches rely on a case-insensitive collation; `utf8mb4_unicode_ci` gives the same behaviour SQLite already does |
+| Enum-ish columns | Stored as strings throughout, so no `ENUM` migration surprises |
+
+The command to settle it on a real box, before cutover:
+
+```sh
+DB_CONNECTION=mysql DB_HOST=… DB_DATABASE=woodex_test php artisan migrate:fresh --seed --force
+php artisan website:publish && php artisan website:import-redirects --dry-run
+php artisan test
+```
+
+Until that runs, the plan doc should not claim the schema is MySQL-proven — only that it was read for the five
+things that break in practice.
 
 ---
 

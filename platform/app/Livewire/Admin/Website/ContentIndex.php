@@ -41,6 +41,16 @@ final class ContentIndex extends Component
     /** @var array<string, mixed> */
     public array $form = [];
 
+    /**
+     * The structured blocks the body field does not show, named for the note under it.
+     *
+     * Not a form field and not part of `$form`: nothing here is submitted back, and putting it in the payload
+     * would let a validation rule or a `$form` reset quietly take it with it.
+     *
+     * @var list<string>
+     */
+    public array $kept = [];
+
     public function mount(): void
     {
         abort_unless($this->user()->can('website.edit'), 403);
@@ -68,14 +78,16 @@ final class ContentIndex extends Component
             'seo_description' => (string) ($seo['description'] ?? ''),
             // One block per line keeps the field readable without a JSON editor: `heading: …` and plain text.
             'sections' => BodyText::from($item->sections),
-            'kept' => $this->keptBlocks($item->sections),
         ];
+
+        $this->kept = $this->keptBlocks($item->sections);
     }
 
     public function cancel(): void
     {
         $this->editing = null;
         $this->form = [];
+        $this->kept = [];
         $this->resetValidation();
     }
 
@@ -127,8 +139,7 @@ final class ContentIndex extends Component
 
         $this->toast($item->title.' saved. Publish the site to write it out.');
 
-        $this->editing = null;
-        $this->form = [];
+        $this->cancel();
     }
 
     public function toggleStatus(int $id): void

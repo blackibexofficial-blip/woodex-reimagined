@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domain\Website\Content\Models\ContentItem;
+use App\Domain\Website\Content\RedirectPublisher;
 use App\Domain\Website\Content\Models\SitePage;
 use App\Domain\Website\Content\ShellPublisher;
 use Illuminate\Console\Command;
@@ -29,11 +30,12 @@ final class PublishSiteCommand extends Command
     protected $signature = 'website:publish
                             {--base= : Absolute base URL for canonicals (defaults to APP_URL)}
                             {--only=* : Publish only these page keys}
-                            {--skip-sitemap : Do not rewrite sitemap.xml}';
+                            {--skip-sitemap : Do not rewrite sitemap.xml}
+                            {--skip-redirects : Do not rewrite the .htaccess redirect block}';
 
     protected $description = 'Write the static shell for every published page and record (title, meta, JSON-LD)';
 
-    public function handle(ShellPublisher $publisher): int
+    public function handle(ShellPublisher $publisher, RedirectPublisher $redirects): int
     {
         $base = rtrim((string) ($this->option('base') ?: config('app.url') ?: url('/')), '/');
 
@@ -112,6 +114,18 @@ final class PublishSiteCommand extends Command
             } catch (\Throwable $e) {
                 $failed++;
                 $this->components->twoColumnDetail($path, '<fg=red>'.$e->getMessage().'</>');
+            }
+        }
+
+        // The redirects come after the pages on purpose: a redirect from an address that now has a file can never
+        // fire, and the publisher is what makes the file exist.
+        if (! $this->option('skip-redirects')) {
+            $redirected = $redirects->write(RedirectPublisher::rows());
+
+            $this->components->twoColumnDetail('.htaccess redirects', $redirected['rules'].' rules');
+
+            if ($redirected['skipped'] !== []) {
+                $this->components->warn(count($redirected['skipped']).' redirect(s) skipped: '.implode(', ', array_slice($redirected['skipped'], 0, 5)));
             }
         }
 

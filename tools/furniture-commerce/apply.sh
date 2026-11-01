@@ -33,6 +33,7 @@ for path in \
     app/Http/Controllers/Api/Site \
     app/Console/Commands/ArchiveInteriorCommand.php \
     app/Console/Commands/PublishSiteCommand.php \
+    app/Console/Commands/ImportLegacyRedirectsCommand.php \
     app/Console/Commands/DemoOrderCommand.php \
     resources/views/livewire/admin/commerce \
     resources/views/admin/commerce \
@@ -210,7 +211,8 @@ Next, in the OS checkout:
     php artisan db:seed --class=SiteContentSeeder --force  # the reimagined site's 16 pages + 30 records
     php artisan db:seed --class=ThemeTokensSeeder --force   # the storefront palette, editable in Website → Theme
     php artisan website:archive-interior                   # export + stamp the 142 interior pages
-    php artisan website:publish                            # write the static shells + sitemap.xml
+    php artisan website:publish                            # write the static shells, sitemap and redirects
+    php artisan website:import-redirects --dry-run         # the 301s for the archived interior URLs
     php artisan storage:link                               # /storage/... for uploaded media
     php artisan woodex:owner --force                       # (re)create the owner from OWNER_EMAIL / OWNER_PASSWORD
 
