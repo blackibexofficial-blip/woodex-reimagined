@@ -225,8 +225,10 @@ Next, in the OS checkout:
     php artisan db:seed --class=SiteContentSeeder --force  # the reimagined site's 16 pages + 30 records
     php artisan db:seed --class=ThemeTokensSeeder --force   # the storefront palette, editable in Website → Theme
     php artisan website:archive-interior                   # export + stamp the 142 interior pages
-    php artisan website:publish                            # write the static shells, sitemap and redirects
-    php artisan website:import-redirects --dry-run         # the 301s for the archived interior URLs
+    php artisan website:import-redirects                   # the 301s for the archived interior URLs (rows only)
+    php artisan website:publish                            # shells, sitemap, and the .htaccess redirect block
+                                                          # (publish renders the rows — import first, or the
+                                                          #  block is written empty and the next publish adds it)
     php artisan storage:link                               # /storage/... for uploaded media
     php artisan woodex:owner --force                       # (re)create the owner from OWNER_EMAIL / OWNER_PASSWORD
 

@@ -355,6 +355,10 @@ a 404*: a crawler received **200** and the same shop page 137 times.
 | `website:import-redirects [--dry-run]` | 142 archived · **137 added** · 5 still answered. Re-running adds 0 — a row that exists is never overwritten or deleted, so an owner's edit survives |
 | `RedirectPublisher` (on publish) | Writes a generated block at the **top** of `public/.htaccess` (137 `RewriteRule`s) plus `public/redirects.json` for the preview server, which mirrors `.htaccess` and has no Apache to read it |
 
+The order is `website:import-redirects` **then** `website:publish`: the import writes rows, and publish is what
+renders them into the web server. Publishing first is not wrong, it is just useless — the block is written from an
+empty table and only appears on the next publish. `tools/furniture-commerce/apply.sh` lists them in that order.
+
 Order is the whole trick: `.htaccess` rules run top to bottom, and the storefront's fallback sits at the bottom.
 A redirect appended to the end of that file would have been shadowed by `RewriteRule ^ index.html` and never
 fired — the row would exist, the admin would list it, and every visitor would still get the shop.
