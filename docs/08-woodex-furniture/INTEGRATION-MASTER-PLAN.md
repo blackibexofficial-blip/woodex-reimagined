@@ -382,9 +382,22 @@ Every one of those is true of the *file* and false of the *page*: React draws th
 hundred milliseconds later. The findings are not noise to be suppressed — they are a real SEO problem, because a
 crawler that does not run JavaScript sees exactly what the audit sees.
 
-The fix is in the publisher, not the auditor: give each shell a crawlable document inside `#root` (the H1, the
-summary, and the site's own links) which React replaces on mount. That is progressive enhancement, not cloaking —
-the same content a visitor gets — and it would take `No H1` from 46 to 0 honestly.
+The fix was in the publisher, not the auditor, and it shipped (`64e4f00`): each shell now carries the heading, the
+summary, the page's children and the site's own links inside `#root`, and React replaces all of it on mount.
+
+| Check | Before | After |
+|---|---|---|
+| Files without an `H1` | 46 | **0** |
+| Pages nothing links to | 45 | **0** |
+| Findings | 109 | **43** |
+| Pages with findings | 46 | **35** |
+
+The remaining 27 are all `thin_content`, and they are the honest remainder: those pages' copy lives inside React
+components, so it is neither in the database nor in the file. Moving that copy into `site_pages`/`puck_data` is
+the same job as making the page editable in the builder — one task, two payoffs.
+
+A listing page's fallback carries its records (title, summary, a link each), which is why `/blog`, `/services`,
+`/projects` and `/series` cleared the 120-word bar while `/warranty` and `/contact` did not.
 
 ### 7.3 Speed
 
