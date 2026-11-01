@@ -108,6 +108,26 @@ lost when the sandbox database was replaced during a sync. `php artisan woodex:o
 repairs the owner from `OWNER_EMAIL` / `OWNER_PASSWORD` — deliberately *not* `woodex:install`, which would have
 imported the interior website again. Verified: `owner@woodex.test / Woodex-Preview-2026` → 302 → `/admin`, 200.
 
+### 0.5 "The detail page has no product images" was a white screen
+
+Worth recording, because the symptom pointed at the wrong subsystem for two rounds.
+
+`/shop` showed all 20 photographs after the import. `/shop/ballmer-executive-desk` showed **zero** — but the
+API returned `image`, `image_srcset` and `images`, and the adapter built them. The page was not missing
+images; it was not rendering at all. `#root` had 0 children and the browser console carried one line:
+
+```
+TypeError: Cannot read properties of undefined (reading 'category')
+```
+
+`ProductDetail` opened with `if (!product && !isLoading)`. On the first render the query is *still* fetching,
+so `product` is `undefined` **and** the guard is false — execution fell through to `product.category` and
+threw. React unmounted the tree. A DOM image count reads 0 on a blank page for exactly the same reason it
+reads 0 on a broken gallery, which is why the count kept incriminating the images.
+
+The rule this leaves: **a guard must cover the loading state, not just the empty one.** `if (!product)` now
+returns a skeleton while the lookup is in flight and the "not found" panel only when it has settled.
+
 ---
 
 ## Part 1 — What the reimagined site actually is
@@ -333,9 +353,42 @@ Keep the existing keyless metrics; add: history per URL (`pagespeed_runs`), budg
 
 ### 7.4 Media
 
-1. **Reconcile the 105** — re-import or mark `missing` (0 of 105 exist on disk).
-2. Import furniture photography for the 20 products (`commerce_product_media` = 0, so **every product returns `"image": null`**).
-3. WebP + derivatives on upload, folders, alt text enforced, replace-in-place, usage guard before delete.
+**Product photography — shipped (commit `8850254`).**
+
+`ProductCard` had always printed `/media/products/{sku}/{hash}-{variant}.webp`; nothing answered it and
+nothing had ever called `ImageStore`, so all 20 products returned `"image": null`.
+
+| Piece | State |
+|---|---|
+| `ProductImageController` + `commerce.media.product` route | ✅ streams `{hash}-(thumb\|card\|hero).webp` from the `public` disk, `immutable` + ETag, refuses any other name |
+| `commerce:import-images [--path=] [--force]` | ✅ 20 attached · 0 failures · 60 WebP (400/800/1600 px) |
+| `/shop` | ✅ 20 of 20 cards with a photograph, natural width 800, zero failed requests |
+| `/shop/ballmer-executive-desk` | ✅ 6 images, 800 px, alt text on each |
+| A missing photograph | ✅ **404** (was `301 → …/photo.webp/` — see 0.5) |
+
+The 20 SKUs are mapped to **9 bundled photographs** in `platform/database/data/product-photos/manifest.json`
+(one per furniture family, so two desks can share a picture). That is honest placeholder art, not a
+catalogue: §11 still says the owner supplies the real photography, and replacing a file and re-running
+`commerce:import-images --force` is the whole migration.
+
+Still open in this section:
+
+1. **Reconcile the 105** — `website_media` rows whose files are gone; mark `missing` rather than deleting.
+2. Alt text enforced at upload, folders, replace-in-place, usage guard before delete.
+3. A real photograph per SKU (waits on the owner's catalogue).
+
+### 7.4b Two deploy traps found while shipping it
+
+Both are in the OS now, and both would have shipped broken:
+
+1. **A rebuilt frontend left every published page pointing at a deleted bundle.** `ShellPublisher::ensureShell()`
+   captured `public/site/shell.html` *once*; `vite build` emits a new hashed `front/index-<hash>.js` and deletes
+   the old one, so all 16 pages kept loading a 404 script and rendered an empty `<div id="root">` with a 200.
+   The copy is now refreshed when it names a bundle that is not on disk, and a stale copy with no clean source
+   throws instead of publishing dead links.
+2. **`APP_URL` is baked into the published files.** Canonicals, `og:url` and `sitemap.xml` are written, not
+   computed per request, so publishing with a preview or staging host bakes that host into 46 files. Set
+   `APP_URL` to the real domain **before** `php artisan website:publish`.
 
 ### 7.5 Forms
 
