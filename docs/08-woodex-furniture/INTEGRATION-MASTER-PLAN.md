@@ -302,7 +302,7 @@ Verdicts from the running app. Legend: ✅ real and populated · 🟡 real, cann
 
 ### 5b Content — shipped: the screen that edits the rows the site reads
 
-`/admin/website/content` (`ContentIndex`, commit `8f2a1c4`-or-later) lists the 30 `content_items` the storefront
+`/admin/website/content` (`ContentIndex`, commit `e14288d`) lists the 30 `content_items` the storefront
 actually serves — 7 services, 6 posts, 7 projects, 5 series, 5 showrooms — behind a stat row per type, a type
 filter and a search across title, address and summary. **Edit** opens an inline card: title, address, summary,
 status, SEO title and description, body. **Publish site** runs `website:publish`, so an edit reaches the file a
