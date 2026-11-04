@@ -15,7 +15,14 @@ declare(strict_types=1);
  * No Composer, no Pest, no framework: the same classes run unchanged under Pest once it is installed.
  */
 
-require __DIR__.'/bootstrap.php';
+/*
+ * The framework-free support, from wherever it landed.
+ *
+ * In this repository the runner sits beside `bootstrap.php` and `Support/`. Inside the OS it is copied into
+ * `tests/` next to the OS's own Pest `TestCase.php` — which it must not replace — so the support travels in
+ * a `standalone/` folder beside it instead, and this line prefers that copy when it exists.
+ */
+require is_file(__DIR__.'/standalone/bootstrap.php') ? __DIR__.'/standalone/bootstrap.php' : __DIR__.'/bootstrap.php';
 
 /*
  * The Laravel autoloader, when there is one.

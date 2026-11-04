@@ -68,6 +68,16 @@ done
 echo "== tests"
 mkdir -p "$PLATFORM/tests/Billing" "$PLATFORM/tests/Commerce" 2>/dev/null || true
 mkdir -p "$PLATFORM/tests/Site" 2>/dev/null || true
+# The runner for that directory too: `tests/run.php Site` filters by *file name*, so inside a real checkout it
+# also picks up the OS's InstalledSiteFixtureTest, which this framework-free runner cannot execute.
+[ -f "$SLICE/tests/run-site.php" ] && cp "$SLICE/tests/run-site.php" "$PLATFORM/tests/run-site.php" && echo "   run-site.php"
+# Its framework-free support, in a folder of its own: the OS's `tests/TestCase.php` is the Pest base class and
+# replacing it would break the OS suite, while the storefront tests need the one that only knows `sitePath()`.
+if [ -d "$SLICE/tests/standalone" ]; then
+    rm -rf "$PLATFORM/tests/standalone"
+    cp -R "$SLICE/tests/standalone" "$PLATFORM/tests/standalone"
+    echo "   standalone/ (bootstrap, Assert, TestCase)"
+fi
 for suite in "$SLICE"/tests/Site/*Test.php; do
     [ -f "$suite" ] && cp "$suite" "$PLATFORM/tests/Site/" && echo "   $(basename "$suite")"
 done
@@ -331,8 +341,10 @@ REDIRECTS
             "            res.writeHead(redirect.code, { Location: redirect.to + url.search, 'Cache-Control': 'no-cache' });" \
             "            return res.end();" \
             "        }" > "$BLOCK"
+        # The guard must be a string that exists *only* in this snippet: "redirectFor(urlPath)" also appears in
+        # the loader above (`function redirectFor(urlPath)`), which made the guard match before anything was added.
         insert_file_before "$SERVER" "        const file = (req.method === 'GET' || req.method === 'HEAD') && !editingPreview" \
-            "$BLOCK" "preview 301s: request path" "redirectFor(urlPath)"
+            "$BLOCK" "preview 301s: request path" "const redirect = (req.method"
         rm -f "$BLOCK"
     fi
 else
