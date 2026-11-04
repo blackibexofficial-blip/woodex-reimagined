@@ -88,6 +88,28 @@ done
 # GUARD is what proves the edit is already present. It defaults to TEXT, but a multi-line block
 # in the OS never equals the one-line text we insert, so callers pass the shortest distinctive
 # fragment instead — otherwise re-running would add the route a second time.
+# Like insert_before, but the text comes from a file — for anything longer than one line (a route include plus
+# its comment). awk -v cannot carry embedded newlines portably, so the block is read line by line.
+insert_file_before() {
+    file=$1; anchor=$2; blockfile=$3; label=$4; guard=$5
+
+    if grep -qF "$guard" "$file"; then
+        echo "   $label: already there"
+        return
+    fi
+
+    if ! grep -qF "$anchor" "$file"; then
+        echo "   $label: ANCHOR MISSING in $file — add manually from $blockfile" >&2
+        return
+    fi
+
+    tmp="$file.wx-tmp"
+    awk -v anchor="$anchor" -v block="$blockfile" '
+        !done && index($0, anchor) { while ((getline line < block) > 0) print line; done=1 } { print }
+    ' "$file" > "$tmp" && mv "$tmp" "$file"
+    echo "   $label: added"
+}
+
 insert_before() {
     file=$1; anchor=$2; text=$3; label=$4; guard=${5:-$3}
 
@@ -136,6 +158,27 @@ if [ -f "$ROUTER" ] && ! grep -qF "'media'," "$ROUTER"; then
     echo "   SiteRouter RESERVED: added media"
 else
     echo "   SiteRouter RESERVED: already there"
+fi
+
+# The trailing-slash hop lived in the same class. It existed so a database row answered /about and /about/ as
+# one canonical URL; a page is a file now, so the web server answers both forms and the only paths left in that
+# class are ones nothing owns — where the redirect first turns one 404 into a 301 and a 404.
+if [ -f "$ROUTER" ] && grep -qF "One canonical form:" "$ROUTER"; then
+    tmp="$ROUTER.wx-tmp"
+    awk '
+        /One canonical form:/ {
+            print "        // No trailing-slash hop: a page is a file now and the web server answers /about and"
+            print "        // /about/ alike, so a redirect here would only turn one 404 into a 301 and a 404."
+            skip = 1
+            next
+        }
+        skip && /^        }$/ { skip = 0; next }
+        skip { next }
+        { print }
+    ' "$ROUTER" > "$tmp" && mv "$tmp" "$ROUTER"
+    echo "   SiteRouter: trailing-slash hop removed"
+else
+    echo "   SiteRouter: no trailing-slash hop"
 fi
 
 # The Content screen edits the rows the storefront reads; its route and its sidebar entry live in two
@@ -205,13 +248,96 @@ grep -q "admin.commerce.dashboard" "$PLATFORM/app/Support/AdminNavigation.php" \
     && echo "   sidebar: already has the Commerce group" \
     || echo "   sidebar: ADD the Commerce group manually (see platform/app/Support/AdminNavigation.php)"
 
-grep -q "routes/commerce.php" "$PLATFORM/routes/admin.php" \
-    && echo "   routes: already included" \
-    || echo "   routes: ADD  Route::prefix('commerce')->name('commerce.')->group(base_path('routes/commerce.php'));"
+# Both includes are one line each, and without them a whole half of the product is missing from the app: no
+# /api/site/v1 means the storefront silently falls back to its bundled TypeScript snapshot, and no commerce
+# routes means the shop has no back office. A notice asking a human to do it is a bug, not a step.
+BLOCK=$(mktemp)
+printf '%s\n' \
+    "// Commerce: products, inventory, orders, invoices (the storefront's back office)." \
+    "Route::prefix('commerce')->name('commerce.')->group(base_path('routes/commerce.php'));" \
+    "" > "$BLOCK"
+insert_file_before "$PLATFORM/routes/admin.php" \
+    "Route::livewire('/website/content', ContentIndex::class)" \
+    "$BLOCK" "routes: commerce include" "routes/commerce.php"
 
-grep -q "routes/site.php" "$PLATFORM/routes/api.php" \
-    && echo "   site api: already included" \
-    || echo "   site api: ADD  Route::prefix('site/v1')->name('site.')->group(base_path('routes/site.php'));"
+printf '%s\n' \
+    "// The reimagined storefront's read-only content API: pages, records, theme." \
+    "Route::prefix('site/v1')->name('site.')->group(base_path('routes/site.php'));" \
+    "" > "$BLOCK"
+insert_file_before "$PLATFORM/routes/api.php" \
+    "// Remote MCP (JSON-RPC 2.0 over HTTPS)" \
+    "$BLOCK" "site api: include" "routes/site.php"
+rm -f "$BLOCK"
+
+# ---- the 137 redirects, in the preview server -------------------------------------------------------------------
+#
+# Production reads them out of `public/.htaccess` (the block written above). The preview server has no Apache, so
+# without this every archived interior URL is answered by whatever file is still sitting at that path — the old
+# interior folder is right there in public/ — and the 301s look broken in preview while working live. The rules are
+# rendered a second time as `public/redirects.json` by `website:publish`; this teaches the server to read them, and
+# to read them *before* the static lookup, which is when mod_rewrite runs and why a 301 beats a file that is still
+# on disk.
+SERVER="$OS/tools/sandbox/server.mjs"
+if [ -f "$SERVER" ]; then
+    if grep -qF "redirectFor" "$SERVER"; then
+        echo "   preview 301s: already there"
+    else
+        BLOCK=$(mktemp)
+        cat > "$BLOCK" <<'REDIRECTS'
+/**
+ * The published 301s, as Apache reads them out of `.htaccess`.
+ *
+ * `website:publish` renders the redirect table twice: `RewriteRule`s for Apache and `public/redirects.json` for
+ * this server, which has no Apache to read. These fire before the static lookup — a rewrite runs in the
+ * URL-to-filename phase, which is why a 301 wins even when a file with that path is still on disk. That matters
+ * here: the archived interior folders are still under public/ and would otherwise shadow all 137 rules.
+ */
+const REDIRECTS_FILE = path.join(DOCROOT, 'redirects.json');
+let redirects = { map: new Map(), mtime: 0 };
+
+function redirectMap() {
+    try {
+        const mtime = fs.statSync(REDIRECTS_FILE).mtimeMs;
+        if (mtime !== redirects.mtime) {
+            const raw = JSON.parse(fs.readFileSync(REDIRECTS_FILE, 'utf8'));
+            const map = new Map();
+            // The shape is `{ "<from>": { to, code } }` — the path is the key, not a field.
+            for (const [from, row] of Object.entries(raw)) {
+                if (row && typeof row.to === 'string') map.set(from, { to: row.to, code: Number(row.code) || 301 });
+            }
+            redirects = { map, mtime };
+        }
+    } catch {
+        redirects = { map: new Map(), mtime: 0 };
+    }
+    return redirects.map;
+}
+
+function redirectFor(urlPath) {
+    const map = redirectMap();
+    if (map.size === 0) return null;
+    const clean = urlPath.length > 1 ? urlPath.replace(/\/+$/, '') : urlPath;
+    return map.get(urlPath) ?? map.get(clean) ?? map.get(`${clean}/`) ?? null;
+}
+
+REDIRECTS
+        insert_file_before "$SERVER" "const handler = new PHPRequestHandler({" "$BLOCK" \
+            "preview 301s: loader" "function redirectFor"
+
+        printf '%s\n' \
+            "        // The 301s first: a rewrite runs before file mapping, exactly as mod_rewrite does in .htaccess." \
+            "        const redirect = (req.method === 'GET' || req.method === 'HEAD') && !editingPreview ? redirectFor(urlPath) : null;" \
+            "        if (redirect) {" \
+            "            res.writeHead(redirect.code, { Location: redirect.to + url.search, 'Cache-Control': 'no-cache' });" \
+            "            return res.end();" \
+            "        }" > "$BLOCK"
+        insert_file_before "$SERVER" "        const file = (req.method === 'GET' || req.method === 'HEAD') && !editingPreview" \
+            "$BLOCK" "preview 301s: request path" "redirectFor(urlPath)"
+        rm -f "$BLOCK"
+    fi
+else
+    echo "   preview 301s: no tools/sandbox/server.mjs — skipped"
+fi
 
 cat <<'NEXT'
 
