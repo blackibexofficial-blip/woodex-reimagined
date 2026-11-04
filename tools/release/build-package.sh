@@ -52,6 +52,7 @@ tar -cf - \
   --exclude='./bootstrap/cache/*.php' \
   --exclude='./.phpunit.result.cache' \
   --exclude='./public/storage' \
+  --exclude='./public/downloads' \
   --exclude='*.DS_Store' \
   . 2>/dev/null | tar -xf - -C "$STAGE"
 ok "$(find "$STAGE" -type f | wc -l | tr -d ' ') files, $(du -sh "$STAGE" | cut -f1)"
