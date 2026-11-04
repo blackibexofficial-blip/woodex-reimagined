@@ -1,0 +1,35 @@
+{
+ "cfg": {
+  "engine": "anthropic",
+  "model": "claude-sonnet-4-5",
+  "weekly": true
+ },
+ "last": {
+  "at": "2026-10-15 10:00:00",
+  "pages": 145,
+  "score": 100,
+  "issues": [],
+  "counts": {
+   "high": 0,
+   "med": 0,
+   "low": 0
+  }
+ },
+ "history": [
+  {
+   "at": "2026-10-01 10:00:00",
+   "score": 85,
+   "issues": 32
+  },
+  {
+   "at": "2026-10-08 10:00:00",
+   "score": 91,
+   "issues": 18
+  },
+  {
+   "at": "2026-10-15 10:00:00",
+   "score": 100,
+   "issues": 0
+  }
+ ]
+}
