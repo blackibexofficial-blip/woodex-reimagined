@@ -316,7 +316,10 @@ final class ShellPublisher
             }
         }
 
-        $block .= '    '.self::END.'\n';
+        // Double-quoted, and it matters: in PHP a single-quoted '\n' is a backslash and an n. Written that way
+        // every published page carried a literal \n where </head> used to be — and text inside <head> makes the
+        // browser close it, so the artefact rendered as visible characters at the top of every page's body.
+        $block .= '    '.self::END."\n";
 
         if (str_contains($html, '</head>')) {
             return str_replace('</head>', $block.'  </head>', $html);

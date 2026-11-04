@@ -64,6 +64,19 @@ final class NotFoundAndRobotsTest extends TestCase
         Assert::same(1, substr_count($twice, 'name="robots"'), 'publishing twice must not leave two robots tags');
     }
 
+    public function testNoStrayEscapeLandsInTheHead(): void
+    {
+        // A single-quoted '\n' in PHP is a backslash and an n, not a newline. Written that way the published block
+        // ended with a literal \n where </head> used to be — and text inside <head> makes the browser close it, so
+        // the artefact rendered as visible characters at the top of every page's body.
+        $html = $this->publisher->render(['title' => 'About — WOODEX', 'canonical' => 'https://woodex.test/about']);
+
+        $head = substr($html, 0, (int) strpos($html, '</head>'));
+
+        Assert::true(! str_contains($head, '\\n'), 'a literal backslash-n must never be written into the head');
+        Assert::true(! str_contains($html, '<!--wx:seo:end-->\\'), 'the block must close with a real newline');
+    }
+
     public function testAPageWithoutRobotsGetsNone(): void
     {
         $html = $this->publisher->render(['title' => 'About — WOODEX', 'canonical' => 'https://woodex.test/about']);
