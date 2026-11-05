@@ -8,7 +8,6 @@
 /storage/framework/views/*
 /bootstrap/cache/*
 /database/*.sqlite
-/database/data
 /public/build
 /public/assets
 /public/media

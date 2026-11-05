@@ -19,7 +19,7 @@ migration is ~40% done.
 | Repository integrity | **Was broken — fixed today** (F1) |
 | Admin / back office | **Strong.** 156 routes, 30 sections, most IB Panel modules matched or exceeded |
 | Public storefront | **Missing.** 6 public routes vs ~30 navigable URLs |
-| Data migration | **Partial.** 157/171 products, 0/87 FAQs, 0/5 orders |
+| Data migration | **Partial.** 157/171 products, **137 photos recovered**, 0/87 FAQs, 0/5 orders |
 | Deployment | **Unfinished.** First install still pending |
 
 ---
@@ -62,11 +62,21 @@ Good news: this is **wiring, not invention**. `CatalogService::paginate()`, `::f
 tested; `resources/views/puck/blocks/product-grid.blade.php` already renders the card grid. The product
 cards on the home page already link to `/product/{slug}` — into a void.
 
-### F4 — Product imagery is 87% missing  · HIGH · open
+### F4 — Product imagery was 87% missing  · HIGH · **fixed today**
 157 products, **20** `commerce_product_media` rows, **0** `media` rows, and no image column on
-`commerce_products`. `database/data/product-photos/` holds 11 placeholder files for a handful of SKUs.
-The one Drive archive that probably contains the real photography — `woodexfurniture.pk (1).zip`,
-150 MB — has never been opened because it exceeds the connector's 100 MB cap.
+`commerce_products`. `database/data/product-photos/` held 11 placeholder files for a handful of SKUs.
+
+**Fixed.** The photography was not in the 150 MB archive at all — it was in `frontstore.zip` (the 83 MB
+RAR5 one). Extracted with `node-unrar-js`: 460 images, of which 212 are product photography. The
+authoritative product→file mapping came from `media-manifest.json`, which the legacy database itself
+emitted during import — *not* from filename matching, because the catalogue was renamed (BALLMER,
+DYNASTY, THRONE are new names for Elite, Imperial, Command) and fuzzy matching returned 50 confident
+false positives. Every one of the 137 legacy products had its file present.
+
+Result: `commerce:import-images` attached **137 photos, 0 failures** → `commerce_product_media` **20 → 157**.
+Verified: `/` renders 8 product cards with real `/media/products/{sku}/{hash}-card.webp` URLs, each
+answering **200 image/webp**. Source photography + manifest are committed under
+`platform/database/data/legacy-photos/` so any server can reproduce it with one command.
 
 ### F5 — The page builder publishes the wrong artefact  · HIGH · open
 `PublishSiteCommand` writes `public/<path>/index.html`; `public/index.html` answered `/` before Laravel
