@@ -200,6 +200,19 @@ curl -s -o /dev/null -w '%{http_code}\n' https://staging.blackibex.net/composer.
 curl -s -o /dev/null -w '%{http_code}\n' https://staging.blackibex.net/              # must be 200
 ```
 
+### Checking (and repairing) the layout
+
+`structure.sh` verifies the tree described above and repairs the two things that go wrong most often:
+`storage`/`bootstrap/cache` permissions, and detritus left in the document root — a `recovery/` folder, a
+diagnostic script, a zip someone downloaded there. It is read-only until you pass `--fix`.
+
+```bash
+sh structure.sh ~/public_html            # report
+sh structure.sh ~/public_html --fix      # also chmod storage, 600 the .env, remove leftovers
+```
+
+It exits non-zero if anything is missing, so it can gate a deploy.
+
 ### Reading the server without downloading it
 
 `inspect-remote.sh` prints the document root, the tree two levels down, which directory is the Laravel
