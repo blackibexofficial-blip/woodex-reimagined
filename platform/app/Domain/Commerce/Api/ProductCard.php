@@ -92,7 +92,8 @@ final readonly class ProductCard
             price: $price?->format() ?? '',
             compareAt: $compareAt?->format(),
             discountBp: self::discountBasisPoints($price?->minor, $compareAt?->minor),
-            inStock: $available > 0,
+            // See Product::isInStock(): a made-to-order line is sellable with no stock.
+            inStock: $available > 0 || (bool) $product->is_made_to_order,
             availableQty: $available,
             isFeatured: (bool) $product->is_featured,
             rating: $product->rating(),

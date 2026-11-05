@@ -97,7 +97,9 @@ final readonly class CatalogQuery
         sort($finishes);
         sort($materials);
 
-        return 'commerce:catalog:v1:'.md5(json_encode([
+        // Namespaced by the catalogue generation so a product save or an import can
+        // invalidate every query shape at once — see CatalogCache.
+        return CatalogCache::key('catalog:v1:'.md5(json_encode([
             'q' => strtolower($this->search),
             'category' => $this->category,
             'sort' => $this->sort,
@@ -109,7 +111,7 @@ final readonly class CatalogQuery
             'finish' => $finishes,
             'material' => $materials,
             'featured' => $this->featuredOnly,
-        ], JSON_THROW_ON_ERROR));
+        ], JSON_THROW_ON_ERROR)));
     }
 
     public function isDefault(): bool

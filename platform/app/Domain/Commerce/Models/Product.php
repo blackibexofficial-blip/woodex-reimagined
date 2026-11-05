@@ -143,6 +143,13 @@ class Product extends Model
 
     public function isInStock(): bool
     {
+        // A made-to-order product is available by definition — it is built after the
+        // order, so an empty shelf says nothing about whether it can be sold. This is
+        // the difference between "we have none" and "we do not keep them".
+        if ($this->is_made_to_order) {
+            return true;
+        }
+
         return $this->variants->contains(
             static fn (ProductVariant $variant): bool => $variant->availableQty() > 0,
         );

@@ -161,7 +161,7 @@ final readonly class CatalogService
     public static function slugsInSubtree(string $slug): array
     {
         /** @var array<string, list<string>> $map slug => itself and its descendants */
-        $map = Cache::remember('commerce:category-subtrees:v1', 300, static function (): array {
+        $map = Cache::remember(CatalogCache::key('category-subtrees:v1'), 300, static function (): array {
             $rows = Category::query()
                 ->orderBy('position')
                 ->orderBy('id')

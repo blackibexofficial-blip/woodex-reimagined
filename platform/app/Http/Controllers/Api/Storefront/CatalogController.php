@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Storefront;
 
+use App\Domain\Commerce\Api\CatalogCache;
+
 use App\Domain\Commerce\Api\CatalogQuery;
 use App\Domain\Commerce\Api\CatalogService;
 use Illuminate\Http\JsonResponse;
@@ -63,7 +65,7 @@ final class CatalogController
     public function show(Request $request, string $slug): JsonResponse
     {
         $card = Cache::remember(
-            'commerce:product:'.$slug.':v2',
+            CatalogCache::key('product:'.$slug.':v2'),
             self::TTL_SECONDS,
             fn () => $this->catalog->findDetail($slug),
         );
@@ -85,7 +87,7 @@ final class CatalogController
     public function categories(): JsonResponse
     {
         $tree = Cache::remember(
-            'commerce:categories:v1',
+            CatalogCache::key('categories:v1'),
             self::TTL_SECONDS,
             fn (): array => $this->catalog->categoryTree(),
         );

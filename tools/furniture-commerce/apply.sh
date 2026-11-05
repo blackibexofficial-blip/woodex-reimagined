@@ -21,6 +21,7 @@ echo "== commerce slice"
 for path in \
     app/Domain/Commerce \
     app/Domain/Website/Content \
+    app/Providers/CommerceServiceProvider.php \
     app/Livewire/Admin/Commerce \
     app/Livewire/Admin/Website/PagesIndex.php \
     app/Livewire/Admin/Website/ContentIndex.php \
@@ -49,7 +50,8 @@ for path in \
     database/seeders/data/site-content.json \
     database/data/product-photos \
     routes/commerce.php \
-    routes/site.php
+    routes/site.php \
+    routes/storefront.php
 do
     if [ -e "$SLICE/$path" ]; then
         mkdir -p "$PLATFORM/$(dirname "$path")"
@@ -59,7 +61,7 @@ do
 done
 
 echo "== migrations"
-for migration in "$SLICE"/database/migrations/2026_10_28_*.php "$SLICE"/database/migrations/2026_11_01_*.php; do
+for migration in "$SLICE"/database/migrations/2026_10_28_*.php "$SLICE"/database/migrations/2026_11_01_*.php "$SLICE"/database/migrations/2026_11_05_*.php; do
     [ -f "$migration" ] || continue
     cp "$migration" "$PLATFORM/database/migrations/"
     echo "   $(basename "$migration")"
@@ -277,7 +279,44 @@ printf '%s\n' \
 insert_file_before "$PLATFORM/routes/api.php" \
     "// Remote MCP (JSON-RPC 2.0 over HTTPS)" \
     "$BLOCK" "site api: include" "routes/site.php"
+
+# The catalogue API the storefront actually shops from.
+#
+# Without this the SPA's `/api/storefront/v1/products` is a 404 and `useCatalog`
+# silently falls back to the bundled TypeScript snapshot in src/data/products.ts —
+# so every product in the database is invisible on the shop, and the shop looks
+# static no matter what the admin says. That fallback is deliberate (a preview
+# with no PHP must still render), which is exactly why the missing route was easy
+# to miss: the page looked fine, it was just showing twenty hard-coded products.
+printf '%s\n' \
+    "// The storefront's catalogue API: products, categories, materials, checkout." \
+    "Route::prefix('storefront/v1')->name('storefront.')->group(base_path('routes/storefront.php'));" \
+    "" > "$BLOCK"
+insert_file_before "$PLATFORM/routes/api.php" \
+    "// Remote MCP (JSON-RPC 2.0 over HTTPS)" \
+    "$BLOCK" "storefront api: include" "routes/storefront.php"
 rm -f "$BLOCK"
+
+# The provider that makes the catalogue API possible: it binds MediaPath (how a
+# product image URL is built), Transformer (GD, for the three WebP sizes) and the
+# `storefront-catalog` rate limiter. Without it the first request to
+# /api/storefront/v1/products dies with "Rate limiter [storefront-catalog] is not
+# defined" — a 500, not a 404, which is why it is worth its own check.
+PROVIDERS="$PLATFORM/bootstrap/providers.php"
+if [ -f "$PROVIDERS" ]; then
+    if grep -qF "CommerceServiceProvider" "$PROVIDERS"; then
+        echo "   commerce provider: already registered"
+    else
+        php_edit() { :; }
+        sed -i.bak \
+            -e 's|^use App\\Providers\\FortifyServiceProvider;|use App\\Providers\\CommerceServiceProvider;\nuse App\\Providers\\FortifyServiceProvider;|' \
+            -e 's|^    FortifyServiceProvider::class,|    CommerceServiceProvider::class,\n    FortifyServiceProvider::class,|' \
+            "$PROVIDERS" && rm -f "$PROVIDERS.bak"
+        echo "   commerce provider: registered in bootstrap/providers.php"
+    fi
+else
+    echo "   bootstrap/providers.php missing — commerce provider NOT registered"
+fi
 
 # ---- the 137 redirects, in the preview server -------------------------------------------------------------------
 #
