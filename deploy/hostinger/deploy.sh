@@ -60,6 +60,13 @@ BUILD_PLATFORM_ASSETS="${BUILD_PLATFORM_ASSETS:-1}"
 HEALTH_PATH="${HEALTH_PATH:-/page-preview/home}"
 SYNC_VENDOR="${SYNC_VENDOR:-1}"
 
+# The database hPanel created. With all three here the first deploy writes a complete .env and runs to
+# the end; without them remote.sh writes a template and stops to ask, which is the old behaviour.
+DB_NAME="${DB_NAME:-}"
+DB_USER="${DB_USER:-}"
+DB_PASSWORD="${DB_PASSWORD:-}"
+DB_HOST="${DB_HOST:-localhost}"
+
 # ---- output ------------------------------------------------------------------------------------
 if [[ -t 1 ]]; then C_OK=$'\e[32m'; C_WARN=$'\e[33m'; C_ERR=$'\e[31m'; C_DIM=$'\e[2m'; C_OFF=$'\e[0m'; else C_OK=; C_WARN=; C_ERR=; C_DIM=; C_OFF=; fi
 step() { printf '\n%s==> %s%s\n' "$C_OK" "$*" "$C_OFF"; }
@@ -190,11 +197,25 @@ REMOTE_FLAGS=""
 [[ $FIRST_DEPLOY -eq 1 ]] && REMOTE_FLAGS="$REMOTE_FLAGS --first"
 
 if [[ $DRY_RUN -eq 1 ]]; then
-    note "would run: remote.sh --app $REMOTE_APP --php $PHP_BIN $REMOTE_FLAGS"
+    if [[ -n "$DB_NAME" ]]; then
+        note "would run: remote.sh --app $REMOTE_APP --php $PHP_BIN $REMOTE_FLAGS --db-name $DB_NAME --db-user $DB_USER --db-pass ***"
+    else
+        note "would run: remote.sh --app $REMOTE_APP --php $PHP_BIN $REMOTE_FLAGS"
+        warn "no DB_NAME/DB_USER/DB_PASSWORD in deploy.conf — the server will write a .env template and stop"
+    fi
 else
-    scp -P "$SSH_PORT" "${SSH_KEY:+-i "$SSH_KEY"} -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
-        "$SCRIPT_DIR/remote.sh" "$SSH_USER@$SSH_HOST:$REMOTE_APP/../remote.sh"
-    remote "bash $REMOTE_APP/../remote.sh --app $REMOTE_APP --php $PHP_BIN --url $APP_URL $REMOTE_FLAGS" \
+    SCP_OPTS=(-P "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=accept-new)
+    [[ -n "$SSH_KEY" ]] && SCP_OPTS+=(-i "$SSH_KEY")
+    scp "${SCP_OPTS[@]}" "$SCRIPT_DIR/remote.sh" "$SSH_USER@$SSH_HOST:$REMOTE_APP/../remote.sh"
+    # Quoted with %q so a password containing a space, $ or & survives the trip through the remote
+    # shell. It is never echoed: `set -x` is not used anywhere in this script for exactly this reason.
+    REMOTE_DB=""
+    [[ -n "$DB_NAME" ]] && REMOTE_DB="$REMOTE_DB --db-name $(printf %q "$DB_NAME")"
+    [[ -n "$DB_USER" ]] && REMOTE_DB="$REMOTE_DB --db-user $(printf %q "$DB_USER")"
+    [[ -n "$DB_PASSWORD" ]] && REMOTE_DB="$REMOTE_DB --db-pass $(printf %q "$DB_PASSWORD")"
+    [[ -n "$DB_HOST" ]] && REMOTE_DB="$REMOTE_DB --db-host $(printf %q "$DB_HOST")"
+
+    remote "bash $REMOTE_APP/../remote.sh --app $REMOTE_APP --php $PHP_BIN --url $APP_URL $REMOTE_FLAGS $REMOTE_DB" \
         || die "server-side steps failed — see the output above"
 fi
 

@@ -105,9 +105,13 @@ cd /path/to/woodex-reimagined
 ./deploy/hostinger/deploy.sh --first-deploy
 ```
 
-Expect a **stop with exit code 3** on the very first run: the script writes `~/woodex-app/.env` from
-its template, then refuses to go on until you fill in the database credentials. That is deliberate —
-it will not guess a password, and it will not run migrations against a database it cannot reach.
+With `DB_NAME`, `DB_USER` and `DB_PASSWORD` filled in `deploy.conf`, that is the whole deploy: the
+server writes a complete `.env` (URL, key, caching, mail, queue, database) and carries on to the
+migrations in the same run. Nothing has to be edited on the server by hand.
+
+Leave `DB_PASSWORD` empty and the script instead writes a `.env` template and **stops with exit code
+3**, listing the file to edit. That is the fallback, not the normal path: it will not guess a
+password, and it will not run migrations against a database it cannot reach.
 
 ```bash
 ssh -p 65002 u128159657@72.60.93.138
@@ -128,6 +132,25 @@ ssh -p 65002 u128159657@72.60.93.138 'tail -40 ~/woodex-app/storage/logs/laravel
 ```
 
 ---
+
+### The hPanel "Deploy from GitHub" button is not this deploy
+
+hPanel → Advanced → GIT clones a branch into a directory and stops there. It does not run `npm` or
+`composer`, it does not copy `dist/` anywhere, and it does not run `artisan` — so a checkout in
+`public_html` is a folder of source, not a working site. That is fine as a *transport*; it is not a
+deploy.
+
+Two consequences worth deciding on before the first deploy:
+
+* **Point it somewhere other than the document root.** A checkout in `public_html` puts the
+  repository's `index.html` — a Vite entry that loads `/src/main.tsx`, not a built page — next to
+  Laravel's `index.php`, and `/` may then be answered by a broken file. `woodex-source` beside it is
+  the safer target.
+* **Something still has to run the commands.** Options, in order of how little can go wrong: this
+  script from your machine (needs `APP_DIR` locally); the workflow in
+  `github-workflow-deploy-staging.yml.example`, which runs the same script in Actions; or a cron on
+  the server running `remote.sh` after each pull, which is the only one that survives you not being
+  at a keyboard.
 
 ## 5. Cron (two lines, both required)
 

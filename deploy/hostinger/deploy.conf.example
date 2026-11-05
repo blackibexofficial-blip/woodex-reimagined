@@ -1,5 +1,5 @@
-# Copy to deploy.conf and fill in. deploy.conf is git-ignored: it holds paths and hosts, not secrets,
-# but it is per-machine anyway and there is no reason to commit it.
+# Copy to deploy.conf and fill in. deploy.conf is git-ignored: it holds credentials, and it is
+# per-machine anyway.
 #
 # Every value below can also come from the environment, which is how GitHub Actions drives the same
 # script without a config file.
@@ -14,12 +14,34 @@ SSH_USER="u128159657"
 # Leave empty to use your ssh-agent / ~/.ssh/config.
 SSH_KEY="deploy/keys/woodex_staging_ed25519"
 
+# ---- domain ------------------------------------------------------------------------------------
+# Set once: the document root below is derived from it.
+STAGING_DOMAIN="staging.blackibex.net"
+APP_URL="https://${STAGING_DOMAIN}"
+
 # ---- paths on the server -----------------------------------------------------------------------
 # Where the Laravel application lives. OUTSIDE the web root on purpose: only `public/` is reachable.
 REMOTE_APP="/home/u128159657/woodex-app"
 
 # The domain's document root as hPanel creates it.
-REMOTE_DOCROOT="/home/u128159657/domains/STAGING_DOMAIN/public_html"
+#
+# If you also set up hPanel → Advanced → GIT (Deploy from GitHub), point *that* at a different folder
+# — `woodex-source`, say — not at this one. A Git checkout here drops the repository's own
+# index.html (a Vite entry that loads /src/main.tsx, not a built page) next to Laravel's index.php,
+# and the first request to / can then be answered by a broken file instead of the app.
+REMOTE_DOCROOT="/home/u128159657/domains/${STAGING_DOMAIN}/public_html"
+
+# ---- database ----------------------------------------------------------------------------------
+# The MySQL database and user created in hPanel → Databases → MySQL Databases. The user prefix
+# (u128159657_) is added by hPanel; paste the full name it shows, both parts included.
+#
+# When all three are set, the first deploy writes a complete .env and runs to the end. Leave
+# DB_PASSWORD empty and the server writes a .env template and stops, so nothing half-configured is
+# ever started.
+DB_NAME="u128159657_woodexos"
+DB_USER="u128159657_woodexos"
+DB_PASSWORD=""
+DB_HOST="localhost"
 
 # ---- local side --------------------------------------------------------------------------------
 # The Woodex OS checkout with this slice applied, i.e. the output of:
@@ -31,8 +53,6 @@ APP_DIR=""
 REPO_DIR=""
 
 # ---- application ------------------------------------------------------------------------------
-STAGING_DOMAIN=""          # e.g. staging.woodex.example — no scheme, no trailing slash
-APP_URL=""                 # defaults to https://$STAGING_DOMAIN
 PHP_BIN=""                 # empty = detect. Hostinger CloudLinux often needs /opt/alt/php84/usr/bin/php
 
 # ---- what the deploy does ----------------------------------------------------------------------

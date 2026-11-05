@@ -18,6 +18,10 @@ URL=""
 DO_MIGRATE=0
 SEED_IF_EMPTY=0
 FIRST=0
+DB_NAME=""
+DB_USER=""
+DB_PASS=""
+DB_HOST="localhost"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -27,6 +31,10 @@ while [[ $# -gt 0 ]]; do
         --migrate) DO_MIGRATE=1; shift ;;
         --seed-if-empty) SEED_IF_EMPTY=1; shift ;;
         --first) FIRST=1; shift ;;
+        --db-name) DB_NAME="${2:-}"; shift 2 ;;
+        --db-user) DB_USER="${2:-}"; shift 2 ;;
+        --db-pass) DB_PASS="${2:-}"; shift 2 ;;
+        --db-host) DB_HOST="${2:-localhost}"; shift 2 ;;
         *) echo "unknown arg: $1" >&2; exit 2 ;;
     esac
 done
@@ -68,11 +76,11 @@ LOG_CHANNEL=stack
 LOG_LEVEL=warning
 
 DB_CONNECTION=mysql
-DB_HOST=localhost
+DB_HOST=${DB_HOST}
 DB_PORT=3306
-DB_DATABASE=REPLACE_ME
-DB_USERNAME=REPLACE_ME
-DB_PASSWORD=REPLACE_ME
+DB_DATABASE=${DB_NAME:-REPLACE_ME}
+DB_USERNAME=${DB_USER:-REPLACE_ME}
+DB_PASSWORD=${DB_PASS:-REPLACE_ME}
 
 SESSION_DRIVER=database
 SESSION_LIFETIME=120
@@ -92,7 +100,13 @@ OWNER_EMAIL=owner@example.test
 PUBLIC_LEADS_ALLOWED_ORIGINS=${URL:-https://example.test}
 ENVEOF
 
-    cat <<'MSG'
+    # The credentials come from deploy.conf, so the first deploy can finish on its own. The stop below
+    # is for the case where they were not supplied: it is better to ask than to write a .env that
+    # points at "REPLACE_ME" and then fail on the first query with a confusing SQLSTATE error.
+    if [[ -n "$DB_NAME" && -n "$DB_USER" && -n "$DB_PASS" ]]; then
+        say "database credentials written from deploy.conf: $DB_NAME (user $DB_USER, host $DB_HOST)"
+    else
+        cat <<'MSG'
 
   The database credentials are placeholders. Edit the file, then run the deploy again:
 
@@ -100,10 +114,12 @@ ENVEOF
       nano ~/woodex-app/.env      # DB_DATABASE / DB_USERNAME / DB_PASSWORD
 
   Create the database first: hPanel → Databases → MySQL Databases (the user is created there too,
-  and must be attached to the database).
+  and must be attached to the database). Or put DB_NAME / DB_USER / DB_PASSWORD in deploy.conf and
+  the next deploy writes them for you.
 
 MSG
-    exit 3
+        exit 3
+    fi
 fi
 
 # A key is required or every session cookie and encrypted value breaks at runtime.
