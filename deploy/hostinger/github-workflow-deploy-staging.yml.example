@@ -1,7 +1,24 @@
 name: Deploy staging
 
-# Two ways in: press the button, or let a push to main do it. The branch this was built on is not
-# wired to auto-deploy on purpose — nothing reaches a server because someone pushed WIP.
+# Before the first run, in GitHub → Settings → Secrets and variables → Actions:
+#
+#   secrets   HOSTINGER_HOST      72.60.93.138
+#             HOSTINGER_PORT      65002
+#             HOSTINGER_USER      u128159657
+#             HOSTINGER_SSH_KEY   the contents of deploy/keys/woodex_staging_ed25519
+#             REMOTE_APP          /home/u128159657/woodex-app
+#             REMOTE_DOCROOT      /home/u128159657/domains/<domain>/public_html
+#   variables STAGING_DOMAIN      staging.blackibex.net
+#
+# This workflow ships the slice and applies it on the server, so it does not need the database
+# password: the .env was written by the first deploy and is left alone.
+
+# Two ways in: press the button, or let a push do it.
+#
+# The session branch is listed as well as main, because that is where this work is committed and a
+# workflow that only watches main would never fire for it — you would merge, and only then find out
+# whether the deploy works. Remove that line once the branch is merged if you would rather staging
+# only followed main.
 on:
   workflow_dispatch:
     inputs:
@@ -10,7 +27,7 @@ on:
         type: boolean
         default: false
   push:
-    branches: [main]
+    branches: [main, "arena/0378ff53-woodex-reimagined"]
     paths:
       - "platform/**"
       - "tools/furniture-commerce/**"
