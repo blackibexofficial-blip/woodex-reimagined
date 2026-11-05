@@ -33,6 +33,7 @@ for path in \
     resources/js/studio/registry.json \
     app/Livewire/Admin/Commerce \
     app/Livewire/Admin/Website/PagesIndex.php \
+    app/Livewire/Admin/Website/BlockEditor.php \
     app/Livewire/Admin/Website/ContentIndex.php \
     app/Livewire/Admin/Website/MediaLibrary.php \
     app/Console/Commands/OwnerAccountCommand.php \
@@ -49,6 +50,9 @@ for path in \
     resources/views/admin/commerce \
     resources/views/errors/404.blade.php \
     resources/views/livewire/admin/website/pages-index.blade.php \
+    resources/views/livewire/admin/website/block-editor.blade.php \
+    resources/views/livewire/admin/website/partials \
+    resources/views/components/admin/icon-button.blade.php \
     resources/views/livewire/admin/website/content-index.blade.php \
     resources/views/livewire/admin/website/media-library.blade.php \
     database/seeders/CommercePermissionsSeeder.php \
@@ -344,6 +348,24 @@ if [ -f "$WEB" ] && ! grep -qF "page-preview" "$WEB"; then
     insert_file_before "$WEB" \
         "\$admin = Route::middleware(['auth', 'active', 'db-current', 'two-factor'])" \
         "$BLOCK" "cms page render route" "routes/web.php"
+fi
+rm -f "$BLOCK"
+
+# The block editor: one page, three panes, publishing per page. Registered next to the
+# Pages list it hangs off, and behind the same permission — a screen that can rewrite
+# every page must not be reachable by anyone who can merely read them.
+ADMIN_ROUTES="$PLATFORM/routes/admin.php"
+if [ -f "$ADMIN_ROUTES" ] && ! grep -qF "website.pages.edit" "$ADMIN_ROUTES"; then
+    if insert_file_before "$ADMIN_ROUTES" \
+        "Route::livewire('/website/find-replace', FindReplaceIndex::class)" \
+        "$(printf '%s\n' \
+            "Route::livewire('/website/pages/{key}/edit', BlockEditor::class)->name('website.pages.editor')->middleware('can:website.edit');" \
+            "")" "page editor route" "routes/admin.php"; then
+        # The import has to exist or the route is a fatal error the first time it is hit.
+        insert_file_before "$ADMIN_ROUTES" \
+            "use App\\Livewire\\Admin\\Website\\PagesIndex;" \
+            "use App\\Livewire\\Admin\\Website\\BlockEditor;" "page editor import" "routes/admin.php" >/dev/null
+    fi
 fi
 rm -f "$BLOCK"
 

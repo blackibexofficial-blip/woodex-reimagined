@@ -64,8 +64,18 @@
                             </td>
                             <td class="px-5 py-3">
                                 <div class="flex items-center justify-end gap-3">
-                                    <a href="{{ route('admin.website.builder', ['key' => $page['key']]) }}"
-                                       class="font-medium text-theme-sm text-brand-600 hover:underline">Edit</a>
+                                    {{--
+                                        A page built from blocks opens in the block editor; every other page is a
+                                        file, and the file builder is the only thing that can edit it. Sending both
+                                        to the same screen was how the block editor stayed unreachable.
+                                    --}}
+                                    @if (($page['kind'] ?? '') === 'puck')
+                                        <a href="{{ route('admin.website.pages.editor', ['key' => $page['key']]) }}"
+                                           class="font-medium text-theme-sm text-brand-600 hover:underline">Edit blocks</a>
+                                    @else
+                                        <a href="{{ route('admin.website.builder', ['key' => $page['key']]) }}"
+                                           class="font-medium text-theme-sm text-brand-600 hover:underline">Edit</a>
+                                    @endif
                                     <a href="{{ $page['path'] }}" target="_blank" rel="noopener"
                                        class="text-theme-sm text-brand-600 hover:underline">View</a>
                                     @can('website.publish')

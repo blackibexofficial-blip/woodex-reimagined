@@ -208,7 +208,11 @@ final class ShellPublisher
         $path = '/'.ltrim($path, '/');
         $file = $path === '/' ? $this->root.'/index.html' : $this->root.rtrim($path, '/').'/index.html';
 
-        if (! is_dir(dirname($file)) && ! mkdir(dirname($file), 0o775, true) && ! is_dir(dirname($file))) {
+        // `@mkdir` on purpose. Two editors publishing at once race here, and losing that race is not
+        // an error — the directory exists either way, which is what the second `is_dir` confirms. The
+        // suppression also matters because Laravel turns a PHP warning into an ErrorException, so an
+        // unsilenced "File exists" would surface as a 500 after the row had already been saved.
+        if (! is_dir(dirname($file)) && ! @mkdir(dirname($file), 0o775, true) && ! is_dir(dirname($file))) {
             throw new RuntimeException('Cannot create '.dirname($file));
         }
 

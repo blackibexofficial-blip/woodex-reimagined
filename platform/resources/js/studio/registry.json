@@ -305,7 +305,19 @@
                 "right"
               ]
             }
-          }
+          },
+          "default": [
+            {
+              "kicker": "",
+              "heading": "Design For Your Workspace",
+              "body": "From concept to installation.",
+              "ctaLabel": "Shop Now",
+              "ctaUrl": "/shop",
+              "image": "",
+              "imageAlt": "",
+              "align": "left"
+            }
+          ]
         },
         "height": {
           "type": "select",
@@ -363,7 +375,14 @@
               "label": "Link",
               "default": ""
             }
-          }
+          },
+          "default": [
+            {
+              "title": "Space Planning",
+              "body": "We map the floor, the workflow and the headcount before a single chair is chosen.",
+              "url": "/space-planning"
+            }
+          ]
         }
       }
     }
