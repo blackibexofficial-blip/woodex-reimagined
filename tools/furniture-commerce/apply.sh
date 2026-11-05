@@ -124,19 +124,37 @@ insert_file_before() {
 
     if grep -qF "$guard" "$file"; then
         echo "   $label: already there"
-        return
+        return 0
     fi
 
     if ! grep -qF "$anchor" "$file"; then
-        echo "   $label: ANCHOR MISSING in $file — add manually from $blockfile" >&2
-        return
+        echo "   $label: ANCHOR MISSING in $file — add it manually" >&2
+        return 1
+    fi
+
+    # The third argument is usually a temp file ($BLOCK), but one caller passed the text itself. `awk`
+    # then read a filename that did not exist, printed nothing, and the function still said "added" —
+    # so the route was reported installed and was not. Text is written to a scratch file here instead,
+    # which fixes that call and every future one that passes a string.
+    if [ ! -f "$blockfile" ]; then
+        scratch=$(mktemp)
+        printf '%s\n' "$blockfile" > "$scratch"
+        blockfile=$scratch
     fi
 
     tmp="$file.wx-tmp"
     awk -v anchor="$anchor" -v block="$blockfile" '
         !done && index($0, anchor) { while ((getline line < block) > 0) print line; done=1 } { print }
     ' "$file" > "$tmp" && mv "$tmp" "$file"
-    echo "   $label: added"
+
+    # Verify the write rather than trusting awk's exit status: the failure this function used to have
+    # was silent, and a route that silently does not exist is only discovered by opening the screen.
+    if grep -qF "$guard" "$file"; then
+        echo "   $label: added"
+    else
+        echo "   $label: WRITE FAILED in $file — add manually" >&2
+        return 1
+    fi
 }
 
 insert_before() {
@@ -360,11 +378,31 @@ if [ -f "$ADMIN_ROUTES" ] && ! grep -qF "website.pages.edit" "$ADMIN_ROUTES"; th
         "Route::livewire('/website/find-replace', FindReplaceIndex::class)" \
         "$(printf '%s\n' \
             "Route::livewire('/website/pages/{key}/edit', BlockEditor::class)->name('website.pages.editor')->middleware('can:website.edit');" \
-            "")" "page editor route" "routes/admin.php"; then
+            "")" "page editor route" "website.pages.edit"; then
         # The import has to exist or the route is a fatal error the first time it is hit.
         insert_file_before "$ADMIN_ROUTES" \
             "use App\\Livewire\\Admin\\Website\\PagesIndex;" \
-            "use App\\Livewire\\Admin\\Website\\BlockEditor;" "page editor import" "routes/admin.php" >/dev/null
+            "use App\\Livewire\\Admin\\Website\\BlockEditor;" "page editor import" "BlockEditor;" >/dev/null
+    fi
+fi
+
+# The menu builder carries its own guard, not the page editor's.
+#
+# It was nested inside the block above at first, so an OS that already had the page editor never
+# received it: the outer condition was false and the inner insert never ran. That is this preview
+# app and every checkout that applied an earlier slice, so the screen would have shipped to new
+# installs only.
+ADMIN_ROUTES="$PLATFORM/routes/admin.php"
+if [ -f "$ADMIN_ROUTES" ] && ! grep -qF "website.menus" "$ADMIN_ROUTES"; then
+    if insert_file_before "$ADMIN_ROUTES" \
+        "Route::livewire('/website/pages/{key}/edit', BlockEditor::class)" \
+        "$(printf '%s\n' \
+            "Route::livewire('/website/menus', MenuBuilder::class)->name('website.menus')->middleware('can:website.edit');" \
+            "")" "menu builder route" "website.menus"; then
+        # The import has to exist or the route is a fatal error the first time it is hit.
+        insert_file_before "$ADMIN_ROUTES" \
+            "use App\\Livewire\\Admin\\Website\\PagesIndex;" \
+            "use App\\Livewire\\Admin\\Website\\MenuBuilder;" "menu builder import" "MenuBuilder;" >/dev/null
     fi
 fi
 rm -f "$BLOCK"
