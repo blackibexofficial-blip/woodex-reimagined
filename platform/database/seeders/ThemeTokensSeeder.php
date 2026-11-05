@@ -53,6 +53,27 @@ class ThemeTokensSeeder extends Seeder
             ['group' => 'colour', 'key' => '--hon-green-pale', 'value' => '#F3F7ED', 'label' => 'Brand green — pale', 'type' => 'color'],
             ['group' => 'colour', 'key' => '--utility-bar', 'value' => '#22262A', 'label' => 'Utility bar background', 'type' => 'color'],
             ['group' => 'colour', 'key' => '--utility-text', 'value' => '#BFBFBF', 'label' => 'Utility bar text', 'type' => 'color'],
+
+            // ---- The storefront's own palette -------------------------------------------------
+            //
+            // `ThemeCss::DERIVED` prints `--color-navy-900: var(--navy)` and six siblings: the shop's
+            // sections are written against `navy-*`, `wood-*`, `sand-*`, `ink`, `body`, `paper` and
+            // `line`, and it re-derives all of them from these names. When the token vocabulary moved
+            // from v1's `--navy/--wood/--paper` to the shadcn set above, these were never re-seeded —
+            // so every one of those `var()` lookups pointed at an undefined property, `--color-navy-900`
+            // resolved to nothing, and the shop fell back to the values compiled into `site.css`.
+            // Harmless while nothing linked the theme stylesheet. Not harmless once it did: the fallbacks
+            // in `site.css` are what makes the shop look like itself.
+            //
+            // These are the shop, editable. The shadcn set above is the admin/OS surfaces; the two
+            // vocabularies now both resolve instead of one shadowing the other.
+            ['group' => 'colour', 'key' => '--navy', 'value' => '#0F1E36', 'label' => 'Shop header & footer', 'type' => 'color'],
+            ['group' => 'colour', 'key' => '--navy-2', 'value' => '#1A2A45', 'label' => 'Shop header, lifted', 'type' => 'color'],
+            ['group' => 'colour', 'key' => '--wood', 'value' => '#A87442', 'label' => 'Wood accent', 'type' => 'color'],
+            ['group' => 'colour', 'key' => '--surface', 'value' => '#FCF2E8', 'label' => 'Sand surface', 'type' => 'color'],
+            ['group' => 'colour', 'key' => '--ink', 'value' => '#111111', 'label' => 'Shop headings', 'type' => 'color'],
+            ['group' => 'colour', 'key' => '--paper', 'value' => '#FFFFFF', 'label' => 'Shop page paper', 'type' => 'color'],
+            ['group' => 'colour', 'key' => '--line', 'value' => '#DEDEDB', 'label' => 'Shop rules & borders', 'type' => 'color'],
         ];
     }
 
