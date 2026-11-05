@@ -1,0 +1,12 @@
+# Woodex Interior, Lahore. The app answers /robots.txt per domain (see public/.htaccess); this file is here so a
+# server that serves it straight from disk still tells search engines the right thing.
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /q/
+Disallow: /i/
+Disallow: /p/
+Disallow: /portal
+Disallow: /webhooks/
+
+Sitemap: https://woodex.com.pk/sitemap.xml

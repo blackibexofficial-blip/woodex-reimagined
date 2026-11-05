@@ -1,0 +1,550 @@
+{
+    "/1-kanal-house-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/10-marla-house-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/2-kanal-house-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/3d-visualization/": {
+        "to": "/services/space-planning-design/",
+        "code": 301
+    },
+    "/5-marla-house-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/apartment-interior-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/architecture/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/bahawalpur/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/bathroom-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/beauty-salon-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/book-a-visit/": {
+        "to": "/virtual-showroom/",
+        "code": 301
+    },
+    "/cafe-interior-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/commercial-fit-out/": {
+        "to": "/services/b2b-office-solutions/",
+        "code": 301
+    },
+    "/commercial-interior/": {
+        "to": "/services/b2b-office-solutions/",
+        "code": 301
+    },
+    "/commercial-renovation/": {
+        "to": "/services/b2b-office-solutions/",
+        "code": 301
+    },
+    "/complete-home-redesign/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/coworking-space-design/": {
+        "to": "/services/b2b-office-solutions/",
+        "code": 301
+    },
+    "/dressing-room-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/educational-buildings-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/estimator/": {
+        "to": "/quotation/",
+        "code": 301
+    },
+    "/faisalabad/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/false-ceiling-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/farmhouse-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/fit-out/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/front-elevation-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/gujranwala/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/gym-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/healthcare-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/healthcare-facilities-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/healthcare-fit-out/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/healthcare-renovation/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/hotel-interior-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/hyderabad/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/insights/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/1-kanal-house-interior-cost-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/10-marla-house-interior-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/3d-interior-design-cost-pakistan/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/3d-visualization-guide/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/5-marla-house-renovation-cost-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/apartment-interior-ideas-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/apartment-small-space-planning-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/architect-fee-lahore-2026/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/bathroom-renovation-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/clinic-interior-design-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/design-process-explained/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/dha-lahore-house-interior-guide/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/dha-vs-bahria-town-interior-cost-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/false-ceiling-cost-lahore-2026/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/false-ceiling-ideas-living-room/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/flooring-options-pakistan/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/grey-structure-finishing-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/home-office-design-ideas/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/home-renovation-checklist/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/house-renovation-cost-lahore-2026/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/house-renovation-timeline-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/how-to-choose-interior-designer-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/interior-design-cost-pakistan/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/interior-design-trends-pakistan-2027/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/interior-designer-cost-lahore-2026/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/interior-designer-vs-contractor-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/kitchen-cabinet-materials-pakistan/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/kitchen-layouts-that-work-lahore-homes/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/kitchen-renovation-cost-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/lighting-design-layers-explained/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/materials-that-survive-lahore-climate/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/modular-kitchen-price-pakistan-2026/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/new-house-interior-checklist-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/office-fit-out-cost-pakistan-2026/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/office-interior-guide/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/office-interior-gulberg-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/office-layout-mistakes-productivity/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/office-renovation-checklist/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/paint-colours-pakistani-homes/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/restaurant-cafe-interior-cost-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/restaurant-planning-guide/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/retail-shop-interior-guide/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/salon-interior-design-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/small-bathroom-design-ideas/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/small-space-ideas/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/upgrade-builder-finished-house-lahore/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/wardrobe-design-cost-pakistan-2026/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/insights/wardrobe-vs-dressing-room/": {
+        "to": "/blog/",
+        "code": 301
+    },
+    "/interior-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/interior-home-refurbishment/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/islamabad/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/karachi/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/kitchen-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/kitchen-renovation/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/lahore/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/lahore/bahria-town/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/lahore/cantt/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/lahore/dha/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/lahore/gulberg/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/lahore/johar-town/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/lahore/lake-city/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/lahore/model-town/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/lahore/wapda-town/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/master-planning/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/multan/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/office-buildings-design/": {
+        "to": "/services/b2b-office-solutions/",
+        "code": 301
+    },
+    "/office-fit-out/": {
+        "to": "/services/b2b-office-solutions/",
+        "code": 301
+    },
+    "/office-interior-design/": {
+        "to": "/services/b2b-office-solutions/",
+        "code": 301
+    },
+    "/office-renovation/": {
+        "to": "/services/b2b-office-solutions/",
+        "code": 301
+    },
+    "/peshawar/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/pharmacy-fit-out/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/privacy/": {
+        "to": "/about/",
+        "code": 301
+    },
+    "/projects/cafe-corner/": {
+        "to": "/projects/",
+        "code": 301
+    },
+    "/projects/clinic-fit-out/": {
+        "to": "/projects/",
+        "code": 301
+    },
+    "/projects/courtyard-house/": {
+        "to": "/projects/",
+        "code": 301
+    },
+    "/projects/office-floor/": {
+        "to": "/projects/",
+        "code": 301
+    },
+    "/projects/retail-corner/": {
+        "to": "/projects/",
+        "code": 301
+    },
+    "/projects/small-apartment/": {
+        "to": "/projects/",
+        "code": 301
+    },
+    "/quetta/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/rawalpindi/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/renovation/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/residential-basement-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/residential-bedroom-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/residential-dining-room-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/residential-home-office-design/": {
+        "to": "/services/b2b-office-solutions/",
+        "code": 301
+    },
+    "/residential-kids-room-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/residential-living-room-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/residential-renovation/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/restaurant-cafe-building-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/restaurant-cafe-renovation/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/restaurant-fit-out/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/restaurant-interior-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/retail-buildings-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/retail-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/retail-fit-out/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/retail-showroom-renovation/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/shopping-mall-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/showroom-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/sialkot/": {
+        "to": "/showrooms/",
+        "code": 301
+    },
+    "/spa-design/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/specialized-renovation-services/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/turnkey-design-build/": {
+        "to": "/services/",
+        "code": 301
+    },
+    "/wardrobe-design/": {
+        "to": "/services/custom-design/",
+        "code": 301
+    }
+}

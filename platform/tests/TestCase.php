@@ -1,53 +1,102 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Tests;
 
-/**
- * Base class for suite classes that want the shared setup without inheriting it into the
- * global namespace. Kept deliberately empty: the runner instantiates each test class and
- * calls its `test*` methods, so there is nothing to inherit except a place to put helpers.
- */
-abstract class TestCase
+use App\Models\User;
+use App\Support\Install\SiteState;
+use Database\Seeders\ProductionSeeder;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Testing\CachedState;
+use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Foundation\Testing\WithCachedConfig;
+use Illuminate\Foundation\Testing\WithCachedRoutes;
+use Illuminate\Filesystem\Filesystem;
+
+abstract class TestCase extends BaseTestCase
 {
     /**
-     * A file from the frontend, addressed the way the repository lays it out.
+     * Feature tests run against seeded reference data (roles, stages, numbering, rate book, templates).
      *
-     * `platform/` is self-contained — the sandbox runner bundles only that directory into PHP's
-     * virtual filesystem, which is why every other test here reads PHP, Blade and JSON. A test
-     * that wants to prove something about `src/` would therefore pass vacuously there, and a
-     * vacuous test is worse than none.
-     *
-     * So the runner also stages the frontend at `/repo/src`, and this resolves to the real
-     * checkout first and the staged copy second. Returns null when neither exists, so a caller
-     * can fail loudly rather than assert against an empty string.
+     * @var bool
      */
-    protected static function sitePath(string $relative): ?string
+    protected $seed = true;
+
+    /**
+     * @var class-string
+     */
+    protected $seeder = ProductionSeeder::class;
+
+    public $mockConsoleOutput = false;
+
+    private ?string $installedSiteFixture = null;
+
+    public function createApplication(): Application
     {
-        // Two roots, in both worlds:
-        //   repo-root-relative     ('src/...', 'platform/...')
-        //   platform-relative      ('app/...', 'database/...', 'resources/...')
-        //
-        // On disk that is dirname(__DIR__, 2) and dirname(__DIR__). In the wasm runner the
-        // frontend is staged at /repo and the platform at /app, so both forms are tried there
-        // too — and /app is the platform root, which is why a platform-relative path repeats
-        // 'app/' under it.
-        $bases = [
-            '/repo',                 // staged repo root
-            dirname(__DIR__, 2),     // real repo root
-            '/app',                  // staged platform root
-            dirname(__DIR__),        // real platform root
-        ];
+        $app = require Application::inferBasePath().'/bootstrap/app.php';
 
-        foreach ($bases as $base) {
-            $candidate = rtrim($base, '/').'/'.ltrim($relative, '/');
-
-            if (is_file($candidate)) {
-                return $candidate;
-            }
+        // Configure the environment loader BEFORE kernel bootstrap. No attempted reads from a
+        // developer/hosting .env, and no suppression of dotenv's missing-file warnings.
+        if ($this->installedSiteFixture === null) {
+            $this->installedSiteFixture = sys_get_temp_dir().'/woodex-feature-state-'.bin2hex(random_bytes(8));
+            $site = $this->fixtureSite();
+            $directory = $site->externalDirectory();
+            (new Filesystem)->makeDirectory($directory, 0700, recursive: true);
+            file_put_contents($directory.'/.env', "# Synthetic installed-state marker only; QA runtime comes from process environment.\n");
+            chmod($directory.'/.env', 0600);
         }
 
-        return null;
+        $site = $this->fixtureSite();
+        $app->useEnvironmentPath($site->environmentDirectory());
+        $app->instance(SiteState::class, $site);
+
+        // Preserve Laravel's normal trait/cached-state lifecycle when customizing application boot.
+        $this->traitsUsedByTest = class_uses_recursive(static::class);
+        if (isset(CachedState::$cachedConfig, $this->traitsUsedByTest[WithCachedConfig::class])) {
+            $this->markConfigCached($app);
+        }
+        if (isset(CachedState::$cachedRoutes, $this->traitsUsedByTest[WithCachedRoutes::class])) {
+            $app->booting(fn () => $this->markRoutesCached($app));
+        }
+        $app->make(Kernel::class)->bootstrap();
+
+        return $app;
+    }
+
+    private function fixtureSite(): SiteState
+    {
+        return new SiteState($this->installedSiteFixture.'/domains/feature.test/public_html/platform', $this->installedSiteFixture);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // This suite asserts integer exit codes and subsequent DB effects. Execute commands now,
+        // rather than leaving a PendingCommand to run during destruction after app teardown.
+        $this->withoutMockingConsoleOutput();
+
+        // Feature tests never depend on built front-end assets.
+        $this->withoutVite();
+    }
+
+    protected function tearDown(): void
+    {
+        try {
+            parent::tearDown();
+        } finally {
+            if ($this->installedSiteFixture !== null) {
+                (new Filesystem)->deleteDirectory($this->installedSiteFixture);
+                $this->installedSiteFixture = null;
+            }
+        }
+    }
+
+    protected function userWithRole(string $role, array $attributes = []): User
+    {
+        $user = User::factory()->create($attributes);
+        $user->assignRole($role);
+
+        return $user;
     }
 }

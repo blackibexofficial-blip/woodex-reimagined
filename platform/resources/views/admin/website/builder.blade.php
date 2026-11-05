@@ -11,32 +11,10 @@
 </head>
 <body>
 
-{{--
-    The truth about this editor, said once and said plainly.
-
-    Every file in the page list is written by `website:publish` from the CMS. An edit saved here survives until
-    the next publish and then is gone — which is not a bug in the builder, it is the builder editing the wrong
-    kind of page. The owner opened this screen, saw a generated file, and reasonably concluded nothing had
-    changed. The two screens that do change the site are one click away.
---}}
-<div id="wx-generated-note" style="position:fixed;left:16px;bottom:16px;z-index:99999;max-width:min(46rem,calc(100vw - 32px));display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#111827;color:#F9FAFB;font:400 12.5px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;box-shadow:0 8px 24px rgb(0 0 0 / .28)">
-  <div>
-    <strong style="display:block;margin-bottom:2px">These pages are generated.</strong>
-    Every file in the list was written by <code style="font-size:11.5px;opacity:.85">php artisan website:publish</code>
-    from the CMS, so a save here is replaced the next time the site is published. Edit the page in
-    <a href="{{ route('admin.website.pages') }}" style="color:#93C5FD;text-decoration:underline">Pages</a>, or the
-    service, post, project, series or showroom in
-    <a href="{{ route('admin.website.content') }}" style="color:#93C5FD;text-decoration:underline">Content</a>.
-    This editor is kept for hand-written HTML pages; the site has none yet.
-  </div>
-  <button type="button" aria-label="Dismiss" onclick="document.getElementById('wx-generated-note').remove()"
-          style="flex:none;width:22px;height:22px;border:0;border-radius:6px;background:rgb(255 255 255 / .12);color:#F9FAFB;font:600 13px/1 system-ui;cursor:pointer">×</button>
-</div>
-
 <!-- ================= SESSION ENDED ================= -->
 <div id="session" class="login" hidden>
   <div class="login-card">
-    <img src="/assets/img/img-f941b08b9510.png" alt="Woodex" width="90">
+    <img src="/assets/brand/woodex-mark.svg" alt="Woodex" width="90">
     <h1>Session ended</h1>
     <p>Your Woodex OS session ended. Sign in again — this tab keeps your unsaved edits.</p>
     <a class="btn btn-pri" href="/admin/login">Sign in to Woodex OS</a>
