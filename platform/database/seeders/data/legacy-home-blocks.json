@@ -1,0 +1,113 @@
+{
+ "_source": "IBPanel dump u128159657_woodexbaks.sql — hero_sliders / hero_slides_alt, extracted 2026-11-05.",
+ "_notes": [
+  "Slides come from hero_slides_alt, the published design. hero_slides holds three test rows (\"sss\", \"ssssss\") and is deliberately ignored.",
+  "The live site rotates five slides; the dump holds four published alt slides. The fifth is missing at the source, not dropped here.",
+  "Descriptions were HTML in the dump and are reduced to plain text: the block renders a single line of supporting copy.",
+  "Card copy is written for the rebuild — the legacy cards were icons with labels only."
+ ],
+ "blocks": [
+  {
+   "type": "heroSlider",
+   "props": {
+    "slides": [
+     {
+      "kicker": "",
+      "heading": "Design For Your Workspace",
+      "body": "From concept to installation, design, manufacture, and deliver",
+      "ctaLabel": "Shop Now",
+      "ctaUrl": "/shop",
+      "image": "/assets/images/heroes/1772573260_bg_download2.jpg",
+      "imageAlt": "",
+      "align": "left"
+     },
+     {
+      "kicker": "",
+      "heading": "We don't just sale Furniture, We Design Workspace",
+      "body": "Site visit to budget estimation: from single executive design to 500 seats, Woodex Office Furniture provides turnkey solutions.",
+      "ctaLabel": "Shop Now",
+      "ctaUrl": "/shop",
+      "image": "/assets/images/heroes/1780738496_bg_hero-image.jpg",
+      "imageAlt": "ss",
+      "align": "left"
+     },
+     {
+      "kicker": "",
+      "heading": "Reception That Welcomes",
+      "body": "First impressions built with bespoke reception solutions",
+      "ctaLabel": "Shop Now",
+      "ctaUrl": "/shop",
+      "image": "/assets/images/heroes/1780738642_bg_Gemini_Generated_Image_9xddr9xddr9xddr9.png",
+      "imageAlt": "",
+      "align": "left"
+     },
+     {
+      "kicker": "",
+      "heading": "Meeting Rooms That Inspire",
+      "body": "Conference Room to discussion table for collaboration and focus",
+      "ctaLabel": "Shop Now",
+      "ctaUrl": "/shop",
+      "image": "/assets/images/heroes/1780737527_bg_1772573384_bg_download1.webp",
+      "imageAlt": "",
+      "align": "left"
+     }
+    ],
+    "height": "tall",
+    "autoplaySeconds": 0
+   }
+  },
+  {
+   "type": "marketWeServe",
+   "props": {
+    "heading": "Market We Served",
+    "intro": "One team from the first sketch to the last screwdriver.",
+    "cards": [
+     {
+      "title": "Space Planning",
+      "body": "We map the floor, the workflow and the headcount before a single chair is chosen.",
+      "url": "/space-planning"
+     },
+     {
+      "title": "Custom Design",
+      "body": "Bespoke furniture drawn to your dimensions and finished in your materials.",
+      "url": "/workspace-design"
+     },
+     {
+      "title": "E-Quoting",
+      "body": "Send a list or a plan and receive a costed, itemised quotation.",
+      "url": "/e-quotation"
+     },
+     {
+      "title": "Factory Direct",
+      "body": "Made in our own workshop, with no importer margin between you and the desk.",
+      "url": "/factory-direct"
+     },
+     {
+      "title": "Delivery & Installation",
+      "body": "Delivered, assembled and levelled on site by the team that built it.",
+      "url": "/delivery-installation"
+     }
+    ]
+   }
+  },
+  {
+   "type": "productGrid",
+   "props": {
+    "heading": "Latest Collection",
+    "category": "",
+    "limit": 8,
+    "order": "featured"
+   }
+  },
+  {
+   "type": "cta",
+   "props": {
+    "heading": "Ready to furnish your workspace?",
+    "body": "Tell us the floor, the headcount and the deadline.",
+    "ctaLabel": "Request a quotation",
+    "ctaUrl": "/e-quotation",
+    "tone": "wood"
+   }
+  }
+ ]
+}

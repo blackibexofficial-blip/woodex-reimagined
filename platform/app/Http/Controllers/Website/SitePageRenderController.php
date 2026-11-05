@@ -26,6 +26,9 @@ use Illuminate\Http\Response;
  *   ?preview=1  — the editor's live preview. Requires a signed-in admin, never cached.
  *   (no query)  — the published page, as the storefront serves it.
  *
+ * The page body renders inside `site.layout`, the shared storefront shell (top bar, mega menu,
+ * footer), so the chrome is defined once and the page owns only its blocks.
+ *
  * Pages are written to disk on publish, so in normal operation a visitor never reaches this
  * controller at all: the static file answers first, exactly like every other page in `public/`.
  * It exists for the moment between saving and publishing, and for the editor.
@@ -55,7 +58,7 @@ final class SitePageRenderController
             ? ''
             : $this->renderer->renderDocument($document, $this->composer->dataFor($document));
 
-        $body = view('puck.page', [
+        $body = view('site.page', [
             'page' => $page,
             'seo' => is_array($page->seo) ? $page->seo : [],
             'html' => $html,

@@ -31,9 +31,9 @@ final class PuckRegistryTest extends TestCase
     public function testTheCommittedRegistryDeclaresEveryBlockWeShipped(): void
     {
         Assert::same(
-            ['hero', 'richText', 'productGrid', 'categoryTiles', 'materialsShowcase', 'faq', 'showroomMap', 'cta'],
+            ['hero', 'richText', 'productGrid', 'categoryTiles', 'materialsShowcase', 'faq', 'showroomMap', 'cta', 'heroSlider', 'marketWeServe'],
             $this->registry->names(),
-            'registry v1 is eight blocks, in file order',
+            'registry is the original eight blocks plus the two live-site parity blocks, in file order',
         );
     }
 
@@ -101,6 +101,49 @@ final class PuckRegistryTest extends TestCase
         Assert::same(1, $this->registry->normalizeProps('productGrid', ['limit' => 0])['limit'], 'below min clamps to min');
         Assert::same(8, $this->registry->normalizeProps('productGrid', ['limit' => 'abc'])['limit'], 'garbage falls back to the default');
         Assert::same(12, $this->registry->normalizeProps('productGrid', ['limit' => 12])['limit'], 'a valid number is untouched');
+    }
+
+    /**
+     * A `list` field is the first field type whose value is a structure rather than a scalar, so it
+     * gets the same treatment as a block: unknown keys dropped, missing keys defaulted, garbage
+     * rejected. A slider that stores a slide with the wrong keys renders an empty slide forever.
+     */
+    public function testAListFieldNormalisesEveryItemAgainstItsItemSchema(): void
+    {
+        $props = $this->registry->normalizeProps('heroSlider', [
+            'slides' => [
+                ['heading' => 'Design For Your Workspace', 'body' => 'Concept to install', 'removed' => 'x'],
+                ['heading' => 'Reception That Welcomes'],
+            ],
+        ]);
+
+        Assert::same(2, count($props['slides']), 'both slides survive');
+        Assert::same(
+            ['kicker', 'heading', 'body', 'ctaLabel', 'ctaUrl', 'image', 'imageAlt', 'align'],
+            array_keys($props['slides'][0]),
+            'each slide has exactly the item schema, in registry order',
+        );
+        Assert::same('x', $props['slides'][0]['removed'] ?? 'x', 'unknown slide keys are dropped');
+        Assert::same('Shop Now', $props['slides'][1]['ctaLabel'], 'a missing slide key gets its default');
+        Assert::same('left', $props['slides'][1]['align'], 'select inside a list item falls back correctly');
+    }
+
+    public function testAListFieldRefusesGarbageWithoutLosingTheGoodItems(): void
+    {
+        $props = $this->registry->normalizeProps('marketWeServe', [
+            'cards' => ['not an array', ['title' => 'Space Planning'], 42],
+        ]);
+
+        Assert::same(1, count($props['cards']), 'non-array entries are skipped, the good one is kept');
+        Assert::same('Space Planning', $props['cards'][0]['title'], 'the surviving card keeps its value');
+        Assert::same([], $this->registry->normalizeProps('marketWeServe', ['cards' => 'nope'])['cards'], 'a scalar becomes an empty list');
+    }
+
+    public function testAListFieldStopsAtItsDeclaredMaximum(): void
+    {
+        $slides = array_fill(0, 20, ['heading' => 'Same slide']);
+
+        Assert::same(8, count($this->registry->normalizeProps('heroSlider', ['slides' => $slides])['slides']), 'heroSlider allows at most 8 slides');
     }
 
     public function testNormalizePropsRejectsASelectValueThatIsNotOnTheList(): void

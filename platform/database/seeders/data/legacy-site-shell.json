@@ -1,0 +1,233 @@
+{
+ "_source": "IBPanel dump u128159657_woodexbaks.sql — footer_settings, footer_links, topbar_settings. Extracted 2026-11-05.",
+ "_notes": [
+  "Legacy footer split 'Learn More' across two section_keys (learn_more with 1 row, learn_2 with 5). Merged into learn_more here; the split was a bug in the old admin, not a design.",
+  "about_text keeps its paragraph markup; every other string is trimmed of surrounding whitespace only.",
+  "topbar heading_url was stored as ' shop' (leading space); normalised to '/shop'."
+ ],
+ "topbar": {
+  "is_active": true,
+  "text": "Up to 60% Off Sale Collection",
+  "url": "/shop"
+ },
+ "footer": {
+  "about_title": "About Us",
+  "about_tagline": "Make your space work®",
+  "about_text": "<p>Pakistan's premium custom office furniture manufacturer. Design-to-delivery solutions for modern workspaces.</p>",
+  "shop_title": "Shop",
+  "quick_links_title": "Quick Links",
+  "learn_more_title": "Learn More",
+  "contact_title": "Contact",
+  "address_text": "",
+  "email_text": "",
+  "hours_text": "Mon–Fri: 10:30 AM – 7:30 PM",
+  "phone_label": "Phone",
+  "phone_number": "+92 322 4000 768",
+  "newsletter_title": "Newsletter",
+  "newsletter_placeholder": "Your email",
+  "newsletter_button_text": "->",
+  "payment_label": "Payment Method",
+  "payment_logos": [
+   {
+    "src": "assets/images/misc/meezan-bank-logo.png",
+    "alt": "Meezan Logo"
+   },
+   {
+    "src": "assets/images/misc/new-Jazzcash-logo.png",
+    "alt": "Jazzcash Logo"
+   },
+   {
+    "src": "assets/images/misc/Easypaisa-logo.png",
+    "alt": "EasyPaisa Logo"
+   }
+  ],
+  "social_label": "Follow Us:",
+  "social_links": [
+   {
+    "icon": "bi-twitter-x",
+    "url": "https://twitter.com/woodexfurniture",
+    "label": "X (Twitter)"
+   },
+   {
+    "icon": "bi-facebook",
+    "url": "https://www.facebook.com/woodexfurniturepk/",
+    "label": "Facebook"
+   },
+   {
+    "icon": "bi-instagram",
+    "url": "https://www.instagram.com/woodexfurniturepk/",
+    "label": "Instagram"
+   },
+   {
+    "icon": "bi-linkedin",
+    "url": "https://www.linkedin.com/company/woodexfurniture/",
+    "label": "LinkedIn"
+   }
+  ],
+  "copyright_text": "WoodEx Furniture. All rights reserved.",
+  "legal_links": [
+   {
+    "title": "Privacy Policy",
+    "url": "/privacy-policy"
+   },
+   {
+    "title": "Terms of Service",
+    "url": "/terms-and-conditions"
+   },
+   {
+    "title": "Sitemap",
+    "url": "/sitemap.xml"
+   }
+  ]
+ },
+ "footer_links": [
+  {
+   "section": "shop",
+   "label": "Ergonomic Chair",
+   "url": "/categories/ergonomic-chair",
+   "position": 1
+  },
+  {
+   "section": "shop",
+   "label": "Executive Desks",
+   "url": "/categories/executive-desks",
+   "position": 2
+  },
+  {
+   "section": "shop",
+   "label": "Workstations",
+   "url": "/categories/workstations",
+   "position": 3
+  },
+  {
+   "section": "shop",
+   "label": "Reception",
+   "url": "/categories/reception",
+   "position": 4
+  },
+  {
+   "section": "shop",
+   "label": "Meeting Table",
+   "url": "/categories/meeting-table",
+   "position": 5
+  },
+  {
+   "section": "shop",
+   "label": "Office Sofa Storage",
+   "url": "/categories/office-sofa-storage",
+   "position": 6
+  },
+  {
+   "section": "quick_links",
+   "label": "About Us",
+   "url": "/about-us",
+   "position": 1
+  },
+  {
+   "section": "quick_links",
+   "label": "Projects",
+   "url": "/projects",
+   "position": 2
+  },
+  {
+   "section": "quick_links",
+   "label": "showrooms",
+   "url": "https://woodexfurniture.pk/showrooms",
+   "position": 3
+  },
+  {
+   "section": "quick_links",
+   "label": "Services",
+   "url": "/services",
+   "position": 4
+  },
+  {
+   "section": "quick_links",
+   "label": "Terms",
+   "url": "/terms-and-conditions",
+   "position": 5
+  },
+  {
+   "section": "quick_links",
+   "label": "Contact",
+   "url": "https://woodexfurniture.pk/contact-us",
+   "position": 6
+  },
+  {
+   "section": "learn_more",
+   "label": "E-Quotation",
+   "url": "/e-quotation",
+   "position": 1
+  },
+  {
+   "section": "learn_more",
+   "label": "Planning Ideas",
+   "url": "/planning-ideas",
+   "position": 2
+  },
+  {
+   "section": "learn_more",
+   "label": "Virtual Showroom",
+   "url": "https://woodexfurniture.pk/showrooms.php",
+   "position": 3
+  },
+  {
+   "section": "learn_more",
+   "label": "Delivery & Installation",
+   "url": "/delivery-installation",
+   "position": 4
+  },
+  {
+   "section": "learn_more",
+   "label": "Material & Color",
+   "url": "/material-and-color",
+   "position": 5
+  },
+  {
+   "section": "learn_more",
+   "label": "Workspace Design",
+   "url": "/workspace-design",
+   "position": 6
+  }
+ ],
+ "header": [
+  {
+   "label": "Shop",
+   "url": "/shop",
+   "is_mega": true,
+   "children_from": "categories"
+  },
+  {
+   "label": "Sale",
+   "url": "/sale"
+  },
+  {
+   "label": "Projects",
+   "url": "/projects"
+  },
+  {
+   "label": "Services",
+   "url": "/services"
+  },
+  {
+   "label": "Showrooms",
+   "url": "/showrooms"
+  },
+  {
+   "label": "Planning Ideas",
+   "url": "/planning-ideas"
+  },
+  {
+   "label": "About Us",
+   "url": "/about-us"
+  },
+  {
+   "label": "Blog",
+   "url": "/blog"
+  },
+  {
+   "label": "Contact",
+   "url": "/contact-us"
+  }
+ ]
+}

@@ -22,10 +22,13 @@ for path in \
     app/Domain/Commerce \
     app/Domain/Website/Content \
     app/Domain/Website/Puck \
+    app/Domain/Website/Shell \
+    app/Settings/SiteShellSettings.php \
     app/Providers/CommerceServiceProvider.php \
     app/Providers/WebsiteServiceProvider.php \
     app/Http/Controllers/Website/SitePageRenderController.php \
     resources/views/puck \
+    resources/views/site \
     resources/css/site.css \
     resources/js/studio/registry.json \
     app/Livewire/Admin/Commerce \
@@ -54,6 +57,10 @@ for path in \
     database/seeders/data/catalog.json \
     database/seeders/SiteContentSeeder.php \
     database/seeders/data/site-content.json \
+    database/seeders/SiteShellSeeder.php \
+    database/seeders/HomePageSeeder.php \
+    database/seeders/data/legacy-site-shell.json \
+    database/seeders/data/legacy-home-blocks.json \
     database/data/product-photos \
     routes/commerce.php \
     routes/site.php \
@@ -423,6 +430,8 @@ Next, in the OS checkout:
     php artisan commerce:import-images --force             # 20 products, 3 sizes each, into storage/app/public
     php artisan db:seed --class=SiteContentSeeder --force  # the reimagined site's 16 pages + 30 records
     php artisan db:seed --class=ThemeTokensSeeder --force   # the storefront palette, editable in Website → Theme
+    php artisan db:seed --class=SiteShellSeeder --force     # top bar, header mega menu, footer — from the IBPanel dump
+    php artisan db:seed --class=HomePageSeeder --force      # home page as blocks, real slide copy from the dump
     php artisan website:archive-interior                   # export + stamp the 142 interior pages
     php artisan website:import-redirects                   # the 301s for the archived interior URLs (rows only)
     php artisan website:publish                            # shells, sitemap, and the .htaccess redirect block

@@ -94,7 +94,8 @@ final class Registry
         $defaults = [];
 
         foreach ($this->block($name)['fields'] as $field => $definition) {
-            $defaults[$field] = $definition['default'] ?? null;
+            $defaults[$field] = $definition['default']
+                ?? (($definition['type'] ?? 'text') === 'list' ? [] : null);
         }
 
         return $defaults;
@@ -118,23 +119,75 @@ final class Registry
      */
     public function normalizeProps(string $name, array $props): array
     {
-        $block = $this->block($name);
+        return $this->normalizeFields($this->block($name)['fields'], $props);
+    }
+
+    /**
+     * Normalise a value map against a field schema.
+     *
+     * Shared by block props and by the items inside a `list` field, so a slide is coerced by exactly
+     * the same rules as a block and the two can never drift apart.
+     *
+     * @param  array<string, array<string, mixed>>  $schema  field name => definition
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    private function normalizeFields(array $schema, array $values): array
+    {
         $normalized = [];
 
-        foreach ($block['fields'] as $field => $definition) {
+        foreach ($schema as $field => $definition) {
             $type = $definition['type'] ?? 'text';
-            $has = array_key_exists($field, $props);
-            $value = $has ? $props[$field] : ($definition['default'] ?? null);
+            $has = array_key_exists($field, $values);
+            $value = $has ? $values[$field] : ($definition['default'] ?? null);
 
             $normalized[$field] = match ($type) {
                 'number' => $this->clampNumber($value, $definition),
                 'boolean' => $this->toBool($value),
                 'select' => $this->oneOf($value, $definition['options'] ?? [], $definition['default'] ?? ''),
+                'list' => $this->normalizeList($value, $definition),
                 default => is_scalar($value) ? (string) $value : '',
             };
         }
 
         return $normalized;
+    }
+
+    /**
+     * A repeatable field: an ordered list of items, each coerced against the field's `item` schema.
+     *
+     * Added for the hero slider, which is five slides sharing one shape. The alternative — a column
+     * per slide — makes a slider that cannot have a sixth slide without a deploy, and a textarea of
+     * JSON makes a field the owner cannot edit without breaking.
+     *
+     * @param  array<string, mixed>  $definition
+     * @return list<array<string, mixed>>
+     */
+    private function normalizeList(mixed $value, array $definition): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        /** @var array<string, array<string, mixed>> $itemSchema */
+        $itemSchema = is_array($definition['item'] ?? null) ? $definition['item'] : [];
+        $max = isset($definition['max']) ? (int) $definition['max'] : 24;
+
+        $items = [];
+
+        foreach ($value as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $items[] = $this->normalizeFields($itemSchema, $item);
+
+            if (count($items) >= $max) {
+                break;
+            }
+        }
+
+        return $items;
     }
 
     private function clampNumber(mixed $value, array $definition): int
