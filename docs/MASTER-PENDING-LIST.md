@@ -53,6 +53,21 @@ but is not on any public URL, so none of the recent admin work is visible to a v
 
 ---
 
+### 2.7 The builder's output never reaches a visitor — found 6 Nov
+
+Confirmed by reading the code and then proving the fix in the preview:
+
+* `SitePageRenderController` renders a page's blocks inside `site.layout` — that is the Live preview pane.
+  It is reachable **only** at `/page-preview/{key}`.
+* `PublishSiteCommand` does not write that HTML. It writes `public/<path>/index.html` — the **old SPA
+  document** — so publishing a built page produces the React shell again.
+* And `public/index.html` answers `/` before Laravel is ever consulted, so `/` could never reach the app.
+
+Proven fix (in the preview, not yet in the slice): `/` routed to the published page, with the SPA's
+`index.html` moved aside, renders the built home — hero slider, Market We Served, Latest Collection with
+12 real products at PKR prices. **To ship it:** move the SPA `index.html` aside, add the `/` route before
+the fallback, and make Publish write the rendered Puck HTML instead of the SPA shell.
+
 ## 3. Commerce — from browse to paid order
 
 | # | Item | Notes |
@@ -75,6 +90,8 @@ but is not on any public URL, so none of the recent admin work is visible to a v
 | 4.3 | Legacy content import: services, projects, showrooms, blog | 16 pages exist; the legacy site has more |
 | 4.4 | Legacy orders/quotes imported **as history** (not fulfilable) | Standing decision from earlier: history, not live work |
 | 4.5 | Backup + restore rehearsal of the staging database | A backup nobody has restored is a hope |
+| 4.6 | **Product images — 137 of 157 products have none.** `commerce_product_media` holds 20 rows; the `media` table is empty; `commerce_products` has no image column. The catalogue has names, SKUs, categories, prices and stock, but the grid renders blank boxes | Import from the old site, or upload per product |
+| 4.7 | The "1 442 blocks" figure is the **legacy** `page_blocks` table, not the new builder. The Puck documents hold the home page's 4 blocks (`heroSlider`, `marketWeServe`, `productGrid`, `cta`). Rebuilding 16 pages in the new builder is real work, not a migration | Decide which of the 16 pages get rebuilt first |
 
 ---
 
