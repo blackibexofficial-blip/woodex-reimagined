@@ -36,6 +36,8 @@ for path in \
     app/Livewire/Admin/Website/BlockEditor.php \
     app/Livewire/Admin/Website/ContentIndex.php \
     app/Livewire/Admin/Website/MediaLibrary.php \
+    app/Livewire/Admin/Website/MenuBuilder.php \
+    app/Livewire/Admin/Website/SiteSettings.php \
     app/Console/Commands/OwnerAccountCommand.php \
     app/Console/Commands/ImportProductImagesCommand.php \
     app/Http/Controllers/Site \
@@ -55,6 +57,8 @@ for path in \
     resources/views/components/admin/icon-button.blade.php \
     resources/views/livewire/admin/website/content-index.blade.php \
     resources/views/livewire/admin/website/media-library.blade.php \
+    resources/views/livewire/admin/website/menu-builder.blade.php \
+    resources/views/livewire/admin/website/site-settings.blade.php \
     database/seeders/CommercePermissionsSeeder.php \
     database/seeders/ThemeTokensSeeder.php \
     database/seeders/CatalogSeeder.php \
@@ -400,12 +404,36 @@ if [ -f "$ADMIN_ROUTES" ] && ! grep -qF "website.menus" "$ADMIN_ROUTES"; then
             "Route::livewire('/website/menus', MenuBuilder::class)->name('website.menus')->middleware('can:website.edit');" \
             "")" "menu builder route" "website.menus"; then
         # The import has to exist or the route is a fatal error the first time it is hit.
-        insert_file_before "$ADMIN_ROUTES" \
-            "use App\\Livewire\\Admin\\Website\\PagesIndex;" \
-            "use App\\Livewire\\Admin\\Website\\MenuBuilder;" "menu builder import" "MenuBuilder;" >/dev/null
+        :
+    fi
+fi
+# Storefront settings. Guarded on its own route, for the same reason the menu builder is: an insert
+# nested inside a condition that is already false on an existing install ships to new installs only.
+ADMIN_ROUTES="$PLATFORM/routes/admin.php"
+if [ -f "$ADMIN_ROUTES" ] && ! grep -qF "website.shell" "$ADMIN_ROUTES"; then
+    if insert_file_before "$ADMIN_ROUTES" \
+        "Route::livewire('/website/menus', MenuBuilder::class)" \
+        "$(printf '%s\n' \
+            "Route::livewire('/website/shell', SiteSettings::class)->name('website.shell')->middleware('can:website.edit');" \
+            "")" "storefront shell route" "website.shell"; then
+        # The import has to exist or the route is a fatal error the first time it is hit.
+        :
     fi
 fi
 rm -f "$BLOCK"
+
+
+# Imports for the two screens above, anchored on their own routes.
+#
+# They were nested inside the route insert and anchored on the PagesIndex import, so a route could land
+# without its use statement — a fatal error the first time the screen is opened. Anchoring each import
+# on the route it serves makes the pair inseparable.
+insert_file_before "$ADMIN_ROUTES" \
+    "Route::livewire('/website/menus', MenuBuilder::class)" \
+    "use App\\Livewire\\Admin\\Website\\MenuBuilder;" "menu builder import" "MenuBuilder;" >/dev/null || true
+insert_file_before "$ADMIN_ROUTES" \
+    "Route::livewire('/website/shell', SiteSettings::class)" \
+    "use App\\Livewire\\Admin\\Website\\SiteSettings;" "storefront shell import" "SiteSettings;" >/dev/null || true
 
 # ---- the 137 redirects, in the preview server -------------------------------------------------------------------
 #

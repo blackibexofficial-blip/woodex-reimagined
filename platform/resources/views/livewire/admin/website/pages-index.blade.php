@@ -6,6 +6,7 @@
             {{-- The builder edits the generated HTML files, not the record — a screenshot of it looks like a page
                  editor and is not one, so the label says what it opens. --}}
             <x-admin.button icon="menu" :href="route('admin.website.menus')">Menus</x-admin.button>
+            <x-admin.button icon="settings" :href="route('admin.website.shell')">Storefront shell</x-admin.button>
             <x-admin.button icon="panel" :href="route('admin.website.builder')">HTML files</x-admin.button>
         </x-slot:actions>
     </x-admin.page-header>
