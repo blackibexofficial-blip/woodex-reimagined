@@ -104,6 +104,8 @@ final class ImportLegacyCatalogCommand extends Command
             // serving the pre-import answers for the length of the TTL and the import
             // looks like it did nothing.
             CatalogCache::bump();
+
+            $this->exportMediaManifest($products, $skuMap);
         }
 
         $this->report($commit);
@@ -331,6 +333,53 @@ final class ImportLegacyCatalogCommand extends Command
                 $this->counts['links'] += count($linkIds);
             }
         }
+    }
+
+    /**
+     * Write what the media fetcher needs, keyed by the SKU the database actually uses.
+     *
+     * The legacy SKU cannot be used for this: 24 products have none and 13 SKUs are
+     * shared by 49 products, so the importer derives some (`WX-L37`) and keeps others.
+     * A fetcher that recomputed the rule would drift from the importer the moment the
+     * rule changed, and would silently leave 24 products without a photo. So the
+     * importer exports the mapping it just committed — it is authoritative by
+     * construction.
+     *
+     * @param  list<array<string,mixed>>  $products
+     * @param  array<int,string>  $skuMap
+     */
+    private function exportMediaManifest(array $products, array $skuMap): void
+    {
+        $rows = [];
+        foreach ($products as $p) {
+            $images = $p['images'] ?? [];
+            if (! is_array($images) || $images === []) {
+                continue;
+            }
+
+            $rows[] = [
+                'legacy_id' => (int) $p['legacy_id'],
+                'sku' => $skuMap[(int) $p['legacy_id']],
+                'slug' => (string) $p['slug'],
+                'name' => (string) $p['name'],
+                'images' => array_values(array_map('strval', $images)),
+            ];
+        }
+
+        $dir = storage_path('app/migration');
+        if (! is_dir($dir)) {
+            mkdir($dir, 0o775, true);
+        }
+
+        file_put_contents(
+            $dir.'/media-manifest.json',
+            json_encode(
+                ['generated_at' => now()->toIso8601String(), 'products' => $rows],
+                JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+            ),
+        );
+
+        $this->components->info(sprintf('Media manifest: %d products → %s', count($rows), $dir.'/media-manifest.json'));
     }
 
     /** A one-variant product with real stock, so the card does not read "Out of Stock". */
