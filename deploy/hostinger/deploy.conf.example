@@ -46,7 +46,10 @@ DB_HOST="localhost"
 # ---- local side --------------------------------------------------------------------------------
 # The Woodex OS checkout with this slice applied, i.e. the output of:
 #   sh tools/furniture-commerce/apply.sh /path/to/woodexinterior
-# It must contain artisan, composer.json and vendor (run composer install at least once).
+# It must contain vendor (run composer install at least once in the app root).
+#
+# Either the checkout itself or its `platform/` directory works: the script notices when the path you
+# gave has no artisan but a `platform/artisan` one level down, and uses that.
 APP_DIR=""
 
 # This repository (the storefront SPA + the slice). Defaults to two levels up from this script.

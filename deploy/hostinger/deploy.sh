@@ -89,6 +89,15 @@ RSYNC_SSH="ssh -p $SSH_PORT -o BatchMode=yes -o StrictHostKeyChecking=accept-new
 # ---- preflight: local --------------------------------------------------------------------------
 step "Preflight (local)"
 [[ -d "$APP_DIR" ]] || die "APP_DIR does not exist: $APP_DIR"
+
+# The OS checkout keeps the Laravel root one level down, in `platform/` — that is the path apply.sh
+# expects (`$OS/platform`). Pointing APP_DIR at the checkout itself is the natural mistake, and it used
+# to fail with "has no artisan" even though the app was right there. Detect it instead of arguing.
+if [[ ! -f "$APP_DIR/artisan" && -f "$APP_DIR/platform/artisan" ]]; then
+    note "APP_DIR is the checkout; using its application root: $APP_DIR/platform"
+    APP_DIR="$APP_DIR/platform"
+fi
+
 [[ -f "$APP_DIR/artisan" ]] || die "APP_DIR has no artisan — that is not a Laravel app root: $APP_DIR"
 [[ -f "$APP_DIR/composer.json" ]] || die "APP_DIR has no composer.json: $APP_DIR"
 command -v rsync >/dev/null || die "rsync is required locally"
