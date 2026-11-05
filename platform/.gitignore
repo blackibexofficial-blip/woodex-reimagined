@@ -8,9 +8,9 @@
 /storage/framework/views/*
 /bootstrap/cache/*
 /database/*.sqlite
-/public/build
 /public/assets
 /public/media
 /public/front
 /public/insights
 /.phpunit.result.cache
+/storage/app/public

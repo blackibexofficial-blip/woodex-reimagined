@@ -188,9 +188,13 @@ Route::get('/site/tags.js', SiteTagsController::class)->name('site.tags');
 | shadow Livewire, Fortify or the installer.
 */
 /*
- * EXPERIMENT: the CMS home page at the root URL.
+ * The CMS home page at the root URL.
  *
  * Must be registered before the fallback, or the fallback answers first and this never runs.
+ *
+ * This used to be unreachable in production: `public/index.html` answered `/` before Laravel
+ * booted, so the builder's home page was live only at `/page-preview/{key}`. The static file
+ * shells were removed on 2026-11-06 and the published page answers here now.
  */
 Route::get('/', function (Illuminate\Http\Request $request) {
     $page = App\Domain\Website\Content\Models\SitePage::query()
@@ -202,6 +206,27 @@ Route::get('/', function (Illuminate\Http\Request $request) {
 
     return app(App\Http\Controllers\Website\SitePageRenderController::class)->show($request, $page->key);
 })->name('site.home');
+
+/*
+ * The public catalogue.
+ *
+ * Everything the home page's product grid links to: the listing, a category subtree and a single
+ * product. Registered before the fallback for the same reason the home page is — the fallback
+ * would otherwise treat `/shop` as an editorial page and answer 404 when the CMS owns no such path.
+ *
+ * `/shop` is deliberately dynamic even though the CMS also holds a `shop` page: a listing that has
+ * to be republished every time a price changes is the bug this replaces. The editorial hero that
+ * page carries can be lifted into the listing template later; the catalogue itself must come from
+ * `CatalogService`.
+ */
+Route::get('/shop', [App\Http\Controllers\Website\StorefrontController::class, 'shop'])
+    ->name('site.shop');
+
+Route::get('/category/{slug}', [App\Http\Controllers\Website\StorefrontController::class, 'category'])
+    ->name('site.category');
+
+Route::get('/product/{slug}', [App\Http\Controllers\Website\StorefrontController::class, 'product'])
+    ->name('site.product');
 
 Route::fallback(function (Request $request) {
     $response = app(SiteRouter::class)->respond($request);

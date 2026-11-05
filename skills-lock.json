@@ -17,7 +17,7 @@
       "source": "laravel/agent-skills",
       "sourceType": "github",
       "skillPath": "laravel-cloud/skills/deploying-to-cloud/SKILL.md",
-      "computedHash": "595f89f9dc894b3868b3a07520176b8bbf0efc3985a07520da740ee80e8afcba"
+      "computedHash": "06e16a79c738a4bfb515fb515c4c9410691611b63f29b9ff18896d54f5c79133"
     },
     "order-fulfillment": {
       "source": "truthanb/laravel-ai-skills",
