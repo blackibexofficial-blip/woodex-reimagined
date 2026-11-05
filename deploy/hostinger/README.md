@@ -165,6 +165,55 @@ Two notes that cost an hour otherwise:
   leaves every other key alone. It used to skip the file entirely when it existed, so migrations ran
   against old credentials.
 
+### Folder structure: where the app sits, and what the domain points at
+
+Two rules decide everything else:
+
+1. **Laravel's `public/` is the document root, or nothing is.** The domain must resolve into
+   `…/platform/public`. If it resolves into `public_html` instead, the whole repository is served —
+   `.git/`, `composer.json`, the source, and `.env`, which holds the database password.
+2. **Nothing writable lives inside the document root.** `storage/`, `.env` and `vendor/` belong to the
+   app, not to the web.
+
+The install already on the server has the app in `public_html/platform/`, i.e. *inside* the document
+root. That is not fatal, but it means the checkout is public, and whether that is currently harmless
+depends entirely on one file: `public_html/.htaccess`.
+
+Two ways to make it right, in order of preference:
+
+**A. Retarget the document root (no files move).** hPanel → Websites → the domain → *Advanced* →
+document root, set to `public_html/platform/public`. The app keeps working exactly as it is, and
+`public_html/.env`, `.git/` and `composer.json` stop being reachable, because the domain no longer
+serves that directory. Do this and the `public_html/.htaccess` question stops mattering.
+
+**B. Leave the document root alone and front-controller it.** Point `public_html/index.php` at
+`platform/public/index.php` (three `require`s and a `chdir`) and deny the sensitive paths in
+`public_html/.htaccess`. This works, but every request now passes through a rewrite the framework did
+not write, and it is one `.htaccess` merge away from serving a file it should not.
+
+Either way, verify from outside — the checks are the point, not the configuration:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://staging.blackibex.net/.env          # must be 403/404
+curl -s -o /dev/null -w '%{http_code}\n' https://staging.blackibex.net/.git/config   # must be 403/404
+curl -s -o /dev/null -w '%{http_code}\n' https://staging.blackibex.net/composer.json # must be 403/404
+curl -s -o /dev/null -w '%{http_code}\n' https://staging.blackibex.net/              # must be 200
+```
+
+### Reading the server without downloading it
+
+`inspect-remote.sh` prints the document root, the tree two levels down, which directory is the Laravel
+root, whether `vendor/` and `.env` are present, PHP's version, and what `.htaccess` currently does. It
+writes nothing. Run it in hPanel → Advanced → Terminal:
+
+```bash
+sh inspect-remote.sh ~/public_html
+```
+
+A Hostinger folder *download* is not a substitute: it is tens of megabytes of uploads, and the copy
+that reaches Drive is regularly truncated — an export handed to us mid-project ended inside the third
+file with no central directory, and could not be opened by any tool.
+
 ### The hPanel "Deploy from GitHub" button is not this deploy
 
 hPanel → Advanced → GIT clones a branch into a directory and stops there. It does not run `npm` or
