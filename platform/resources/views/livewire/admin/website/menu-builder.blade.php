@@ -57,12 +57,35 @@
                 <h2 class="text-theme-sm font-semibold text-gray-900 dark:text-white">
                     {{ $this->menus()[$menu] ?? $menu }}
                 </h2>
-                <span class="text-theme-xs text-gray-500">{{ count($items) }} links</span>
+                <span class="text-theme-xs text-gray-500">
+                    {{ count($items) }} links · <span class="hidden xl:inline">drag to reorder, drop on a row to nest</span>
+                </span>
             </div>
 
-            <ul class="p-2">
+            {{--
+                Drag and drop, in three zones per row: the top and bottom quarters reorder as a sibling,
+                the middle nests. The arrow buttons stay for the keyboard and for touch, where HTML5
+                dragging does not exist — this is an addition, not a replacement.
+
+                Everything here is client-side until the drop: `moveTo()` is the only call, and it
+                re-derives the order on the server rather than trusting an array sent from the browser.
+            --}}
+            <ul class="p-2" x-data="{ drag: null, over: null, zone: '' }">
                 @forelse ($items as $row)
-                    <li wire:key="item-{{ $row['id'] }}" class="flex items-stretch gap-1">
+                    <li wire:key="item-{{ $row['id'] }}"
+                        draggable="true"
+                        x-bind:class="{ 'opacity-40': drag === {{ $row['id'] }}, 'ring-2 ring-wood-300 dark:ring-wood-500': over === {{ $row['id'] }} && zone === 'inside' }"
+                        x-on:dragstart="drag = {{ $row['id'] }}; $event.dataTransfer.effectAllowed = 'move'"
+                        x-on:dragend="drag = null; over = null; zone = ''"
+                        x-on:dragover.prevent="over = {{ $row['id'] }}; const r = $el.getBoundingClientRect(); const y = ($event.clientY - r.top) / Math.max(r.height, 1); zone = y < 0.28 ? 'before' : (y > 0.72 ? 'after' : 'inside')"
+                        x-on:drop.prevent="if (drag && drag !== {{ $row['id'] }}) { $wire.moveTo(drag, {{ $row['id'] }}, zone) } drag = null; over = null; zone = ''"
+                        class="relative flex items-stretch gap-1 rounded-lg">
+
+                        {{-- where it will land --}}
+                        <span x-show="over === {{ $row['id'] }} && zone === 'before'" style="display: none"
+                              class="pointer-events-none absolute inset-x-2 -top-px h-0.5 rounded bg-wood-500"></span>
+                        <span x-show="over === {{ $row['id'] }} && zone === 'after'" style="display: none"
+                              class="pointer-events-none absolute inset-x-2 -bottom-px h-0.5 rounded bg-wood-500"></span>
                         <button type="button" wire:click="select({{ $row['id'] }})"
                                 @class([
                                     'min-w-0 flex-1 rounded-lg py-2 pr-3 text-left transition',

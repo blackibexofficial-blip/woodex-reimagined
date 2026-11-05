@@ -130,6 +130,51 @@ final class MenuBuilderWiringTest
         );
     }
 
+    /**
+     * Drag and drop is only safe with two refusals in place: a link cannot be dropped inside its own
+     * descendant (the subtree detaches and disappears from every render), and the moved subtree must
+     * still fit under the shell's three levels.
+     */
+    public function testDraggingIsServerSideAndRefusesTheTwoDestructiveMoves(): void
+    {
+        $component = $this->source('/app/Livewire/Admin/Website/MenuBuilder.php');
+
+        Assert::true(str_contains($component, 'public function moveTo('), 'there is one entry point for a drop');
+
+        $moveTo = substr($component, (int) strpos($component, 'public function moveTo('));
+        $moveTo = substr($moveTo, 0, (int) strpos($moveTo, 'Persist the text fields'));
+
+        Assert::true(str_contains($moveTo, "in_array(\$position, ['before', 'after', 'inside']"), 'three drop zones');
+        Assert::true(str_contains($moveTo, '$this->descendantsOf($id)'), 'a parent cannot land in its own child');
+        Assert::true(str_contains($moveTo, '$this->subtreeHeight($item)'), 'the subtree is measured, not just the row');
+        Assert::true(str_contains($moveTo, '$this->normalise()'), 'the order is renumbered after every drop');
+    }
+
+    /** Dragging reloads from the database, so it must not be allowed to eat unsaved text. */
+    public function testADropIsRefusedWhileTextIsUnsaved(): void
+    {
+        $component = $this->source('/app/Livewire/Admin/Website/MenuBuilder.php');
+        $moveTo = substr($component, (int) strpos($component, 'public function moveTo('));
+
+        Assert::true(
+            str_contains(substr($moveTo, 0, 900), 'if ($this->dirty)'),
+            'the dirty guard runs before anything is written',
+        );
+        Assert::true(str_contains($moveTo, 'Save your text changes before moving links'), 'and says why');
+    }
+
+    /** The markup has to be draggable, and the buttons must survive for keyboard and touch. */
+    public function testRowsAreDraggableAndKeepTheirButtons(): void
+    {
+        $view = $this->source('/resources/views/livewire/admin/website/menu-builder.blade.php');
+
+        Assert::true(str_contains($view, 'draggable="true"'), 'rows are draggable');
+        Assert::true(str_contains($view, '$wire.moveTo(drag'), 'a drop calls the server');
+        Assert::true(str_contains($view, "zone === 'inside'"), 'the middle of a row means nest');
+        Assert::true(str_contains($view, 'wire:click="moveUp('), 'the arrow buttons are still there');
+        Assert::true(str_contains($view, 'wire:click="indent('), 'including nesting by button');
+    }
+
     public function testTheRouteIsInstalledAndThePagesScreenLinksToIt(): void
     {
         $apply = $this->source('/../tools/furniture-commerce/apply.sh');

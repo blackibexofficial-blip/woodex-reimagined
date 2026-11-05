@@ -251,6 +251,104 @@ final class MenuBuilder extends Component
     }
 
     /**
+     * Move a link to a new place in the tree — what drag and drop calls.
+     *
+     * Three drop zones, because a tree needs to express two different things:
+     *
+     *   before / after  become a sibling of the row you dropped on, at its parent's level
+     *   inside          becomes a child of it, appended after its existing children
+     *
+     * Two refusals, both silent data loss otherwise: a link cannot be dropped inside its own
+     * descendant (the subtree would detach from the tree and vanish from every render), and the
+     * moved subtree must still fit under the three-level cap.
+     */
+    public function moveTo(int $id, int $targetId, string $position): void
+    {
+        abort_unless($this->user()->can('website.edit'), 403);
+
+        if ($id === $targetId) {
+            return;
+        }
+
+        // Moving reloads the tree from the database, which would throw away text typed but not yet
+        // saved. Refusing costs one click; losing a half-written URL costs trust.
+        if ($this->dirty) {
+            $this->toast('Save your text changes before moving links.', 'error');
+
+            return;
+        }
+
+        if (! in_array($position, ['before', 'after', 'inside'], true)) {
+            return;
+        }
+
+        $item = NavigationItem::query()->find($id);
+        $target = NavigationItem::query()->find($targetId);
+
+        if ($item === null || $target === null || $item->menu !== $this->menu || $target->menu !== $this->menu) {
+            return;
+        }
+
+        if (in_array($targetId, $this->descendantsOf($id), true)) {
+            $this->toast('A link cannot be moved inside one of its own children.', 'error');
+
+            return;
+        }
+
+        $newParentId = $position === 'inside' ? (int) $target->id : ($target->parent_id === null ? null : (int) $target->parent_id);
+
+        /** @var NavigationItem|null $newParent */
+        $newParent = $newParentId === null ? null : NavigationItem::query()->find($newParentId);
+        $parentDepth = $newParent === null ? 0 : $this->depthOf($newParent);
+
+        if ($parentDepth + 1 + $this->subtreeHeight($item) > self::MAX_DEPTH) {
+            $this->toast('That would nest deeper than the shell can show (three levels).', 'error');
+
+            return;
+        }
+
+        // The new order, as ids: the destination's siblings without the moved item, with it slotted in.
+        $siblings = NavigationItem::query()
+            ->where('menu', $this->menu)
+            ->where('parent_id', $newParentId)
+            ->orderBy('position')
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(static fn ($value): int => (int) $value)
+            ->reject(static fn (int $value): bool => $value === $id)
+            ->values()
+            ->all();
+
+        $index = array_search($targetId, $siblings, true);
+
+        if ($position === 'inside') {
+            $at = count($siblings);
+        } elseif ($index === false) {
+            $at = count($siblings);
+        } else {
+            $at = $position === 'before' ? $index : $index + 1;
+        }
+
+        array_splice($siblings, $at, 0, [$id]);
+
+        $item->parent_id = $newParentId;
+        $item->save();
+
+        foreach ($siblings as $offset => $siblingId) {
+            NavigationItem::query()
+                ->where('id', $siblingId)
+                ->update(['position' => $offset + 1]);
+        }
+
+        // The old parent's list now has a hole; renumbering every list costs one query and removes the
+        // class of bug where two rows claim position 3 and the order depends on the database's mood.
+        $this->normalise();
+        $this->load();
+
+        $this->selected = $id;
+    }
+
+    /**
      * Persist the text fields of every item on this screen.
      *
      * Items with no label are dropped: an empty label renders an invisible link in the header, and
