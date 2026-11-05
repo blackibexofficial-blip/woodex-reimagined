@@ -15,7 +15,23 @@ SLICE=$(cd "$(dirname "$0")/../.." && pwd)/platform
 OS=${1:?usage: apply.sh /path/to/woodexinterior}
 PLATFORM="$OS/platform"
 
-[ -f "$PLATFORM/artisan" ] || { echo "not a woodex OS checkout: $OS" >&2; exit 1; }
+# Two layouts in the wild, and both are legitimate:
+#
+#   <checkout>/platform/artisan   the OS repository — what this script was written for
+#   <app>/artisan                 the Laravel root on its own, which is how Hostinger ends up when the
+#                                 app is deployed as its own directory
+#
+# Passing the second one used to fail with "not a woodex OS checkout" while the app sat right there.
+# `OS` still means the checkout, because the preview-server step below reaches for $OS/tools/sandbox.
+if [ ! -f "$PLATFORM/artisan" ] && [ -f "$OS/artisan" ]; then
+    PLATFORM="$OS"
+    OS=$(cd "$OS/.." && pwd)
+fi
+
+[ -f "$PLATFORM/artisan" ] || {
+    echo "not a woodex OS checkout: $1 (no artisan in it, and none in its platform/)" >&2
+    exit 1
+}
 
 echo "== commerce slice"
 for path in \

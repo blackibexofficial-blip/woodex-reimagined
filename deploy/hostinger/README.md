@@ -133,6 +133,38 @@ ssh -p 65002 u128159657@72.60.93.138 'tail -40 ~/woodex-app/storage/logs/laravel
 
 ---
 
+### When the application is already on the server
+
+The common case after a first manual install: `public_html/` holds the OS checkout and the Laravel
+root is `public_html/platform/`, with `vendor/` already installed. Do not rsync a whole app over it —
+ship the slice and let the server apply it to what is there:
+
+```bash
+C=deploy/hostinger   # from the repository root
+
+SSH_HOST=72.60.93.138 SSH_PORT=65002 SSH_USER=u128159657 \
+SSH_KEY=deploy/keys/woodex_staging_ed25519 \
+REMOTE_APP=/home/u128159657/public_html/platform \
+REMOTE_SLICE=/home/u128159657/woodex-slice \
+STAGING_DOMAIN=staging.blackibex.net \
+DB_NAME=u128159657_woodexos DB_USER=u128159657_woodexos DB_PASSWORD='…' \
+sh $C/sync-slice.sh
+```
+
+What it does: builds the SPA, rsyncs this repository to `~/woodex-slice` (outside the docroot, and
+without `deploy/keys`), ships `dist/front/`, runs `apply.sh` **on the server** against the existing
+app, then `remote.sh --migrate --seed-if-empty` with the credentials above.
+
+Two notes that cost an hour otherwise:
+
+* `REMOTE_SLICE` must be outside the domain root. The default puts it beside `REMOTE_APP`, which is
+  inside `public_html` when the app is deployed that way — every file of this repository, including
+  `deploy/`, would then be reachable over HTTP.
+* If `public_html/.env` already exists (it did here, from an earlier install), the deploy now
+  **updates** `DB_*`, `APP_URL`, `PUBLIC_SITE_URL` and `PUBLIC_LEADS_ALLOWED_ORIGINS` in place and
+  leaves every other key alone. It used to skip the file entirely when it existed, so migrations ran
+  against old credentials.
+
 ### The hPanel "Deploy from GitHub" button is not this deploy
 
 hPanel → Advanced → GIT clones a branch into a directory and stops there. It does not run `npm` or

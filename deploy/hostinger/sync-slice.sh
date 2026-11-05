@@ -33,6 +33,11 @@ STAGING_DOMAIN="${STAGING_DOMAIN:?set STAGING_DOMAIN}"
 APP_URL="${APP_URL:-https://$STAGING_DOMAIN}"
 PHP_BIN="${PHP_BIN:-php}"
 HEALTH_PATH="${HEALTH_PATH:-/page-preview/home}"
+DB_NAME="${DB_NAME:-}"
+DB_USER="${DB_USER:-}"
+DB_PASSWORD="${DB_PASSWORD:-}"
+DB_HOST="${DB_HOST:-localhost}"
+SEED_IF_EMPTY="${SEED_IF_EMPTY:-1}"
 
 if [[ -t 1 ]]; then C_OK=$'\e[32m'; C_DIM=$'\e[2m'; C_OFF=$'\e[0m'; else C_OK=; C_DIM=; C_OFF=; fi
 step() { printf '\n%s==> %s%s\n' "$C_OK" "$*" "$C_OFF"; }
@@ -78,7 +83,18 @@ remote "sh $REMOTE_SLICE/tools/furniture-commerce/apply.sh $REMOTE_APP" || {
 }
 
 step "Migrate, cache, publish"
-remote "bash $REMOTE_SLICE/deploy/hostinger/remote.sh --app $REMOTE_APP --php $PHP_BIN --url $APP_URL --migrate"
+# The database is forwarded for the same reason deploy.sh forwards it: on a host that already has a
+# .env, the credentials in it are whatever an earlier install left there. %q keeps a password
+# containing & or / intact through the remote shell, and it is never printed.
+REMOTE_DB=""
+[[ -n "$DB_NAME" ]] && REMOTE_DB="$REMOTE_DB --db-name $(printf %q "$DB_NAME")"
+[[ -n "$DB_USER" ]] && REMOTE_DB="$REMOTE_DB --db-user $(printf %q "$DB_USER")"
+[[ -n "$DB_PASSWORD" ]] && REMOTE_DB="$REMOTE_DB --db-pass $(printf %q "$DB_PASSWORD")"
+[[ -n "$DB_HOST" ]] && REMOTE_DB="$REMOTE_DB --db-host $(printf %q "$DB_HOST")"
+SEED_FLAG=""
+[[ "$SEED_IF_EMPTY" == "1" ]] && SEED_FLAG=" --seed-if-empty"
+
+remote "bash $REMOTE_SLICE/deploy/hostinger/remote.sh --app $REMOTE_APP --php $PHP_BIN --url $APP_URL --migrate $SEED_FLAG $REMOTE_DB"
 
 step "Health check"
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 30 "$APP_URL$HEALTH_PATH" || echo 000)

@@ -42,6 +42,22 @@ done
 [[ -n "$APP" && -d "$APP" ]] || { echo "bad --app: $APP" >&2; exit 1; }
 
 say() { printf '\n  ·  %s\n' "$*"; }
+
+# Set KEY=value in .env, replacing the line if it exists and appending it if it does not.
+#
+# awk, not sed: the value can contain /, & or a backslash (a MySQL password often does), and `sed
+# s|…|…|` would treat all three as syntax. The key is passed as data too, so no regex is built from it.
+env_set() {
+    local key=$1 value=$2
+    [[ -f .env ]] || return 0
+
+    awk -v k="$key" -v v="$value" '
+        BEGIN { done = 0 }
+        !done && index($0, k "=") == 1 { print k "=" v; done = 1; next }
+        { print }
+        END { if (!done) print k "=" v }
+    ' .env > .env.wx-tmp && mv .env.wx-tmp .env
+}
 fail() { printf '\n  x  %s\n' "$*" >&2; exit 1; }
 
 cd "$APP"
@@ -120,6 +136,30 @@ ENVEOF
 MSG
         exit 3
     fi
+else
+    # An existing .env is not a reason to skip the database.
+    #
+    # The first version only wrote .env when it was absent, so a host that already had one — this one
+    # did, from an earlier install — kept whatever credentials it carried and the migrations ran
+    # against them. Correcting the keys in place is what makes a re-deploy safe.
+    if [[ -n "$DB_NAME" && -n "$DB_USER" && -n "$DB_PASS" ]]; then
+        say ".env exists — updating the database and URL keys in place"
+        env_set DB_CONNECTION mysql
+        env_set DB_HOST "$DB_HOST"
+        env_set DB_PORT 3306
+        env_set DB_DATABASE "$DB_NAME"
+        env_set DB_USERNAME "$DB_USER"
+        env_set DB_PASSWORD "$DB_PASS"
+        [[ -n "$URL" ]] && env_set APP_URL "$URL"
+        [[ -n "$URL" ]] && env_set PUBLIC_SITE_URL "$URL"
+        [[ -n "$URL" ]] && env_set PUBLIC_LEADS_ALLOWED_ORIGINS "$URL"
+        say "database → $DB_NAME (user $DB_USER, host $DB_HOST); other keys left alone"
+    else
+        say ".env exists — leaving it alone (no DB_* in deploy.conf)"
+    
+fi
+
+
 fi
 
 # A key is required or every session cookie and encrypted value breaks at runtime.
