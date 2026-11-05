@@ -1,0 +1,23 @@
+# Serves the Laravel application from platform/public, while the document root stays this folder.
+#
+# Only needed if you cannot point the domain's document root at platform/public — that is the better
+# setup, because then this file has nothing to do. With it, every request that is not a real file here
+# is handed to the framework; anything that IS a real file (the setup script, nothing else) is served.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Never re-enter the app folder's own path, or a request would nest on every hop.
+    RewriteRule ^platform/public/ - [L]
+
+    # Existing files and directories are served as-is (this is how setup.php is reachable).
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    RewriteRule ^(.*)$ platform/public/$1 [L]
+</IfModule>
+
+# Nothing below the application's public/ is web content, whatever the rewrite did.
+<FilesMatch "^\.(env|git|htaccess)">
+    Require all denied
+</FilesMatch>

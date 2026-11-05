@@ -1,0 +1,34 @@
+WOODEX — STAGING PACKAGE
+========================
+
+This folder is a complete Laravel application. It needs no shell, no composer and no node.
+
+STEP 1 — put it in place
+  Hostinger File Manager -> open the folder that serves staging.blackibex.net
+  (currently: domains/blackibex.net/public_html/staging — the one holding package.json)
+  -> delete the old clone's contents (keep nothing)
+  -> Upload this zip -> right-click -> Extract
+  -> make sure ".htaccess" and "platform/" sit DIRECTLY in that folder, not one level deeper
+
+  Better, if you can: hPanel -> Websites -> staging.blackibex.net -> change the document root
+  to   .../staging/platform/public   and delete the .htaccess. Then nothing is rewritten.
+
+STEP 2 — install (runs artisan for you)
+  Open:  https://staging.blackibex.net/setup.php?key=woodex-setup-9f3a2b
+  Every step prints PASS/FAIL with the real output. Re-running is safe.
+
+STEP 3 — delete setup.php
+  Leaving it is leaving a button that can rebuild your caches.
+
+WHAT IS IN HERE
+  platform/            the whole application, vendor/ included
+  platform/.env        pre-configured for database u128159657_woodexos
+                       (if step 2 reports a database error, fix DB_* there)
+  platform/public/     index.php, the compiled CSS/JS, and the images
+  platform/storage/    uploaded media, already in place
+  .htaccess            sends requests into platform/public
+
+IF SOMETHING BREAKS
+  A 500 usually means: .htaccess in the wrong folder, or the document root is one level off.
+  The app's own log is platform/storage/logs/laravel.log — open it in File Manager and read the last
+  twenty lines; that names the file and line.

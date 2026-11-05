@@ -335,3 +335,38 @@ migrations — if the release you are rolling back added any, run `php artisan m
   `tools/migration/fetch-legacy-media.php`, which needs outbound HTTP to `woodexfurniture.pk`. Run it
   on the server (or fetch locally and rsync `storage/app/public`). Until then pages render without
   those images.
+
+### The staging package (for hosts with no shell)
+
+Where hPanel has no Terminal, a slice deploy is impossible: `apply.sh`, `sync-slice.sh` and `structure.sh`
+all need a shell. What works instead is one zip that needs nothing installed on the other side — no
+composer, no node, no artisan on the command line.
+
+`staging-package/` holds the three pieces that turn a copy of the application into that zip:
+
+| File | Why |
+|---|---|
+| `root.htaccess` | sits above `platform/` and hands every request to `platform/public`, so the document root does not have to move |
+| `setup.php` | goes in `platform/public/`; runs migrate, the five seeders, `storage:link` and the three caches over HTTP, gated on a key in the file |
+| `READ-ME-FIRST.txt` | the three steps, in the order that works |
+
+Build it from a working application (one that boots, with `vendor/` installed and `public/front` built):
+
+```bash
+# prune what production never loads — phpstan alone is 86 MB — then add the three pieces
+rm -rf platform/vendor/phpstan
+# composer's autoload_files.php still requires the pruned helpers; drop the entries whose files are gone
+php -r '$p="platform/vendor/composer/autoload_files.php"; $f=require $p; $k=array_filter($f, fn($x)=>file_exists($x));
+  $o="\<?php\n\$vendorDir=dirname(__DIR__);\nreturn array(\n";
+  foreach($k as $i=>$x){$o.="    ".var_export($i,true)." => \$vendorDir . ".var_export(substr($x,strlen(__DIR__."/platform/vendor")),true).",\n";}
+  file_put_contents($p, $o.");\n");'
+cp deploy/hostinger/staging-package/root.htaccess  ./htaccess-tmp
+cp deploy/hostinger/staging-package/setup.php      platform/public/setup.php
+cp deploy/hostinger/staging-package/READ-ME-FIRST.txt .
+zip -r -q -9 woodex-staging-master.zip . -x '*.DS_Store'
+```
+
+Two rules learned the hard way: **test the zip by booting it** (`php artisan --version`, then serve a
+couple of routes) before uploading — pruning a `vendor/` package breaks `autoload_files.php` with a
+fatal that only shows at boot, not at zip time — and **restore phpunit/mockery/pest/faker** if you prune
+anything, because Laravel probes for PHPUnit at startup.
