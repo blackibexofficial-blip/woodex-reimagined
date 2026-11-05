@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Per-machine deploy settings (SSH host/paths). The key pair lives in deploy/keys/, ignored there.
+deploy/hostinger/deploy.conf

@@ -1,0 +1,90 @@
+name: Deploy staging
+
+# Two ways in: press the button, or let a push to main do it. The branch this was built on is not
+# wired to auto-deploy on purpose — nothing reaches a server because someone pushed WIP.
+on:
+  workflow_dispatch:
+    inputs:
+      skip_build:
+        description: "Reuse the SPA build instead of rebuilding"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "platform/**"
+      - "tools/furniture-commerce/**"
+      - "deploy/hostinger/**"
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/deploy-staging.yml"
+
+# A deploy that overlaps another deploy produces a half-synced application. Queue, never cancel.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Ship to Hostinger
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://${{ vars.STAGING_DOMAIN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install and build the storefront
+        if: ${{ !inputs.skip_build }}
+        run: |
+          npm ci
+          npx vite build
+
+      - name: Load the deploy key
+        env:
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+        run: |
+          # 0600 in a 0700 directory: ssh refuses a key any looser than this, and the failure message
+          # it gives ("bad permissions") does not say which file it means.
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > ~/.ssh/hostinger_ed25519
+          chmod 600 ~/.ssh/hostinger_ed25519
+          ssh-keyscan -p "${{ secrets.HOSTINGER_PORT }}" -H "${{ secrets.HOSTINGER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy
+        env:
+          SSH_HOST: ${{ secrets.HOSTINGER_HOST }}
+          SSH_PORT: ${{ secrets.HOSTINGER_PORT }}
+          SSH_USER: ${{ secrets.HOSTINGER_USER }}
+          SSH_KEY: /home/runner/.ssh/hostinger_ed25519
+          REMOTE_APP: ${{ secrets.REMOTE_APP }}
+          REMOTE_DOCROOT: ${{ secrets.REMOTE_DOCROOT }}
+          STAGING_DOMAIN: ${{ vars.STAGING_DOMAIN }}
+          APP_URL: https://${{ vars.STAGING_DOMAIN }}
+          PHP_BIN: ${{ vars.PHP_BIN }}
+        run: |
+          chmod +x deploy/hostinger/sync-slice.sh
+          ./deploy/hostinger/sync-slice.sh ${{ inputs.skip_build && '--skip-build' || '' }}
+
+      - name: Report the failure
+        if: failure()
+        run: |
+          echo "### Deploy failed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "The server was not left half-deployed: the slice is copied first, then applied, then" >> "$GITHUB_STEP_SUMMARY"
+          echo "migrated. Re-run this workflow once the cause is fixed." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Read the app log:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "ssh -p ${{ secrets.HOSTINGER_PORT }} ${{ secrets.HOSTINGER_USER }}@${{ secrets.HOSTINGER_HOST }} 'tail -60 ${{ secrets.REMOTE_APP }}/storage/logs/laravel.log'" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

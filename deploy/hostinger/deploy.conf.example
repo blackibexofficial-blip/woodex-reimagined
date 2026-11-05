@@ -1,0 +1,43 @@
+# Copy to deploy.conf and fill in. deploy.conf is git-ignored: it holds paths and hosts, not secrets,
+# but it is per-machine anyway and there is no reason to commit it.
+#
+# Every value below can also come from the environment, which is how GitHub Actions drives the same
+# script without a config file.
+
+# ---- server ------------------------------------------------------------------------------------
+# Hostinger shared hosting SSH. Port 65002 is theirs; do not change it to 22.
+SSH_HOST="72.60.93.138"
+SSH_PORT="65002"
+SSH_USER="u128159657"
+
+# Path to the private key. The public half must be in hPanel → Advanced → SSH Access.
+# Leave empty to use your ssh-agent / ~/.ssh/config.
+SSH_KEY="deploy/keys/woodex_staging_ed25519"
+
+# ---- paths on the server -----------------------------------------------------------------------
+# Where the Laravel application lives. OUTSIDE the web root on purpose: only `public/` is reachable.
+REMOTE_APP="/home/u128159657/woodex-app"
+
+# The domain's document root as hPanel creates it.
+REMOTE_DOCROOT="/home/u128159657/domains/STAGING_DOMAIN/public_html"
+
+# ---- local side --------------------------------------------------------------------------------
+# The Woodex OS checkout with this slice applied, i.e. the output of:
+#   sh tools/furniture-commerce/apply.sh /path/to/woodexinterior
+# It must contain artisan, composer.json and vendor (run composer install at least once).
+APP_DIR=""
+
+# This repository (the storefront SPA + the slice). Defaults to two levels up from this script.
+REPO_DIR=""
+
+# ---- application ------------------------------------------------------------------------------
+STAGING_DOMAIN=""          # e.g. staging.woodex.example — no scheme, no trailing slash
+APP_URL=""                 # defaults to https://$STAGING_DOMAIN
+PHP_BIN=""                 # empty = detect. Hostinger CloudLinux often needs /opt/alt/php84/usr/bin/php
+
+# ---- what the deploy does ----------------------------------------------------------------------
+RUN_MIGRATIONS="1"         # php artisan migrate --force
+SEED_ON_FIRST_DEPLOY="1"   # shell + home page seeders, only when the database has no tables yet
+BUILD_SPA="1"              # npx vite build in REPO_DIR, copied to public/front
+BUILD_PLATFORM_ASSETS="1"  # npm run build in APP_DIR when it has package.json
+HEALTH_PATH="/page-preview/home"
