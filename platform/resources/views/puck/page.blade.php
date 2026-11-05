@@ -38,12 +38,33 @@
 
     {{--
         The storefront's compiled Tailwind, which is where the tokens the block views use
-        (navy-900, wood-500, sand-100, font-heading) are defined. Guarded because a fresh
-        install has no manifest yet: a page without a stylesheet is ugly, a page that throws
-        a Vite exception is down.
+        (navy-900, wood-500, sand-100, font-heading) are defined.
+
+        `@vite()` was guarded by "does the manifest file exist", which is the wrong question:
+        the manifest exists on every build and does not necessarily contain the entry being
+        asked for. It requested `resources/css/app.css`, that entry does not exist (the
+        storefront stylesheet is `site.css`), and every block page returned a ViteException —
+        which looks like a broken builder rather than a missing stylesheet.
+
+        So the entry is looked up in the manifest, and if it is absent the page falls back to
+        the plain asset path, then to the theme route. A page with no stylesheet is ugly; a
+        page that throws is down.
     --}}
-    @if (is_file(public_path('build/manifest.json')))
-        @vite(['resources/css/app.css'])
+    @php
+        $buildManifest = public_path('build/manifest.json');
+        $siteCss = null;
+        if (is_file($buildManifest)) {
+            $decoded = json_decode((string) file_get_contents($buildManifest), true);
+            $entry = is_array($decoded) ? ($decoded['resources/css/site.css'] ?? null) : null;
+            $siteCss = is_array($entry) ? ($entry['file'] ?? null) : null;
+        }
+    @endphp
+    @if ($siteCss !== null && is_file(public_path('build/'.$siteCss)))
+        <link rel="stylesheet" href="/build/{{ $siteCss }}">
+    @elseif (is_file(public_path('build/assets/site.css')))
+        <link rel="stylesheet" href="/build/assets/site.css">
+    @else
+        <link rel="stylesheet" href="/assets/theme.css">
     @endif
 </head>
 <body class="bg-sand-50 font-body text-navy-900 antialiased dark:bg-navy-950 dark:text-white">

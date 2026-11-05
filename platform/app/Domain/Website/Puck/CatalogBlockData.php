@@ -44,8 +44,15 @@ final readonly class CatalogBlockData implements BlockData
             $this->ttl,
             // Cache the plain arrays, not the DTOs: a cached object is a serialised class that
             // has to be deserialisable after any future refactor of that class.
+            // `paginate()` hands back wire arrays already (`price_minor`, `in_stock`, …),
+            // because that conversion is its job. Calling `toArray()` here — which this did —
+            // threw "Call to a member function toArray() on array" the first time a page
+            // actually used a product block. Accept either shape so a future refactor to DTOs
+            // does not break the block.
             fn (): array => array_map(
-                static fn ($card): array => $card->toArray(),
+                static fn (mixed $card): array => is_array($card)
+                    ? $card
+                    : (method_exists($card, 'toArray') ? $card->toArray() : (array) $card),
                 $this->catalog->paginate($query)['items'],
             ),
         );

@@ -21,7 +21,13 @@ echo "== commerce slice"
 for path in \
     app/Domain/Commerce \
     app/Domain/Website/Content \
+    app/Domain/Website/Puck \
     app/Providers/CommerceServiceProvider.php \
+    app/Providers/WebsiteServiceProvider.php \
+    app/Http/Controllers/Website/SitePageRenderController.php \
+    resources/views/puck \
+    resources/css/site.css \
+    resources/js/studio/registry.json \
     app/Livewire/Admin/Commerce \
     app/Livewire/Admin/Website/PagesIndex.php \
     app/Livewire/Admin/Website/ContentIndex.php \
@@ -309,14 +315,30 @@ if [ -f "$PROVIDERS" ]; then
     else
         php_edit() { :; }
         sed -i.bak \
-            -e 's|^use App\\Providers\\FortifyServiceProvider;|use App\\Providers\\CommerceServiceProvider;\nuse App\\Providers\\FortifyServiceProvider;|' \
-            -e 's|^    FortifyServiceProvider::class,|    CommerceServiceProvider::class,\n    FortifyServiceProvider::class,|' \
+            -e 's|^use App\\Providers\\FortifyServiceProvider;|use App\\Providers\\CommerceServiceProvider;\nuse App\\Providers\\FortifyServiceProvider;\nuse App\\Providers\\WebsiteServiceProvider;|' \
+            -e 's|^    FortifyServiceProvider::class,|    CommerceServiceProvider::class,\n    FortifyServiceProvider::class,\n    WebsiteServiceProvider::class,|' \
             "$PROVIDERS" && rm -f "$PROVIDERS.bak"
-        echo "   commerce provider: registered in bootstrap/providers.php"
+        echo "   commerce + website providers: registered in bootstrap/providers.php"
     fi
 else
     echo "   bootstrap/providers.php missing — commerce provider NOT registered"
 fi
+
+# A route that renders a CMS page from its blocks. The published copy is a static
+# file; this serves the saved-but-unpublished page and the editor's live preview,
+# which is why the controller checks auth rather than the route.
+WEB="$PLATFORM/routes/web.php"
+if [ -f "$WEB" ] && ! grep -qF "page-preview" "$WEB"; then
+    printf '%s\n' \
+        "// CMS pages rendered from blocks (preview + not-yet-published)." \
+        "Route::get('/page-preview/{key}', [\\App\\Http\\Controllers\\Website\\SitePageRenderController::class, 'show'])" \
+        "    ->name('site.page.render')->where('key', '[a-z0-9-]+');" \
+        "" > "$BLOCK"
+    insert_file_before "$WEB" \
+        "\$admin = Route::middleware(['auth', 'active', 'db-current', 'two-factor'])" \
+        "$BLOCK" "cms page render route" "routes/web.php"
+fi
+rm -f "$BLOCK"
 
 # ---- the 137 redirects, in the preview server -------------------------------------------------------------------
 #
