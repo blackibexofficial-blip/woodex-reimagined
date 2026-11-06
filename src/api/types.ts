@@ -44,6 +44,9 @@ export interface AdminOrder {
   trackingNumber?: string;
   /** Staff-only annotations — never shown on the storefront / invoice. */
   internalNotes?: string;
+  /** Discount carried over when converted from a quote (B2B) — absent on regular orders. */
+  discountPct?: number;
+  discountAmount?: number;
 }
 
 /** Lifecycle ledger — one entry per status transition/dispatch note. */
@@ -224,6 +227,50 @@ export interface NewDraftOrderInput {
   notes?: string;
 }
 export type AdminDraftOrderPatch = Partial<NewDraftOrderInput>;
+
+/* ── Quotes (priced quotations — closes the B2B Quotation-form → lead → quote → order loop) ── */
+export type QuoteStatus = "draft" | "sent" | "accepted" | "declined" | "converted";
+export interface AdminQuote {
+  id: string;            // e.g. "QOT-1001"
+  /** Originating CRM lead, when the quote was drafted from one. */
+  leadId?: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  company?: string;
+  city?: string;
+  address?: string;
+  /** Line snapshot — catalogue lines carry the product id; free lines get a synthetic one. */
+  items: AdminOrderItem[];
+  subtotal: number;         // list-price sum before discount
+  discountPct: number;      // 0–60
+  discountAmount: number;
+  shipping: number;
+  total: number;            // subtotal − discountAmount + shipping
+  validityDays: number;
+  validUntil: string;       // ISO — UI badges the quote "expired" when past (derived, not stored)
+  notes?: string;
+  status: QuoteStatus;
+  convertedOrderId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export type NewQuoteLineInput = NewDraftOrderLineInput;
+export interface NewQuoteInput {
+  leadId?: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  company?: string;
+  city?: string;
+  address?: string;
+  items: NewQuoteLineInput[];
+  discountPct?: number;
+  validityDays?: number;
+  shipping?: number;
+  notes?: string;
+}
+export type AdminQuotePatch = Partial<NewQuoteInput> & { status?: QuoteStatus };
 
 export interface AdminCustomer {
   id: string;
@@ -912,6 +959,18 @@ export interface AdminApi {
   deleteDraftOrder(id: string): Promise<boolean>;
   /** Same materialisation path as createOrder; sets the draft to converted with convertedOrderId. */
   convertDraftOrder(id: string, paymentMethod?: PaymentMethod): Promise<AdminOrder | undefined>;
+  listQuotes(params?: ListParams & { status?: QuoteStatus | "all" }): Promise<Paginated<AdminQuote>>;
+  getQuote(id: string): Promise<AdminQuote | undefined>;
+  /** Empty-quote drafts are allowed (fill lines later); convert enforces ≥1 line + total > 0. */
+  createQuote(input: NewQuoteInput): Promise<AdminQuote>;
+  /** Prefills contact details from a CRM lead, links leadId, advances the lead to "quoted". */
+  createQuoteFromLead(leadId: string): Promise<AdminQuote | undefined>;
+  /** Throws when the quote is already converted. Status patch limited to non-converted statuses. */
+  updateQuote(id: string, patch: AdminQuotePatch): Promise<AdminQuote | undefined>;
+  /** False when the quote is missing or already converted. */
+  deleteQuote(id: string): Promise<boolean>;
+  /** Requires ≥1 line; same materialisation path as createOrder (channel `manual`); order carries the discount. */
+  convertQuote(id: string, paymentMethod?: PaymentMethod): Promise<AdminOrder | undefined>;
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;

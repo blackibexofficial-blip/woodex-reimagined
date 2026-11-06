@@ -77,6 +77,10 @@ import type {
   NewDraftOrderInput,
   NewDraftOrderLineInput,
   DraftOrderStatus,
+  AdminQuote,
+  AdminQuotePatch,
+  NewQuoteInput,
+  QuoteStatus,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -111,6 +115,7 @@ interface DemoDb {
   exchanges: AdminExchange[];
   claims: AdminClaim[];
   draftOrders: AdminDraftOrder[];
+  quotes: AdminQuote[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -570,7 +575,7 @@ function sanitizeBundleLines(lines: AdminBundle["lines"] | undefined): AdminBund
   return [...merged.entries()].map(([productId, quantity]) => ({ productId, quantity }));
 }
 
-const clampPct = (n: number) => Math.min(60, Math.max(0, Math.round(Number(n) || 0)));
+const clampPct = (n?: number) => Math.min(60, Math.max(0, Math.round(Number(n) || 0)));
 const isoDate = (s?: string) => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? s : undefined);
 
 const slugifyHandle = (s: string) =>
@@ -626,7 +631,7 @@ const EXCHANGE_TRANSITIONS: Record<ExchangeStatus, ExchangeStatus[]> = {
 };
 
 /** Materialise an order inside a db mutation — shared by createOrder and draft conversion. */
-function materializeOrder(db: DemoDb, input: NewOrderInput): AdminOrder {
+function materializeOrder(db: DemoDb, input: NewOrderInput & { discountPct?: number; discountAmount?: number }): AdminOrder {
   const maxSeq = db.orders.reduce((max, o) => {
     const n = Number(o.id.replace(/\D/g, ""));
     return Number.isFinite(n) && n > max ? n : max;
@@ -647,6 +652,8 @@ function materializeOrder(db: DemoDb, input: NewOrderInput): AdminOrder {
     status: "pending",
     placedAt: new Date().toISOString(),
     notes: input.notes,
+    ...(input.discountPct !== undefined ? { discountPct: input.discountPct } : {}),
+    ...(input.discountAmount !== undefined && input.discountAmount > 0 ? { discountAmount: input.discountAmount } : {}),
   };
   db.orders.push(order);
 
@@ -712,6 +719,96 @@ function buildSeedDraftOrders(products: AdminProduct[]): AdminDraftOrder[] {
     createdAt: t,
     updatedAt: t,
   }];
+}
+
+/** Quote totals — discount on the list-price subtotal; free delivery at 150k+. */
+function quoteTotals(items: AdminOrderItem[], discountPct: number, shipping?: number | null) {
+  const subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0);
+  const discountAmount = Math.round((subtotal * discountPct) / 100);
+  const ship = shipping !== undefined && shipping !== null
+    ? Math.max(0, Math.round(Number(shipping) || 0))
+    : subtotal >= 150000 ? 0 : 1500;
+  return { subtotal, discountAmount, shipping: ship, total: subtotal - discountAmount + ship };
+}
+
+/** Deterministic seed quotes tied to the CRM's "quoted" leads (Bilal Ahmed · Ravi Agro Foods). */
+function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
+  const priced = products.filter((p) => p.price > 0);
+  if (priced.length < 3) return [];
+  const bySub = (sub: string) => priced.find((p) => p.subcategory === sub);
+  const meeting = bySub("meeting-tables") ?? priced[0];
+  const staff = bySub("staff-tables") ?? priced.find((p) => p.id !== meeting.id) ?? priced[1];
+  const chair = bySub("chairs") ?? priced.find((p) => p.id !== meeting.id && p.id !== staff.id) ?? priced[2];
+
+  const mk = (
+    id: string,
+    leadId: string,
+    customerName: string,
+    customerPhone: string,
+    customerEmail: string,
+    company: string | undefined,
+    city: string,
+    lines: Array<[AdminProduct, number]>,
+    discountPct: number,
+    validityDays: number,
+    status: AdminQuote["status"],
+    daysAgo: number,
+  ): AdminQuote => {
+    const items = lines.map(([p, quantity]) => ({ id: p.id, name: p.name, image: p.image, price: p.price, quantity }));
+    const totals = quoteTotals(items, discountPct, 0); // B2B — free delivery on quotes
+    const created = new Date(Date.now() - daysAgo * 86400000);
+    const t = created.toISOString();
+    return {
+      id, leadId, customerName, customerPhone, customerEmail, company, city,
+      items, ...totals, discountPct, validityDays,
+      validUntil: new Date(created.getTime() + validityDays * 86400000).toISOString(),
+      status,
+      createdAt: t,
+      updatedAt: t,
+    };
+  };
+
+  return [
+    mk("QOT-1001", "lead-1005", "Bilal Ahmed", "+92 315 8899007", "bilal.a@example.com", undefined, "Islamabad",
+       [[meeting, 1], [chair, 12]], 5, 14, "sent", 3),
+    mk("QOT-1002", "lead-1008", "Kashif Mirza", "+92 300 9988776", "ops@raviagrofoods.pk", "Ravi Agro Foods", "Multan",
+       [[staff, 25], [chair, 50]], 8, 21, "accepted", 5),
+  ];
+}
+
+/** Shared creation path — used by createQuote and createQuoteFromLead. */
+function createQuoteInDb(db: DemoDb, input: NewQuoteInput): AdminQuote {
+  const customerName = input.customerName?.trim();
+  const customerPhone = input.customerPhone?.trim();
+  if (!customerName) throw new Error("Customer name is required.");
+  if (!customerPhone) throw new Error("Customer phone is required.");
+  const items = sanitizeDraftLines(input.items ?? []);
+  const discountPct = clampPct(input.discountPct);
+  const validityDays = Math.min(90, Math.max(1, Math.trunc(Number(input.validityDays) || 14)));
+  const totals = quoteTotals(items, discountPct, input.shipping);
+  const now = new Date().toISOString();
+  const maxSeq = (db.quotes ?? []).reduce((max, q) => Math.max(max, Number(q.id.replace(/\D/g, "")) || 0), 1000);
+  const quote: AdminQuote = {
+    id: `QOT-${maxSeq + 1}`,
+    leadId: input.leadId?.trim() || undefined,
+    customerName,
+    customerPhone,
+    customerEmail: input.customerEmail?.trim() ?? "",
+    company: input.company?.trim() || undefined,
+    city: input.city?.trim() || undefined,
+    address: input.address?.trim() || undefined,
+    items,
+    ...totals,
+    discountPct,
+    validityDays,
+    validUntil: new Date(Date.parse(now) + validityDays * 86400000).toISOString(),
+    notes: input.notes?.trim() || undefined,
+    status: "draft",
+    createdAt: now,
+    updatedAt: now,
+  };
+  (db.quotes ??= []).push(quote);
+  return quote;
 }
 
 const CLAIM_TRANSITIONS: Record<ClaimStatus, ClaimStatus[]> = {
@@ -1032,7 +1129,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts) };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts) };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1068,6 +1165,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.exchanges)) db.exchanges = buildSeedExchanges(db.orders, db.products);
       if (!Array.isArray(db.claims)) db.claims = buildSeedClaims(db.orders);
       if (!Array.isArray(db.draftOrders)) db.draftOrders = buildSeedDraftOrders(db.products);
+      if (!Array.isArray(db.quotes)) db.quotes = buildSeedQuotes(db.products);
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -2593,6 +2691,145 @@ export const demoAdminApi: AdminApi = {
         id: newEventId(),
         orderId: order.id,
         note: `Converted from draft ${t.id} — manual order`,
+        createdAt: now,
+      });
+    });
+    return order;
+  },
+
+  async listQuotes(params?: ListParams & { status?: QuoteStatus | "all" }) {
+    const db = loadDb();
+    const q = (params?.query ?? "").trim().toLowerCase();
+    let rows = [...(db.quotes ?? [])];
+    if (params?.status && params.status !== "all") rows = rows.filter((r) => r.status === params.status);
+    if (q) rows = rows.filter((r) => [r.id, r.customerName, r.company ?? "", r.customerPhone, r.customerEmail, r.leadId ?? ""].join(" ").toLowerCase().includes(q));
+    rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const page = params?.page ?? 1;
+    const perPage = params?.perPage ?? 60;
+    return { items: rows.slice((page - 1) * perPage, page * perPage), total: rows.length, page, perPage };
+  },
+
+  async getQuote(id: string) {
+    return (loadDb().quotes ?? []).find((x) => x.id === id);
+  },
+
+  async createQuote(input: NewQuoteInput) {
+    let created: AdminQuote | undefined;
+    update((db) => {
+      created = createQuoteInDb(db, input);
+    });
+    if (!created) throw new Error("Failed to create quote");
+    return created;
+  },
+
+  async createQuoteFromLead(leadId: string) {
+    let quote: AdminQuote | undefined;
+    update((db) => {
+      const lead = db.leads.find((l) => l.id === leadId);
+      if (!lead) return;
+      quote = createQuoteInDb(db, {
+        leadId: lead.id,
+        customerName: lead.name,
+        customerPhone: lead.phone,
+        customerEmail: lead.email || undefined,
+        company: lead.company,
+        city: lead.city,
+        items: [],
+        validityDays: 14,
+        notes: `Drafted from lead ${lead.id} · ${lead.type === "b2b" ? "B2B enquiry" : "Quote request"} — ${lead.summary}`,
+      });
+      if (lead.status === "new" || lead.status === "contacted") lead.status = "quoted";
+    });
+    return quote;
+  },
+
+  async updateQuote(id: string, patch: AdminQuotePatch) {
+    let updated: AdminQuote | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.quotes ??= []).find((x) => x.id === id);
+      if (!t) return;
+      if (t.status === "converted") throw new Error(`Quote ${t.id} is already converted — it can no longer be edited.`);
+      if (patch.customerName !== undefined) {
+        const v = patch.customerName.trim();
+        if (!v) throw new Error("Customer name is required.");
+        t.customerName = v;
+      }
+      if (patch.customerPhone !== undefined) {
+        const v = patch.customerPhone.trim();
+        if (!v) throw new Error("Customer phone is required.");
+        t.customerPhone = v;
+      }
+      if (patch.customerEmail !== undefined) t.customerEmail = patch.customerEmail.trim();
+      if (patch.company !== undefined) t.company = patch.company.trim() || undefined;
+      if (patch.city !== undefined) t.city = patch.city.trim() || undefined;
+      if (patch.address !== undefined) t.address = patch.address.trim() || undefined;
+      if (patch.notes !== undefined) t.notes = patch.notes.trim() || undefined;
+      if (patch.items !== undefined) t.items = sanitizeDraftLines(patch.items);
+      if (patch.discountPct !== undefined) t.discountPct = clampPct(patch.discountPct);
+      if (patch.validityDays !== undefined) {
+        t.validityDays = Math.min(90, Math.max(1, Math.trunc(Number(patch.validityDays) || 14)));
+        t.validUntil = new Date(Date.parse(now) + t.validityDays * 86400000).toISOString();
+      }
+      if (patch.shipping !== undefined) t.shipping = Math.max(0, Math.round(Number(patch.shipping) || 0));
+      if (patch.status !== undefined) {
+        if (patch.status === "converted") throw new Error("Use the Convert action to convert a quote.");
+        t.status = patch.status;
+      }
+      const totals = quoteTotals(t.items, t.discountPct, t.shipping);
+      t.subtotal = totals.subtotal;
+      t.discountAmount = totals.discountAmount;
+      t.shipping = totals.shipping;
+      t.total = totals.total;
+      if (t.status === "sent" && t.items.length === 0) throw new Error("Add at least one line before sending the quote.");
+      t.updatedAt = now;
+      updated = { ...t, items: [...t.items] };
+    });
+    return updated;
+  },
+
+  async deleteQuote(id: string) {
+    let okFlag = false;
+    update((db) => {
+      const t = (db.quotes ?? []).find((x) => x.id === id);
+      if (!t || t.status === "converted") return;
+      db.quotes = db.quotes.filter((x) => x.id !== id);
+      okFlag = true;
+    });
+    return okFlag;
+  },
+
+  async convertQuote(id: string, paymentMethod: PaymentMethod = "cod") {
+    let order: AdminOrder | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.quotes ??= []).find((x) => x.id === id);
+      if (!t || t.status === "converted") return;
+      if (t.items.length === 0) throw new Error(`Quote ${t.id} has no lines to convert.`);
+      if (t.total <= 0) throw new Error(`Quote ${t.id} totals Rs 0 — price the lines before converting.`);
+      order = materializeOrder(db, {
+        customerName: t.customerName,
+        customerEmail: t.customerEmail || undefined,
+        customerPhone: t.customerPhone,
+        address: t.address,
+        city: t.city ?? "",
+        items: t.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
+        subtotal: t.subtotal,
+        shipping: t.shipping,
+        total: t.total,
+        paymentMethod,
+        channelId: "ch-manual",
+        notes: [t.notes, `Quote ${t.id} — ${t.discountPct}% discount (−Rs ${t.discountAmount.toLocaleString("en-PK")})`].filter(Boolean).join(" · "),
+        discountPct: t.discountPct,
+        discountAmount: t.discountAmount,
+      });
+      t.status = "converted";
+      t.convertedOrderId = order.id;
+      t.updatedAt = now;
+      (db.orderEvents ??= []).push({
+        id: newEventId(),
+        orderId: order.id,
+        note: `Converted from quote ${t.id}${t.discountPct > 0 ? ` — ${t.discountPct}% corporate discount` : ""}`,
         createdAt: now,
       });
     });

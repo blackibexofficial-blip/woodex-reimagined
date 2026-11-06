@@ -90,9 +90,13 @@ slices instead of duplicating them.
   ("File claim" deep links). Live check 8/8 · e2e 33/33 · 0 console errors. Bagisto stubbed 501.
 - [ ] **P2.4** Draft Orders — admin builds an order manually (customer + lines from catalogue or free lines);
   save as draft; convert → pending order (same `createOrder` path, marked source `manual`).
-- [ ] **P2.5** Quotes — turn a quote lead into a priced quotation (line items, discount %, validity days);
-  printable/PDF via the existing `PrintableInvoice` pattern; convert → order. Closes the B2B loop
-  (Quotation form → lead → quote → order).
+- [x] **P2.5** Quotes — `/admin/quotes`: priced quotations (catalogue/free lines, discount %, validity days,
+  valid-until tracking with derived expired badge); create from a CRM lead ("Create quote" on Leads → advances
+  lead to quoted, prefills contact, links leadId) or from scratch; chrome-free printable `/admin/quote/:id`
+  (discount carried onto the converted order + shown on the invoice); convert → pending order via the shared
+  `materializeOrder` path (channel `manual`, discountPct/discountAmount on the order). Seeded QOT-1001
+  (Bilal Ahmed · sent) + QOT-1002 (Ravi Agro Foods · accepted). Leads nav label clarified to "Leads".
+  Live check 24/24 (incl. invoice Discount row · 0 console errors) · e2e 33/33 · Bagisto stubbed 501.
 - [ ] **P2.6** Suppliers — supplier master (name, contact, city, payment terms, notes); referenced by POs.
 - [ ] **P2.7** Purchase Orders — create PO to supplier (lines, expected date); receive against it (full/partial);
   receipt writes inbound stock movements; status draft → sent → partial → received.

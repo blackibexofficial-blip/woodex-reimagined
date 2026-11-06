@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -390,6 +390,35 @@ export const bagistoAdminApi: AdminApi = {
 
   async convertDraftOrder(): Promise<AdminOrder | undefined> {
     throw new BagistoApiError(501, "Draft order conversion is not wired for Bagisto yet.");
+  },
+
+  async listQuotes(): Promise<Paginated<AdminQuote>> {
+    // Bagisto has no quotation entity out of the box — needs a custom package or meta-fields on orders.
+    throw new BagistoApiError(501, "Quotes are not wired for Bagisto yet (no native entity). Use VITE_API_MODE=demo.");
+  },
+
+  async getQuote(): Promise<AdminQuote | undefined> {
+    throw new BagistoApiError(501, "Quotes are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
+  async createQuote(): Promise<AdminQuote> {
+    throw new BagistoApiError(501, "Quote creation is not wired for Bagisto yet.");
+  },
+
+  async createQuoteFromLead(): Promise<AdminQuote | undefined> {
+    throw new BagistoApiError(501, "Quote creation is not wired for Bagisto yet.");
+  },
+
+  async updateQuote(): Promise<AdminQuote | undefined> {
+    throw new BagistoApiError(501, "Quote updates are not wired for Bagisto yet.");
+  },
+
+  async deleteQuote(): Promise<boolean> {
+    throw new BagistoApiError(501, "Quote deletion is not wired for Bagisto yet.");
+  },
+
+  async convertQuote(): Promise<AdminOrder | undefined> {
+    throw new BagistoApiError(501, "Quote conversion is not wired for Bagisto yet.");
   },
 
   async listCustomers(params) {

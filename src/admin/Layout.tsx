@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
   Armchair, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, FileText,
-  Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit,
+  Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
 import { isDemoMode } from "@/config/env";
@@ -34,6 +34,7 @@ const NAV_GROUPS: Array<{
       { to: "/admin/inventory", label: "Inventory", icon: Warehouse },
       { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
       { to: "/admin/drafts", label: "Drafts", icon: FileEdit },
+      { to: "/admin/quotes", label: "Quotes", icon: ScrollText },
       { to: "/admin/returns", label: "Returns", icon: Undo2 },
       { to: "/admin/exchanges", label: "Exchanges", icon: ArrowLeftRight },
       { to: "/admin/claims", label: "Claims", icon: ShieldCheck },
@@ -43,7 +44,7 @@ const NAV_GROUPS: Array<{
   {
     label: "Engage",
     items: [
-      { to: "/admin/leads", label: "Quotes & B2B", icon: ClipboardList },
+      { to: "/admin/leads", label: "Leads", icon: ClipboardList },
       { to: "/admin/blog", label: "Blog", icon: Newspaper },
       { to: "/admin/services", label: "Services", icon: Wrench },
       { to: "/admin/content", label: "Content", icon: FileText },
@@ -57,7 +58,7 @@ function pageTitle(pathname: string) {
   const seg = pathname.split("/")[2] ?? "dashboard";
   const map: Record<string, string> = {
     dashboard: "Dashboard", analytics: "Analytics", products: "Products", categories: "Categories",
-    orders: "Orders", customers: "Customers", leads: "Quotes & B2B Leads", content: "Content",
+    orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", content: "Content",
     media: "Media Library", settings: "Settings", inventory: "Inventory & Delivery Zones",
   };
   return map[seg] ?? "Admin";

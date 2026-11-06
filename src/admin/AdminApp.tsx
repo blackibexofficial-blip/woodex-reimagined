@@ -16,6 +16,8 @@ import AdminBulkEditor from "@/admin/pages/BulkEditor";
 import AdminInventory from "@/admin/pages/Inventory";
 import AdminOrders from "@/admin/pages/Orders";
 import AdminDrafts from "@/admin/pages/Drafts";
+import AdminQuotes from "@/admin/pages/Quotes";
+import AdminQuote from "@/admin/pages/Quote";
 import AdminReturns from "@/admin/pages/Returns";
 import AdminExchanges from "@/admin/pages/Exchanges";
 import AdminClaims from "@/admin/pages/Claims";
@@ -41,6 +43,8 @@ export default function AdminApp() {
         <Route path="login" element={<AdminLogin />} />
         {/* chrome-free printable invoice — standalone, outside the admin layout, guarded inside */}
         <Route path="invoice/:id" element={<AdminInvoice />} />
+        {/* chrome-free printable quotation — same pattern */}
+        <Route path="quote/:id" element={<AdminQuote />} />
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
@@ -57,6 +61,7 @@ export default function AdminApp() {
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="drafts" element={<AdminDrafts />} />
+          <Route path="quotes" element={<AdminQuotes />} />
           <Route path="returns" element={<AdminReturns />} />
           <Route path="exchanges" element={<AdminExchanges />} />
           <Route path="claims" element={<AdminClaims />} />

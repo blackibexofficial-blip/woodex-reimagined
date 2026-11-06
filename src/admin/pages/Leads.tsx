@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Building2, ClipboardList, ChevronLeft, ChevronRight, Mail, Phone, FileText, Handshake } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Building2, ClipboardList, ChevronLeft, ChevronRight, Mail, Phone, FileText, Handshake, ScrollText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminLead, LeadStatus, LeadType } from "@/api/types";
@@ -16,6 +17,8 @@ const LEAD_STATUSES: LeadStatus[] = ["new", "contacted", "quoted", "won", "lost"
 
 export default function AdminLeads() {
   const api = useMemo(() => getAdminApi(), []);
+  const navigate = useNavigate();
+  const [quotingId, setQuotingId] = useState<string | null>(null);
   const [type, setType] = useState<TypeFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [query, setQuery] = useState("");
@@ -48,6 +51,23 @@ export default function AdminLeads() {
   useEffect(() => { setPage(1); }, [type, status, debounced]);
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+
+  const createQuote = async (lead: AdminLead) => {
+    setQuotingId(lead.id);
+    try {
+      const quote = await api.createQuoteFromLead(lead.id);
+      if (quote) {
+        toast.success(`${quote.id} drafted from ${lead.name} — add lines, discount and validity in Quotes.`);
+        navigate("/admin/quotes");
+      } else {
+        toast.error("Could not create the quote — lead not found?");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not create the quote.");
+    } finally {
+      setQuotingId(null);
+    }
+  };
 
   const changeStatus = async (lead: AdminLead, next: LeadStatus) => {
     const updated = await api.updateLeadStatus(lead.id, next);
@@ -102,6 +122,9 @@ export default function AdminLeads() {
                       <div className="mt-1.5 flex gap-1.5">
                         <a href={`tel:${lead.phone.replace(/\s/g, "")}`} title={lead.phone} aria-label="Call" className="rounded p-1 text-muted-foreground hover:bg-border hover:text-foreground"><Phone className="h-3.5 w-3.5" /></a>
                         <a href={`mailto:${lead.email}`} title={lead.email} aria-label="Email" className="rounded p-1 text-muted-foreground hover:bg-border hover:text-foreground"><Mail className="h-3.5 w-3.5" /></a>
+                        <button onClick={() => createQuote(lead)} disabled={quotingId === lead.id} title="Draft priced quotation from this lead" aria-label={`Create quote from ${lead.name}`} className="rounded p-1 text-muted-foreground hover:bg-border hover:text-foreground disabled:opacity-50">
+                          {quotingId === lead.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScrollText className="h-3.5 w-3.5" />}
+                        </button>
                       </div>
                     </div>
                   </div>

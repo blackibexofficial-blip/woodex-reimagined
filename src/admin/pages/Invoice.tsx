@@ -135,6 +135,7 @@ export default function AdminInvoice() {
           <div className="mt-4 flex justify-end">
             <div className="w-full max-w-[240px] space-y-1 text-xs text-muted-foreground">
               <div className="flex justify-between"><span>Subtotal</span><span>{formatPKR(order.subtotal)}</span></div>
+              {order.discountAmount ? <div className="flex justify-between text-emerald-700"><span>Discount{order.discountPct ? ` (${order.discountPct}%)` : ""}</span><span>−{formatPKR(order.discountAmount)}</span></div> : null}
               <div className="flex justify-between"><span>Delivery</span><span>{order.shipping === 0 ? "FREE" : formatPKR(order.shipping)}</span></div>
               {bill.taxRate > 0 && <div className="flex justify-between"><span>Tax</span><span>{bill.taxRate}%</span></div>}
               <div className="flex justify-between border-t-2 border-hon-green pt-1.5 text-sm font-black text-foreground"><span>Total</span><span>{formatPKR(order.total)}</span></div>
