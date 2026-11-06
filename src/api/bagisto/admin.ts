@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminCategory, AdminCustomer, AdminLead, AdminMediaAsset, AdminOrder, AdminProduct, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminCategory, AdminCustomer, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -106,6 +106,9 @@ const mapProduct = (p: any): AdminProduct => ({
 });
 
 const mapOrder = (o: any): AdminOrder => ({
+  courierName: o.courier_title ?? o.shipping_title,
+  trackingNumber: o.tracking_number ?? o.track_number,
+  internalNotes: o.staff_note,
   id: o.increment_id ? `WDX-${o.increment_id}` : String(o.id ?? "WDX-?"),
   customerName: o.customer_full_name ?? o.customer?.name ?? "Guest",
   customerEmail: o.customer_email ?? o.customer?.email ?? "",
@@ -264,15 +267,43 @@ export const bagistoAdminApi: AdminApi = {
     return mapOrder(raw);
   },
 
-  async updateOrderStatus(id, status) {
-    await request(`/sales/orders/${encodeURIComponent(id.replace(/^WDX-/, ""))}/${status === "cancelled" ? "cancel" : "state"}`, {
+  // Transitions are best-effort against the live instance. UNVERIFIED: Bagisto's action
+  // endpoints (state/cancel) vary by version & channel config — see docs/07.
+  async updateOrderStatus(id, status, options) {
+    const num = encodeURIComponent(id.replace(/^WDX-/, ""));
+    // courier/consignment ride along on the same best-effort payload (ignored by versions that don't accept them)
+    const extra = {
+      ...(options?.courierName !== undefined ? { courier_title: options.courierName } : {}),
+      ...(options?.trackingNumber !== undefined ? { tracking_number: options.trackingNumber } : {}),
+      ...(options?.internalNote ? { staff_note: options.internalNote } : {}),
+    };
+    await request(`/sales/orders/${num}/${status === "cancelled" ? "cancel" : "state"}`, {
       method: "POST",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...extra }),
     }).catch(() => {
       // Some versions expose a generic update instead of action endpoints.
-      return request(`/sales/orders/${encodeURIComponent(id.replace(/^WDX-/, ""))}`, { method: "PUT", body: JSON.stringify({ status }) });
+      return request(`/sales/orders/${num}`, { method: "PUT", body: JSON.stringify({ status, ...extra }) });
     });
     return this.getOrder(id);
+  },
+
+  async updateOrderCourier(id, patch): Promise<AdminOrder | undefined> {
+    // UNVERIFIED: maps onto the generic order update; Bagisto does not ship a dedicated endpoint.
+    await request(`/sales/orders/${encodeURIComponent(id.replace(/^WDX-/, ""))}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        ...(patch.courierName !== undefined ? { courier_title: patch.courierName } : {}),
+        ...(patch.trackingNumber !== undefined ? { tracking_number: patch.trackingNumber } : {}),
+        ...(patch.internalNotes !== undefined ? { staff_note: patch.internalNotes } : {}),
+      }),
+    });
+    return this.getOrder(id);
+  },
+
+  async getOrderEvents(): Promise<AdminOrderEvent[]> {
+    // Bagisto keeps its own status history (order_status_history in reports); surfacing it
+    // here needs a verified mapper — intentionally 501 until docs/07 provisioning happens.
+    throw new BagistoApiError(501, "Order lifecycle events are not wired for Bagisto yet (unverified report payloads). Use VITE_API_MODE=demo for the events timeline.");
   },
 
   async listCustomers(params) {

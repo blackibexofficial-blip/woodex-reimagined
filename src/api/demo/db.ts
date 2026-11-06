@@ -14,6 +14,7 @@ import type {
   AdminLead,
   AdminMediaAsset,
   AdminOrder,
+  AdminOrderEvent,
   AdminOrderItem,
   AdminProduct,
   DashboardStats,
@@ -40,6 +41,7 @@ interface DemoDb {
   inventoryMeta: Record<string, { lowStockThreshold: number; location: string; lastUpdated: string }>;
   movements: AdminStockMovement[];
   zones: AdminDeliveryZone[];
+  orderEvents: AdminOrderEvent[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -254,6 +256,79 @@ async function ensureMediaSeeded() {
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "category";
 
+/** Deterministic lifecycle ledger for seeded orders (plausible history, clamped to now). */
+function buildSeedOrderEvents(orders: AdminOrder[]): AdminOrderEvent[] {
+  const out: AdminOrderEvent[] = [];
+  const nowMs = Date.now();
+  const at = (placedAt: string, offsetMs: number) => new Date(Math.min(new Date(placedAt).getTime() + offsetMs, nowMs)).toISOString();
+  for (const o of orders) {
+    out.push({ id: `ev-seed-${out.length + 1}`, orderId: o.id, fromStatus: undefined, toStatus: "pending", note: "Order received", createdAt: o.placedAt });
+    if (o.status === "pending") continue;
+    out.push({ id: `ev-seed-${out.length + 1}`, orderId: o.id, fromStatus: "pending", toStatus: "processing", note: "Payment confirmed — preparing for dispatch", createdAt: at(o.placedAt, 3 * 3600e3) });
+    if (o.status === "processing") continue;
+    if (o.status === "cancelled") {
+      out.push({ id: `ev-seed-${out.length + 1}`, orderId: o.id, fromStatus: "processing", toStatus: "cancelled", note: "Cancelled by customer before dispatch", createdAt: at(o.placedAt, 26 * 3600e3) });
+      continue;
+    }
+    out.push({ id: `ev-seed-${out.length + 1}`, orderId: o.id, fromStatus: "processing", toStatus: "shipped", note: "Dispatched — handed to courier", createdAt: at(o.placedAt, 26 * 3600e3) });
+    if (o.status === "shipped") continue;
+    out.push({ id: `ev-seed-${out.length + 1}`, orderId: o.id, fromStatus: "shipped", toStatus: "delivered", note: "Delivered", createdAt: at(o.placedAt, 72 * 3600e3) });
+  }
+  return out.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+/** Applies a stock delta for an order line, logging an honest clamped movement. */
+function adjustLineStock(
+  db: DemoDb,
+  orderId: string,
+  item: Pick<AdminOrderItem, "id" | "name" | "quantity">,
+  direction: "out" | "in",
+  note: string,
+  now: string,
+) {
+  let p = db.products.find((x) => x.id === item.id);
+  if (!p) {
+    const target = item.name.trim().toLowerCase();
+    p = db.products.find((x) => x.name.trim().toLowerCase() === target);
+  }
+  if (!p) return; // line doesn't map onto the catalogue — record nothing rather than guess
+  if (direction === "out") {
+    const before = p.stock;
+    const qty = Math.min(Math.max(0, Math.trunc(item.quantity) || 0), before);
+    if (qty <= 0) return;
+    p.stock = before - qty;
+    syncFulfilment(p);
+    touchProductMeta(db, p.id);
+    db.movements.unshift({
+      id: `mov-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+      productId: p.id,
+      productName: p.name,
+      productSku: p.sku,
+      type: "outbound",
+      quantity: -qty,
+      notes: `${note} ${orderId}`,
+      createdAt: now,
+    });
+    return;
+  }
+  const beforeIn = p.stock;
+  const add = Math.max(0, Math.trunc(item.quantity) || 0);
+  if (add <= 0) return;
+  p.stock = beforeIn + add;
+  syncFulfilment(p);
+  touchProductMeta(db, p.id);
+  db.movements.unshift({
+    id: `mov-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+    productId: p.id,
+    productName: p.name,
+    productSku: p.sku,
+    type: "return",
+    quantity: add,
+    notes: `${note} ${orderId}`,
+    createdAt: now,
+  });
+}
+
 function buildSeed(): DemoDb {
   const rand = mulberry32(20261106);
 
@@ -380,7 +455,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders) };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -401,6 +476,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.media)) db.media = buildSeedMedia();
       if (!Array.isArray(db.movements)) db.movements = [];
       if (!Array.isArray(db.zones)) db.zones = buildSeedZones();
+      if (!Array.isArray(db.orderEvents)) db.orderEvents = buildSeedOrderEvents(db.orders);
       if (!db.inventoryMeta || typeof db.inventoryMeta !== "object" || Array.isArray(db.inventoryMeta)) db.inventoryMeta = buildInventoryMeta(db.products);
       db.products.forEach((p, i) => {
         if (!p.sku) p.sku = `WDX-${String(i + 1001).padStart(4, "0")}`;
@@ -711,13 +787,79 @@ export const demoAdminApi: AdminApi = {
     return loadDb().orders.find((o) => o.id === id);
   },
 
-  async updateOrderStatus(id, status) {
+  async updateOrderStatus(id, status, options) {
     let updated: AdminOrder | undefined;
     update((db) => {
       const o = db.orders.find((x) => x.id === id);
-      if (o) { o.status = status; updated = { ...o }; }
+      if (!o) return;
+      const from = o.status;
+      if (options?.courierName !== undefined) o.courierName = options.courierName.trim() || undefined;
+      if (options?.trackingNumber !== undefined) o.trackingNumber = options.trackingNumber.trim() || undefined;
+      if (options?.internalNote?.trim()) {
+        o.internalNotes = [o.internalNotes, options.internalNote.trim()].filter(Boolean).join("\n");
+      }
+      const now = new Date().toISOString();
+      const note =
+        options?.internalNote?.trim() ??
+        (status === "shipped" ? "Dispatched — handed to courier"
+          : status === "delivered" ? "Delivered"
+          : status === "cancelled" ? "Order cancelled"
+          : status === "processing" ? "Payment confirmed — preparing for dispatch"
+          : undefined);
+      if (from !== status) {
+        o.status = status;
+      }
+      (db.orderEvents ??= []).push({
+        id: `ev-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+        orderId: o.id,
+        fromStatus: from !== status ? from : undefined,
+        toStatus: from !== status ? status : undefined,
+        note,
+        createdAt: now,
+      });
+
+      // stock sync — shipped deducts; cancel only restocks what was already dispatched
+      if (from !== "shipped" && status === "shipped") {
+        for (const line of o.items) adjustLineStock(db, o.id, line, "out", "Dispatch", now);
+      } else if (status === "cancelled") {
+        const hadShipped = (db.orderEvents ?? []).some((e) => e.orderId === o.id && e.toStatus === "shipped");
+        if (hadShipped) for (const line of o.items) adjustLineStock(db, o.id, line, "in", "Return to stock on cancellation —", now);
+      }
+      updated = { ...o };
     });
     return updated;
+  },
+
+  async updateOrderCourier(id, patch) {
+    let updated: AdminOrder | undefined;
+    update((db) => {
+      const o = db.orders.find((x) => x.id === id);
+      if (!o) return;
+      if (patch.courierName !== undefined) o.courierName = patch.courierName.trim() || undefined;
+      if (patch.trackingNumber !== undefined) o.trackingNumber = patch.trackingNumber.trim() || undefined;
+      if (patch.internalNotes !== undefined) o.internalNotes = patch.internalNotes.trim() || undefined;
+      const now = new Date().toISOString();
+      const noteBits = [
+        patch.courierName !== undefined ? `courier → ${patch.courierName.trim() || "—"}` : "",
+        patch.trackingNumber !== undefined ? `consignment → ${patch.trackingNumber.trim() || "—"}` : "",
+      ].filter(Boolean).join(", ");
+      (db.orderEvents ??= []).push({
+        id: `ev-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+        orderId: o.id,
+        fromStatus: undefined,
+        toStatus: undefined,
+        note: noteBits ? `Dispatch details: ${noteBits}` : "Dispatch details updated",
+        createdAt: now,
+      });
+      updated = { ...o };
+    });
+    return updated;
+  },
+
+  async getOrderEvents(orderId) {
+    return [...(loadDb().orderEvents ?? [])]
+      .filter((e) => e.orderId === orderId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   },
 
   async listCustomers(params = {}) {

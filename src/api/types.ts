@@ -35,6 +35,21 @@ export interface AdminOrder {
   status: OrderStatus;
   placedAt: string;      // ISO
   notes?: string;
+  /** Courier + consignment for the dispatch leg (admin-entered). */
+  courierName?: string;
+  trackingNumber?: string;
+  /** Staff-only annotations — never shown on the storefront / invoice. */
+  internalNotes?: string;
+}
+
+/** Lifecycle ledger — one entry per status transition/dispatch note. */
+export interface AdminOrderEvent {
+  id: string;
+  orderId: string;            // e.g. "WDX-1042"
+  fromStatus?: OrderStatus;   // undefined for a pure note
+  toStatus?: OrderStatus;
+  note?: string;
+  createdAt: string;          // ISO
 }
 
 export interface AdminCustomer {
@@ -296,7 +311,17 @@ export interface AdminApi {
 
   listOrders(params?: ListParams & { status?: OrderStatus | "all" }): Promise<Paginated<AdminOrder>>;
   getOrder(id: string): Promise<AdminOrder | undefined>;
-  updateOrderStatus(id: string, status: OrderStatus): Promise<AdminOrder | undefined>;
+  /**
+   * Transitions status. Side effects (demo): records an order event; transition → "shipped"
+   * deducts item quantities from stock (clamped ≥0) with outbound movements referencing the
+   * order; transition → "cancelled" restocks only when this order was previously shipped
+   * (detected via the events ledger). Courier/tracking/note are stored on the order.
+   */
+  updateOrderStatus(id: string, status: OrderStatus, options?: { courierName?: string; trackingNumber?: string; internalNote?: string }): Promise<AdminOrder | undefined>;
+  /** Courier/consignment/internal-notes update without a status change. */
+  updateOrderCourier(id: string, patch: Partial<Pick<AdminOrder, "courierName" | "trackingNumber" | "internalNotes">>): Promise<AdminOrder | undefined>;
+  /** Lifecycle ledger for one order, oldest first. */
+  getOrderEvents(orderId: string): Promise<AdminOrderEvent[]>;
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;

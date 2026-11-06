@@ -8,6 +8,7 @@ import AdminProducts from "@/admin/pages/Products";
 import AdminCategories from "@/admin/pages/Categories";
 import AdminInventory from "@/admin/pages/Inventory";
 import AdminOrders from "@/admin/pages/Orders";
+import AdminInvoice from "@/admin/pages/Invoice";
 import AdminCustomers from "@/admin/pages/Customers";
 import AdminLeads from "@/admin/pages/Leads";
 import AdminContent from "@/admin/pages/Content";
@@ -25,6 +26,8 @@ export default function AdminApp() {
     <AdminAuthProvider>
       <Routes>
         <Route path="login" element={<AdminLogin />} />
+        {/* chrome-free printable invoice — standalone, outside the admin layout, guarded inside */}
+        <Route path="invoice/:id" element={<AdminInvoice />} />
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
