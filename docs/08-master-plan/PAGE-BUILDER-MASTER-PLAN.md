@@ -646,6 +646,17 @@ strategy; the to-do file is the tracker — update both in the same commit per w
 - **2026-11-06 (merge)** — Owner authorised: **"yes, merge."** PR #3 MERGED 2026-11-06T18:29:20Z, merge commit
   `44ff091` (`main` `69985d3 → 44ff091`). Vercel production tracks `main` — deploy verification is owner-side;
   `/lab/home` is now reachable in production (unlisted, noindex, badged, read-only; removal available on request).
+- **2026-11-06 (Wave 1, local)** — Foundation implemented locally on `arena/51eb86ae-woodex-reimagined`
+  (unpushed at time of writing; delivery vehicle = owner decision — PR #4 is docs-only). Demo-DB `pages` slice
+  (Puck-shaped JSON docs, history ≤20, slug registry), `/admin/pages` workspace (folder rail, search,
+  new/duplicate/delete, draft⇄published switch), `/admin/pages/:pageSlug` editor (Puck bound to the DB; publish
+  gated to the owner session; drafts for everyone), `/lab/:slug` storefront preview of any-status pages with
+  published/draft badge, seeded published `home` page; bagisto adapter throws 501 (Wave 7). Pages Lab spike retired
+  (`PagesLab.tsx`, `starter.ts` deleted). Gates: tsc 0 · eslint 0 errors · production build ✓ · e2e **35/35** (+2) ·
+  live CRUD acceptance 10/10, 0 console errors. Local note: the committed `package-lock.json` is stale vs
+  `package.json` (npm `ci` cannot run) and bun.lock resolves tarballs from the Lovable pkg.dev cache (blocked here);
+  local verification used public npmjs grafts under node_modules only — tracked files untouched; CI (bun + pkg.dev)
+  remains the canonical gate.
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
 - **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:

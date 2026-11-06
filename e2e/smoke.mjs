@@ -3,7 +3,7 @@
  *
  * Three blocks:
  *   admin     — login tabs, demo gate, analytics, categories CRUD + in-use guard,
- *               media upload/delete, dashboard render (16 checks)
+ *               media upload/delete, dashboard render, Pages workspace (18 checks)
  *   seo       — canonical + Organization/WebSite/LocalBusiness JSON-LD sitewide;
  *               Product/Article/Breadcrumb per page; zero lovable.app references (13 checks)
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
@@ -151,6 +151,15 @@ async function adminSuite(browser) {
   await page.goto(`${ADMIN}/dashboard`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Revenue — last 30 days", 20000);
   ok("dashboard still renders", true);
+  await clickByText("a", "Pages");
+  await page.waitForFunction(() => location.pathname.endsWith("/admin/pages"), { timeout: 10000 }).catch(() => {});
+  ok("sidebar Pages link routes to /admin/pages", await page.evaluate(() => location.pathname.endsWith("/admin/pages")));
+  await waitText("Builder pages", 10000).catch(() => {});
+  const pagesSeeded = await page.evaluate(() => {
+    const t = document.body.innerText.toLowerCase();
+    return t.includes("home") && t.includes("published");
+  });
+  ok("Pages workspace lists the seeded published home page", pagesSeeded);
   ok("no console/page errors (admin flow)", logs.length === 0);
   await page.close();
 }

@@ -295,8 +295,13 @@ legacy 81-page catalogue **stays separate** (furniture site only). See plan §11
   (editor mount → scale-corrected canvas select → field edit → Publish → /lab/home renders the edit;
   0 console errors) · e2e 33/33 · typecheck 0 · lint 0 errors · clean rebuild (Puck splits ~301 kB lazy
   chunk; storefront main bundle +1.4 kB).
-- [ ] **PB-1** Wave 1 — Foundation: demo-DB `pages` slice + Pages workspace (folder tree per plan §0A.2,
+- [x] **PB-1** Wave 1 — Foundation: demo-DB `pages` slice + Pages workspace (folder tree per plan §0A.2,
   CRUD, draft⇄published, history/revert, slug registry vs App.tsx routes). Est. 3–4 d.
+  **LOCAL DONE 2026-11-06 (unpushed; delivery vehicle = owner decision):** `/admin/pages` workspace (folder rail,
+  search, new/duplicate/delete, draft⇄published switch) + per-page editor `/admin/pages/:pageSlug` (Puck bound to
+  the demo DB; everyone saves drafts, publish = owner-only interim rule), history ≤20 + revert-as-draft, `/lab/:slug`
+  renders any-status pages, seeded published `home` page, bagisto = 501 stubs (Wave 7). Gates: tsc 0 · eslint 0
+  errors · production build ✓ · e2e 35/35 (+2) · live CRUD acceptance 10/10, 0 console errors.
 - [ ] **PB-2** Wave 2 — Sections & Elements libraries: 40-section UI-kit catalogue (thumbnails, label-in-Layers,
   Sections/UI kit/Templates/Images tabs, category chips, click-to-add-after) + Elements palette (BASIC+WIDGETS)
   + Layers panel (select/reorder/hide/lock). **Elements kit completion via free MIT Tailgrids per plan §5.3**

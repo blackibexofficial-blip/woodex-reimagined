@@ -14,6 +14,7 @@ import { projectsDisplay as projectSeed } from "@/data/projects";
 import { blogPosts as blogSeed } from "@/data/blogPosts";
 import { services as serviceSeed } from "@/data/services";
 import { warrantyPageSeed } from "@/data/warrantyPage";
+import { buildSeedPages, buildSeedPageFolders, blankPageDoc, starterPageDoc } from "@/data/pages";
 import type {
   AdminApi,
   AdminCategory,
@@ -55,6 +56,12 @@ import type {
   NewBrandInput,
   AdminHomepageSections,
   AdminWarrantyPage,
+  AdminPage,
+  AdminPageFolder,
+  NewPageInput,
+  UpdatePageInput,
+  NewPageFolderInput,
+  UpdatePageFolderInput,
   NewShowroomInput,
   AdminMaterial,
   NewMaterialInput,
@@ -142,6 +149,8 @@ interface DemoDb {
   brands: AdminBrand[];
   homepageSections: AdminHomepageSections;
   warrantyPage: AdminWarrantyPage;
+  pages: AdminPage[];
+  pageFolders: AdminPageFolder[];
   materials: AdminMaterial[];
   projects: AdminProject[];
   blogPosts: AdminBlogPost[];
@@ -608,6 +617,20 @@ function cloneWarrantyPage(src: AdminWarrantyPage): AdminWarrantyPage {
 }
 
 const WARRANTY_PAGE_SEED: AdminWarrantyPage = cloneWarrantyPage(warrantyPageSeed);
+
+const cloneDoc = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+const clonePage = (pg: AdminPage): AdminPage => cloneDoc(pg);
+const newPageId = () => `page-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`;
+const newFolderId = () => `folder-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`;
+const slugifyPage = (raw: string): string =>
+  (raw || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/-{2,}/g, "-") || "page";
+const uniquePageSlug = (rows: AdminPage[], base: string, exceptId?: string): string => {
+  let slug = base;
+  let n = 2;
+  const taken = () => rows.some((pg) => pg.slug === slug && pg.id !== exceptId);
+  while (taken()) { slug = `${base}-${n++}`; }
+  return slug;
+};
 
 /** Validate + normalize the admin-supplied warranty page content. Throws on hard errors. */
 function sanitizeWarrantyPage(input: AdminWarrantyPage): AdminWarrantyPage {
@@ -1534,7 +1557,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: cloneWarrantyPage(WARRANTY_PAGE_SEED), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: cloneWarrantyPage(WARRANTY_PAGE_SEED), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1566,6 +1589,10 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.brands)) db.brands = buildSeedBrands();
       if (!db.homepageSections || typeof db.homepageSections !== "object") db.homepageSections = { bestSellers: { mode: "auto", productIds: [] }, carousel: { mode: "auto", productIds: [] } };
       if (!db.warrantyPage || typeof db.warrantyPage !== "object" || !db.warrantyPage.hero || typeof db.warrantyPage.hero !== "object" || !Array.isArray(db.warrantyPage.tiers) || !Array.isArray(db.warrantyPage.steps) || !Array.isArray(db.warrantyPage.faqs)) db.warrantyPage = cloneWarrantyPage(warrantyPageSeed);
+      if (!Array.isArray(db.pages)) db.pages = buildSeedPages();
+      else db.pages = db.pages.filter((pg) => pg && typeof pg === "object" && typeof pg.slug === "string" && pg.doc && Array.isArray(pg.doc.content) && (pg.kind === "page" || pg.kind === "chrome"));
+      if (!Array.isArray(db.pageFolders)) db.pageFolders = buildSeedPageFolders();
+      else db.pageFolders = db.pageFolders.filter((f) => f && typeof f === "object" && typeof f.id === "string" && typeof f.name === "string");
       for (const p of db.products) if (p.brandId === undefined) p.brandId = "woodex";
       if (!Array.isArray(db.materials)) db.materials = buildSeedMaterials();
       if (!Array.isArray(db.projects)) db.projects = buildSeedProjects();
@@ -2531,6 +2558,218 @@ export const demoAdminApi: AdminApi = {
       db.warrantyPage = cloneWarrantyPage(warrantyPageSeed);
     });
     return cloneWarrantyPage(warrantyPageSeed);
+  },
+
+  // ------------------------------------------------------------------
+  // Pages builder (Wave 1) — demo-DB pages slice (Puck-shaped JSON documents)
+  // ------------------------------------------------------------------
+  async listPages(kind) {
+    const rows = loadDb().pages ?? buildSeedPages();
+    const filtered = kind ? rows.filter((pg) => pg.kind === kind) : rows;
+    return filtered.map(clonePage);
+  },
+
+  async getPage(idOrSlug) {
+    const rows = loadDb().pages ?? buildSeedPages();
+    const found = rows.find((pg) => pg.id === idOrSlug || pg.slug === idOrSlug);
+    return found ? clonePage(found) : undefined;
+  },
+
+  async createPage(input) {
+    if (!input?.title?.trim()) throw new Error("Page title is required.");
+    let created!: AdminPage;
+    update((db) => {
+      const slug = uniquePageSlug(db.pages, slugifyPage(input.slug?.trim() || input.title));
+      const folderId = input.folderId && db.pageFolders.some((f) => f.id === input.folderId) ? input.folderId : null;
+      created = {
+        id: newPageId(),
+        slug,
+        title: input.title.trim(),
+        kind: input.kind === "chrome" ? "chrome" : "page",
+        folderId,
+        status: "draft",
+        doc: input.starter === "blank" ? blankPageDoc() : starterPageDoc(),
+        seo: {},
+        updatedAt: new Date().toISOString(),
+        publishedAt: null,
+        version: 1,
+        history: [],
+      };
+      db.pages = [...db.pages, created];
+    });
+    return clonePage(created);
+  },
+
+  async updatePage(id, patch) {
+    const rows = loadDb().pages ?? [];
+    const existing = rows.find((pg) => pg.id === id);
+    if (!existing) return undefined;
+    let updated!: AdminPage;
+    update((db) => {
+      const target = db.pages.find((pg) => pg.id === id)!;
+      const nextSlug = patch.slug !== undefined ? uniquePageSlug(db.pages, slugifyPage(patch.slug), target.id) : target.slug;
+      const nextFolderId =
+        patch.folderId !== undefined
+          ? patch.folderId === null || db.pageFolders.some((f) => f.id === patch.folderId)
+            ? patch.folderId
+            : target.folderId
+          : target.folderId;
+      updated = {
+        ...target,
+        ...(patch.title !== undefined ? { title: patch.title.trim() || target.title } : {}),
+        slug: nextSlug,
+        folderId: nextFolderId,
+        ...(patch.doc !== undefined ? { doc: cloneDoc(patch.doc) } : {}),
+        ...(patch.seo !== undefined ? { seo: { ...target.seo, ...patch.seo } } : {}),
+        updatedAt: new Date().toISOString(),
+      };
+      db.pages = db.pages.map((pg) => (pg.id === id ? updated : pg));
+    });
+    return clonePage(updated);
+  },
+
+  async publishPage(id) {
+    let updated: AdminPage | undefined;
+    update((db) => {
+      const target = db.pages.find((pg) => pg.id === id);
+      if (!target) return;
+      const now = new Date().toISOString();
+      const version = (target.version ?? 1) + 1;
+      const entry = { version, publishedAt: now, title: target.title, doc: cloneDoc(target.doc) };
+      updated = {
+        ...target,
+        status: "published",
+        publishedAt: now,
+        updatedAt: now,
+        version,
+        history: [entry, ...(target.history ?? [])].slice(0, 20),
+      };
+      db.pages = db.pages.map((pg) => (pg.id === id ? updated! : pg));
+    });
+    return updated ? clonePage(updated) : undefined;
+  },
+
+  async unpublishPage(id) {
+    let updated: AdminPage | undefined;
+    update((db) => {
+      const target = db.pages.find((pg) => pg.id === id);
+      if (!target) return;
+      updated = { ...target, status: "draft", updatedAt: new Date().toISOString() };
+      db.pages = db.pages.map((pg) => (pg.id === id ? updated! : pg));
+    });
+    return updated ? clonePage(updated) : undefined;
+  },
+
+  async duplicatePage(id) {
+    const rows = loadDb().pages ?? [];
+    const source = rows.find((pg) => pg.id === id);
+    if (!source) return undefined;
+    let created!: AdminPage;
+    update((db) => {
+      const now = new Date().toISOString();
+      created = {
+        ...clonePage(source),
+        id: newPageId(),
+        title: `${source.title} (copy)`,
+        slug: uniquePageSlug(db.pages, `${source.slug}-copy`),
+        status: "draft",
+        publishedAt: null,
+        version: 1,
+        history: [],
+        updatedAt: now,
+      };
+      db.pages = [...db.pages, created];
+    });
+    return clonePage(created);
+  },
+
+  async deletePage(id) {
+    let removed = false;
+    update((db) => {
+      const before = db.pages.length;
+      db.pages = db.pages.filter((pg) => pg.id !== id);
+      removed = db.pages.length < before;
+    });
+    return removed;
+  },
+
+  async revertPage(id, version) {
+    let updated: AdminPage | undefined;
+    update((db) => {
+      const target = db.pages.find((pg) => pg.id === id);
+      const entry = target?.history?.find((h) => h.version === version);
+      if (!target || !entry) return;
+      updated = {
+        ...target,
+        doc: cloneDoc(entry.doc),
+        title: entry.title,
+        status: "draft",
+        updatedAt: new Date().toISOString(),
+      };
+      db.pages = db.pages.map((pg) => (pg.id === id ? updated! : pg));
+    });
+    return updated ? clonePage(updated) : undefined;
+  },
+
+  async listPageFolders() {
+    const rows = loadDb().pageFolders ?? [];
+    return [...rows].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name)).map((f) => ({ ...f }));
+  },
+
+  async createPageFolder(input) {
+    if (!input?.name?.trim()) throw new Error("Folder name is required.");
+    let created!: AdminPageFolder;
+    update((db) => {
+      const parentId = input.parentId && db.pageFolders.some((f) => f.id === input.parentId) ? input.parentId : null;
+      const sortOrder = db.pageFolders.reduce((max, f) => Math.max(max, (f.sortOrder ?? 0) + 1), 0);
+      created = { id: newFolderId(), name: input.name.trim(), parentId, sortOrder };
+      db.pageFolders = [...db.pageFolders, created];
+    });
+    return { ...created };
+  },
+
+  async updatePageFolder(id, patch) {
+    let updated: AdminPageFolder | undefined;
+    update((db) => {
+      const target = db.pageFolders.find((f) => f.id === id);
+      if (!target) return;
+      let parentId = patch.parentId !== undefined ? patch.parentId : target.parentId;
+      if (parentId === id) parentId = target.parentId;
+      // cycle guard: new parent must not be a descendant of this folder
+      if (parentId) {
+        let cursor: string | null = parentId;
+        const seen = new Set<string>();
+        while (cursor) {
+          if (cursor === id || seen.has(cursor)) { parentId = target.parentId; break; }
+          seen.add(cursor);
+          cursor = db.pageFolders.find((f) => f.id === cursor)?.parentId ?? null;
+        }
+      } else if (patch.parentId === null) {
+        parentId = null;
+      }
+      updated = {
+        ...target,
+        ...(patch.name !== undefined && patch.name.trim() ? { name: patch.name.trim() } : {}),
+        parentId,
+        ...(patch.sortOrder !== undefined ? { sortOrder: patch.sortOrder } : {}),
+      };
+      db.pageFolders = db.pageFolders.map((f) => (f.id === id ? updated! : f));
+    });
+    return updated ? { ...updated } : undefined;
+  },
+
+  async deletePageFolder(id) {
+    let removed = false;
+    update((db) => {
+      const target = db.pageFolders.find((f) => f.id === id);
+      if (!target) return;
+      db.pageFolders = db.pageFolders
+        .filter((f) => f.id !== id)
+        .map((f) => (f.parentId === id ? { ...f, parentId: target.parentId ?? null } : f));
+      db.pages = db.pages.map((pg) => (pg.folderId === id ? { ...pg, folderId: null } : pg));
+      removed = true;
+    });
+    return removed;
   },
 
   async listMaterials() {

@@ -39,8 +39,9 @@ import AdminBlog from "@/admin/pages/Blog";
 import AdminServices from "@/admin/pages/Services";
 import AdminMedia from "@/admin/pages/Media";
 import AdminSettings from "@/admin/pages/Settings";
+import AdminPages from "@/admin/pages/Pages";
 
-const AdminPagesLab = lazy(() => import("@/admin/pages/PagesLab"));
+const AdminPageEditor = lazy(() => import("@/admin/pages/PageEditor"));
 
 /**
  * WOODEX admin — mounted at /admin/*.
@@ -93,7 +94,8 @@ export default function AdminApp() {
           <Route path="warranty" element={<AdminWarranty />} />
           <Route path="media" element={<AdminMedia />} />
           <Route path="settings" element={<AdminSettings />} />
-          <Route path="pages-lab" element={<Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading Pages Lab…</div>}><AdminPagesLab /></Suspense>} />
+          <Route path="pages" element={<AdminPages />} />
+          <Route path="pages/:pageSlug" element={<Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading page editor…</div>}><AdminPageEditor /></Suspense>} />
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
       </Routes>
