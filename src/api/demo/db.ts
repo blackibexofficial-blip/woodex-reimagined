@@ -18,6 +18,9 @@ import type {
   AdminProduct,
   DashboardStats,
   ListParams,
+  NewAdminProductInput,
+  ProductImportResult,
+  ProductImportRow,
   NewLeadInput,
   NewOrderInput,
   OrderStatus,
@@ -425,7 +428,26 @@ const matchQuery = (q: string | undefined, haystacks: Array<string | undefined>)
   return haystacks.some((h) => h?.toLowerCase().includes(needle));
 };
 
-function paginate<T>(items: T[], { page = 1, perPage = 10 }: ListParams) {
+/** Next catalogue SKU: max numeric suffix + 1 (seeds live at WDX-1001…). */
+function nextProductSku(db: DemoDb): string {
+  let max = 1000;
+  for (const p of db.products) {
+    const n = Number(String(p.sku ?? "").replace(/\D/g, ""));
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  return `WDX-${String(max + 1).padStart(4, "0")}`;
+}
+
+function paginate<T>(items: T[], { page = 1, perPage = 10, sort, direction }: ListParams) {
+  if (sort) {
+    const dir = direction === "desc" ? -1 : 1;
+    items = [...items].sort((a, b) => {
+      const ka = (a as unknown as Record<string, number | string>)[sort];
+      const kb = (b as unknown as Record<string, number | string>)[sort];
+      const cmp = typeof ka === "string" ? String(ka).localeCompare(String(kb)) : (Number(ka) || 0) - (Number(kb) || 0);
+      return cmp * dir;
+    });
+  }
   const total = items.length;
   const start = (page - 1) * perPage;
   return { items: items.slice(start, start + perPage), total, page, perPage };
@@ -505,9 +527,152 @@ export const demoAdminApi: AdminApi = {
     let items = [...db.products];
     if (params.category) items = items.filter((p) => p.category === params.category);
     if (typeof params.inStock === "boolean") items = items.filter((p) => p.inStock === params.inStock);
-    items = items.filter((p) => matchQuery(params.query, [p.name, p.category, p.id]));
-    items.sort((a, b) => b.reviews - a.reviews);
-    return paginate(items, { page: params.page, perPage: params.perPage ?? 10 });
+    items = items.filter((p) => matchQuery(params.query, [p.name, p.category, p.id, p.sku]));
+    if (!params.sort) items.sort((a, b) => b.reviews - a.reviews);
+    return paginate(items, { page: params.page, perPage: params.perPage ?? 10, sort: params.sort, direction: params.direction });
+  },
+
+  async createProduct(input) {
+    let created: AdminProduct | undefined;
+    update((db) => {
+      const p: AdminProduct = {
+        id: `prod-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+        name: input.name.trim(),
+        category: input.category,
+        subcategory: input.subcategory,
+        sku: nextProductSku(db),
+        price: input.price,
+        compareAtPrice: input.compareAtPrice,
+        image: input.image,
+        inStock: input.stock > 0,
+        stock: input.stock,
+        stockStatus: input.stockStatus ?? (input.stock > 0 ? "in_stock" : "out_of_stock"),
+        isBestSeller: input.isBestSeller ?? false,
+        rating: 0,
+        reviews: 0,
+        dimensions: input.dimensions,
+        weightKg: input.weightKg,
+      };
+      syncFulfilment(p);
+      if (input.stockStatus === "made_to_order") p.stockStatus = "made_to_order";
+      db.products.push(p);
+      db.inventoryMeta[p.id] = { ...defaultInventoryMeta(p.id), lastUpdated: new Date().toISOString() };
+      created = { ...p };
+    });
+    if (!created) throw new Error("Failed to create product");
+    return created;
+  },
+
+  async duplicateProduct(id) {
+    let copy: AdminProduct | undefined;
+    update((db) => {
+      const src = db.products.find((x) => x.id === id);
+      if (!src) return;
+      const p: AdminProduct = {
+        ...src,
+        id: `prod-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+        name: `${src.name} (Copy)`,
+        sku: nextProductSku(db),
+        reviews: 0,
+        rating: 0,
+        stock: 0,
+        inStock: false,
+        stockStatus: src.stockStatus === "made_to_order" ? "made_to_order" : "out_of_stock",
+      };
+      if (p.stockStatus !== "made_to_order") syncFulfilment(p);
+      db.products.push(p);
+      db.inventoryMeta[p.id] = { ...defaultInventoryMeta(p.id), lastUpdated: new Date().toISOString() };
+      copy = { ...p };
+    });
+    return copy;
+  },
+
+  async deleteProduct(id) {
+    let removed = false;
+    update((db) => {
+      const before = db.products.length;
+      db.products = db.products.filter((p) => p.id !== id);
+      removed = db.products.length < before;
+      if (removed) delete db.inventoryMeta[id];
+    });
+    return removed;
+  },
+
+  /** Administrative import — no ledger movements (physical stock unchanged; meta.lastUpdated is). */
+  async importProductsCsv(rows) {
+    const errors: { row: number; message: string }[] = [];
+    let created = 0, updated = 0, skipped = 0;
+    update((db) => {
+      const byId = new Map(db.products.map((p) => [p.id, p] as const));
+      const bySku = new Map(db.products.map((p) => [String(p.sku).toLowerCase(), p] as const));
+      const touch = (p: AdminProduct) => {
+        const meta = (db.inventoryMeta[p.id] ??= defaultInventoryMeta(p.id));
+        meta.lastUpdated = new Date().toISOString();
+      };
+      rows.forEach((row, i) => {
+        const rowNo = i + 1;
+        if (!row.name?.trim() && !row.id && !row.sku) { skipped += 1; return; }
+        const match = (row.id ? byId.get(row.id) : undefined) ?? (row.sku ? bySku.get(String(row.sku).toLowerCase()) : undefined);
+        const stockChange = row.stock !== undefined;
+        const explicitStatus = row.stockStatus !== undefined;
+        if (match) {
+          const p = match;
+          if (row.name?.trim()) p.name = row.name.trim();
+          if (row.category) p.category = row.category;
+          if (row.subcategory !== undefined) p.subcategory = row.subcategory;
+          if (row.price !== undefined) p.price = row.price;
+          if (row.compareAtPrice !== undefined) p.compareAtPrice = row.compareAtPrice;
+          if (stockChange) p.stock = row.stock;
+          if (row.inStock !== undefined) p.inStock = row.inStock;
+          if (row.rating !== undefined) p.rating = row.rating;
+          if (row.reviews !== undefined) p.reviews = row.reviews;
+          if (row.isBestSeller !== undefined) p.isBestSeller = row.isBestSeller;
+          if (row.dimensions !== undefined) p.dimensions = row.dimensions;
+          if (row.weightKg !== undefined) p.weightKg = row.weightKg;
+          if (explicitStatus) {
+            p.stockStatus = row.stockStatus!;
+            if (p.stockStatus === "out_of_stock") p.inStock = false;
+            else if (p.stockStatus === "in_stock") p.inStock = true;
+          } else if (stockChange) {
+            syncFulfilment(p);
+          }
+          touch(p);
+          updated += 1;
+          return;
+        }
+        if (!row.name?.trim()) { errors.push({ row: rowNo, message: "name is required for new products" }); return; }
+        if (!row.category) { errors.push({ row: rowNo, message: `category is required to create “${row.name.trim()}”` }); return; }
+        if (row.price === undefined || Number.isNaN(row.price) || row.price < 0) {
+          errors.push({ row: rowNo, message: `a valid price is required to create “${row.name.trim()}”` });
+          return;
+        }
+        const p: AdminProduct = {
+          id: `prod-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}-${rowNo}`,
+          name: row.name.trim(),
+          category: row.category,
+          subcategory: row.subcategory,
+          sku: row.sku?.trim() ? row.sku.trim().toUpperCase() : nextProductSku(db),
+          price: row.price,
+          compareAtPrice: row.compareAtPrice,
+          image: undefined,
+          inStock: (row.stock ?? 0) > 0,
+          stock: row.stock ?? 0,
+          stockStatus: row.stockStatus ?? ((row.stock ?? 0) > 0 ? "in_stock" : "out_of_stock"),
+          isBestSeller: row.isBestSeller ?? false,
+          rating: row.rating ?? 0,
+          reviews: row.reviews ?? 0,
+          dimensions: row.dimensions,
+          weightKg: row.weightKg,
+        };
+        syncFulfilment(p);
+        if (p.stockStatus === "made_to_order") p.inStock = p.stock > 0;
+        bySku.set(String(p.sku).toLowerCase(), p);
+        db.products.push(p);
+        db.inventoryMeta[p.id] = { ...defaultInventoryMeta(p.id), lastUpdated: new Date().toISOString() };
+        created += 1;
+      });
+    });
+    return { created, updated, skipped, errors };
   },
 
   async updateProduct(id, patch) {

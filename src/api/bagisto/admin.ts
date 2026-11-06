@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminCategory, AdminCustomer, AdminLead, AdminMediaAsset, AdminOrder, AdminProduct, DashboardStats, ListParams, NewLeadInput, NewOrderInput, Paginated, RevenuePoint, StoreSettings,
+  AdminApi, AdminCategory, AdminCustomer, AdminLead, AdminMediaAsset, AdminOrder, AdminProduct, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -205,6 +205,51 @@ export const bagistoAdminApi: AdminApi = {
     });
     const res = await request<{ data: WireLoose }>(`/catalog/products/${encodeURIComponent(id)}`);
     return mapProduct(res.data ?? res);
+  },
+
+  // Products v2 — best-effort against the live instance. UNVERIFIED: payload shapes follow
+  // the bagisto-api reference (attribute_family required, category ids are integers, inventories
+  // live on a channel/location). Expect mapping drift — validate with /api/admin/docs after
+  // provisioning (docs/07). Falls back to BagistoApiError with the raw response on failure.
+  async createProduct(input: NewAdminProductInput): Promise<AdminProduct> {
+    const sku = `WDX-${Date.now().toString(36).toUpperCase()}`;
+    const res = await request<{ data: WireLoose }>(`/catalog/products`, {
+      method: "POST",
+      body: JSON.stringify({
+        type: "simple",
+        sku,
+        attribute_family: "default",
+        name: input.name,
+        price: input.price,
+        compare_price: input.compareAtPrice,
+        weight: input.weightKg,
+        width: input.dimensions, // Bagisto family attributes vary per install — UNVERIFIED
+        inventories: [{ qty: input.stock, in_stock: input.inStock ?? input.stock > 0 }],
+        categories: input.category ? [input.category] : [],
+      }),
+    });
+    return mapProduct(res.data ?? res);
+  },
+
+  async duplicateProduct(id: string): Promise<AdminProduct | undefined> {
+    const src = await request<{ data: WireLoose }>(`/catalog/products/${encodeURIComponent(id)}`).then((r) => r.data ?? r as unknown as WireLoose).catch(() => null);
+    if (!src) return undefined;
+    const name = `${String(src.name ?? "Product")} (Copy)`;
+    const sku = `WDX-${Date.now().toString(36).toUpperCase()}`;
+    const res = await request<{ data: WireLoose }>(`/catalog/products`, {
+      method: "POST",
+      body: JSON.stringify({ ...src, id: undefined, sku, name, price: src.price, inventories: [{ qty: 0, in_stock: false }] }),
+    });
+    return mapProduct(res.data ?? res);
+  },
+
+  async deleteProduct(id: string): Promise<boolean> {
+    await request(`/catalog/products/${encodeURIComponent(id)}`, { method: "DELETE" });
+    return true;
+  },
+
+  async importProductsCsv(): Promise<ProductImportResult> {
+    throw new BagistoApiError(501, "CSV import is not wired for Bagisto yet (unverified bulk-upsert semantics). Use VITE_API_MODE=demo for bulk imports, or Bagisto Admin → Catalogue → import.");
   },
 
   async listOrders(params) {

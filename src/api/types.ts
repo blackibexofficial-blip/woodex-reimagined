@@ -80,6 +80,52 @@ export interface AdminProduct {
   isBestSeller: boolean;
   rating: number;
   reviews: number;
+  /** Optional physical attributes (admin display + CSV round-trip). */
+  dimensions?: string;
+  weightKg?: number;
+}
+
+/** Input for creating a product from the admin panel. SKU/id are generated. */
+export interface NewAdminProductInput {
+  name: string;
+  category: string;
+  subcategory?: string;
+  price: number;
+  compareAtPrice?: number;
+  stock: number;
+  inStock?: boolean;
+  stockStatus?: StockStatus;
+  isBestSeller?: boolean;
+  image?: string;
+  dimensions?: string;
+  weightKg?: number;
+}
+
+/** One validated CSV import row (upsert key = id, else sku). */
+export interface ProductImportRow {
+  id?: string;
+  sku?: string;
+  name: string;
+  category?: string;
+  subcategory?: string;
+  price?: number;
+  compareAtPrice?: number;
+  stock?: number;
+  inStock?: boolean;
+  rating?: number;
+  reviews?: number;
+  stockStatus?: StockStatus;
+  isBestSeller?: boolean;
+  dimensions?: string;
+  weightKg?: number;
+}
+
+export interface ProductImportResult {
+  created: number;
+  updated: number;
+  skipped: number;
+  /** 1-based data-row numbers (header excluded) + reason. */
+  errors: { row: number; message: string }[];
 }
 
 /* ── Inventory & fulfilment ─────────────────────────────────────────────── */
@@ -223,6 +269,9 @@ export interface ListParams {
   query?: string;
   page?: number;
   perPage?: number;
+  /** Newest-first is the server default; admin table can request a sorted page. */
+  sort?: "name" | "price" | "stock" | "rating" | "reviews";
+  direction?: "asc" | "desc";
 }
 
 /** The contract the admin panel implements against. Demo + Bagisto both satisfy this. */
@@ -231,7 +280,15 @@ export interface AdminApi {
   getRevenueSeries(days: number): Promise<RevenuePoint[]>;
 
   listProducts(params?: ListParams & { category?: string; inStock?: boolean }): Promise<Paginated<AdminProduct>>;
-  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus">>): Promise<AdminProduct | undefined>;
+  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus" | "category" | "dimensions" | "weightKg">>): Promise<AdminProduct | undefined>;
+  /** Create a product (demo: local catalogue insert; bagisto: POST, unverified). SKU auto-assigned. */
+  createProduct(input: NewAdminProductInput): Promise<AdminProduct>;
+  /** Clone a product as "<name> (Copy)" with a fresh SKU; copy lands out of stock. */
+  duplicateProduct(id: string): Promise<AdminProduct | undefined>;
+  /** Delete a product (inventory ledger history is kept; product's stock row is removed). */
+  deleteProduct(id: string): Promise<boolean>;
+  /** Upsert catalogue rows (match by id, else sku). Creates with defaults when the match fails. */
+  importProductsCsv(rows: ProductImportRow[]): Promise<ProductImportResult>;
 
   listOrders(params?: ListParams & { status?: OrderStatus | "all" }): Promise<Paginated<AdminOrder>>;
   getOrder(id: string): Promise<AdminOrder | undefined>;
