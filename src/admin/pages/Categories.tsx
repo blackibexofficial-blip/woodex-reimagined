@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { OPTION_SETS, optionSetIdsFor } from "@/data/options";
 
 type Group = AdminCategory["group"];
 const GROUP_LABEL: Record<Group, string> = { office: "Office", home: "Home", ungrouped: "Ungrouped" };
@@ -239,6 +240,16 @@ export default function AdminCategories() {
                   {hasKids && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 align-middle font-mono text-[10px] font-semibold text-muted-foreground">{kids.length}</span>}
                 </p>
                 <p className="font-mono text-[10px] text-muted-foreground">{c.id}</p>
+                {(() => {
+                  const defaultSets = optionSetIdsFor({ subcategory: c.id, category: c.id });
+                  if (defaultSets.length === 0) return null;
+                  const names = defaultSets.map((id) => OPTION_SETS.find((o) => o.id === id)?.name ?? id);
+                  return (
+                    <p className="mt-0.5 text-[10px] text-muted-foreground" title="Default option sets attached to products in this category (src/data/options.ts) — customers pick these on the PDP">
+                      PDP defaults: <span className="font-medium text-foreground/80">{names.join(" · ")}</span>
+                    </p>
+                  );
+                })()}
                 {searching && c.parentId && (
                   <p className="text-[10px] italic text-muted-foreground">sub of {rows.find((r) => r.id === c.parentId)?.name ?? c.parentId}</p>
                 )}

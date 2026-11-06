@@ -140,8 +140,12 @@ slices instead of duplicating them.
   label/value rows, seeded from the factory table) with save → demo-DB persistence round-trip (verified live);
   `AdminProduct.specs` (+CSV-style round-trip via updateProduct patch). JSON-LD Product `sku` already varies by
   variant selection (P3.2). Live check 11/11 · e2e 33/33 · lint 0 errors.
-- [ ] **P3.4** Advanced category control polish — evaluate per-category default option sets (avoid gold-plating;
-  only if P3.1–P3.3 land clean).
+- [x] **P3.4** Advanced category control polish — EVALUTION: per-category default option sets were already
+  delivered in P3.1 as the rule table (`src/data/options.ts` — subcategory first, category fallback) and are live
+  on the PDP; turning the table into a DB-overridable per-category config would be gold-plating against the
+  static storefront. Polish shipped instead: the admin Categories tree now shows each category's resolved
+  "PDP defaults" inline (Finish · Size / Finish · Fabric …) so the rule table is legible to the owner — live
+  check 4/4 · e2e 33/33.
 - [ ] **P3.5** Translations groundwork — Urdu `hreflang` + string externalization spike; **evaluate and report
   before committing to full RTL** (master-plan Phase 5 item; do not gold-plate).
 
