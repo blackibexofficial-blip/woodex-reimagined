@@ -237,7 +237,16 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
   name/city/address/phone/hours). Live check 23/23 (seed render · search · create · edit round-trip · active
   toggle · HQ guard · delete · 0 console errors) · e2e 33/33 · lint 0 errors. Storefront `/showrooms` page stays
   static by accepted architecture — wiring demo master → storefront happens with the Bagisto cutover.
-- [ ] **B2** Warranty page content — `/warranty` is hardcoded; add editable content entry (optional, low value).
+- [x] **B2** Warranty page content — DONE (`/admin/warranty`, Engage nav + Content hub card): the /warranty policy page
+  is now a singleton in the demo content store (`AdminWarrantyPage`), seeded with the exact copy that used to be
+  hardcoded (hero eyebrow/title/subtitle, coverage tiers with coverage/excludes lists + "Most Popular" flag, numbered
+  claim steps, FAQs with reorder). Storefront /warranty renders from the store via `useWarrantyPage()` (seed fallback =
+  identical render); FAQ section hides when empty. Save persists to the demo DB; "Restore defaults" resets to seed.
+  Admin validation/sanitization server-rejects empty hero/tiers/steps with toasts. Bagisto side: honest 501 stubs.
+  Live check ALL PASS (hub card · nav · seed load · edit hero+FAQ · persist across reload · storefront reflects edit ·
+  reset restores defaults incl. storefront · 0 first-party console errors) · e2e 33/33 · lint 0 errors · clean rebuild ·
+  `bun run typecheck` exit 0. Storefront now reads live content — EXCEPT the contact card row (phone/hours/warranty
+  email), which still interpolates site config by design.
 - [x] **B3** Services / Blog / Materials & Colors / Projects — admin editors DONE (P1.2–P1.5).
 - [ ] **B4** Custom Design consultation blocks; Virtual Showroom (WDS) content — static; admin only if owner wants.
 

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Palette, Briefcase, Newspaper, Wrench, ArrowRight, ExternalLink, Info, FileText } from "lucide-react";
+import { Palette, Briefcase, Newspaper, Wrench, ArrowRight, ExternalLink, Info, FileText, ShieldCheck } from "lucide-react";
 import { useMaterials } from "@/lib/useMaterials";
 import { useProjects } from "@/lib/useProjects";
 import { useBlogPosts } from "@/lib/useBlogPosts";
@@ -52,6 +52,15 @@ export default function AdminContent() {
       count: `${services.length} services`,
       editor: "/admin/services",
       live: "/services",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Warranty",
+      tint: "bg-rose-100 text-rose-800",
+      desc: "The /warranty policy page — hero copy, coverage tiers, claim process and FAQs.",
+      count: "1 policy page",
+      editor: "/admin/warranty",
+      live: "/warranty",
     },
   ];
 

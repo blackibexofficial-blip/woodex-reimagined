@@ -61,6 +61,7 @@ const NAV_GROUPS: Array<{
       { to: "/admin/blog", label: "Blog", icon: Newspaper },
       { to: "/admin/services", label: "Services", icon: Wrench },
       { to: "/admin/content", label: "Content", icon: FileText },
+      { to: "/admin/warranty", label: "Warranty", icon: ShieldCheck },
       { to: "/admin/media", label: "Media", icon: Image },
     ],
   },
@@ -71,7 +72,7 @@ function pageTitle(pathname: string) {
   const seg = pathname.split("/")[2] ?? "dashboard";
   const map: Record<string, string> = {
     dashboard: "Dashboard", analytics: "Analytics", products: "Products", categories: "Categories",
-    orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", transfers: "Transfers", options: "Product Options", content: "Content", showrooms: "Showrooms",
+    orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", transfers: "Transfers", options: "Product Options", content: "Content", warranty: "Warranty Content", showrooms: "Showrooms",
     media: "Media Library", settings: "Settings", inventory: "Inventory & Delivery Zones", series: "Furniture Series", brands: "Product Brands", homepage: "Homepage Sections",
   };
   return map[seg] ?? "Admin";

@@ -13,6 +13,7 @@ import { pageSwatchSeed } from "@/data/materialsPage";
 import { projectsDisplay as projectSeed } from "@/data/projects";
 import { blogPosts as blogSeed } from "@/data/blogPosts";
 import { services as serviceSeed } from "@/data/services";
+import { warrantyPageSeed } from "@/data/warrantyPage";
 import type {
   AdminApi,
   AdminCategory,
@@ -53,6 +54,7 @@ import type {
   AdminBrand,
   NewBrandInput,
   AdminHomepageSections,
+  AdminWarrantyPage,
   NewShowroomInput,
   AdminMaterial,
   NewMaterialInput,
@@ -139,6 +141,7 @@ interface DemoDb {
   series: AdminSeries[];
   brands: AdminBrand[];
   homepageSections: AdminHomepageSections;
+  warrantyPage: AdminWarrantyPage;
   materials: AdminMaterial[];
   projects: AdminProject[];
   blogPosts: AdminBlogPost[];
@@ -594,6 +597,93 @@ const HOMEPAGE_SECTIONS_SEED: AdminHomepageSections = {
   bestSellers: { mode: "auto", productIds: [] },
   carousel: { mode: "auto", productIds: [] },
 };
+
+function cloneWarrantyPage(src: AdminWarrantyPage): AdminWarrantyPage {
+  return {
+    hero: { eyebrow: src.hero.eyebrow, title: src.hero.title, subtitle: src.hero.subtitle },
+    tiers: src.tiers.map((t) => ({ ...t, coverage: [...t.coverage], excludes: [...t.excludes] })),
+    steps: src.steps.map((s) => ({ ...s })),
+    faqs: src.faqs.map((f) => ({ ...f })),
+  };
+}
+
+const WARRANTY_PAGE_SEED: AdminWarrantyPage = cloneWarrantyPage(warrantyPageSeed);
+
+/** Validate + normalize the admin-supplied warranty page content. Throws on hard errors. */
+function sanitizeWarrantyPage(input: AdminWarrantyPage): AdminWarrantyPage {
+  if (!input || typeof input !== "object") throw new Error("Warranty page content is missing.");
+  const cleanStr = (v: unknown, field: string, max: number, required: boolean): string => {
+    const t = typeof v === "string" ? v.trim() : "";
+    if (required && !t) throw new Error(`${field} is required.`);
+    return t.slice(0, max);
+  };
+  const cleanList = (v: unknown, max: number, maxItem: number): string[] =>
+    Array.isArray(v)
+      ? v.map((x) => (typeof x === "string" ? x.trim() : "")).filter((x) => x.length > 0).slice(0, max).map((x) => x.slice(0, maxItem))
+      : [];
+  const uniqueId = (raw: unknown, prefix: string, index: number, used: Set<string>): string => {
+    let id = typeof raw === "string" && raw.trim() ? raw.trim().slice(0, 64) : `${prefix}-${index + 1}`;
+    if (used.has(id)) id = `${prefix}-${index + 1}-${Math.random().toString(36).slice(2, 8)}`;
+    used.add(id);
+    return id;
+  };
+
+  const hero = input.hero;
+  if (!hero || typeof hero !== "object") throw new Error("Hero block is missing.");
+  const cleanHero = {
+    eyebrow: cleanStr(hero.eyebrow, "Hero eyebrow", 120, true),
+    title: cleanStr(hero.title, "Hero title", 160, true),
+    subtitle: cleanStr(hero.subtitle, "Hero subtitle", 600, false),
+  };
+
+  if (!Array.isArray(input.tiers)) throw new Error("Tiers must be a list.");
+  if (input.tiers.length === 0) throw new Error("At least one warranty tier is required.");
+  if (input.tiers.length > 6) throw new Error("At most 6 warranty tiers.");
+  const tierIds = new Set<string>();
+  let popularSeen = false;
+  const tiers = input.tiers.map((t, i) => {
+    const tier = t ?? ({} as (typeof input.tiers)[number]);
+    const popularWanted = Boolean(tier.popular);
+    const popular = popularWanted && !popularSeen;
+    if (popular) popularSeen = true;
+    return {
+      id: uniqueId(tier.id, "tier", i, tierIds),
+      name: cleanStr(tier.name, `Tier ${i + 1} name`, 120, true),
+      duration: cleanStr(tier.duration, `Tier ${i + 1} duration`, 60, true),
+      applies: cleanStr(tier.applies, `Tier ${i + 1} applies-to`, 200, false),
+      popular,
+      coverage: cleanList(tier.coverage, 20, 200),
+      excludes: cleanList(tier.excludes, 20, 200),
+    };
+  });
+
+  if (!Array.isArray(input.steps)) throw new Error("Claim steps must be a list.");
+  if (input.steps.length === 0) throw new Error("At least one claim step is required.");
+  if (input.steps.length > 8) throw new Error("At most 8 claim steps.");
+  const stepIds = new Set<string>();
+  const steps = input.steps.map((st, i) => {
+    const step = st ?? ({} as (typeof input.steps)[number]);
+    return {
+      id: uniqueId(step.id, "step", i, stepIds),
+      title: cleanStr(step.title, `Step ${i + 1} title`, 120, true),
+      description: cleanStr(step.description, `Step ${i + 1} description`, 600, true),
+    };
+  });
+
+  if (!Array.isArray(input.faqs)) throw new Error("FAQs must be a list.");
+  if (input.faqs.length > 12) throw new Error("At most 12 FAQs.");
+  const faqIds = new Set<string>();
+  const faqs = input.faqs.map((f, i) => {
+    const faq = f ?? ({} as (typeof input.faqs)[number]);
+    return {
+      id: uniqueId(faq.id, "faq", i, faqIds),
+      q: cleanStr(faq.q, `FAQ ${i + 1} question`, 300, true),
+      a: cleanStr(faq.a, `FAQ ${i + 1} answer`, 1000, true),
+    };
+  });
+
+  return { hero: cleanHero, tiers, steps, faqs };
+}
 
 const BRAND_SEED: Array<Omit<AdminBrand, "createdAt" | "updatedAt">> = [
   {
@@ -1444,7 +1534,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: cloneWarrantyPage(WARRANTY_PAGE_SEED), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1475,6 +1565,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.series)) db.series = buildSeedSeries();
       if (!Array.isArray(db.brands)) db.brands = buildSeedBrands();
       if (!db.homepageSections || typeof db.homepageSections !== "object") db.homepageSections = { bestSellers: { mode: "auto", productIds: [] }, carousel: { mode: "auto", productIds: [] } };
+      if (!db.warrantyPage || typeof db.warrantyPage !== "object" || !db.warrantyPage.hero || typeof db.warrantyPage.hero !== "object" || !Array.isArray(db.warrantyPage.tiers) || !Array.isArray(db.warrantyPage.steps) || !Array.isArray(db.warrantyPage.faqs)) db.warrantyPage = cloneWarrantyPage(warrantyPageSeed);
       for (const p of db.products) if (p.brandId === undefined) p.brandId = "woodex";
       if (!Array.isArray(db.materials)) db.materials = buildSeedMaterials();
       if (!Array.isArray(db.projects)) db.projects = buildSeedProjects();
@@ -2421,6 +2512,25 @@ export const demoAdminApi: AdminApi = {
     });
     if (!merged) throw new Error("Could not persist homepage sections.");
     return merged;
+  },
+
+  async getWarrantyPage() {
+    return cloneWarrantyPage(loadDb().warrantyPage ?? WARRANTY_PAGE_SEED);
+  },
+
+  async updateWarrantyPage(content) {
+    const clean = sanitizeWarrantyPage(content);
+    update((db) => {
+      db.warrantyPage = cloneWarrantyPage(clean);
+    });
+    return cloneWarrantyPage(clean);
+  },
+
+  async resetWarrantyPage() {
+    update((db) => {
+      db.warrantyPage = cloneWarrantyPage(warrantyPageSeed);
+    });
+    return cloneWarrantyPage(warrantyPageSeed);
   },
 
   async listMaterials() {

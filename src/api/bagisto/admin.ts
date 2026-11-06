@@ -20,6 +20,7 @@
 import { config } from "@/config/env";
 import type {
   AdminHomepageSections,
+  AdminWarrantyPage,
   AdminBrand,
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
@@ -728,6 +729,15 @@ export const bagistoAdminApi: AdminApi = {
   },
   async updateHomepageSections(): Promise<AdminHomepageSections> {
     throw new BagistoApiError(501, "Homepage sections are not wired for Bagisto yet.");
+  },
+  async getWarrantyPage(): Promise<AdminWarrantyPage> {
+    throw new BagistoApiError(501, "Warranty page content is demo-only until a Bagisto CMS block exists — see docs/07-admin-integration §8.");
+  },
+  async updateWarrantyPage(): Promise<AdminWarrantyPage> {
+    throw new BagistoApiError(501, "Warranty page content is not wired for Bagisto yet.");
+  },
+  async resetWarrantyPage(): Promise<AdminWarrantyPage> {
+    throw new BagistoApiError(501, "Warranty page content is not wired for Bagisto yet.");
   },
   async updateShowroom(): Promise<AdminShowroom | undefined> {
     throw new BagistoApiError(501, "Showroom editing is not wired for Bagisto yet.");

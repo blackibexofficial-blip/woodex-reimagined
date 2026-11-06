@@ -710,6 +710,35 @@ export interface AdminHomepageSections {
   carousel: AdminHomepageRail;
 }
 
+/* ── Warranty page content (singleton — admin-editable /warranty policy page) ── */
+export interface AdminWarrantyTier {
+  /** Stable row id for the editor (regenerated on save if missing/duplicated). */
+  id: string;
+  name: string;
+  duration: string;
+  applies: string;
+  /** At most one tier shows the "Most Popular" badge (first wins on save). */
+  popular: boolean;
+  coverage: string[];
+  excludes: string[];
+}
+export interface AdminWarrantyStep {
+  id: string;
+  title: string;
+  description: string;
+}
+export interface AdminWarrantyFaq {
+  id: string;
+  q: string;
+  a: string;
+}
+export interface AdminWarrantyPage {
+  hero: { eyebrow: string; title: string; subtitle: string };
+  tiers: AdminWarrantyTier[];
+  steps: AdminWarrantyStep[];
+  faqs: AdminWarrantyFaq[];
+}
+
 /* ── Materials & finishes (admin-managed since P1.2) ─────────────────────── */
 export type AdminMaterialCategory = "wood" | "laminate" | "metal" | "fabric";
 export type AdminMaterialBrightness = "light" | "medium" | "dark" | "all";
@@ -1322,6 +1351,9 @@ export interface AdminApi {
   /** Homepage Best Sellers rail + Home Carousel — mode (auto vs manual) and manual order. */
   getHomepageSections(): Promise<AdminHomepageSections>;
   updateHomepageSections(patch: Partial<AdminHomepageSections>): Promise<AdminHomepageSections>;
+  getWarrantyPage(): Promise<AdminWarrantyPage>;
+  updateWarrantyPage(content: AdminWarrantyPage): Promise<AdminWarrantyPage>;
+  resetWarrantyPage(): Promise<AdminWarrantyPage>;
   listMaterials(): Promise<AdminMaterial[]>;
   createMaterial(input: NewMaterialInput): Promise<AdminMaterial>;
   updateMaterial(id: string, patch: Partial<NewMaterialInput>): Promise<AdminMaterial | undefined>;

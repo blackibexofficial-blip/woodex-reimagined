@@ -33,6 +33,7 @@ import AdminInvoice from "@/admin/pages/Invoice";
 import AdminCustomers from "@/admin/pages/Customers";
 import AdminLeads from "@/admin/pages/Leads";
 import AdminContent from "@/admin/pages/Content";
+import AdminWarranty from "@/admin/pages/Warranty";
 import AdminBlog from "@/admin/pages/Blog";
 import AdminServices from "@/admin/pages/Services";
 import AdminMedia from "@/admin/pages/Media";
@@ -86,6 +87,7 @@ export default function AdminApp() {
           <Route path="services" element={<AdminServices />} />
           <Route path="blog" element={<AdminBlog />} />
           <Route path="content" element={<AdminContent />} />
+          <Route path="warranty" element={<AdminWarranty />} />
           <Route path="media" element={<AdminMedia />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
