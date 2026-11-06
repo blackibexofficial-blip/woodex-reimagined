@@ -24,7 +24,7 @@ export async function launchBrowser() {
   await inflate(path.join(binPath, "al2023.tar.br")).catch(() => {});
   setupLambdaEnvironment(path.join(tmpdir(), "al2023", "lib"));
   return puppeteer.launch({
-    args: chromium.args,
+    args: [...chromium.args, "--disable-dev-shm-usage"], // /dev/shm is only ~64 MB on GH runners; chromium crashes on it
     executablePath: await chromium.executablePath(),
     headless: true,
     defaultViewport: { width: 1440, height: 940 },
