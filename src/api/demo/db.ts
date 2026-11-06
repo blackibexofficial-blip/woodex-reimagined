@@ -91,6 +91,14 @@ import type {
   NewPurchaseOrderLineInput,
   PurchaseOrderReceipt,
   PurchaseOrderStatus,
+  AdminStockTransfer,
+  AdminStockTransferPatch,
+  NewStockTransferInput,
+  NewStockTransferLineInput,
+  StockTransferReceipt,
+  TransferStatus,
+  TransferLocation,
+  AdminTransferLine,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -128,6 +136,7 @@ interface DemoDb {
   quotes: AdminQuote[];
   suppliers: AdminSupplier[];
   purchaseOrders: AdminPurchaseOrder[];
+  stockTransfers: AdminStockTransfer[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -299,6 +308,7 @@ function buildSeedMovements(adminProducts: AdminProduct[]): AdminStockMovement[]
     return: "Customer return restocked",
     damage: "Damaged on the floor — written off",
     adjustment: "Cycle count correction",
+    transfer: "Stock transfer between locations",
   };
   for (let i = 0; i < 16; i++) {
     const p = adminProducts[Math.floor(rand() * adminProducts.length)];
@@ -920,6 +930,67 @@ function buildSeedPurchaseOrders(products: AdminProduct[]): AdminPurchaseOrder[]
   ];
 }
 
+/** Resolve a transfer location id to a display name (warehouse or showroom). */
+function transferLocationName(db: DemoDb, id: string): string | undefined {
+  if (id === "loc-warehouse") return "Warehouse — Lahore (factory)";
+  const showroom = (db.showrooms ?? []).find((x) => x.id === id);
+  return showroom ? `${showroom.name} — ${showroom.city}` : undefined;
+}
+
+/** Validate/normalise transfer lines — catalogue products only; received starts at 0. */
+function sanitizeTransferLines(lines: NewStockTransferLineInput[]): AdminTransferLine[] {
+  const items: AdminTransferLine[] = [];
+  let seq = 1;
+  for (const line of lines ?? []) {
+    const productId = line.productId?.trim();
+    const name = line.name?.trim();
+    const qty = Math.max(1, Math.trunc(Number(line.quantity) || 1));
+    if (!productId || !name) continue;
+    items.push({ id: `trfline-${productId}-${seq}`, productId, name, sku: line.sku?.trim() || undefined, image: line.image, quantity: qty, receivedQuantity: 0 });
+    seq += 1;
+  }
+  return items;
+}
+
+/** Deterministic seed transfers — one historical (received) Lahore replenishment, one in transit to Karachi. */
+function buildSeedTransfers(products: AdminProduct[]): AdminStockTransfer[] {
+  const bySub = (sub: string) => products.find((p) => p.subcategory === sub && p.price > 0);
+  const chair = bySub("chairs") ?? products.find((p) => p.price > 0)!;
+  const staff = bySub("staff-tables") ?? products.find((p) => p.id !== chair.id)!;
+  const now = Date.now();
+  const tOld = new Date(now - 30 * 86400000).toISOString();
+  const tMid = new Date(now - 3 * 86400000).toISOString();
+  const receivedLine = { id: "trfline-1001-1", productId: chair.id, name: chair.name, sku: chair.sku, image: chair.image, quantity: 6, receivedQuantity: 6 };
+  const transitLine = { id: "trfline-1002-1", productId: staff.id, name: staff.name, sku: staff.sku, image: staff.image, quantity: 6, receivedQuantity: 0 };
+  return [
+    {
+      id: "TRF-1001",
+      fromLocationId: "loc-warehouse",
+      fromLocationName: "Warehouse — Lahore (factory)",
+      toLocationId: "sr-lahore-hq",
+      toLocationName: "WOODEX Lahore — Experience Centre — Lahore (HQ)",
+      lines: [receivedLine],
+      status: "received",
+      notes: "Showroom floor replenishment — chair units.",
+      createdAt: tOld,
+      updatedAt: new Date(Date.parse(tOld) + 86400000).toISOString(),
+      receivedAt: new Date(Date.parse(tOld) + 86400000).toISOString(),
+    },
+    {
+      id: "TRF-1002",
+      fromLocationId: "loc-warehouse",
+      fromLocationName: "Warehouse — Lahore (factory)",
+      toLocationId: "sr-karachi",
+      toLocationName: "WOODEX Karachi — Karachi",
+      lines: [transitLine],
+      status: "in_transit",
+      notes: "Karachian delivery leg — TCS courier, consignment on file.",
+      createdAt: tMid,
+      updatedAt: tMid,
+    },
+  ];
+}
+
 const CLAIM_TRANSITIONS: Record<ClaimStatus, ClaimStatus[]> = {
   reported: ["assessing", "rejected"],
   assessing: ["approved", "rejected"],
@@ -1238,7 +1309,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts) };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts) };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1277,6 +1348,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.quotes)) db.quotes = buildSeedQuotes(db.products);
       if (!Array.isArray(db.suppliers)) db.suppliers = buildSeedSuppliers();
       if (!Array.isArray(db.purchaseOrders)) db.purchaseOrders = buildSeedPurchaseOrders(db.products);
+      if (!Array.isArray(db.stockTransfers)) db.stockTransfers = buildSeedTransfers(db.products);
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -3165,6 +3237,183 @@ export const demoAdminApi: AdminApi = {
       okFlag = true;
     });
     return okFlag;
+  },
+
+  async getTransferLocations() {
+    const db = loadDb();
+    const locations: TransferLocation[] = [
+      { id: "loc-warehouse", name: "Warehouse — Lahore (factory)", kind: "warehouse" },
+    ];
+    for (const showroom of (db.showrooms ?? []).filter((x) => x.active).sort((a, b) => a.sortOrder - b.sortOrder)) {
+      locations.push({ id: showroom.id, name: `${showroom.name} — ${showroom.city}`, kind: "showroom" });
+    }
+    return locations;
+  },
+
+  async listStockTransfers(params?: ListParams & { status?: TransferStatus | "all" }) {
+    const db = loadDb();
+    const q = (params?.query ?? "").trim().toLowerCase();
+    let rows = [...(db.stockTransfers ?? [])];
+    if (params?.status && params.status !== "all") rows = rows.filter((r) => r.status === params.status);
+    if (q) rows = rows.filter((r) => [r.id, r.fromLocationName, r.toLocationName, r.notes ?? "", ...r.lines.map((l) => l.name)].join(" ").toLowerCase().includes(q));
+    rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const page = params?.page ?? 1;
+    const perPage = params?.perPage ?? 60;
+    return { items: rows.slice((page - 1) * perPage, page * perPage), total: rows.length, page, perPage };
+  },
+
+  async getStockTransfer(id: string) {
+    const t = (loadDb().stockTransfers ?? []).find((x) => x.id === id);
+    return t ? { ...t, lines: t.lines.map((l) => ({ ...l })) } : undefined;
+  },
+
+  async createStockTransfer(input: NewStockTransferInput) {
+    let created: AdminStockTransfer | undefined;
+    update((db) => {
+      const fromName = transferLocationName(db, input.fromLocationId);
+      if (!fromName) throw new Error("Pick a source location.");
+      const toName = transferLocationName(db, input.toLocationId);
+      if (!toName) throw new Error("Pick a destination location.");
+      if (input.fromLocationId === input.toLocationId) throw new Error("Source and destination must differ.");
+      const lines = sanitizeTransferLines(input.lines ?? []);
+      if (lines.length === 0) throw new Error("Add at least one line to the transfer.");
+      const now = new Date().toISOString();
+      const maxSeq = (db.stockTransfers ?? []).reduce((max, t) => Math.max(max, Number(t.id.replace(/\D/g, "")) || 0), 1000);
+      created = {
+        id: `TRF-${maxSeq + 1}`,
+        fromLocationId: input.fromLocationId,
+        fromLocationName: fromName,
+        toLocationId: input.toLocationId,
+        toLocationName: toName,
+        lines,
+        status: "draft",
+        notes: input.notes?.trim() || undefined,
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.stockTransfers ??= []).push(created);
+    });
+    if (!created) throw new Error("Failed to create transfer");
+    return created;
+  },
+
+  async updateStockTransfer(id: string, patch: AdminStockTransferPatch) {
+    let updated: AdminStockTransfer | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.stockTransfers ??= []).find((x) => x.id === id);
+      if (!t) throw new Error(`Transfer ${id} not found.`);
+      if (t.status !== "draft") throw new Error(`Transfer ${t.id} is already dispatched — only drafts can be edited.`);
+      const fromId = patch.fromLocationId ?? t.fromLocationId;
+      const toId = patch.toLocationId ?? t.toLocationId;
+      if (fromId === toId) throw new Error("Source and destination must differ.");
+      const fromName = transferLocationName(db, fromId);
+      const toName = transferLocationName(db, toId);
+      if (!fromName) throw new Error("Pick a source location.");
+      if (!toName) throw new Error("Pick a destination location.");
+      t.fromLocationId = fromId;
+      t.fromLocationName = fromName;
+      t.toLocationId = toId;
+      t.toLocationName = toName;
+      if (patch.lines !== undefined) {
+        const lines = sanitizeTransferLines(patch.lines);
+        if (lines.length > 0) t.lines = lines;
+      }
+      if (patch.notes !== undefined) t.notes = patch.notes?.trim() || undefined;
+      t.updatedAt = now;
+      updated = { ...t, lines: t.lines.map((l) => ({ ...l })) };
+    });
+    return updated;
+  },
+
+  async dispatchStockTransfer(id: string) {
+    let updated: AdminStockTransfer | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.stockTransfers ??= []).find((x) => x.id === id);
+      if (!t) throw new Error(`Transfer ${id} not found.`);
+      if (t.status !== "draft") throw new Error(`Transfer ${t.id} is already dispatched.`);
+      // Availability check first — nothing is deducted if any line is short.
+      const shortfalls: string[] = [];
+      for (const line of t.lines) {
+        const p = db.products.find((x) => x.id === line.productId);
+        if (!p) { shortfalls.push(`${line.name} is no longer in the catalogue`); continue; }
+        if (p.stock < line.quantity) shortfalls.push(`${line.name}: only ${p.stock} on hand (needs ${line.quantity})`);
+      }
+      if (shortfalls.length) throw new Error(`Insufficient stock — ${shortfalls.join("; ")}`);
+      for (const line of t.lines) {
+        const p = db.products.find((x) => x.id === line.productId)!;
+        p.stock = Math.max(0, p.stock - line.quantity);
+        syncFulfilment(p);
+        touchProductMeta(db, p.id);
+        db.movements.unshift({
+          id: `mov-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+          productId: p.id,
+          productName: p.name,
+          productSku: p.sku,
+          type: "transfer",
+          quantity: -line.quantity,
+          notes: `Transfer ${t.id} dispatched to ${t.toLocationName}`,
+          createdAt: now,
+        });
+      }
+      t.status = "in_transit";
+      t.updatedAt = now;
+      updated = { ...t, lines: t.lines.map((l) => ({ ...l })) };
+    });
+    return updated;
+  },
+
+  async receiveStockTransfer(id: string, receipts: StockTransferReceipt[]) {
+    let updated: AdminStockTransfer | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.stockTransfers ??= []).find((x) => x.id === id);
+      if (!t) throw new Error(`Transfer ${id} not found.`);
+      if (t.status !== "in_transit") throw new Error(`Transfer ${t.id} is not awaiting receipt.`);
+      for (const r of receipts ?? []) {
+        const line = t.lines.find((l) => l.id === r.lineId);
+        if (!line) continue;
+        const qty = Math.min(Math.max(0, Math.trunc(Number(r.quantity) || 0)), line.quantity - line.receivedQuantity);
+        if (qty <= 0) continue;
+        line.receivedQuantity += qty;
+        const p = db.products.find((x) => x.id === line.productId);
+        if (p) {
+          p.stock += qty;
+          syncFulfilment(p);
+          touchProductMeta(db, p.id);
+          db.movements.unshift({
+            id: `mov-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+            productId: p.id,
+            productName: p.name,
+            productSku: p.sku,
+            type: "transfer",
+            quantity: qty,
+            notes: `Transfer ${t.id} received from ${t.fromLocationName}`,
+            createdAt: now,
+          });
+        }
+      }
+      if (t.lines.every((l) => l.receivedQuantity >= l.quantity)) {
+        t.status = "received";
+        t.receivedAt = now;
+      }
+      t.updatedAt = now;
+      updated = { ...t, lines: t.lines.map((l) => ({ ...l })) };
+    });
+    return updated;
+  },
+
+  async deleteStockTransfer(id: string) {
+    let ok = false;
+    update((db) => {
+      const idx = (db.stockTransfers ?? []).findIndex((x) => x.id === id);
+      if (idx === -1) return;
+      if (db.stockTransfers[idx].status !== "draft") return;
+      db.stockTransfers.splice(idx, 1);
+      ok = true;
+    });
+    return ok;
   },
 
   async listBundles() {

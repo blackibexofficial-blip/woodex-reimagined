@@ -112,8 +112,14 @@ slices instead of duplicating them.
   Seeded PO-1001 (draft · Pak Wood) + PO-1002 (sent · MetalKraft). Live check 27/27 (create → send → partial
   receive → full receive → movement in /admin/inventory · cancel · delete · 0 console errors) · e2e 33/33 ·
   Bagisto stubbed 501.
-- [ ] **P2.8** Stock Transfers — showroom↔showroom / warehouse↔showroom transfer records; movement type
-  `transfer` (in/out legs); location picker reusing the showroom master.
+- [x] **P2.8** Stock Transfers — `/admin/transfers`: records move stock between the factory warehouse
+  (`loc-warehouse`) and the showroom master (active showrooms via `getTransferLocations`); movement type
+  `transfer` — dispatch writes OUT legs (−qty at source, stock leaves available) after an on-hand availability
+  check, receipt (full/partial, remaining pre-filled) writes IN legs and returns stock to available; draft →
+  in_transit → received; draft-only edit/delete; catalogue lines only (real tracked stock). Seeded TRF-1001
+  (received · warehouse → Lahore HQ chairs) + TRF-1002 (in transit · warehouse → Karachi staff tables).
+  Live check 31/31 (create → dispatch → partial → full receive, stock deducted then restored, ledger legs in
+  /admin/inventory · delete draft · 0 console errors) · e2e 33/33 · Bagisto stubbed 501.
 
 ## Phase 3 — Product depth (Medusa-style)
 
@@ -177,7 +183,7 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
 - [x] **P2.5** Quotes — priced quotations from leads or scratch; printable; convert → order (discount carried). DONE (see Phase 2 log).
 - [x] **P2.6** Suppliers — purchasing master. DONE (see Phase 2 log).
 - [x] **P2.7** Purchase Orders — draft → sent → partial → received; receipt writes inbound movements. DONE (see Phase 2 log).
-- [ ] **P2.8** Transfers — move stock between locations/warehouses.
+- [x] **P2.8** Transfers — move stock between locations/warehouses. DONE (see Phase 2 log).
 
 ### D. Shop flow — audit findings
 - The storefront ALREADY has cart + checkout (CartContext, CartDrawer, 352-line /checkout with COD + bank transfer,

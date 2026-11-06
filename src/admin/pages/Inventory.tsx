@@ -34,6 +34,7 @@ const MOVEMENT_STYLE: Record<StockMovementType, string> = {
   return: "bg-sky-100 text-sky-800 border-sky-200",
   damage: "bg-amber-100 text-amber-800 border-amber-200",
   adjustment: "bg-muted text-muted-foreground border-border",
+  transfer: "bg-violet-100 text-violet-800 border-violet-200",
 };
 const MOVEMENT_LABEL: Record<StockMovementType, string> = {
   inbound: "Inbound",
@@ -41,6 +42,7 @@ const MOVEMENT_LABEL: Record<StockMovementType, string> = {
   return: "Return",
   damage: "Damage",
   adjustment: "Adjustment",
+  transfer: "Transfer",
 };
 
 type Tab = "stock" | "movements" | "zones";

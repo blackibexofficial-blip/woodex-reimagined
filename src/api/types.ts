@@ -11,7 +11,7 @@ export type PaymentMethod = "cod" | "bank-transfer" | "easypaisa" | "jazzcash" |
 export type LeadType = "quote" | "b2b";
 export type LeadStatus = "new" | "contacted" | "quoted" | "won" | "lost";
 export type StockStatus = "in_stock" | "out_of_stock" | "made_to_order";
-export type StockMovementType = "inbound" | "outbound" | "return" | "damage" | "adjustment";
+export type StockMovementType = "inbound" | "outbound" | "return" | "damage" | "adjustment" | "transfer";
 
 export interface AdminOrderItem {
   id: string;
@@ -355,6 +355,61 @@ export interface AdminPurchaseOrderPatch {
 export interface PurchaseOrderReceipt {
   lineId: string;
   quantity: number;
+}
+
+/* ── Stock Transfers (locations: factory warehouse + showrooms) ──────────── */
+export type TransferStatus = "draft" | "in_transit" | "received" | "cancelled";
+export interface AdminTransferLine {
+  id: string;
+  productId: string;
+  name: string;
+  sku?: string;
+  image?: string;
+  quantity: number;
+  receivedQuantity: number;
+}
+export interface AdminStockTransfer {
+  id: string;                 // e.g. "TRF-1001"
+  fromLocationId: string;     // "loc-warehouse" or a showroom id
+  fromLocationName: string;
+  toLocationId: string;
+  toLocationName: string;
+  /** Catalogue lines only — transfers move real, tracked stock. */
+  lines: AdminTransferLine[];
+  status: TransferStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  receivedAt?: string;
+}
+export interface NewStockTransferLineInput {
+  productId: string;
+  name: string;
+  sku?: string;
+  image?: string;
+  quantity: number;
+}
+export interface NewStockTransferInput {
+  fromLocationId: string;
+  toLocationId: string;
+  lines: NewStockTransferLineInput[];
+  notes?: string;
+}
+export interface AdminStockTransferPatch {
+  fromLocationId?: string;
+  toLocationId?: string;
+  lines?: NewStockTransferLineInput[];
+  notes?: string;
+}
+export interface StockTransferReceipt {
+  lineId: string;
+  quantity: number;
+}
+/** Location picker — warehouse (factory) plus active showrooms. */
+export interface TransferLocation {
+  id: string;
+  name: string;
+  kind: "warehouse" | "showroom";
 }
 
 export interface AdminCustomer {
@@ -1072,6 +1127,19 @@ export interface AdminApi {
   receivePurchaseOrder(id: string, receipts: PurchaseOrderReceipt[]): Promise<AdminPurchaseOrder | undefined>;
   /** Draft POs only. */
   deletePurchaseOrder(id: string): Promise<boolean>;
+  /** Warehouse + active showrooms — the transfer location picker. */
+  getTransferLocations(): Promise<TransferLocation[]>;
+  listStockTransfers(params?: ListParams & { status?: TransferStatus | "all" }): Promise<Paginated<AdminStockTransfer>>;
+  getStockTransfer(id: string): Promise<AdminStockTransfer | undefined>;
+  createStockTransfer(input: NewStockTransferInput): Promise<AdminStockTransfer>;
+  /** Draft transfers only — throws once dispatched. */
+  updateStockTransfer(id: string, patch: AdminStockTransferPatch): Promise<AdminStockTransfer | undefined>;
+  /** draft → in_transit; validates on-hand stock and writes OUT transfer legs. */
+  dispatchStockTransfer(id: string): Promise<AdminStockTransfer | undefined>;
+  /** Applies (partial) receipt — writes IN transfer legs; completes to received. */
+  receiveStockTransfer(id: string, receipts: StockTransferReceipt[]): Promise<AdminStockTransfer | undefined>;
+  /** Draft transfers only. */
+  deleteStockTransfer(id: string): Promise<boolean>;
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;

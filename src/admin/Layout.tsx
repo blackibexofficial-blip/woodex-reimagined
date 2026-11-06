@@ -46,6 +46,7 @@ const NAV_GROUPS: Array<{
     items: [
       { to: "/admin/suppliers", label: "Suppliers", icon: Truck },
       { to: "/admin/purchase-orders", label: "Purchase Orders", icon: PackagePlus },
+      { to: "/admin/transfers", label: "Transfers", icon: ArrowLeftRight },
     ],
   },
   {
@@ -65,7 +66,7 @@ function pageTitle(pathname: string) {
   const seg = pathname.split("/")[2] ?? "dashboard";
   const map: Record<string, string> = {
     dashboard: "Dashboard", analytics: "Analytics", products: "Products", categories: "Categories",
-    orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", content: "Content",
+    orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", transfers: "Transfers", content: "Content",
     media: "Media Library", settings: "Settings", inventory: "Inventory & Delivery Zones",
   };
   return map[seg] ?? "Admin";

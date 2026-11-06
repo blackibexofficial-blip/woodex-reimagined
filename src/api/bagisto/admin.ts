@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -463,6 +463,38 @@ export const bagistoAdminApi: AdminApi = {
 
   async deletePurchaseOrder(): Promise<boolean> {
     throw new BagistoApiError(501, "Purchase order deletion is not wired for Bagisto yet.");
+  },
+
+  async getTransferLocations(): Promise<TransferLocation[]> {
+    throw new BagistoApiError(501, "Transfer locations are not wired for Bagisto yet.");
+  },
+
+  async listStockTransfers(): Promise<Paginated<AdminStockTransfer>> {
+    throw new BagistoApiError(501, "Stock transfers are not wired for Bagisto yet.");
+  },
+
+  async getStockTransfer(): Promise<AdminStockTransfer | undefined> {
+    throw new BagistoApiError(501, "Stock transfer detail is not wired for Bagisto yet.");
+  },
+
+  async createStockTransfer(): Promise<AdminStockTransfer> {
+    throw new BagistoApiError(501, "Stock transfer creation is not wired for Bagisto yet.");
+  },
+
+  async updateStockTransfer(): Promise<AdminStockTransfer | undefined> {
+    throw new BagistoApiError(501, "Stock transfer update is not wired for Bagisto yet.");
+  },
+
+  async dispatchStockTransfer(): Promise<AdminStockTransfer | undefined> {
+    throw new BagistoApiError(501, "Stock transfer dispatch is not wired for Bagisto yet.");
+  },
+
+  async receiveStockTransfer(): Promise<AdminStockTransfer | undefined> {
+    throw new BagistoApiError(501, "Stock transfer receipt is not wired for Bagisto yet.");
+  },
+
+  async deleteStockTransfer(): Promise<boolean> {
+    throw new BagistoApiError(501, "Stock transfer deletion is not wired for Bagisto yet.");
   },
 
   async listCustomers(params) {
