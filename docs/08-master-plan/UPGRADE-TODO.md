@@ -88,8 +88,12 @@ slices instead of duplicating them.
   notes, optional WOODEX cost absorption recorded on resolution, walk-in claims supported (no order needed).
   Seeded CLM-1001 (assessing · warranty) + CLM-1002 (reported · damage). Entry point from delivered orders
   ("File claim" deep links). Live check 8/8 · e2e 33/33 · 0 console errors. Bagisto stubbed 501.
-- [ ] **P2.4** Draft Orders — admin builds an order manually (customer + lines from catalogue or free lines);
-  save as draft; convert → pending order (same `createOrder` path, marked source `manual`).
+- [x] **P2.4** Draft Orders — `/admin/drafts`: manual order building (customer + catalogue lines or free lines);
+  searchable/filterable list (all/draft/converted); totals auto-recalc; convert → pending order via the shared
+  `materializeOrder` path (source channel `manual`, same WDX-seq + customer-aggregate roll-in as `createOrder`);
+  converted drafts lock (edit/delete/convert disabled); seeded DRF-1001 (Indus Developers — Procurement).
+  Live check 20/20 (create → edit qty → convert COD → WDX-1065 visible in Orders · 0 console errors) · e2e 33/33 ·
+  Bagisto stubbed 501.
 - [x] **P2.5** Quotes — `/admin/quotes`: priced quotations (catalogue/free lines, discount %, validity days,
   valid-until tracking with derived expired badge); create from a CRM lead ("Create quote" on Leads → advances
   lead to quoted, prefills contact, links leadId) or from scratch; chrome-free printable `/admin/quote/:id`
@@ -170,7 +174,7 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
 
 ### C. Orders & purchasing (Spree parity) — Phase 2 remainders
 - [x] **P2.4** Draft Orders — `/admin/drafts`; convert → pending order (source `manual`). DONE (see Phase 2 log).
-- [ ] **P2.5** Quotes — priced quotation from a lead (lines, discount %, validity); printable; convert → order.
+- [x] **P2.5** Quotes — priced quotations from leads or scratch; printable; convert → order (discount carried). DONE (see Phase 2 log).
 - [x] **P2.6** Suppliers — purchasing master. DONE (see Phase 2 log).
 - [x] **P2.7** Purchase Orders — draft → sent → partial → received; receipt writes inbound movements. DONE (see Phase 2 log).
 - [ ] **P2.8** Transfers — move stock between locations/warehouses.
