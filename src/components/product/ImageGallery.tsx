@@ -63,10 +63,7 @@ const ImageGallery = ({ images, productName }: ImageGalleryProps) => {
           <img
             src={images[selectedIndex]}
             alt={`${productName} - View ${selectedIndex + 1}`}
-            className={cn(
-              "w-full h-full object-cover transition-transform duration-300",
-              is360Mode && `rotate-[${rotation}deg]`
-            )}
+            className="w-full h-full object-cover transition-transform duration-300"
             style={{
               transform: isZoomed
                 ? `scale(2) translate(${50 - zoomPosition.x}%, ${50 - zoomPosition.y}%)`

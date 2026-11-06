@@ -5,7 +5,14 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  {
+    ignores: [
+      "dist",
+      // Generated bundles & vendored deploy code — not hand-maintained source
+      "supabase/functions/**", // root-level generated MCP edge-function bundle (regenerated via scripts)
+      "backend/**", // vendored Supabase Deno functions + runbook assets (deploy bundle, see docs/07)
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

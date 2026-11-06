@@ -101,7 +101,8 @@ const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get("category") || "all";
 
-  const [searchQuery, setSearchQuery] = useState("");
+  // ?q= deep-link (also powers the WebSite SearchAction in JSON-LD)
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("q") ?? "");
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [sortBy, setSortBy] = useState("featured");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");

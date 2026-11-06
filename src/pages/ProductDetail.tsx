@@ -33,6 +33,9 @@ import {
 } from "lucide-react";
 import { getProductById, products, categories, formatPKR } from "@/data/products";
 import { useQuote } from "@/contexts/QuoteContext";
+import { JsonLd } from "@/components/JsonLd";
+import { productJsonLd, breadcrumbJsonLd } from "@/data/seoContent";
+import { absUrl } from "@/config/site";
 import { useCart } from "@/contexts/CartContext";
 
 const ProductDetail = () => {
@@ -46,6 +49,28 @@ const ProductDetail = () => {
   const [addedToCart, setAddedToCart] = useState(false);
   const { addItem } = useQuote();
   const { addItem: addToCart } = useCart();
+
+  const pageUrl = absUrl(`/shop/${product?.id ?? ""}`);
+  const productLd = product
+    ? productJsonLd({
+        name: product.name,
+        description: product.shortDescription,
+        image: product.images[0] ? absUrl(product.images[0]) : undefined,
+        sku: product.id,
+        price: product.price,
+        availability: product.inStock ? "InStock" : "OutOfStock",
+        ratingValue: product.rating,
+        reviewCount: product.reviews,
+        url: pageUrl,
+      })
+    : null;
+  const crumbLd = product
+    ? breadcrumbJsonLd([
+        { name: "Home", url: "/" },
+        { name: "Shop", url: "/shop" },
+        { name: product.name, url: `/shop/${product.id}` },
+      ])
+    : null;
 
   const handleAddToQuote = () => {
     if (!product) return;
@@ -118,7 +143,9 @@ const ProductDetail = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+      {productLd && <JsonLd id="product" data={productLd} />}
+      {crumbLd && <JsonLd id="breadcrumb" data={crumbLd} />}
+
       <main className="flex-1">
         {/* Breadcrumb */}
         <div className="container mx-auto px-4 py-4">

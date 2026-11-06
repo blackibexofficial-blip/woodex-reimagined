@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Phone, Mail, MapPin, Clock, Facebook, Twitter, Linkedin, Instagram, Youtube, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { site } from "@/config/site";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
@@ -35,15 +36,15 @@ const Footer = () => {
             <div className="space-y-2.5 text-sm text-primary-foreground/70">
               <div className="flex items-center gap-2.5">
                 <Phone className="h-3.5 w-3.5 text-accent flex-shrink-0" />
-                <span>+92 300 1234567</span>
+                <span>{site.phone}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="h-3.5 w-3.5 text-accent flex-shrink-0" />
-                <span>info@woodex.pk</span>
+                <span>{site.email}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <MapPin className="h-3.5 w-3.5 text-accent flex-shrink-0" />
-                <span>Lahore, Pakistan</span>
+                <span>{site.address.city}, {site.address.country}</span>
               </div>
             </div>
             <div className="flex items-center gap-3 mt-6">
@@ -134,19 +135,19 @@ const Footer = () => {
             <div className="space-y-3 text-sm text-primary-foreground/70 mb-6">
               <div className="flex items-start gap-2.5">
                 <MapPin className="h-3.5 w-3.5 text-accent flex-shrink-0 mt-0.5" />
-                <span>123 Gulberg III, Main Boulevard,<br />Lahore, Pakistan</span>
+                <span>{site.address.line1},<br />{site.address.city}, {site.address.country}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone className="h-3.5 w-3.5 text-accent flex-shrink-0" />
-                <span>+92 42 111 WOODEX</span>
+                <span>{site.phoneAlt}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="h-3.5 w-3.5 text-accent flex-shrink-0" />
-                <span>sales@woodex.pk</span>
+                <span>{site.salesEmail}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Clock className="h-3.5 w-3.5 text-accent flex-shrink-0" />
-                <span>Mon–Sat: 9am–7pm</span>
+                <span>{site.hours}</span>
               </div>
             </div>
 

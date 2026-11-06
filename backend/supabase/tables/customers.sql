@@ -1,0 +1,23 @@
+CREATE TABLE customers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_type TEXT DEFAULT 'individual' CHECK (customer_type IN ('individual',
+    'business')),
+    full_name TEXT NOT NULL,
+    company_name TEXT,
+    email TEXT,
+    phone TEXT NOT NULL,
+    whatsapp_number TEXT,
+    address JSONB,
+    tax_id TEXT,
+    lead_source TEXT,
+    lead_score INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'lead' CHECK (status IN ('lead',
+    'prospect',
+    'active',
+    'inactive')),
+    assigned_to UUID,
+    notes TEXT,
+    tags TEXT[],
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

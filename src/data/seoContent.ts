@@ -1,3 +1,5 @@
+import { site, absUrl } from "@/config/site";
+
 // ─── SEO + AIO CONTENT LIBRARY ──────────────────────────────────────────
 // Rich, AI-search-optimized content for every category and series page.
 // Used by Shop.tsx, Series.tsx, SeriesDetail.tsx to render structured
@@ -42,7 +44,7 @@ export const buildCollectionJsonLd = (name: string, description: string, url: st
   name,
   description,
   url,
-  isPartOf: { "@type": "WebSite", name: "WOODEX", url: "https://woodex-reimagined.lovable.app" },
+  isPartOf: { "@type": "WebSite", name: site.name, url: site.url },
 });
 
 // Shared FAQs reused across furniture categories
@@ -430,3 +432,136 @@ export const seriesSeo: Record<string, SeoBlock> = {
 };
 
 export const getSeriesSeo = (id: string): SeoBlock | undefined => seriesSeo[id];
+
+
+// ─── SITE-WIDE JSON-LD BUILDERS ──────────────────────────────────────────
+// Organization / WebSite (with SearchAction) / LocalBusiness are injected once
+// by <RouteHead /> in App.tsx on every route. Product / Breadcrumb / Article
+// builders are used per page (ProductDetail, BlogPost).
+
+export const organizationJsonLd = () => ({
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: site.name,
+  legalName: site.legalName,
+  url: site.url,
+  logo: absUrl("/favicon.ico"),
+  image: absUrl(site.ogImage),
+  description: site.description,
+  email: site.email,
+  telephone: site.phone,
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: site.address.line1,
+    addressLocality: site.address.city,
+    addressRegion: site.address.region,
+    addressCountry: "PK",
+  },
+  contactPoint: [
+    { "@type": "ContactPoint", telephone: site.phone, contactType: "sales", areaServed: "PK", availableLanguage: ["en", "ur"] },
+    { "@type": "ContactPoint", email: site.warrantyEmail, contactType: "customer support", areaServed: "PK" },
+  ],
+});
+
+export const websiteJsonLd = () => ({
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: site.name,
+  url: site.url,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: { "@type": "EntryPoint", urlTemplate: absUrl("/shop?q={search_term_string}") },
+    "query-input": "required name=search_term_string",
+  },
+});
+
+export const localBusinessJsonLd = () => ({
+  "@context": "https://schema.org",
+  "@type": "FurnitureStore",
+  name: site.name,
+  image: absUrl(site.ogImage),
+  url: site.url,
+  telephone: site.phone,
+  email: site.email,
+  priceRange: "$$",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: site.address.line1,
+    addressLocality: site.address.city,
+    addressRegion: site.address.region,
+    addressCountry: "PK",
+  },
+  geo: { "@type": "GeoCoordinates", latitude: site.geo.lat, longitude: site.geo.lng },
+  openingHours: "Mo-Sa 09:00-19:00",
+  areaServed: "PK",
+});
+
+export interface ProductJsonLdInput {
+  name: string;
+  description?: string;
+  image?: string;
+  sku?: string;
+  price: number;
+  availability: "InStock" | "OutOfStock";
+  ratingValue?: number;
+  reviewCount?: number;
+  url: string;
+}
+
+export const productJsonLd = (p: ProductJsonLdInput) => ({
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: p.name,
+  ...(p.description ? { description: p.description } : {}),
+  ...(p.image ? { image: [p.image] } : {}),
+  sku: p.sku ?? p.url.split("/").pop(),
+  brand: { "@type": "Brand", name: site.name },
+  offers: {
+    "@type": "Offer",
+    url: p.url,
+    priceCurrency: "PKR",
+    price: p.price,
+    availability: p.availability === "InStock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+    seller: { "@type": "Organization", name: site.name },
+  },
+  ...(p.ratingValue && p.reviewCount
+    ? { aggregateRating: { "@type": "AggregateRating", ratingValue: p.ratingValue, reviewCount: p.reviewCount } }
+    : {}),
+});
+
+export interface BreadcrumbItem {
+  name: string;
+  url: string;
+}
+
+export const breadcrumbJsonLd = (items: BreadcrumbItem[]) => ({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: items.map((item, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    name: item.name,
+    item: absUrl(item.url),
+  })),
+});
+
+export interface ArticleJsonLdInput {
+  headline: string;
+  description?: string;
+  image?: string;
+  datePublished?: string;
+  author: string;
+  url: string;
+}
+
+export const articleJsonLd = (a: ArticleJsonLdInput) => ({
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline: a.headline,
+  ...(a.description ? { description: a.description } : {}),
+  ...(a.image ? { image: [a.image] } : {}),
+  ...(a.datePublished ? { datePublished: a.datePublished } : {}),
+  author: { "@type": "Person", name: a.author },
+  publisher: { "@type": "Organization", name: site.name, logo: { "@type": "ImageObject", url: absUrl("/og-cover.jpg") } },
+  mainEntityOfPage: a.url,
+});

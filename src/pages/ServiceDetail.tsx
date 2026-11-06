@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { getService, getRelated, services } from "@/data/services";
+import { site } from "@/config/site";
 
-const WA_PHONE = "923001234567";
 
 const ServiceDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -86,7 +86,7 @@ const ServiceDetail = () => {
                     <Link to="/quotation">Request a Quote <ArrowRight className="ml-2 h-4 w-4" /></Link>
                   </Button>
                   <Button variant="outline" asChild>
-                    <a href={`https://wa.me/${WA_PHONE}?text=${waText}`} target="_blank" rel="noopener noreferrer">
+                    <a href={`https://wa.me/${site.whatsapp}?text=${waText}`} target="_blank" rel="noopener noreferrer">
                       <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp Inquiry
                     </a>
                   </Button>
@@ -240,7 +240,7 @@ const ServiceDetail = () => {
                 <Link to="/quotation">Request a Quote</Link>
               </Button>
               <Button variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" asChild>
-                <a href={`https://wa.me/${WA_PHONE}?text=${waText}`} target="_blank" rel="noopener noreferrer">
+                <a href={`https://wa.me/${site.whatsapp}?text=${waText}`} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp Us
                 </a>
               </Button>

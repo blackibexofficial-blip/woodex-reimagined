@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "bun run generate-sitemap && vite build",
+    "generate-sitemap": "bun --preload ./scripts/stub-assets.ts scripts/generate-sitemap.ts",
+    "typecheck": "tsc --noEmit",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview"

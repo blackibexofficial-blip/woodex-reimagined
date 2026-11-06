@@ -1,8 +1,10 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import RouteHead from "@/components/RouteHead";
 import { QuoteProvider } from "@/contexts/QuoteContext";
 import { CartProvider } from "@/contexts/CartContext";
 import Index from "./pages/Index";
@@ -27,6 +29,8 @@ import Warranty from "./pages/Warranty";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Checkout from "./pages/Checkout";
+// Admin panel ships as a separate async chunk — storefront visitors never download it.
+const AdminApp = lazy(() => import("./admin/AdminApp"));
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +43,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <RouteHead />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/shop" element={<Shop />} />
@@ -62,6 +67,15 @@ const App = () => (
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:postId" element={<BlogPost />} />
             <Route path="/checkout" element={<Checkout />} />
+            {/* Admin panel — self-contained (own auth + layout), lazy-loaded */}
+            <Route
+              path="/admin/*"
+              element={
+                <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-stone-100 text-sm font-medium text-stone-500">Loading admin…</div>}>
+                  <AdminApp />
+                </Suspense>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,73 +1,105 @@
-# Welcome to your Lovable project
+# WOODEX — Premium Office & Home Furniture (Pakistan)
 
-## Project info
+Storefront + admin for WOODEX, a Lahore-based furniture manufacturer/retailer.
+Static-first React SPA today; **adapter-ready for a Bagisto (Laravel) commerce backend**.
 
-**URL**: https://lovable.dev/projects/e1dec3e5-66e9-4bc2-8ba4-eb5593551308
+- **Stack**: Vite 5 · React 18 · TypeScript · Tailwind 3 · shadcn/ui · React Router 6 · TanStack Query · Recharts · Supabase (optional) · MCP server (`src/lib/mcp`)
+- **Package manager**: Bun (npm partially broken in the sandbox — see AGENTS.md / docs)
+- **Current mode**: storefront renders from `src/data/*` (no backend required); `/admin` runs on a seeded localStorage demo DB and flips to a live Bagisto with one env var.
 
-## How can I edit this code?
+## Quick start
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/e1dec3e5-66e9-4bc2-8ba4-eb5593551308) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+bun install
+bun run dev        # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+Other scripts: `bun run build` (production build → `dist/`) · `bun run typecheck` (strict `tsc --noEmit` gate — clean) · `bun run preview` (serve the build) · `bun run lint` (0 errors; warnings only from fast-refresh hints)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Admin panel preview — `/admin`
 
-**Use GitHub Codespaces**
+```
+http://localhost:8080/admin
+Email:    admin@woodex.pk      (VITE_ADMIN_EMAIL)
+Password: woodex-admin         (VITE_ADMIN_PASSWORD)
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Dashboard · Products (price/stock edit + CSV export) · Orders (status pipeline) · Customers ·
+Quote & B2B lead pipeline (tel/mailto actions, est. values) · Content hub · Settings
+(store profile, integration status, demo-DB reset).
 
-## What technologies are used for this project?
+⚠️ Demo gate only — not an auth boundary. Production admin/RBAC lives in the Bagisto backend
+(`backend/`). Change the defaults in `.env` for any shared preview.
 
-This project is built with:
+### End-to-end loop (storefront → admin, works offline)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. `/checkout` — place an order → it lands in `/admin/orders` instantly (status *Pending*), and the customer aggregate updates in `/admin/customers`.
+2. `/quotation` or `/contact` — submit the form → the enquiry lands in `/admin/leads` (status *New*, with basket/value if a quote).
+3. Demo DB persists per browser (`woodex.admin.db.v1`); reset it from `/admin/settings` → *Reset demo data*.
 
-## How can I deploy this project?
+## Environment
 
-Simply open [Lovable](https://lovable.dev/projects/e1dec3e5-66e9-4bc2-8ba4-eb5593551308) and click on Share -> Publish.
+Copy `.env.example` → `.env`. Key variables (all consumed via `src/config/env.ts` — nothing
+else touches `import.meta.env`):
 
-## Can I connect a custom domain to my Lovable project?
+| Var | Purpose |
+|---|---|
+| `VITE_API_MODE` | `demo` (default, localStorage) · `bagisto` (live REST) |
+| `VITE_BAGISTO_API_URL` / `VITE_BAGISTO_STOREFRONT_KEY` / `VITE_BAGISTO_ADMIN_TOKEN` | Bagisto connection — see `docs/07-admin-integration` |
+| `VITE_ADMIN_EMAIL` / `VITE_ADMIN_PASSWORD` | Demo `/admin` gate |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_PROJECT_ID` | Supabase project — enables optional "Sign in with Supabase" on `/admin/login`; schema + edge functions vendored in `backend/supabase/` |
 
-Yes, you can!
+## Project layout
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```
+src/
+  admin/            # /admin — self-contained panel (auth, layout, pages)
+  api/              # data adapters: types + demo (localStorage) + bagisto (REST) + factory
+  components/       # storefront components (layout/, ui/ shadcn, product/, …)
+  config/env.ts     # typed, validated environment config (single source)
+  contexts/         # Cart / Quote contexts (localStorage)
+  data/             # static catalogue & content (products, services, materials, blogPosts, …)
+  integrations/     # supabase client (generated, unused at runtime today)
+  pages/            # storefront routes (/, /shop, /product/:id? → /shop/:productId, …)
+  lib/mcp/          # MCP server for the Lovable MCP flow (see AGENTS.md)
+backend/            # Bagisto/Laravel deployment bundle + cPanel runbook + optional Docker
+backend/supabase/   # imported Supabase backend: 15 migrations, 36 table defs, 32 edge functions (schema source of truth)
+docs/               # 01 discovery … 06 launch, 07 admin-integration (Bagisto)
+scripts/            # mcp-snapshot, asset stubbing
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Backend / admin connection
+
+- **What runs today**: everything above works offline; `/admin` demo persists to
+  `localStorage` (`woodex.admin.db.v1`). Product counts in /admin/categories use the
+  catalogue's `category` + `subcategory` ids; reset the demo DB from `/admin/settings`
+  after pulling schema-seed changes.
+- **Two live-backend routes**: (a) `backend/README.md` — Bagisto 2.x on cPanel (shared
+  hosting, the chosen path) or Docker (VPS fallback), `bagisto-api` REST + Swagger,
+  catalogue CSV import, token hardening; (b) `backend/supabase/README.md` — the Supabase
+  schema + edge functions imported from the reference module (the backend the reference
+  admin dashboard was built against), for teams preferring Postgres + Auth + Storage.
+- **Seamless switch**: set `VITE_API_MODE=bagisto` + the Bagisto URL/keys and rebuild — zero UI changes.
+  Field mapping lives in `src/api/bagisto/admin.ts`; the leads module is the one custom piece
+  (custom Laravel package or Supabase — see `docs/07-admin-integration` §6).
+
+## Documentation
+
+- `backend/README.md` — server runbook (requirements checklist, cPanel steps, cron, SSL, troubleshooting)
+- `backend/supabase/README.md` — Supabase deploy guide (migrations, edge functions, first admin, slug note)
+- `docs/07-admin-integration/README.md` — storefront ↔ Bagisto contract, security model, go-live checklist
+- `docs/BLUEPRINT.md` · `docs/MASTER.md` · `docs/design.md` — original product/design blueprint
+- `docs/01-discovery … 06-launch` — phase docs from the original build
+- `docs/08-master-plan/README.md` — master plan: storefront + admin analysis, pending-task list, launch roadmap
+
+## Deployment (storefront)
+
+Static build → `dist/` → upload `dist/` contents to cPanel `public_html`. The SPA fallback,
+security headers, immutable caching for hashed assets and gzip all ship in this repo as
+`public/.htaccess` (auto-copied into every build). Deep links like `/shop` and `/quotation` will
+work out of the box on Apache/cPanel; on Nginx replicate the `location / { try_files $uri /index.html; }`
+rule yourself (backend/README §8). Social cards use `public/og-cover.jpg`; `robots.txt` +
+`sitemap.xml` (static top-level routes) ship too — the dynamic product URLs are deliberately
+omitted until a build-time sitemap generator walks `src/data/products.ts`.
+Lovable publishing also works (the project was originally scaffolded there):
+lovable.dev → Share → Publish.

@@ -1,0 +1,5 @@
+# Never commit the Bagisto application itself — it is created by `composer create-project` on the host.
+bagisto/
+# Never commit the real backend environment (contains DB + API secrets).
+bagisto.env
+*.local

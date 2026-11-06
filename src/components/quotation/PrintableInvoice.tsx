@@ -2,6 +2,7 @@ import { forwardRef } from "react";
 import { QuoteItem } from "@/contexts/QuoteContext";
 import { formatPKR } from "@/data/products";
 import woodexLogo from "@/assets/woodex-logo.png";
+import { site } from "@/config/site";
 
 export interface ClientInfo {
   name: string;
@@ -45,7 +46,7 @@ const PrintableInvoice = forwardRef<HTMLDivElement, PrintableInvoiceProps>(
         <div className="invoice-info-bar">
           <span>📍 LG 89 Zainab Tower, Model Town, Link Road, Lahore</span>
           <span>📞 0322 4000768</span>
-          <span>✉ info@woodex.pk</span>
+          <span>✉ {site.email}</span>
           <span>🌐 www.woodex.pk</span>
         </div>
 
@@ -158,7 +159,7 @@ const PrintableInvoice = forwardRef<HTMLDivElement, PrintableInvoiceProps>(
             <span>•</span>
             <span>💬 WhatsApp: 0322 4000768</span>
             <span>•</span>
-            <span>✉ info@woodex.pk</span>
+            <span>✉ {site.email}</span>
           </div>
           <div className="invoice-footer-terms">
             <strong>Payment Terms:</strong> 75% advance with order confirmation, 25% balance before delivery.

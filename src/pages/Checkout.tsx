@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { getAdminApi } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +14,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
 import { formatPKR } from "@/data/products";
+import { site } from "@/config/site";
 
 const cities = [
   "Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan",
@@ -23,6 +26,8 @@ const Checkout = () => {
   const navigate = useNavigate();
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "", email: "", phone: "", address: "", city: "Lahore", notes: "",
   });
@@ -38,11 +43,33 @@ const Checkout = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setOrderPlaced(true);
-    clearCart();
-    window.scrollTo(0, 0);
+    if (placing) return;
+    setPlacing(true);
+    try {
+      const order = await getAdminApi().createOrder({
+        customerName: formData.name.trim(),
+        customerEmail: formData.email.trim() || undefined,
+        customerPhone: formData.phone.trim(),
+        city: formData.city,
+        notes: formData.notes.trim() || undefined,
+        paymentMethod: paymentMethod === "bank" ? "bank-transfer" : "cod",
+        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
+        subtotal: totalPrice,
+        shipping: deliveryFee,
+        total: grandTotal,
+      });
+      setPlacedOrderId(order.id);
+      setOrderPlaced(true);
+      clearCart();
+      window.scrollTo(0, 0);
+    } catch (err) {
+      console.error("Order placement failed:", err);
+      toast.error(`Sorry — your order could not be placed. Please call ${site.phone} and we'll take it manually.`);
+    } finally {
+      setPlacing(false);
+    }
   };
 
   if (orderPlaced) {
@@ -58,6 +85,11 @@ const Checkout = () => {
             <p className="text-muted-foreground mb-2">
               Thank you for your order. Our team will contact you within 24 hours to confirm delivery details.
             </p>
+            {placedOrderId && (
+              <p className="text-sm font-semibold mb-2">
+                Order reference: <span className="font-mono text-accent">{placedOrderId}</span>
+              </p>
+            )}
             <p className="text-sm text-muted-foreground mb-8">
               {paymentMethod === "cod"
                 ? "Payment will be collected on delivery."
@@ -134,7 +166,7 @@ const Checkout = () => {
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="phone">Phone Number *</Label>
-                          <Input id="phone" type="tel" placeholder="+92 300 1234567" required value={formData.phone} onChange={(e) => handleChange("phone", e.target.value)} />
+                          <Input id="phone" type="tel" placeholder={site.phone} required value={formData.phone} onChange={(e) => handleChange("phone", e.target.value)} />
                         </div>
                       </div>
                       <div className="space-y-1.5">
@@ -246,8 +278,8 @@ const Checkout = () => {
                         <span className="font-bold text-xl text-accent">{formatPKR(grandTotal)}</span>
                       </div>
 
-                      <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-base h-12">
-                        {paymentMethod === "cod" ? "Place Order — Cash on Delivery" : "Place Order — Bank Transfer"}
+                      <Button type="submit" disabled={placing} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-base h-12">
+                        {placing ? "Placing your order…" : paymentMethod === "cod" ? "Place Order — Cash on Delivery" : "Place Order — Bank Transfer"}
                       </Button>
 
                       <div className="flex items-start gap-2 text-xs text-muted-foreground">
