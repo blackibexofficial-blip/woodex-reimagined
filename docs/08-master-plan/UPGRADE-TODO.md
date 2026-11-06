@@ -211,8 +211,13 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
   35/35 · e2e 33/33 · lint 0 errors · clean rebuild verified. Storefront unchanged (catalogue is Woodex).
 - [ ] **A4** Product Attributes — option sets & values (Finish, Size, Fabric…), values can adjust price and carry
   SKU suffix. **Overlaps P3.1 — do not duplicate; treat P3.1 as the implementation task.**
-- [ ] **A5** Category editor upgrade — legacy fields: Hero Style, Homepage sections (Best Sellers / Home Carousel
-  switches), Short Description, Background Image, Long Description; keep our slug/parent/sortOrder.
+- [x] **A5** Category editor upgrade — DONE: `AdminCategory` gains `heroStyle` (standard/split/full-width/minimal),
+  `homepageBestSellers` / `homepageCarousel` switches (row chips in the tree), `shortDescription` (hero sub-copy),
+  `backgroundImage` (URL + thumbnail preview), `longDescription`. Legacy lbpanel parity block sits in the edit
+  dialog; slug/parent/sortOrder untouched. Create flow carries the same fields. Hero/flags/copy persist via
+  `updateCategory`. Live check 34/34 · e2e 33/33 · lint 0 · clean rebuild · real `tsc -p tsconfig.app.json` exit 0.
+  Process note: root `npx tsc --noEmit` is vacuous (solution tsconfig with `files: []`); local typecheck must be
+  `bun run typecheck`, which mirrors CI’s Typecheck step — CI was already gating correctly all along.
 - [ ] **A6** Homepage section control — admin toggles for Best Sellers / Home Carousel (auto from flags vs manual
   pick), plus carousel ordering.
 
