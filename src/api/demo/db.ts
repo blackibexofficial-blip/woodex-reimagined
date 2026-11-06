@@ -357,6 +357,7 @@ function buildSeedMovements(adminProducts: AdminProduct[]): AdminStockMovement[]
 }
 
 const MEDIA_MIGRATED_KEY = "woodex.media.migrated.v1";
+const PAGES_HOME_V2_KEY = "woodex.pages.home-v2";
 
 /**
  * One-time migration: catalogue seed assets + any legacy localStorage uploads
@@ -1593,6 +1594,23 @@ function loadDb(): DemoDb {
       else db.pages = db.pages.filter((pg) => pg && typeof pg === "object" && typeof pg.slug === "string" && pg.doc && Array.isArray(pg.doc.content) && (pg.kind === "page" || pg.kind === "chrome"));
       if (!Array.isArray(db.pageFolders)) db.pageFolders = buildSeedPageFolders();
       else db.pageFolders = db.pageFolders.filter((f) => f && typeof f === "object" && typeof f.id === "string" && typeof f.name === "string");
+      // one-time (2026-11-07): swap the untouched starter "home" page for the real storefront mirror.
+      // Browsers that already persisted edits keep them — the swap only fires for the pristine starter template.
+      try {
+        if (localStorage.getItem(PAGES_HOME_V2_KEY) !== "1") {
+          const home = db.pages.find((pg) => pg.slug === "home" && pg.kind === "page");
+          const isPristineStarter =
+            !!home && Array.isArray(home.doc?.content) &&
+            home.doc.content.some((b) => typeof b.props?.id === "string" && b.props.id.startsWith("pb-seed-"));
+          if (isPristineStarter) {
+            const seed = buildSeedPages()[0];
+            db.pages = db.pages.map((pg) => (pg.slug === "home" && pg.kind === "page" ? seed : pg));
+          }
+          localStorage.setItem(PAGES_HOME_V2_KEY, "1");
+        }
+      } catch {
+        /* migration unavailable — page stays as stored; nothing crashes */
+      }
       for (const p of db.products) if (p.brandId === undefined) p.brandId = "woodex";
       if (!Array.isArray(db.materials)) db.materials = buildSeedMaterials();
       if (!Array.isArray(db.projects)) db.projects = buildSeedProjects();

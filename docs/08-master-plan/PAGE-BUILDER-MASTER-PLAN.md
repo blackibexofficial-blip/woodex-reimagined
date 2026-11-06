@@ -703,6 +703,36 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   bundle (lazy Chunk). Settings banner no longer overpromises a one-env Bagisto flip (501 stubs called out honestly). Gates: tsc 0 · eslint 0 ·
   build ✓ · e2e **39/39** (+4) · live acceptance (iframe canvas): add → hide (placeholder) → lock → save → storefront hides the block, seeded
   page intact, 0 console errors. Insert-after-selection + section Slots land with the Wave 4 inspector; MCP seo tools follow as a separate small PR.
+- **2026-11-07 (MCP SEO micro-PR, post-W2)** — Owner directive: separate small read-only MCP slice. `src/lib/mcp/tools/seo.ts` adds
+  `seo_audit_page` (deterministic advisory audit of `/`, `/product/<id>`, `/blog/<id>`, `/service/<slug>` from the image-free snapshot:
+  title 30–60 · description 120–160 · optional focus-keyphrase in title/description/density · body depth ≥300 words · headings · slug hygiene;
+  weighted 0–100 score + concrete suggestions) and `seo_generate_meta` (template-based title/description/OG/Twitter/slug suggestions with
+  word-boundary 60/160 trims, keyphrase front-loading analysis, stuffing detection). No external calls and no write paths — `readOnlyHint`,
+  `idempotentHint`; the write-tool set (`create_page`/`upsert_section`/`run_seo_audit`/…) remains Wave 6 / PB-6. `supabase/functions/mcp/index.ts`
+  regenerated with the changes while keeping the locked `npm:@lovable.dev/mcp-js@3.0.4` specifiers (no version drift). The local gate environment
+  had no node_modules, so the bundle was hand-spliced from source (strip/rename rules matched against the mcp-js output); handlers were executed
+  against the live snapshot via a stubbed-tool harness (all page types, error paths, stuffing case — all pass) and the spliced bundle parses clean
+  (`vm.SourceTextModule`). CI (bun + pkg.dev) is the canonical gate for this slice. MCP `version` → 0.2.0.
+  CI note (2026-11-07, resolved) — earlier probe pushes (551f0db, bbbc707) attributed the Typecheck failure to the
+  environment; the owner subsequently posted the failing runner log: `seo.ts(120,3) TS2322` — the audit handler's
+  `structuredContent` was not assignable to mcp-js's `JsonValueInput` because `checks` was typed via an interface
+  (interfaces carry no implicit index signature). Fix (in this branch): `interface AuditCheck`/`interface SeoPage` →
+  type aliases; handler annotations already explicit. Verified red → green locally with a JsonValueInput-faithful
+  `ToolHandlerResult` stub (the old source reproduced TS2322 at the same position; the fixed source compiles clean),
+  full runtime harness re-run (scores unchanged: 60/45/28/50/60), and the bundle re-spliced from the fixed source
+  (parses clean, mcp-js 3.0.4 pins preserved). Lesson recorded: with pkg.dev unreachable from the agent sandbox,
+  "environment" was asserted before fixing the one visible type defect — owner log screenshots are authoritative.
+- **2026-11-07 (Builder Home = real storefront mirror)** — Owner directive: "replace demo to real home page — run-time live, drag & drop."
+  The Pages-builder Home document now mirrors the live storefront home instead of the placeholder starter ("Furniture that
+  outlasts the brief"): hero copy from slide 1, the tagline strip, the 5-service strip, the 8 circular category tiles
+  (new `CategoryCircles` block; images committed under `public/assets/home/` as stable paths), "Latest Collection" rendered
+  **live from the catalog** by the new `ProductRail` block (best sellers / new / all, `/product/<id>` links, real PKR prices),
+  Our Services checklist (services-office.webp), project bento, the 5 real Google reviews, 10 real client names, the 6 real
+  FAQs, and the WhatsApp-first CTA. Storefront `/` is untouched; `/lab/home` and the Pages editor render the document. Two new
+  builder blocks registered (`CategoryCircles`, `ProductRail` — 42 registered blocks total; the 40-catalogue count is unchanged).
+  Persisted browsers carrying the untouched starter doc are auto-upgraded by a one-time migration in `src/api/demo/db.ts`
+  (`woodex.pages.home-v2`, only when the stored Home still matches the pristine starter; user edits are preserved). e2e smoke
+  expectation updated to the new hero copy. WorkspacePlanning carousel deliberately not mirrored in the quick fix.
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
 - **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:
