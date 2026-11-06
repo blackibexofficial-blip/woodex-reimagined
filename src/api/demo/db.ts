@@ -10,14 +10,20 @@ import { products, categoryGroups } from "@/data/products";
 import type {
   AdminApi,
   AdminCategory,
+  AdminDeliveryZone,
+  AdminInventoryItem,
   AdminCustomer,
   AdminLead,
   AdminCollection,
   AdminCollectionRule,
   AdminMediaAsset,
+  AdminCompany,
   AdminOrder,
   AdminOrderEvent,
   AdminOrderItem,
+  AdminStockMovement,
+  StockMovementType,
+  AdminPriceList,
   AdminProduct,
   DashboardStats,
   ListParams,
@@ -27,6 +33,8 @@ import type {
   NewLeadInput,
   NewAdminCollectionInput,
   NewOrderInput,
+  NewAdminPriceListInput,
+  PriceListStatus,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -44,8 +52,12 @@ interface DemoDb {
   inventoryMeta: Record<string, { lowStockThreshold: number; location: string; lastUpdated: string }>;
   movements: AdminStockMovement[];
   zones: AdminDeliveryZone[];
+  categories: AdminCategory[];
+  media: AdminMediaAsset[];
   orderEvents: AdminOrderEvent[];
   collections: AdminCollection[];
+  companies: AdminCompany[];
+  priceLists: AdminPriceList[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -260,6 +272,33 @@ async function ensureMediaSeeded() {
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "category";
 
+function buildSeedCompanies(): AdminCompany[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  const mk = (id: string, name: string, contactName: string, email: string, phone: string, city: string, createdAt: string): AdminCompany =>
+    ({ id, name, contactName, email, phone, city, createdAt });
+  return [
+    mk("co-indus-developers", "Indus Developers", "Sana Malik", "projects@indusdevelopers.pk", "+92 345 1122334", "Lahore", iso(210)),
+    mk("co-nawaab-group", "Nawaab Group of Companies", "Omar Qureshi", "facilities@nawaabgroup.pk", "+92 312 5566778", "Islamabad", iso(300)),
+    mk("co-meridian-builders", "Meridian Builders", "Hira Shahid", "procurement@meridianbuilders.pk", "+92 300 7788123", "Karachi", iso(180)),
+    mk("co-pearl-corporation", "Pearl Corporation", "Bilal Anwar", "admin@pearlcorp.pk", "+92 321 4455667", "Lahore", iso(150)),
+    mk("co-al-noor", "Al Noor Textiles", "Kashif Raza", "accounts@alnoortextiles.pk", "+92 333 9088776", "Faisalabad", iso(120)),
+    mk("co-frontier-holdings", "Frontier Holdings", "Ayesha Siddiqui", "projects@frontierholdings.pk", "+92 345 6601123", "Peshawar", iso(90)),
+    mk("co-citymount-properties", "CityMount Properties", "Usman Tariq", "ops@citymountproperties.pk", "+92 309 2233445", "Multan", iso(60)),
+    mk("co-skyline-ventures", "Skyline Ventures", "Maham Javed", "hello@skylineventures.pk", "+92 317 8899001", "Islamabad", iso(30)),
+  ];
+}
+
+function buildSeedPriceLists(): AdminPriceList[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  return [
+    { id: "pl-wholesale", name: "Wholesale", description: "Standing trade discount for registered B2B buyers — the default rate of the /b2b program.", status: "active", audience: "all_b2b", companyIds: [], target: "all_products", categoryIds: [], discountPct: 12, createdAt: iso(150), updatedAt: iso(150) },
+    { id: "pl-indus-corporate-2026", name: "Indus Developers — Corporate 2026", description: "Contract rate for Indus Developers projects across executive/manager/staff/meeting tables and chairs.", status: "active", audience: "companies", companyIds: ["co-indus-developers"], target: "categories", categoryIds: ["office-tables", "meeting-tables", "chairs"], discountPct: 20, createdAt: iso(45), updatedAt: iso(30) },
+    { id: "pl-ramadan-2026", name: "Ramadan Campaign 2026", description: "Seasonal promo — saved as draft for the owner to review and activate.", status: "draft", audience: "all_b2b", companyIds: [], target: "all_products", categoryIds: [], discountPct: 8, startsAt: "2026-02-20", endsAt: "2026-03-25", createdAt: iso(20), updatedAt: iso(20) },
+  ];
+}
+
 /** Resolves a collection's members — manual picks in curated order; rules evaluated live off the catalogue. */
 function resolveCollectionProducts(db: DemoDb, c: AdminCollection): AdminProduct[] {
   if (c.kind === "manual") {
@@ -300,6 +339,10 @@ function buildSeedCollections(prods: AdminProduct[]): AdminCollection[] {
     { id: "col-best-sellers", name: "Best Sellers", handle: "best-sellers", description: "Hand-picked customer favourites across office and home ranges.", kind: "manual", productIds: [...prods].filter((p) => p.isBestSeller).sort((a, b) => b.reviews - a.reviews).slice(0, 12).map((p) => p.id), sortOrder: 2, createdAt: iso(150) },
   ];
 }
+
+/** Price-list discount sanity: whole percent 0–60. */
+const clampPct = (n: number) => Math.min(60, Math.max(0, Math.round(Number(n) || 0)));
+const isoDate = (s?: string) => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? s : undefined);
 
 const slugifyHandle = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "collection";
@@ -505,7 +548,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts) };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -528,6 +571,8 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.zones)) db.zones = buildSeedZones();
       if (!Array.isArray(db.orderEvents)) db.orderEvents = buildSeedOrderEvents(db.orders);
       if (!Array.isArray(db.collections)) db.collections = buildSeedCollections(db.products);
+      if (!Array.isArray(db.companies)) db.companies = buildSeedCompanies();
+      if (!Array.isArray(db.priceLists)) db.priceLists = buildSeedPriceLists();
       if (!db.inventoryMeta || typeof db.inventoryMeta !== "object" || Array.isArray(db.inventoryMeta)) db.inventoryMeta = buildInventoryMeta(db.products);
       db.products.forEach((p, i) => {
         if (!p.sku) p.sku = `WDX-${String(i + 1001).padStart(4, "0")}`;
@@ -952,6 +997,85 @@ export const demoAdminApi: AdminApi = {
     return { ...settings };
   },
 
+  async listCompanies() {
+    return [...(loadDb().companies ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  async listPriceLists() {
+    return [...(loadDb().priceLists ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.name.localeCompare(b.name));
+  },
+
+  async createPriceList(input) {
+    let created: AdminPriceList | undefined;
+    update((db) => {
+      const name = input.name.trim();
+      if (!name) return;
+      const now = new Date().toISOString();
+      created = {
+        id: `pl-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+        name,
+        description: input.description?.trim() || undefined,
+        status: "draft", // born as draft — owner activates deliberately
+        audience: input.audience,
+        companyIds: [...new Set(input.companyIds ?? [])].filter((id) => db.companies.some((c) => c.id === id)),
+        target: input.target,
+        categoryIds: [...new Set(input.categoryIds ?? [])],
+        discountPct: clampPct(input.discountPct),
+        startsAt: isoDate(input.startsAt),
+        endsAt: isoDate(input.endsAt),
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.priceLists ??= []).push(created);
+    });
+    if (!created) throw new Error("Give the price list a name.");
+    return created;
+  },
+
+  async updatePriceList(id, patch) {
+    let updated: AdminPriceList | undefined;
+    update((db) => {
+      const list = (db.priceLists ??= []).find((x) => x.id === id);
+      if (!list) return;
+      if (patch.name !== undefined) { const n = patch.name.trim(); if (n) list.name = n; }
+      if (patch.description !== undefined) list.description = patch.description?.trim() || undefined;
+      if (patch.audience !== undefined) list.audience = patch.audience;
+      if (patch.companyIds !== undefined) list.companyIds = [...new Set(patch.companyIds)].filter((cid) => db.companies.some((c) => c.id === cid));
+      if (patch.target !== undefined) list.target = patch.target;
+      if (patch.categoryIds !== undefined) list.categoryIds = [...new Set(patch.categoryIds)];
+      if (patch.discountPct !== undefined) list.discountPct = clampPct(patch.discountPct);
+      if (patch.startsAt !== undefined) list.startsAt = isoDate(patch.startsAt);
+      if (patch.endsAt !== undefined) list.endsAt = isoDate(patch.endsAt);
+      list.updatedAt = new Date().toISOString();
+      updated = { ...list, companyIds: [...list.companyIds], categoryIds: [...list.categoryIds] };
+    });
+    return updated;
+  },
+
+  async setPriceListStatus(id, status: PriceListStatus) {
+    let updated: AdminPriceList | undefined;
+    update((db) => {
+      const list = (db.priceLists ??= []).find((x) => x.id === id);
+      if (!list) return;
+      list.status = status;
+      list.updatedAt = new Date().toISOString();
+      updated = { ...list, companyIds: [...list.companyIds], categoryIds: [...list.categoryIds] };
+    });
+    return updated;
+  },
+
+  async deletePriceList(id) {
+    let ok = false;
+    update((db) => {
+      const arr = (db.priceLists ??= []);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
+  },
+
   async listCollections() {
     return [...(loadDb().collections ?? [])].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
   },
@@ -1298,6 +1422,7 @@ export const demoAdminApi: AdminApi = {
         customerName: input.customerName,
         customerEmail: input.customerEmail ?? "",
         customerPhone: input.customerPhone,
+        address: input.address,
         city: input.city,
         items: input.items,
         subtotal: input.subtotal,

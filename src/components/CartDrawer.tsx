@@ -7,7 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { formatPKR } from "@/data/products";
 
 const CartDrawer = () => {
-  const { items, removeItem, updateQuantity, totalItems, totalPrice, isOpen, setIsOpen } = useCart();
+  const { items, removeItem, updateQuantity, totalItems, totalPrice, retailTotal, tradeSavings, tradeSession, effectiveUnitPrice, tradeDiscountFor, isOpen, setIsOpen } = useCart();
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -27,6 +27,11 @@ const CartDrawer = () => {
             <ShoppingCart className="h-5 w-5 text-accent" />
             Shopping Cart ({totalItems})
           </SheetTitle>
+          {tradeSession && (
+            <p role="status" className="-mt-1 flex items-center gap-1.5 text-[11px] font-medium text-hon-green-dark">
+              Trade pricing for {tradeSession.companyName} — negotiated rates from your account manager.
+            </p>
+          )}
         </SheetHeader>
 
         {items.length === 0 ? (
@@ -57,7 +62,19 @@ const CartDrawer = () => {
                       {item.name}
                     </Link>
                     {item.color && <p className="text-xs text-muted-foreground">{item.color}</p>}
-                    <p className="text-sm font-bold text-accent mt-1">{formatPKR(item.price)}</p>
+                    {(() => {
+                      const d = tradeDiscountFor(item);
+                      const unit = effectiveUnitPrice(item);
+                      return d ? (
+                        <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
+                          <span className="text-[10px] text-muted-foreground line-through">{formatPKR(item.price)}</span>
+                          <span className="text-sm font-bold text-hon-green-dark">{formatPKR(unit)}</span>
+                          <span className="rounded-full bg-hon-green/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-hon-green-dark">Trade −{d.pct}%</span>
+                        </p>
+                      ) : (
+                        <p className="text-sm font-bold text-accent mt-1">{formatPKR(item.price)}</p>
+                      );
+                    })()}
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center border border-border rounded-sm">
                         <button
@@ -86,6 +103,18 @@ const CartDrawer = () => {
             </div>
 
             <div className="border-t border-border pt-4 space-y-3">
+              {tradeSavings > 0 && (
+                <>
+                  <div className="flex justify-between items-center text-xs text-muted-foreground">
+                    <span>Retail</span>
+                    <span className="line-through">{formatPKR(retailTotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold text-hon-green-dark">
+                    <span>Trade savings</span>
+                    <span>−{formatPKR(tradeSavings)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Subtotal</span>
                 <span className="font-bold text-lg">{formatPKR(totalPrice)}</span>

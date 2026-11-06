@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
+import TradeBanner from "@/components/TradeBanner";
 import Footer from "@/components/Footer";
 import ImageGallery from "@/components/product/ImageGallery";
 import ColorSwatches from "@/components/product/ColorSwatches";
@@ -48,7 +49,7 @@ const ProductDetail = () => {
   const [addedToQuote, setAddedToQuote] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const { addItem } = useQuote();
-  const { addItem: addToCart } = useCart();
+  const { addItem: addToCart, effectiveUnitPrice, tradeDiscountFor } = useCart();
 
   const pageUrl = absUrl(`/shop/${product?.id ?? ""}`);
   const productLd = product
@@ -106,6 +107,7 @@ const ProductDetail = () => {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
+      <TradeBanner />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
@@ -127,6 +129,8 @@ const ProductDetail = () => {
 
   const categoryName = categories.find(c => c.id === product.category)?.name || product.category;
   
+  const trade = tradeDiscountFor({ category: product.category });
+  const tradePrice = trade ? effectiveUnitPrice({ price: product.price, category: product.category }) : product.price;
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
@@ -143,6 +147,7 @@ const ProductDetail = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      <TradeBanner />
       {productLd && <JsonLd id="product" data={productLd} />}
       {crumbLd && <JsonLd id="breadcrumb" data={crumbLd} />}
 
@@ -221,9 +226,15 @@ const ProductDetail = () => {
               </div>
 
               {/* Price */}
-              <div className="flex items-baseline gap-3">
-                <span className="text-4xl font-bold">{formatPKR(product.price)}</span>
-                {product.originalPrice && (
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <span className="text-4xl font-bold">{formatPKR(tradePrice)}</span>
+                {trade && (
+                  <>
+                    <span className="text-xl text-muted-foreground line-through">{formatPKR(product.price)}</span>
+                    <span className="rounded-full bg-hon-green/10 px-2 py-1 text-[10px] font-bold uppercase text-hon-green-dark">Trade −{trade.pct}%</span>
+                  </>
+                )}
+                {!trade && product.originalPrice && (
                   <>
                     <span className="text-xl text-muted-foreground line-through">
                       {formatPKR(product.originalPrice)}
@@ -273,7 +284,7 @@ const ProductDetail = () => {
                   </div>
                   <span className="text-muted-foreground">
                     Total: <span className="font-semibold text-foreground">
-                      {formatPKR(product.price * quantity)}
+                      {formatPKR(tradePrice * quantity)}
                     </span>
                   </span>
                 </div>

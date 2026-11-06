@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Building2, Users, TrendingUp, HeadphonesIcon, CheckCircle2, XCircle, ArrowRight, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import TradeSignIn from "@/components/TradeSignIn";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import b2bHero from "@/assets/b2b-hero.webp";
@@ -77,6 +78,7 @@ const B2B = () => {
               <Button size="lg" variant="outline" className="border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10" asChild>
                 <Link to="/contact">Talk to Sales</Link>
               </Button>
+              <TradeSignIn />
             </div>
           </div>
         </section>

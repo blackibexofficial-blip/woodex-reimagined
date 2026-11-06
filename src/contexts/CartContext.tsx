@@ -1,4 +1,15 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { getAdminApi } from "@/api";
+import type { AdminPriceList } from "@/api/types";
+import {
+  applicableDiscount,
+  clearTradeSession,
+  discounted,
+  readTradeSession,
+  writeTradeSession,
+  type AppliedTradeDiscount,
+  type TradeSession,
+} from "@/lib/tradePricing";
 
 export interface CartItem {
   id: string;
@@ -17,7 +28,17 @@ interface CartContextType {
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
+  /** Grand total the customer will pay — trade-aware when signed in. */
   totalPrice: number;
+  /** Always retail. */
+  retailTotal: number;
+  tradeSavings: number;
+  tradeSession: TradeSession | null;
+  refreshTradeLists: () => Promise<void>;
+  signInTrade: (company: { id: string; name: string; contactName: string }) => void;
+  signOutTrade: () => void;
+  effectiveUnitPrice: (item: Pick<CartItem, "price" | "category">) => number;
+  tradeDiscountFor: (item: Pick<CartItem, "category">) => AppliedTradeDiscount | null;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 }
@@ -34,10 +55,51 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
   const [isOpen, setIsOpen] = useState(false);
+  const [tradeSession, setTradeSession] = useState<TradeSession | null>(() => readTradeSession());
+  const [priceLists, setPriceLists] = useState<AdminPriceList[]>([]);
 
   useEffect(() => {
     localStorage.setItem("woodex-cart", JSON.stringify(items));
   }, [items]);
+
+  const refreshTradeLists = useCallback(async () => {
+    try {
+      setPriceLists(await getAdminApi().listPriceLists());
+    } catch (e) {
+      console.warn("[woodex] trade price lists unavailable — pricing stays retail", e);
+      setPriceLists([]);
+    }
+  }, []);
+
+  // Load on mount and whenever the signed-in company changes
+  useEffect(() => {
+    void refreshTradeLists();
+  }, [refreshTradeLists, tradeSession?.companyId]);
+
+  const signInTrade = useCallback((company: { id: string; name: string; contactName: string }) => {
+    const session: TradeSession = { companyId: company.id, companyName: company.name, contactName: company.contactName, signedInAt: new Date().toISOString() };
+    writeTradeSession(session);
+    setTradeSession(session);
+  }, []);
+
+  const signOutTrade = useCallback(() => {
+    clearTradeSession();
+    setTradeSession(null);
+  }, []);
+
+  const tradeDiscountFor = useCallback(
+    (item: Pick<CartItem, "category">): AppliedTradeDiscount | null =>
+      tradeSession ? applicableDiscount(priceLists, tradeSession.companyId, item.category) : null,
+    [priceLists, tradeSession],
+  );
+
+  const effectiveUnitPrice = useCallback(
+    (item: Pick<CartItem, "price" | "category">): number => {
+      const d = tradeDiscountFor(item);
+      return d ? discounted(item.price, d.pct) : item.price;
+    },
+    [tradeDiscountFor],
+  );
 
   const addItem = useCallback((item: Omit<CartItem, "quantity"> & { quantity?: number }) => {
     setItems((prev) => {
@@ -71,11 +133,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
-  const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const totalPrice = items.reduce((sum, i) => sum + effectiveUnitPrice(i) * i.quantity, 0);
+  const retailTotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const tradeSavings = retailTotal - totalPrice;
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isOpen, setIsOpen }}
+      value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, retailTotal, tradeSavings, tradeSession, refreshTradeLists, signInTrade, signOutTrade, effectiveUnitPrice, tradeDiscountFor, isOpen, setIsOpen }}
     >
       {children}
     </CartContext.Provider>

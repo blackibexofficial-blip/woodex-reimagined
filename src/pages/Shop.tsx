@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
+import TradeBanner from "@/components/TradeBanner";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
 import ProductListItem from "@/components/shop/ProductListItem";
@@ -246,6 +247,7 @@ const Shop = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      <TradeBanner />
       <main className="flex-1">
         {/* Hero */}
         <section className="bg-primary text-primary-foreground py-12">

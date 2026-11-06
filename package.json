@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "bun run generate-sitemap && vite build",
     "generate-sitemap": "bun --preload ./scripts/stub-assets.ts scripts/generate-sitemap.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",

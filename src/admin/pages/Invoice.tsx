@@ -88,7 +88,7 @@ export default function AdminInvoice() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Bill to</p>
               <p className="mt-1.5 text-sm font-semibold text-foreground">{order.customerName}</p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                {order.address}<br />{order.city}, Pakistan<br />{order.customerPhone}<br />{order.customerEmail}
+                {order.address && <>{order.address}<br /></>}{order.city}, Pakistan<br />{order.customerPhone}<br />{order.customerEmail}
               </p>
             </div>
             <div className="sm:text-right">

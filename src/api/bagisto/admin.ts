@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminCategory, AdminCollection, AdminCustomer, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -39,6 +39,7 @@ const localOrderFrom = (input: NewOrderInput): AdminOrder => ({
   customerName: input.customerName,
   customerEmail: input.customerEmail ?? "",
   customerPhone: input.customerPhone,
+  address: input.address,
   city: input.city,
   items: input.items,
   subtotal: input.subtotal,
@@ -114,6 +115,7 @@ const mapOrder = (o: any): AdminOrder => ({
   customerEmail: o.customer_email ?? o.customer?.email ?? "",
   customerPhone: o.customer_phone ?? o.addresses?.[0]?.phone ?? "",
   city: o.addresses?.[0]?.city ?? o.shipping_address?.city ?? "",
+  address: o.addresses?.[0]?.address1 ?? o.shipping_address?.address1 ?? o.address1,
   items: (o.items ?? []).map((i: any) => ({
     id: String(i.product_id ?? i.id),
     name: i.name ?? i.product_name ?? "Item",
@@ -364,7 +366,7 @@ export const bagistoAdminApi: AdminApi = {
           method: "POST",
           body: JSON.stringify({
             customer: { name: input.customerName, email: input.customerEmail, phone: input.customerPhone },
-            shipping_address: { city: input.city },
+            shipping_address: { address1: input.address, city: input.city },
             notes: input.notes,
             payment_method: input.paymentMethod === "cod" ? "cashondelivery" : "banktransfer",
             items: input.items.map((i) => ({ product_id: i.id, qty: i.quantity, price: i.price })),
@@ -396,6 +398,32 @@ export const bagistoAdminApi: AdminApi = {
     // bagisto-api package; mapping is intentionally not guessed. Wire it when a staging
     // instance is available — see docs/07-admin-integration §8.
     throw new BagistoApiError(501, "Category management is not wired for Bagisto yet. Use VITE_API_MODE=demo for the preview, or implement mappers in src/api/bagisto/admin.ts.");
+  },
+
+  // B2B price lists (customer-group pricing) are intentionally not wired yet — Bagisto's
+  // customer-group + catalog rules exist but payloads are unverified from this sandbox.
+  async listCompanies(): Promise<AdminCompany[]> {
+    throw new BagistoApiError(501, "Company registry is demo-only until Bagisto company/customer groups are verified — see docs/07-admin-integration §8.");
+  },
+
+  async listPriceLists(): Promise<AdminPriceList[]> {
+    throw new BagistoApiError(501, "Price lists are demo-only until Bagisto customer-group pricing is verified — see docs/07-admin-integration §8.");
+  },
+
+  async createPriceList(): Promise<AdminPriceList> {
+    throw new BagistoApiError(501, "Price list creation is not wired for Bagisto yet.");
+  },
+
+  async updatePriceList(): Promise<AdminPriceList | undefined> {
+    throw new BagistoApiError(501, "Price list editing is not wired for Bagisto yet.");
+  },
+
+  async setPriceListStatus(): Promise<AdminPriceList | undefined> {
+    throw new BagistoApiError(501, "Price list activation is not wired for Bagisto yet.");
+  },
+
+  async deletePriceList(): Promise<boolean> {
+    throw new BagistoApiError(501, "Price list deletion is not wired for Bagisto yet.");
   },
 
   async listCollections(): Promise<AdminCollection[]> {

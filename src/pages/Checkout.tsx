@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, Truck, CreditCard, Banknote, ChevronLeft, CheckCircle, MapPin, Phone, User, Mail } from "lucide-react";
+import { ShoppingCart, Truck, CreditCard, Banknote, ChevronLeft, CheckCircle, MapPin } from "lucide-react";
 import Header from "@/components/Header";
+import TradeBanner from "@/components/TradeBanner";
 import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
 import { formatPKR } from "@/data/products";
@@ -22,8 +23,7 @@ const cities = [
 ];
 
 const Checkout = () => {
-  const { items, totalPrice, totalItems, clearCart } = useCart();
-  const navigate = useNavigate();
+  const { items, totalPrice, totalItems, clearCart, tradeSavings, retailTotal, effectiveUnitPrice } = useCart();
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -52,10 +52,11 @@ const Checkout = () => {
         customerName: formData.name.trim(),
         customerEmail: formData.email.trim() || undefined,
         customerPhone: formData.phone.trim(),
+        address: formData.address.trim(),
         city: formData.city,
         notes: formData.notes.trim() || undefined,
         paymentMethod: paymentMethod === "bank" ? "bank-transfer" : "cod",
-        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
+        items: items.map((i) => ({ id: i.id, name: i.name, price: effectiveUnitPrice(i), quantity: i.quantity, image: i.image })),
         subtotal: totalPrice,
         shipping: deliveryFee,
         total: grandTotal,
@@ -132,6 +133,7 @@ const Checkout = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      <TradeBanner />
       <main className="flex-1">
         {/* Hero */}
         <section className="bg-primary text-primary-foreground py-8">
@@ -247,7 +249,7 @@ const Checkout = () => {
                             {item.color && <p className="text-xs text-muted-foreground">{item.color}</p>}
                             <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                           </div>
-                          <p className="text-sm font-semibold whitespace-nowrap">{formatPKR(item.price * item.quantity)}</p>
+                          <p className="text-sm font-semibold whitespace-nowrap">{formatPKR(effectiveUnitPrice(item) * item.quantity)}</p>
                         </div>
                       ))}
 
@@ -258,6 +260,18 @@ const Checkout = () => {
                           <span className="text-muted-foreground">Subtotal ({totalItems} items)</span>
                           <span className="font-medium">{formatPKR(totalPrice)}</span>
                         </div>
+                        {tradeSavings > 0 && (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Retail value</span>
+                              <span className="line-through text-muted-foreground">{formatPKR(retailTotal)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-hon-green-dark font-semibold">Trade savings</span>
+                              <span className="font-semibold text-hon-green-dark">−{formatPKR(tradeSavings)}</span>
+                            </div>
+                          </>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Delivery</span>
                           <span className="font-medium">{deliveryFee === 0 ? <span className="text-accent">FREE</span> : formatPKR(deliveryFee)}</span>

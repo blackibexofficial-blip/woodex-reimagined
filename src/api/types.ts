@@ -26,6 +26,8 @@ export interface AdminOrder {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  /** Street address for fulfilment & the invoice (optional — legacy seeds lack it). */
+  address?: string;
   city: string;
   items: AdminOrderItem[];
   subtotal: number;
@@ -100,6 +102,55 @@ export interface AdminProduct {
   /** Optional physical attributes (admin display + CSV round-trip). */
   dimensions?: string;
   weightKg?: number;
+}
+
+/* ── B2B price lists ("catalogs" — negotiated trade pricing) ──────────────── */
+
+export interface AdminCompany {
+  id: string;
+  name: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  city: string;
+  createdAt: string;
+}
+
+export type PriceListStatus = "draft" | "active" | "archived";
+export type PriceListAudience = "all_b2b" | "companies";
+/** Which catalogue slice the discount applies to. */
+export type PriceListTarget = "all_products" | "categories";
+
+export interface AdminPriceList {
+  id: string;
+  name: string;
+  description?: string;
+  status: PriceListStatus;
+  audience: PriceListAudience;
+  /** company ids — only when audience === "companies". */
+  companyIds: string[];
+  target: PriceListTarget;
+  /** storefront category ids — only when target === "categories". */
+  categoryIds: string[];
+  /** 0–60, whole percent off the retail price. */
+  discountPct: number;
+  /** Optional validity window (ISO dates, inclusive). */
+  startsAt?: string;
+  endsAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewAdminPriceListInput {
+  name: string;
+  description?: string;
+  audience: PriceListAudience;
+  companyIds?: string[];
+  target: PriceListTarget;
+  categoryIds?: string[];
+  discountPct: number;
+  startsAt?: string;
+  endsAt?: string;
 }
 
 /* ── Collections (merchandising) ────────────────────────────────────────── */
@@ -302,6 +353,7 @@ export interface NewOrderInput {
   customerName: string;
   customerEmail?: string;
   customerPhone: string;
+  address?: string;
   city: string;
   notes?: string;
   paymentMethod: PaymentMethod;
@@ -372,6 +424,13 @@ export interface AdminApi {
   saveSettings(settings: StoreSettings): Promise<StoreSettings>;
 
   /** Catalogue taxonomy managed in the admin (demo-backed). */
+  listCompanies(): Promise<AdminCompany[]>;
+  listPriceLists(): Promise<AdminPriceList[]>;
+  createPriceList(input: NewAdminPriceListInput): Promise<AdminPriceList>;
+  updatePriceList(id: string, patch: Partial<NewAdminPriceListInput>): Promise<AdminPriceList | undefined>;
+  setPriceListStatus(id: string, status: PriceListStatus): Promise<AdminPriceList | undefined>;
+  deletePriceList(id: string): Promise<boolean>;
+
   listCollections(): Promise<AdminCollection[]>;
   /** Resolves a collection's member products (rule resolved live for automatic collections). */
   listCollectionProducts(id: string): Promise<AdminProduct[]>;
