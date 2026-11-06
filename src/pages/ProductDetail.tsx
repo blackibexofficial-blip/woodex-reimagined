@@ -257,6 +257,7 @@ const ProductDetail = () => {
                       size="icon"
                       onClick={() => handleQuantityChange(-1)}
                       disabled={quantity <= 1}
+                      aria-label="Decrease quantity"
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
@@ -265,6 +266,7 @@ const ProductDetail = () => {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleQuantityChange(1)}
+                      aria-label="Increase quantity"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -308,7 +310,7 @@ const ProductDetail = () => {
                   <Heart className="h-5 w-5 mr-2" />
                   Wishlist
                 </Button>
-                <Button size="icon" variant="outline">
+                <Button size="icon" variant="outline" aria-label="Share this product">
                   <Share2 className="h-5 w-5" />
                 </Button>
               </div>

@@ -129,14 +129,14 @@ const Header = () => {
             <div className="flex items-center justify-between h-9 text-xs">
               <div className="flex items-center gap-5 text-utility-text">
                 <Link to="/showrooms" className="hover:text-white transition-colors">Showrooms</Link>
-                <span className="text-utility-text/30">|</span>
+                <span aria-hidden="true" className="text-utility-text/30">|</span>
                 <Link to="/materials" className="hover:text-white transition-colors">Material and Colors</Link>
-                <span className="text-utility-text/30">|</span>
+                <span aria-hidden="true" className="text-utility-text/30">|</span>
                 <Link to="/warranty" className="hover:text-white transition-colors">Warranty</Link>
               </div>
               <div className="flex items-center gap-4 text-utility-text">
                 <span className="hover:text-white cursor-pointer transition-colors">English</span>
-                <span className="text-utility-text/30">|</span>
+                <span aria-hidden="true" className="text-utility-text/30">|</span>
                 <span className="hover:text-white cursor-pointer transition-colors">PKR</span>
               </div>
             </div>
@@ -158,7 +158,7 @@ const Header = () => {
               </Link>
 
               {/* Desktop Nav */}
-              <nav className="hidden xl:flex items-center gap-0.5">
+              <nav aria-label="Primary navigation" className="hidden xl:flex items-center gap-0.5">
                 {navItems.map((item) => (
                   <div
                     key={item.label}
@@ -292,7 +292,7 @@ const Header = () => {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="text-foreground hover:text-accent">
+                <Button variant="ghost" size="icon" className="text-foreground hover:text-accent" aria-label="Search products">
                   <Search className="h-4 w-4" />
                 </Button>
 
@@ -302,6 +302,8 @@ const Header = () => {
                   size="icon"
                   className="relative text-foreground hover:text-accent"
                   onClick={() => setIsOpen(!isOpen)}
+                  aria-label={isOpen ? "Close quote basket" : "Open quote basket"}
+                  aria-pressed={isOpen}
                 >
                   <ShoppingBag className="h-4 w-4" />
                   {totalItems > 0 && (
@@ -331,6 +333,8 @@ const Header = () => {
                   size="icon"
                   className="xl:hidden"
                   onClick={() => setMobileOpen(!mobileOpen)}
+                  aria-label={mobileOpen ? "Close menu" : "Open menu"}
+                  aria-expanded={mobileOpen}
                 >
                   {mobileOpen ? (
                     <X className="h-5 w-5" />
@@ -367,6 +371,8 @@ const Header = () => {
                       <button
                         className="p-2 text-muted-foreground hover:text-accent"
                         onClick={() => setMobileExpanded(mobileExpanded === item.label ? null : item.label)}
+                        aria-label={`Toggle ${item.label} submenu`}
+                        aria-expanded={mobileExpanded === item.label}
                       >
                         <ChevronDown className={`h-4 w-4 transition-transform ${mobileExpanded === item.label ? "rotate-180" : ""}`} />
                       </button>

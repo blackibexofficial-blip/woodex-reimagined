@@ -10,16 +10,17 @@
 | Total JS (compressed) | < 250 KB initial route |
 | Image weight per page | < 1.2 MB |
 
-## Images
-- Use `.jpg` for photos, `.png` only for transparent assets.
-- Serve hero at ≤ 1920px wide, quality ~80.
-- Add `loading="lazy"` to below-the-fold images (default in `<img>`).
-- Add `fetchpriority="high"` to hero LCP image.
-- Prefer AVIF/WebP conversion `[planned]`.
+## Images (shipped)
+- All storefront imagery converted to `.webp` (quality ~80) — 93 assets, ~6.4 MB src;
+  originals removed. `dist/assets` ≈ 8.2 MB total.
+- Below-the-fold images lazy-load via `loading="lazy"`.
+- Serve hero at ≤ 1920px wide.
+- AVIF `[planned]`.
 
-## Code Splitting `[planned]`
-- Lazy-load: `VirtualShowroom`, `CustomDesign`, `Blog`, `ProductDetail`.
-- Route-based `React.lazy` + `<Suspense fallback>`.
+## Code Splitting (shipped)
+- Route-level `React.lazy` + `<Suspense fallback>` across `src/App.tsx`.
+- Entry chunk 403 kB (≈113 kB gzip); admin app (103 kB) and recharts (422 kB) split into
+  their own chunks and load only on `/admin`.
 
 ## Fonts
 - Inter via Google Fonts, preconnect + `display=swap`.
@@ -29,5 +30,6 @@
 - No third-party scripts until GA4 + Meta Pixel are added; both async, deferred.
 
 ## Monitoring
-- Lovable performance panel + PageSpeed Insights weekly.
-- Real-user monitoring `[planned]` via GA4 web vitals event.
+- PageSpeed Insights weekly (field data via CrUX for woodex.pk).
+- GA4 web vitals events `[planned]` (measurement ID pending — GA4 foundation is env-gated,
+  inert until `VITE_GA4_ID` is set at build time).

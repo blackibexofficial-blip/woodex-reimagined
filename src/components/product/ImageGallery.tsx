@@ -95,6 +95,7 @@ const ImageGallery = ({ images, productName }: ImageGalleryProps) => {
           size="icon"
           className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg"
           onClick={handlePrev}
+          aria-label="Previous image"
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>
@@ -103,6 +104,7 @@ const ImageGallery = ({ images, productName }: ImageGalleryProps) => {
           size="icon"
           className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg"
           onClick={handleNext}
+          aria-label="Next image"
         >
           <ChevronRight className="h-5 w-5" />
         </Button>

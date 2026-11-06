@@ -48,9 +48,16 @@ const Footer = () => {
               </div>
             </div>
             <div className="flex items-center gap-3 mt-6">
-              {[Facebook, Twitter, Linkedin, Instagram, Youtube].map((Icon, i) => (
+              {[
+                { Icon: Facebook, label: "Facebook" },
+                { Icon: Twitter, label: "Twitter" },
+                { Icon: Linkedin, label: "LinkedIn" },
+                { Icon: Instagram, label: "Instagram" },
+                { Icon: Youtube, label: "YouTube" },
+              ].map(({ Icon, label }) => (
                 <button
-                  key={i}
+                  key={label}
+                  aria-label={`WOODEX on ${label}`}
                   className="w-8 h-8 rounded-full border border-primary-foreground/20 flex items-center justify-center hover:border-accent hover:text-accent transition-colors"
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -61,7 +68,7 @@ const Footer = () => {
 
           {/* Col 2: Quick Links */}
           <div>
-            <h4 className="font-semibold text-sm mb-4 text-primary-foreground uppercase tracking-wider">Quick Links</h4>
+            <h2 className="font-semibold text-sm mb-4 text-primary-foreground uppercase tracking-wider">Quick Links</h2>
             <ul className="space-y-2.5 text-sm">
               {[
                 { label: "About Us", href: "/about" },
@@ -84,7 +91,7 @@ const Footer = () => {
 
           {/* Col 3: Shop */}
           <div>
-            <h4 className="font-semibold text-sm mb-4 text-primary-foreground uppercase tracking-wider">Shop</h4>
+            <h2 className="font-semibold text-sm mb-4 text-primary-foreground uppercase tracking-wider">Shop</h2>
             <ul className="space-y-2.5 text-sm">
               {[
                 { label: "Executive Tables", href: "/shop?category=executive-tables" },
@@ -108,7 +115,7 @@ const Footer = () => {
 
           {/* Col 4: Learn More */}
           <div>
-            <h4 className="font-semibold text-sm mb-4 text-primary-foreground uppercase tracking-wider">Learn More</h4>
+            <h2 className="font-semibold text-sm mb-4 text-primary-foreground uppercase tracking-wider">Learn More</h2>
             <ul className="space-y-2.5 text-sm">
               {[
                 { label: "Awards", href: "/about" },
@@ -131,7 +138,7 @@ const Footer = () => {
 
           {/* Col 5: Contact & Newsletter */}
           <div>
-            <h4 className="font-semibold text-sm mb-4 text-primary-foreground uppercase tracking-wider">Contact</h4>
+            <h2 className="font-semibold text-sm mb-4 text-primary-foreground uppercase tracking-wider">Contact</h2>
             <div className="space-y-3 text-sm text-primary-foreground/70 mb-6">
               <div className="flex items-start gap-2.5">
                 <MapPin className="h-3.5 w-3.5 text-accent flex-shrink-0 mt-0.5" />
@@ -155,7 +162,7 @@ const Footer = () => {
             <div>
               <p className="text-xs font-semibold text-primary-foreground uppercase tracking-wider mb-3">Newsletter</p>
               {subscribed ? (
-                <p className="text-sm text-accent font-semibold">✓ Subscribed! Thank you.</p>
+                <p className="text-sm text-hon-green-pale font-semibold">✓ Subscribed! Thank you.</p>
               ) : (
                 <form onSubmit={handleSubscribe} className="flex gap-2">
                   <Input
@@ -166,7 +173,7 @@ const Footer = () => {
                     required
                     className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/40 text-sm h-9"
                   />
-                  <Button type="submit" size="sm" className="bg-accent hover:bg-accent/80 text-accent-foreground px-3 h-9 flex-shrink-0">
+                  <Button type="submit" size="sm" aria-label="Subscribe to newsletter" className="bg-accent hover:bg-accent/80 text-accent-foreground px-3 h-9 flex-shrink-0">
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </form>

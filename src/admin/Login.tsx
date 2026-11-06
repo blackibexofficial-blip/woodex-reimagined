@@ -36,7 +36,7 @@ export default function AdminLogin() {
     "w-full rounded-lg border border-input bg-background py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-accent focus:ring-2 focus:ring-accent";
 
   return (
-    <div className="flex min-h-screen bg-secondary">
+    <main className="flex min-h-screen bg-secondary">
       {/* brand panel — dark, on-brand (mirrors the storefront's dark hero language) */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-primary p-12 text-primary-foreground lg:flex">
         <div aria-hidden className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(98,153,36,0.28),transparent_55%),radial-gradient(ellipse_at_bottom_right,rgba(75,121,21,0.4),transparent_55%)]" />
@@ -174,6 +174,6 @@ export default function AdminLogin() {
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

@@ -255,7 +255,7 @@ const ProjectDetail = () => {
                     </button>
                     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
                       {gallery.map((_, i) => (
-                        <button key={i} onClick={() => setGalleryIdx(i)} className={`h-1.5 rounded-full transition-all ${i === galleryIdx ? "w-6 bg-accent" : "w-1.5 bg-white/50"}`} />
+                        <button key={i} onClick={() => setGalleryIdx(i)} className={`h-1.5 rounded-full transition-all ${i === galleryIdx ? "w-6 bg-accent" : "w-1.5 bg-white/50"}`} aria-label={`Go to image ${i + 1}`} aria-current={i === galleryIdx} />
                       ))}
                     </div>
                   </div>

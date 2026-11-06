@@ -77,7 +77,7 @@ const Index = () => {
         <section className="relative h-[70vh] min-h-[480px] overflow-hidden bg-primary">
           {slides.map((slide, i) => (
             <div key={i} className={`absolute inset-0 transition-opacity duration-1000 ${i === current ? "opacity-100" : "opacity-0"}`}>
-              <img src={slide.image} alt={slide.title} className="w-full h-full object-cover" />
+              <img src={slide.image} alt="" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-r from-primary/75 via-primary/40 to-transparent" />
             </div>
           ))}
@@ -93,12 +93,12 @@ const Index = () => {
             </div>
           </div>
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3">
-            <button onClick={prev} className="w-8 h-8 rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/40 flex items-center justify-center text-primary-foreground transition-colors"><ChevronLeft className="h-4 w-4" /></button>
-            <button onClick={() => setPlaying(!playing)} className="w-8 h-8 rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/40 flex items-center justify-center text-primary-foreground transition-colors">{playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}</button>
-            <button onClick={next} className="w-8 h-8 rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/40 flex items-center justify-center text-primary-foreground transition-colors"><ChevronRight className="h-4 w-4" /></button>
+            <button onClick={prev} aria-label="Previous slide" className="w-8 h-8 rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/40 flex items-center justify-center text-primary-foreground transition-colors"><ChevronLeft className="h-4 w-4" /></button>
+            <button onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause slideshow" : "Play slideshow"} aria-pressed={playing} className="w-8 h-8 rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/40 flex items-center justify-center text-primary-foreground transition-colors">{playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}</button>
+            <button onClick={next} aria-label="Next slide" className="w-8 h-8 rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/40 flex items-center justify-center text-primary-foreground transition-colors"><ChevronRight className="h-4 w-4" /></button>
             <div className="flex gap-1.5 ml-2">
               {slides.map((_, i) => (
-                <button key={i} onClick={() => setCurrent(i)} className={`h-1.5 rounded-full transition-all ${i === current ? "w-6 bg-accent" : "w-1.5 bg-primary-foreground/40"}`} />
+                <button key={i} onClick={() => setCurrent(i)} className={`h-1.5 rounded-full transition-all ${i === current ? "w-6 bg-accent" : "w-1.5 bg-primary-foreground/40"}`} aria-label={`Go to testimonial ${i + 1}`} aria-current={i === current} />
               ))}
             </div>
           </div>
@@ -133,7 +133,7 @@ const Index = () => {
               {officeCategories.map((cat) => (
                 <Link key={cat.label} to={cat.href} className="group block">
                   <div className="aspect-square overflow-hidden rounded-sm bg-muted mb-3">
-                    <img src={cat.image} alt={cat.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={cat.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   </div>
                   <h3 className="font-semibold text-sm group-hover:text-accent transition-colors flex items-center gap-1">
                     {cat.label} <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -156,7 +156,7 @@ const Index = () => {
               {homeCategories.map((cat) => (
                 <Link key={cat.label} to={cat.href} className="group border border-border bg-background rounded-sm hover:border-accent hover:shadow-lg transition-all overflow-hidden">
                   <div className="aspect-video overflow-hidden">
-                    <img src={cat.image} alt={cat.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={cat.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   </div>
                   <div className="p-6 text-center">
                     <h3 className="font-bold text-2xl mb-2 group-hover:text-accent transition-colors">{cat.label}</h3>
@@ -231,7 +231,7 @@ const Index = () => {
         <section className="py-16 bg-primary text-primary-foreground">
           <div className="container mx-auto px-4">
             <div className="text-center mb-10">
-              <p className="text-accent font-semibold text-sm uppercase tracking-widest mb-2">By the Numbers</p>
+              <p className="text-hon-green-light font-semibold text-sm uppercase tracking-widest mb-2">By the Numbers</p>
               <h2 className="text-3xl font-bold">Pakistan's Trusted Furniture Partner</h2>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
@@ -242,7 +242,7 @@ const Index = () => {
                 { number: "98%", label: "Satisfaction Rate" },
               ].map((stat) => (
                 <div key={stat.label}>
-                  <p className="text-4xl lg:text-5xl font-black text-accent mb-2">{stat.number}</p>
+                  <p className="text-4xl lg:text-5xl font-black text-hon-green-light mb-2">{stat.number}</p>
                   <p className="text-primary-foreground/70 text-sm font-medium">{stat.label}</p>
                 </div>
               ))}

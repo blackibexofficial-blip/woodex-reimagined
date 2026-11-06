@@ -14,7 +14,7 @@ bun install
 bun run dev        # http://localhost:8080
 ```
 
-Other scripts: `bun run build` (regenerates `sitemap.xml`, then production build → `dist/`) · `bun run typecheck` (strict `tsc --noEmit` gate — clean) · `bun run preview` (serve the build) · `bun run lint` (0 errors; warnings only from fast-refresh hints)
+Other scripts: `bun run build` (regenerates `sitemap.xml`, then production build → `dist/`) · `bun run typecheck` (strict `tsc --noEmit` gate — clean) · `bun run preview` (serve the build) · `bun run lint` (0 errors; warnings only from fast-refresh hints) · `bun run e2e` (puppeteer smoke — 33 checks: admin, SEO, lazy routes) · `bun run e2e:a11y` (axe-core scan, 7 routes — 0 violations)
 
 ### Admin panel preview — `/admin`
 

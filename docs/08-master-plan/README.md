@@ -23,7 +23,7 @@
 |---|---|---|
 | Storefront (`/`, 23 routes + NotFound) | **Feature-complete static SPA** — renders from `src/data/*` with zero backend | static seed data |
 | Admin (`/admin`, 11 routes, lazy chunk) | **Functionally complete panel** — Categories, Analytics, Media shipped; demo DB seeded (32 categories / 148 products / 14 media assets); WOODEX re-theme applied | localStorage demo DB (`woodex.admin.db.v1`) by default; live Bagisto via 1 env var |
-| Integration loop (checkout/contact/quotation → admin) | **Works offline end-to-end** (verified 16/16 E2E) | adapter seam (`getAdminApi()`) |
+| Integration loop (checkout/contact/quotation → admin) | **Works offline end-to-end** (verified 33/33 E2E, `e2e/`) | adapter seam (`getAdminApi()`) |
 | Production hardening | **Not launched** — no GA4, no JSON-LD, no ErrorBoundary, sitemap is static-only, contact numbers inconsistent, Bagisto not provisioned | — |
 
 **The single biggest unlock is not code — it's the hosting/backend decision** (standing,
@@ -31,7 +31,7 @@ pending from the owner): static cPanel hosting for the SPA (docs ready) vs full 
 shared cPanel vs Lovable Cloud. Everything else is either verified-done or small, listed below.
 
 **Quality gates currently green:** `bun run build` (7.1s) · `bun run typecheck` (tsc --noEmit, clean)
-· `bun run lint` (0 errors; 17 benign react-refresh warnings) · admin E2E 16/16 PASS · preview
+· `bun run lint` (0 errors; 17 benign react-refresh warnings) · E2E 33/33 PASS (`bun run e2e`) · preview
 serves 200 with no console/page errors.
 
 ---
@@ -139,7 +139,7 @@ acceptable only for private previews; **the admin token must never ship in a pub
 ## PART C — Master roadmap
 
 ### Phase 0 — Repo hygiene & gates `[done]`
-Build / typecheck / lint green · admin E2E 16/16 · deploy artifacts (`public/.htaccess`, sitemap,
+Build / typecheck / lint green · E2E 33/33 + axe 0 violations · deploy artifacts (`public/.htaccess`, sitemap,
 robots, og-cover) · docs updated. Remaining: commit/PR when asked; close the stale-check loop
 (`docs/06-launch` refresh).
 
@@ -169,8 +169,8 @@ production build with `VITE_API_MODE=bagisto` · deploy `dist/` to `public_html`
 with `demo`.
 
 ### Phase 4 — Hardening & ops `[planned]`
-Sentry + console-error alerting · first-party E2E committed (Playwright smoke from `/tmp/smoke`)
-→ `e2e/` + CI gate · monitoring uptime (UptimeRobot) · backup/restore drill for DB · admin RBAC
+Sentry + console-error alerting · ~~first-party E2E committed (`e2e/`) + CI gate~~ **shipped 2026-11**
+(puppeteer, `bun run e2e`; axe gate `bun run e2e:a11y -- --fail`) · monitoring uptime (UptimeRobot) · backup/restore drill for DB · admin RBAC
 via Bagisto roles (staff/manager/owner) · analytics reconciliation vs Bagisto `/reports`.
 
 ### Phase 5 — Optional evolution `[planned]`
@@ -198,7 +198,7 @@ Cloud API order notifications · PDF quotation automation (backend/supabase alre
 **Owner: ENGINEERING (agent can execute once unblocked)**
 - [x] **P0** `src/config/site.ts` created — phone/WhatsApp/email/address/hours/canonical origin live
       ONLY there; all pages/components migrated; **Quotation.tsx wa.me/923224000768 reconciled** to
-      923001234567. Verified: typecheck + build green; admin E2E 16/16; browser smoke asserts zero
+      923001234567. Verified: typecheck + build green; admin smoke asserts zero
       stale references. Owner must confirm the number (see D-user item: invoice identity mismatch).
 - [x] **P0** React `<ErrorBoundary>` at App root (`src/main.tsx`) + branded fallback UI (WhatsApp escape
       hatch; cart-safe messaging). Caught a real crash during verification (productLd scope bug) —
@@ -223,14 +223,20 @@ Cloud API order notifications · PDF quotation automation (backend/supabase alre
 - [ ] **P2** Wire Bagisto Categories/Media adapters (mappers + storage) OR retire with docs pointer.
 - [ ] **P2** Leads backend: implement `woodex/leads` (schema in docs/07) **or** Supabase lead sink +
       outbox flush; update admin to show synced badge.
-- [ ] **P2** Commit E2E smoke to `e2e/` (Playwright) + `bun run e2e`; add CI workflow (lint/typecheck/build/e2e).
-- [ ] **P2** a11y pass: axe on 10 key routes; fix contrast/labels; alt-text lint.
-- [ ] **P2** Refresh `docs/06-launch/*` checklists to the static+Bagisto reality (drop Lovable-only steps).
+- [x] **P2** Commit E2E smoke to `e2e/` (puppeteer-core + @sparticuz/chromium, offline-capable):
+      `e2e/smoke.mjs` 33/33 (admin CRUD + demo gate, per-route canonical/JSON-LD, lazy-chunk SPA nav) ·
+      `bun run e2e` · CI workflow `.github/workflows/ci.yml` (typecheck, lint, build, e2e, axe `--fail`).
+- [x] **P2** a11y pass: axe-core on 7 routes (`e2e/a11y.mjs`; `bun run e2e:a11y`) — remediation shipped:
+      contrast AA (accent token deepened to 88 62% 30%, muted-foreground 0 0% 40%, destructive 0 72% 51%),
+      all icon-only buttons/links labelled, landmarks labelled (`role="region"` quote basket, nav unique
+      names), heading order fixed, redundant alts removed → **0 violations**.
+- [x] **P2** Refresh `docs/06-launch/*` checklists to the static/cPanel reality (Lovable publish flow
+      removed; deployment/testing/performance/SEO docs rewritten; verified claims only, GSC/GA4 owner-gated).
 - [ ] **P3** Progressive WS/SSR evaluation for SEO; Urdu hreflang; PWA offline catalogue.
 - [ ] **P3** Sentry wiring (`VITE_SENTRY_DSN`, releases via build hash).
 - [ ] **P3** Admin: RBAC roles (demo: owner/staff/readonly) + audit log of admin mutations (demo DB).
-- [ ] Housekeeping: commit current work; convert `/tmp/smoke/*.cjs` into repo E2E; remove `console.log`
-      remnants if any; `.nvmrc`/`.node-version` note (bun-first is fine, document it).
+- [ ] Housekeeping: remove `console.log` remnants if any · `.nvmrc`/`.node-version` note
+      (bun-first is fine, document it). (E2E conversion from `/tmp/smoke` done — see P2.)
 
 **Owner: CONTENT (user + agent can assist)**
 - [ ] Real product photography; blog backlog (8 posts → 12); service pages final copy; showroom
@@ -256,11 +262,11 @@ Cloud API order notifications · PDF quotation automation (backend/supabase alre
 
 ## Appendix
 
-- **Commands**: `bun run dev | build | typecheck | lint | preview` · `bunx playwright` (after P2).
+- **Commands**: `bun run dev | build | typecheck | lint | preview | e2e | e2e:a11y` (E2E = puppeteer + axe; no Playwright).
 - **Demo DB key**: `woodex.admin.db.v1` · reset via `/admin/settings`.
 - **Env**: see `.env.example`; canonical reader `src/config/env.ts` (nothing else may touch `import.meta.env`).
 - **Deploy (static, today)**: `bun run build` → upload `dist/` → `.htaccess` ships in build →
   verify deep links → `robots.txt`/`sitemap.xml` live → GSC.
 - **Bagisto path**: `docs/07-admin-integration` + `backend/README.md` (cPanel runbook, untested).
 - **Supabase path**: `backend/supabase/README.md` (vendored; not deployed).
-- **Smoke evidence**: `/tmp/smoke/admin-upgrade.cjs` (16 checks — to be committed per P2).
+- **Smoke evidence**: `e2e/smoke.mjs` (33 checks, committed) · `e2e/a11y.mjs` (axe, 0 violations) · CI: `.github/workflows/ci.yml`.

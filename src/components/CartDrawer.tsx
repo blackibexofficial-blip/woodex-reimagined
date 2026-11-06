@@ -12,7 +12,7 @@ const CartDrawer = () => {
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <button className="relative p-2 hover:bg-muted rounded-sm transition-colors">
+        <button aria-label="Open cart" className="relative p-2 hover:bg-muted rounded-sm transition-colors">
           <ShoppingCart className="h-5 w-5" />
           {totalItems > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent text-accent-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -63,6 +63,7 @@ const CartDrawer = () => {
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           className="p-1 hover:bg-muted transition-colors"
+                          aria-label="Decrease quantity"
                         >
                           <Minus className="h-3 w-3" />
                         </button>
@@ -70,11 +71,12 @@ const CartDrawer = () => {
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           className="p-1 hover:bg-muted transition-colors"
+                          aria-label="Increase quantity"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>
-                      <button onClick={() => removeItem(item.id)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
+                      <button onClick={() => removeItem(item.id)} className="p-1 text-muted-foreground hover:text-destructive transition-colors" aria-label="Remove item">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>

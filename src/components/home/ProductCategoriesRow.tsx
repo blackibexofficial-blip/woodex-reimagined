@@ -26,7 +26,7 @@ const ProductCategoriesRow = () => (
         {categories.map((cat) => (
           <Link key={cat.label} to={cat.href} className="group flex-shrink-0 text-center w-[140px]">
             <div className="w-[120px] h-[120px] mx-auto mb-3 rounded-full overflow-hidden bg-muted border-2 border-transparent group-hover:border-accent transition-colors">
-              <img src={cat.image} alt={cat.label} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <img src={cat.image} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
             </div>
             <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">{cat.label}</p>
           </Link>

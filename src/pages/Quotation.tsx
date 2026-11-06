@@ -139,7 +139,7 @@ const Quotation = () => {
         {/* Hero */}
         <section className="bg-primary text-primary-foreground py-14">
           <div className="container mx-auto px-4">
-            <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Free Service</p>
+            <p className="text-hon-green-light text-xs font-bold uppercase tracking-widest mb-2">Free Service</p>
             <h1 className="text-4xl lg:text-5xl font-black mb-3">Get an E-Quotation</h1>
             <p className="text-primary-foreground/75 max-w-xl">
               Fast, transparent pricing for all your office furniture needs. Fill out the form and 
@@ -157,7 +157,7 @@ const Quotation = () => {
                   <b.icon className="h-5 w-5 flex-shrink-0" />
                   <div>
                     <p className="font-semibold text-sm">{b.title}</p>
-                    <p className="text-xs opacity-80">{b.description}</p>
+                    <p className="text-xs">{b.description}</p>
                   </div>
                 </div>
               ))}
@@ -266,11 +266,11 @@ const Quotation = () => {
                     </div>
                     <div className="col-span-4 sm:col-span-2 text-center text-sm text-muted-foreground">{item.color || "—"}</div>
                     <div className="col-span-4 sm:col-span-2 flex items-center justify-center gap-2">
-                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors">
+                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors" aria-label="Decrease quantity">
                         <Minus className="h-3 w-3" />
                       </button>
                       <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors">
+                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors" aria-label="Increase quantity">
                         <Plus className="h-3 w-3" />
                       </button>
                     </div>
@@ -439,7 +439,7 @@ const Quotation = () => {
                     <div key={b.title} className="flex gap-4 items-start">
                       <ArrowRight className="h-5 w-5 text-accent flex-shrink-0 mt-1" strokeWidth={2.5} />
                       <div>
-                        <h4 className="font-bold text-base mb-1">{b.title}</h4>
+                        <h3 className="font-bold text-base mb-1">{b.title}</h3>
                         <p className="text-sm text-muted-foreground leading-relaxed">{b.description}</p>
                       </div>
                     </div>

@@ -30,6 +30,8 @@ const ColorSwatches = ({ colors, selectedColor, onColorChange }: ColorSwatchesPr
                 : "hover:scale-105 hover:ring-2 hover:ring-border"
             )}
             style={{ backgroundColor: color.hex }}
+            aria-label={`Select ${color.name} colour`}
+            aria-pressed={selectedColor.hex === color.hex}
             title={color.name}
           >
             {selectedColor.hex === color.hex && (

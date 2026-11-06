@@ -25,10 +25,10 @@
     --secondary-foreground: 0 0% 12%;
 
     --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted-foreground: 0 0% 40%;
 
     /* Accent = HON signature green */
-    --accent: 88 62% 37%;
+    --accent: 88 62% 30%;
     --accent-foreground: 0 0% 100%;
     
     /* HON green variants */
@@ -37,12 +37,12 @@
     --hon-green-dark: 88 70% 28%;
     --hon-green-pale: 88 40% 95%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 88%;
     --input: 0 0% 88%;
-    --ring: 88 62% 37%;
+    --ring: 88 62% 30%;
 
     /* Utility bar (HON uses top links bar) */
     --utility-bar: 210 11% 15%;
@@ -79,7 +79,7 @@
     --muted: 210 11% 20%;
     --muted-foreground: 0 0% 60%;
 
-    --accent: 88 62% 42%;
+    --accent: 88 62% 30%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 50%;
@@ -87,7 +87,7 @@
 
     --border: 210 11% 25%;
     --input: 210 11% 25%;
-    --ring: 88 62% 42%;
+    --ring: 88 62% 30%;
     
     --utility-bar: 210 11% 8%;
     --utility-text: 0 0% 60%;

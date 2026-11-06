@@ -172,7 +172,7 @@ const Shop = () => {
           }`}
         >
           <span>{cat.label}</span>
-          <span className={`text-xs font-normal ${selectedCategory === cat.id ? "text-accent-foreground/70" : "text-muted-foreground"}`}>
+          <span className={`text-xs font-normal ${selectedCategory === cat.id ? "text-accent-foreground" : "text-muted-foreground"}`}>
             {getCategoryCount(cat.id)}
           </span>
         </button>
@@ -180,6 +180,8 @@ const Shop = () => {
           <button
             onClick={() => toggleExpand(cat.id)}
             className="p-2 text-muted-foreground hover:text-accent"
+            aria-label={`Toggle ${cat.label} submenu`}
+            aria-expanded={expandedCategories.includes(cat.id)}
           >
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expandedCategories.includes(cat.id) ? "rotate-180" : ""}`} />
           </button>
@@ -216,7 +218,7 @@ const Shop = () => {
         {/* Hero */}
         <section className="bg-primary text-primary-foreground py-12">
           <div className="container mx-auto px-4">
-            <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Pakistan's Finest</p>
+            <p className="text-hon-green-light text-xs font-bold uppercase tracking-widest mb-2">Pakistan's Finest</p>
             <h1 className="text-4xl lg:text-5xl font-black mb-3">Shop Office & Home Furniture</h1>
             <p className="text-primary-foreground/75 max-w-2xl">
               Discover premium ergonomic chairs, executive desks, workstations, home furniture and more —
@@ -228,7 +230,7 @@ const Shop = () => {
         {/* Breadcrumb */}
         <section className="py-3 bg-section-light border-b">
           <div className="container mx-auto px-4">
-            <nav className="text-xs text-muted-foreground flex items-center gap-1">
+            <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground flex items-center gap-1">
               <a href="/" className="hover:text-accent">Home</a>
               <ChevronRight className="h-3 w-3" />
               <span className="font-medium text-foreground">{getCategoryLabel()}</span>
@@ -252,23 +254,23 @@ const Shop = () => {
                     }`}
                   >
                     All Products
-                    <span className={`ml-2 text-xs font-normal ${selectedCategory === "all" ? "text-accent-foreground/70" : "text-muted-foreground"}`}>
+                    <span className={`ml-2 text-xs font-normal ${selectedCategory === "all" ? "text-accent-foreground" : "text-muted-foreground"}`}>
                       {products.length}
                     </span>
                   </button>
 
                   {/* Office Furniture Group */}
                   <div className="mb-4">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-accent px-3 mb-2">Office Furniture</h3>
-                    <nav className="space-y-0.5">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-hon-green-dark px-3 mb-2">Office Furniture</h2>
+                    <nav aria-label="Office Furniture categories" className="space-y-0.5">
                       {officeCategoryTree.map(renderCategoryNode)}
                     </nav>
                   </div>
 
                   {/* Home Furniture Group */}
                   <div className="border-t border-border pt-4">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-accent px-3 mb-2">Home Furniture</h3>
-                    <nav className="space-y-0.5">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-hon-green-dark px-3 mb-2">Home Furniture</h2>
+                    <nav aria-label="Home Furniture categories" className="space-y-0.5">
                       {homeCategoryTree.map(renderCategoryNode)}
                     </nav>
                   </div>
@@ -290,7 +292,7 @@ const Shop = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-44 bg-background">
+                      <SelectTrigger className="w-44 bg-background" aria-label="Sort products">
                         <SlidersHorizontal className="h-3.5 w-3.5 mr-2" />
                         <SelectValue placeholder="Sort by" />
                       </SelectTrigger>
@@ -303,10 +305,10 @@ const Shop = () => {
                       </SelectContent>
                     </Select>
                     <div className="flex border rounded-sm">
-                      <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" className="rounded-r-none h-9 w-9" onClick={() => setViewMode("grid")}>
+                      <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" className="rounded-r-none h-9 w-9" onClick={() => setViewMode("grid")} aria-label="Grid view" aria-pressed={viewMode === "grid"}>
                         <Grid3X3 className="h-4 w-4" />
                       </Button>
-                      <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="rounded-l-none h-9 w-9" onClick={() => setViewMode("list")}>
+                      <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="rounded-l-none h-9 w-9" onClick={() => setViewMode("list")} aria-label="List view" aria-pressed={viewMode === "list"}>
                         <LayoutList className="h-4 w-4" />
                       </Button>
                     </div>
