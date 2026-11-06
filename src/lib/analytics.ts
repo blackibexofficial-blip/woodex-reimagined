@@ -6,6 +6,7 @@
  * trackPageview(path) on every route change (it must because SPA navigations
  * never trigger a full page load).
  */
+import { onCLS, onFCP, onINP, onLCP, onTTFB } from "web-vitals";
 import { config } from "@/config/env";
 
 declare global {
@@ -34,6 +35,8 @@ export function initAnalytics(): void {
   s.dataset.woodexGa4 = "1";
   s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(config.ga4.id)}`;
   document.head.appendChild(s);
+
+  trackWebVitals();
 }
 
 export function trackPageview(path: string): void {
@@ -43,4 +46,31 @@ export function trackPageview(path: string): void {
     page_location: window.location.href,
     page_title: document.title,
   });
+}
+
+let vitalsRegistered = false;
+
+/**
+ * Report Core Web Vitals (+FCP/TTFB) as GA4 events. Inert unless VITE_GA4_ID
+ * is set. CLS is reported as its unitless score (x1000, GA4 scores its numeric
+ * precision poorly otherwise); timings are whole milliseconds.
+ */
+export function trackWebVitals(): void {
+  if (!isAnalyticsEnabled || typeof window === "undefined" || vitalsRegistered) return;
+  vitalsRegistered = true;
+
+  const send = (name: string, value: number) => {
+    if (typeof window.gtag !== "function") return;
+    window.gtag("event", "web_vitals", {
+      metric_name: name,
+      value: Math.round(value),
+      page_path: window.location.pathname,
+    });
+  };
+
+  onLCP((m) => send("LCP", m.value));
+  onINP((m) => send("INP", m.value));
+  onCLS((m) => send("CLS", m.value * 1000));
+  onFCP((m) => send("FCP", m.value));
+  onTTFB((m) => send("TTFB", m.value));
 }

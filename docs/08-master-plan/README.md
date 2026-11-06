@@ -211,7 +211,9 @@ Cloud API order notifications · PDF quotation automation (backend/supabase alre
       **182 URLs** (148 products, 5 series, 7 services, 6 posts + 16 static routes). Runs on every
       `bun run build`; `public/sitemap.xml` is generated, never hand-edited.
 - [x] **P1** GA4 foundation — env-gated (`VITE_GA4_ID`), deferred/async, route views on SPA
-      navigation via `<RouteHead />`; inert when blank. (web-vitals event still open.)
+      navigation via `<RouteHead />`; inert when blank. Web-vitals events wired
+      (LCP/INP/CLS/FCP/TTFB → GA4 `web_vitals`, `src/lib/analytics.ts`) — still inert without
+      the measurement ID; activation = build with `VITE_GA4_ID` set (owner action).
 - [x] **P1** Route-level code splitting — every storefront page lazy (Index/NotFound eager).
       Entry chunk 721 kB → 403 kB min (191→112 kB gzip); Vite advisory eliminated. SPA nav verified.
 - [x] **P1** Browserslist DB updated (caniuse-lite) — warning gone.
