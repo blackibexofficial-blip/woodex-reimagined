@@ -112,6 +112,20 @@ slices instead of duplicating them.
 - [ ] **P3.5** Translations groundwork — Urdu `hreflang` + string externalization spike; **evaluate and report
   before committing to full RTL** (master-plan Phase 5 item; do not gold-plate).
 
+## Owner decisions (2026-11-06, after the Phase 4 audit)
+
+- **Sequencing:** finish Phase 2 remainder (P2.4 Draft Orders → P2.5 Quotes → P2.6 Suppliers → P2.7 POs →
+  P2.8 Transfers) → Phase 3 (P3.1–P3.5) → Phase 4.
+- **Phase 4 first pick:** **A1 — Product editor upgrade** (legacy parity: old/current price, SKU, stock, Best
+  Sellers + Sale Item toggles, descriptions, images, Collection + Furniture Series pickers).
+- **Payment:** keep COD + bank transfer + WhatsApp confirmation. No gateway work now; revisit with merchant creds.
+- **Laravel / Bagisto:** **Bagisto later (recommended & approved)** — React demo admin stays the working surface;
+  no new Laravel package in this repo now. Provision Bagisto on owner's hosting when ready, then wire the React
+  admin adapters to it incrementally (501 stubs already documented per module). docs/07 stays the reference.
+- **Furniture Series:** a **separate entity** (own admin page, own storefront /series/:seriesId, FK on products) —
+  NOT unified with collections.
+- Reference repos (spree/spree, spree.sh dashboard, bagisto/nextjs-commerce) are design references only.
+
 ## Phase 4 — Owner audit upgrades (legacy lbpanel + Spree parity) — proposed, pending owner priority
 
 Captured from the owner brief (screenshots of the legacy woodexfurniture.pk/lbpanel product + category forms,
