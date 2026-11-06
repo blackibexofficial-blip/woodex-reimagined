@@ -83,8 +83,11 @@ slices instead of duplicating them.
   Seeded EXC-1001 (approved, ↔ RMA-1001, deterministic from delivered orders). Entry point from delivered orders
   ("Request exchange" button next to Request return). Live check 10/10 (seed → create → approve → dispatch →
   complete → timeline assertion) · e2e 33/33 · 0 console errors. Bagisto stubbed 501 (no exchange in core).
-- [ ] **P2.3** Claims — warranty / damage claims pipeline (report → assess → approve/reject → resolve), tie-in with
-  5-year warranty messaging; distinct from returns (not necessarily refund-oriented).
+- [x] **P2.3** Claims — `/admin/claims`: warranty / damage / defect claims pipeline (reported → assessing →
+  approved | rejected → resolved) with transition guards, 5-year warranty messaging banner, linked-order timeline
+  notes, optional WOODEX cost absorption recorded on resolution, walk-in claims supported (no order needed).
+  Seeded CLM-1001 (assessing · warranty) + CLM-1002 (reported · damage). Entry point from delivered orders
+  ("File claim" deep links). Live check 8/8 · e2e 33/33 · 0 console errors. Bagisto stubbed 501.
 - [ ] **P2.4** Draft Orders — admin builds an order manually (customer + lines from catalogue or free lines);
   save as draft; convert → pending order (same `createOrder` path, marked source `manual`).
 - [ ] **P2.5** Quotes — turn a quote lead into a priced quotation (line items, discount %, validity days);

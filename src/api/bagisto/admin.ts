@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -348,6 +348,23 @@ export const bagistoAdminApi: AdminApi = {
 
   async updateExchange(): Promise<AdminExchange | undefined> {
     throw new BagistoApiError(501, "Exchange updates are not wired for Bagisto yet.");
+  },
+
+  async listClaims(): Promise<Paginated<AdminClaim>> {
+    // Claims/warranty are not in Bagisto core — custom module required. See docs/07-admin-integration.
+    throw new BagistoApiError(501, "Claims are not wired for Bagisto yet (no claims/warranty module in core). Use VITE_API_MODE=demo.");
+  },
+
+  async getClaim(): Promise<AdminClaim | undefined> {
+    throw new BagistoApiError(501, "Claims are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
+  async createClaim(): Promise<AdminClaim | undefined> {
+    throw new BagistoApiError(501, "Claim creation is not wired for Bagisto yet.");
+  },
+
+  async updateClaim(): Promise<AdminClaim | undefined> {
+    throw new BagistoApiError(501, "Claim updates are not wired for Bagisto yet.");
   },
 
   async listCustomers(params) {

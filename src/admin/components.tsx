@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { ExchangeStatus, LeadStatus, OrderStatus, PaymentMethod, ReturnStatus } from "@/api/types";
+import type { ClaimStatus, ExchangeStatus, LeadStatus, OrderStatus, PaymentMethod, ReturnStatus } from "@/api/types";
 
 /* ── formatters ─────────────────────────────────────────────────────────── */
 export const formatPKR = (n: number) =>
@@ -59,6 +59,16 @@ const exchangeStyles: Record<ExchangeStatus, string> = {
 };
 export const ExchangeStatusBadge = ({ status }: { status: ExchangeStatus }) => (
   <Badge variant="outline" className={cn("capitalize font-medium", exchangeStyles[status])}>{status}</Badge>
+);
+const claimStyles: Record<ClaimStatus, string> = {
+  reported: "bg-amber-100 text-amber-800 border-amber-200",
+  assessing: "bg-sky-100 text-sky-800 border-sky-200",
+  approved: "bg-violet-100 text-violet-800 border-violet-200",
+  rejected: "bg-rose-100 text-rose-800 border-rose-200",
+  resolved: "bg-emerald-100 text-emerald-800 border-emerald-200",
+};
+export const ClaimStatusBadge = ({ status }: { status: ClaimStatus }) => (
+  <Badge variant="outline" className={cn("capitalize font-medium", claimStyles[status])}>{status}</Badge>
 );
 
 const paymentLabels: Record<PaymentMethod, string> = {

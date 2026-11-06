@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
   Armchair, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, FileText,
-  Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight,
+  Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
 import { isDemoMode } from "@/config/env";
@@ -35,6 +35,7 @@ const NAV_GROUPS: Array<{
       { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
       { to: "/admin/returns", label: "Returns", icon: Undo2 },
       { to: "/admin/exchanges", label: "Exchanges", icon: ArrowLeftRight },
+      { to: "/admin/claims", label: "Claims", icon: ShieldCheck },
       { to: "/admin/customers", label: "Customers", icon: Users },
     ],
   },

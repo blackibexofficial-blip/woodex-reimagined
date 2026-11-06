@@ -67,6 +67,11 @@ import type {
   AdminExchangePatch,
   NewExchangeInput,
   ExchangeStatus,
+  AdminClaim,
+  AdminClaimPatch,
+  NewClaimInput,
+  ClaimType,
+  ClaimStatus,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -99,6 +104,7 @@ interface DemoDb {
   services: AdminService[];
   returns: AdminReturn[];
   exchanges: AdminExchange[];
+  claims: AdminClaim[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -613,6 +619,61 @@ const EXCHANGE_TRANSITIONS: Record<ExchangeStatus, ExchangeStatus[]> = {
   rejected: [],
 };
 
+const CLAIM_TRANSITIONS: Record<ClaimStatus, ClaimStatus[]> = {
+  reported: ["assessing", "rejected"],
+  assessing: ["approved", "rejected"],
+  approved: ["resolved"],
+  rejected: [],
+  resolved: [],
+};
+
+/** Deterministic seed claims derived from delivered orders — ties into the 5-year warranty story. */
+function buildSeedClaims(orders: AdminOrder[]): AdminClaim[] {
+  const delivered = orders.filter((o) => o.status === "delivered").sort((a, b) => b.placedAt.localeCompare(a.placedAt));
+  const out: AdminClaim[] = [];
+  const t1 = new Date(Date.now() - 3 * 86400000).toISOString();
+  if (delivered[0] && delivered[0].items[0]) {
+    const o = delivered[0];
+    const line = o.items[0];
+    out.push({
+      id: "CLM-1001",
+      orderId: o.id,
+      customerName: o.customerName,
+      customerEmail: o.customerEmail,
+      customerPhone: o.customerPhone,
+      city: o.city,
+      productName: line.name,
+      productId: line.id,
+      type: "warranty",
+      issue: "5-year warranty — finish flaking on the table top within 8 months of delivery.",
+      status: "assessing",
+      createdAt: t1,
+      updatedAt: t1,
+    });
+  }
+  const t2 = new Date(Date.now() - 1 * 86400000).toISOString();
+  if (delivered[1] && delivered[1].items[0]) {
+    const o = delivered[1];
+    const line = o.items[0];
+    out.push({
+      id: "CLM-1002",
+      orderId: o.id,
+      customerName: o.customerName,
+      customerEmail: o.customerEmail,
+      customerPhone: o.customerPhone,
+      city: o.city,
+      productName: line.name,
+      productId: line.id,
+      type: "damage",
+      issue: "Damaged on arrival — leg joint split, courier seal intact. Photos received on WhatsApp.",
+      status: "reported",
+      createdAt: t2,
+      updatedAt: t2,
+    });
+  }
+  return out;
+}
+
 /** Deterministic seed exchange derived from the same delivered order as RMA-1001. */
 function buildSeedExchanges(orders: AdminOrder[], products: AdminProduct[]): AdminExchange[] {
   const delivered = orders.filter((o) => o.status === "delivered").sort((a, b) => b.placedAt.localeCompare(a.placedAt));
@@ -876,7 +937,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts) };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders) };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -910,6 +971,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.services)) db.services = buildSeedServices();
       if (!Array.isArray(db.returns)) db.returns = buildSeedReturns(db.orders);
       if (!Array.isArray(db.exchanges)) db.exchanges = buildSeedExchanges(db.orders, db.products);
+      if (!Array.isArray(db.claims)) db.claims = buildSeedClaims(db.orders);
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -2203,6 +2265,109 @@ export const demoAdminApi: AdminApi = {
       }
       e.updatedAt = now;
       updated = { ...e };
+    });
+    return updated;
+  },
+
+  /* ── Claims ────────────────────────────────────────────────── */
+  async listClaims(params = {}) {
+    const db = loadDb();
+    let items = [...(db.claims ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const status = params.status ?? "all";
+    if (status !== "all") items = items.filter((c) => c.status === status);
+    const type = params.type ?? "all";
+    if (type !== "all") items = items.filter((c) => c.type === type);
+    items = items.filter((c) => matchQuery(params.query, [c.id, c.orderId, c.customerName, c.customerEmail, c.productName, c.city, c.issue]));
+    return paginate(items, params);
+  },
+
+  async getClaim(id) {
+    return (loadDb().claims ?? []).find((c) => c.id === id);
+  },
+
+  async createClaim(input) {
+    let created: AdminClaim | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const productName = input.productName?.trim();
+      const issue = input.issue?.trim();
+      if (!productName) throw new Error("Tell us which product the claim is about.");
+      if (!issue) throw new Error("Describe the issue the customer reported.");
+      let customer = {
+        customerName: input.customerName?.trim() || "",
+        customerEmail: input.customerEmail?.trim() || "",
+        customerPhone: input.customerPhone?.trim() || "",
+        city: input.city?.trim() || "",
+      };
+      const order = input.orderId ? db.orders.find((o) => o.id === input.orderId) : undefined;
+      if (input.orderId && !order) throw new Error(`Order ${input.orderId} not found.`);
+      if (order) {
+        customer = { customerName: order.customerName, customerEmail: order.customerEmail, customerPhone: order.customerPhone, city: order.city };
+      }
+      if (!customer.customerName) throw new Error("Link a delivered order or enter the customer's name.");
+      const seq = (db.claims ?? []).reduce((max, c) => Math.max(max, Number(c.id.replace(/\D/g, "")) || 0), 1000) + 1;
+      created = {
+        id: `CLM-${seq}`,
+        orderId: order?.id,
+        customerName: customer.customerName,
+        customerEmail: customer.customerEmail,
+        customerPhone: customer.customerPhone,
+        city: customer.city,
+        productName,
+        productId: input.productId,
+        type: input.type,
+        issue,
+        status: "reported",
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.claims ??= []).push(created);
+      if (order) {
+        (db.orderEvents ??= []).push({
+          id: newEventId(),
+          orderId: order.id,
+          note: `Claim ${created.id} filed — ${created.type}`,
+          createdAt: now,
+        });
+      }
+    });
+    return created;
+  },
+
+  async updateClaim(id, patch: AdminClaimPatch) {
+    let updated: AdminClaim | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const c = (db.claims ??= []).find((x) => x.id === id);
+      if (!c) return;
+      const terminal = c.status === "rejected" || c.status === "resolved";
+      if (terminal && (patch.status !== undefined || patch.assessmentNote !== undefined || patch.resolutionNote !== undefined || patch.resolutionCost !== undefined)) {
+        throw new Error(`Claim ${c.id} is closed — no further edits.`);
+      }
+      if (patch.assessmentNote !== undefined) c.assessmentNote = patch.assessmentNote.trim() || undefined;
+      if (patch.resolutionNote !== undefined) c.resolutionNote = patch.resolutionNote.trim() || undefined;
+      if (patch.resolutionCost !== undefined) {
+        const amt = Number(patch.resolutionCost);
+        if (!Number.isFinite(amt) || amt < 0) throw new Error("Resolution cost must be a positive number.");
+        c.resolutionCost = Math.round(amt);
+      }
+      if (patch.status !== undefined && patch.status !== c.status) {
+        const allowed = CLAIM_TRANSITIONS[c.status] ?? [];
+        if (!allowed.includes(patch.status)) {
+          throw new Error(`Claim ${c.id} cannot move from ${c.status} to ${patch.status}.`);
+        }
+        c.status = patch.status;
+        if (c.orderId) {
+          const note =
+            patch.status === "assessing" ? `Claim ${c.id} — assessment started`
+            : patch.status === "approved" ? `Claim ${c.id} approved${c.assessmentNote ? ` — ${c.assessmentNote}` : ""}`
+            : patch.status === "rejected" ? `Claim ${c.id} rejected${c.assessmentNote ? ` — ${c.assessmentNote}` : ""}`
+            : `Claim ${c.id} resolved${c.resolutionNote ? ` — ${c.resolutionNote}` : ""}`;
+          (db.orderEvents ??= []).push({ id: newEventId(), orderId: c.orderId, note, createdAt: now });
+        }
+      }
+      c.updatedAt = now;
+      updated = { ...c };
     });
     return updated;
   },

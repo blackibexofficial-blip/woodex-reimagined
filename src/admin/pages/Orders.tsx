@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, Eye, History, Loader2, MessageCircle, Phone, Printer, Save, ShoppingCart, Undo2 } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, Eye, History, Loader2, MessageCircle, Phone, Printer, Save, ShieldCheck, ShoppingCart, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminOrder, AdminOrderEvent, OrderStatus } from "@/api/types";
@@ -357,6 +357,11 @@ export default function AdminOrders() {
                 <Button variant="outline" asChild className="border-sky-300 text-sky-900 hover:bg-sky-50">
                   <Link to={`/admin/exchanges?new=1&order=${selected.id}`} onClick={() => setSelected(null)}>
                     <ArrowLeftRight className="mr-1.5 h-4 w-4" /> Request exchange
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild className="border-emerald-300 text-emerald-900 hover:bg-emerald-50">
+                  <Link to={`/admin/claims?new=1&order=${selected.id}`} onClick={() => setSelected(null)}>
+                    <ShieldCheck className="mr-1.5 h-4 w-4" /> File claim
                   </Link>
                 </Button>
               </>

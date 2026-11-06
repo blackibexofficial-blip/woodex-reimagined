@@ -17,6 +17,7 @@ import AdminInventory from "@/admin/pages/Inventory";
 import AdminOrders from "@/admin/pages/Orders";
 import AdminReturns from "@/admin/pages/Returns";
 import AdminExchanges from "@/admin/pages/Exchanges";
+import AdminClaims from "@/admin/pages/Claims";
 import AdminInvoice from "@/admin/pages/Invoice";
 import AdminCustomers from "@/admin/pages/Customers";
 import AdminLeads from "@/admin/pages/Leads";
@@ -56,6 +57,7 @@ export default function AdminApp() {
           <Route path="orders" element={<AdminOrders />} />
           <Route path="returns" element={<AdminReturns />} />
           <Route path="exchanges" element={<AdminExchanges />} />
+          <Route path="claims" element={<AdminClaims />} />
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="leads" element={<AdminLeads />} />
           <Route path="services" element={<AdminServices />} />

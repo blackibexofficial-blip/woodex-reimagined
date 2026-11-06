@@ -143,6 +143,45 @@ export interface NewExchangeInput {
 }
 export type AdminExchangePatch = Partial<Pick<AdminExchange, "status" | "differenceSettled">>;
 
+/* ── Claims (warranty / damage / defect) ───────────────────────────────── */
+export type ClaimType = "warranty" | "damage" | "defect";
+/** reported → assessing → approved | rejected → resolved */
+export type ClaimStatus = "reported" | "assessing" | "approved" | "rejected" | "resolved";
+export interface AdminClaim {
+  id: string;            // e.g. "CLM-1001"
+  /** Linked order when the claim references one (often a delivered order). */
+  orderId?: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  city: string;
+  /** What the claim is about — product/line name (free text for walk-in claims). */
+  productName: string;
+  productId?: string;
+  type: ClaimType;
+  /** Customer's description of the failure. */
+  issue: string;
+  status: ClaimStatus;
+  assessmentNote?: string;
+  resolutionNote?: string;
+  /** Cost WOODEX absorbed on a resolved claim (repair/replacement/parts). */
+  resolutionCost?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface NewClaimInput {
+  orderId?: string;
+  productName: string;
+  productId?: string;
+  type: ClaimType;
+  issue: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  city?: string;
+}
+export type AdminClaimPatch = Partial<Pick<AdminClaim, "status" | "assessmentNote" | "resolutionNote" | "resolutionCost">>;
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -816,6 +855,11 @@ export interface AdminApi {
   createExchange(input: NewExchangeInput): Promise<AdminExchange | undefined>;
   /** Throws on illegal status transitions and edits to closed exchanges. */
   updateExchange(id: string, patch: AdminExchangePatch): Promise<AdminExchange | undefined>;
+  listClaims(params?: ListParams & { status?: ClaimStatus | "all"; type?: ClaimType | "all" }): Promise<Paginated<AdminClaim>>;
+  getClaim(id: string): Promise<AdminClaim | undefined>;
+  createClaim(input: NewClaimInput): Promise<AdminClaim | undefined>;
+  /** Throws on illegal status transitions and edits to closed claims. */
+  updateClaim(id: string, patch: AdminClaimPatch): Promise<AdminClaim | undefined>;
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;
