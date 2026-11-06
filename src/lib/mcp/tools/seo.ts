@@ -30,7 +30,7 @@ const trimWords = (t: string, max: number) => {
   return (last > max * 0.5 ? cut.slice(0, last) : cut.slice(0, max)).replace(/[\s\-–—,;:|]+$/g, "") + (text.length > max ? "…" : "");
 };
 
-interface SeoPage {
+type SeoPage = {
   type: "home" | "product" | "blog" | "service";
   id: string;
   path: string;
@@ -103,7 +103,7 @@ const resolvePage = (path: string): SeoPage => {
 };
 
 type AuditStatus = "pass" | "warn" | "fail";
-interface AuditCheck { check: string; status: AuditStatus; weight: number; detail: string }
+type AuditCheck = { check: string; status: AuditStatus; weight: number; detail: string }
 const GAIN: Record<AuditStatus, number> = { pass: 1, warn: 0.5, fail: 0 };
 const titleAngle = (t: string) => { const len = t.trim().length; return len >= 30 && len <= 60 ? "pass" : len >= 10 && len <= 70 ? "warn" : "fail"; };
 const descAngle = (t: string) => { const len = t.trim().length; return len >= 120 && len <= 160 ? "pass" : len >= 70 && len < 200 ? "warn" : "fail"; };

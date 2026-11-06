@@ -713,14 +713,15 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   had no node_modules, so the bundle was hand-spliced from source (strip/rename rules matched against the mcp-js output); handlers were executed
   against the live snapshot via a stubbed-tool harness (all page types, error paths, stuffing case — all pass) and the spliced bundle parses clean
   (`vm.SourceTextModule`). CI (bun + pkg.dev) is the canonical gate for this slice. MCP `version` → 0.2.0.
-  CI hygiene note (2026-11-07, updated) — every push on this branch (including a docs-only probe commit, 551f0db)
-  failed the CI Typecheck step in ~25s, with identical workflow-line annotations both times; main's rerun is refused
-  GitHub-side ("its workflow file may be broken"), and npm's public status page reports no incident for this window.
-  Local reproduction with the full npmjs dependency tree (tsconfig.app.json verbatim, typescript 5.8.3, zod 3.25.76,
-  mcp-js stubbed with pkg.dev unreachable) exits 0 for the same source tree. The failure therefore cannot be caused
-  by the source diff of this PR and is consistent with an infrastructure condition inside the WOODEX CI sandbox
-  (pkg.dev path or runner). Owner-visible runner logs (repo UI) would confirm definitively; until CI recovers, PR #5
-  stays unmerged regardless (merge is owner-gated and was never requested for it).
+  CI note (2026-11-07, resolved) — earlier probe pushes (551f0db, bbbc707) attributed the Typecheck failure to the
+  environment; the owner subsequently posted the failing runner log: `seo.ts(120,3) TS2322` — the audit handler's
+  `structuredContent` was not assignable to mcp-js's `JsonValueInput` because `checks` was typed via an interface
+  (interfaces carry no implicit index signature). Fix (in this branch): `interface AuditCheck`/`interface SeoPage` →
+  type aliases; handler annotations already explicit. Verified red → green locally with a JsonValueInput-faithful
+  `ToolHandlerResult` stub (the old source reproduced TS2322 at the same position; the fixed source compiles clean),
+  full runtime harness re-run (scores unchanged: 60/45/28/50/60), and the bundle re-spliced from the fixed source
+  (parses clean, mcp-js 3.0.4 pins preserved). Lesson recorded: with pkg.dev unreachable from the agent sandbox,
+  "environment" was asserted before fixing the one visible type defect — owner log screenshots are authoritative.
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
 - **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:
