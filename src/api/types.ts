@@ -192,6 +192,10 @@ export interface AdminCategory {
   id: string;            // slug, e.g. "executive-tables"
   name: string;          // display name (no tree glyphs)
   group: "office" | "home" | "ungrouped";
+  /** Parent for nested display. Omitted = top level. "" sent in patches clears it back to root. */
+  parentId?: string;
+  /** Display order among siblings; lower first. Absent = alphabetical fallback. */
+  sortOrder?: number;
   visible: boolean;
   /** Filled in by adapters that can compute it (demo). Omitted otherwise. */
   productCount?: number;
@@ -306,10 +310,10 @@ export interface AdminApi {
   /** Catalogue taxonomy managed in the admin (demo-backed). */
   listCategories(): Promise<AdminCategory[]>;
   /** Creates a category; id is slugified from the name. */
-  createCategory(input: { name: string; group: AdminCategory["group"] }): Promise<AdminCategory>;
+  createCategory(input: { name: string; group: AdminCategory["group"]; parentId?: string }): Promise<AdminCategory>;
   updateCategory(
     id: string,
-    patch: Partial<Pick<AdminCategory, "name" | "group" | "visible">>,
+    patch: Partial<Pick<AdminCategory, "name" | "group" | "visible" | "parentId" | "sortOrder">>,
   ): Promise<AdminCategory | undefined>;
   /** Refuses (returns ok:false + reason) while products still reference the category. */
   deleteCategory(id: string): Promise<{ ok: boolean; error?: string }>;

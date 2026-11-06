@@ -117,6 +117,7 @@ function buildSeedCategories(): AdminCategory[] {
       name: stripGlyph(name),
       group,
       visible: true,
+      sortOrder: i,
       createdAt: new Date(Date.now() - (i + 15) * 86400000).toISOString(),
     });
     i++;
@@ -406,6 +407,13 @@ function loadDb(): DemoDb {
         if (!p.stockStatus) p.stockStatus = p.stock === 0 ? "out_of_stock" : "in_stock";
         if (!db.inventoryMeta[p.id]) db.inventoryMeta[p.id] = defaultInventoryMeta(p.id);
       });
+      // legacy categories: synthesise an order + re-root dangling parents
+      if (Array.isArray(db.categories)) {
+        db.categories.forEach((c, i2) => {
+          if (typeof c.sortOrder !== "number") c.sortOrder = i2;
+          if (c.parentId && !db.categories.some((x) => x.id === c.parentId)) delete c.parentId;
+        });
+      }
       memory = db;
       return memory;
     }
@@ -760,20 +768,26 @@ export const demoAdminApi: AdminApi = {
     }
     const groupRank = { office: 0, home: 1, ungrouped: 2 } as const;
     return [...db.categories]
-      .sort((a, b) => groupRank[a.group] - groupRank[b.group] || a.name.localeCompare(b.name))
+      .sort((a, b) => groupRank[a.group] - groupRank[b.group] || (a.sortOrder ?? 1e9) - (b.sortOrder ?? 1e9) || a.name.localeCompare(b.name))
       .map((c) => ({ ...c, productCount: counts.get(c.id) ?? 0 }));
   },
 
-  async createCategory({ name, group }) {
+  async createCategory({ name, group, parentId }) {
     const trimmed = name.trim();
     if (!trimmed) throw new Error("Category name is required");
     const base = slugify(trimmed);
     let created: AdminCategory | undefined;
     update((db) => {
+      if (parentId) {
+        const parent = db.categories.find((c) => c.id === parentId);
+        if (!parent) throw new Error("Parent category not found.");
+      }
       let id = base;
       let n = 2;
       while (db.categories.some((c) => c.id === id)) id = `${base}-${n++}`;
-      created = { id, name: trimmed, group, visible: true, createdAt: new Date().toISOString() };
+      const siblings = db.categories.filter((c) => (c.parentId ?? "") === (parentId ?? ""));
+      const sortOrder = siblings.reduce((m, s) => Math.max(m, s.sortOrder ?? 0), 0) + 1;
+      created = { id, name: trimmed, group, visible: true, sortOrder, ...(parentId ? { parentId } : {}), createdAt: new Date().toISOString() };
       db.categories.push(created);
     });
     return { ...created! };
@@ -790,6 +804,31 @@ export const demoAdminApi: AdminApi = {
       }
       if (patch.group !== undefined) c.group = patch.group;
       if (patch.visible !== undefined) c.visible = patch.visible;
+      if (patch.parentId !== undefined) {
+        if (patch.parentId === "") {
+          delete c.parentId;
+          const roots = db.categories.filter((x) => x.id !== id && !x.parentId);
+          c.sortOrder = roots.reduce((m, r) => Math.max(m, r.sortOrder ?? 0), 0) + 1;
+        } else {
+          if (patch.parentId === id) throw new Error("A category cannot be its own parent.");
+          const parent = db.categories.find((x) => x.id === patch.parentId);
+          if (!parent) throw new Error("Parent category not found.");
+          let cursor: AdminCategory | undefined = parent;
+          const seen = new Set<string>();
+          while (cursor) {
+            if (cursor.id === id) throw new Error("Cannot nest a category inside one of its own descendants.");
+            if (seen.has(cursor.id)) break;
+            seen.add(cursor.id);
+            cursor = cursor.parentId ? db.categories.find((x) => x.id === cursor!.parentId) : undefined;
+          }
+          c.parentId = patch.parentId;
+          if (patch.sortOrder === undefined) {
+            const sib = db.categories.filter((x) => x.id !== id && (x.parentId ?? "") === patch.parentId);
+            c.sortOrder = sib.reduce((m, r) => Math.max(m, r.sortOrder ?? 0), 0) + 1;
+          }
+        }
+      }
+      if (patch.sortOrder !== undefined) c.sortOrder = Math.trunc(patch.sortOrder);
       updated = { ...c };
     });
     return updated;
@@ -799,6 +838,13 @@ export const demoAdminApi: AdminApi = {
     const db = loadDb();
     const target = db.categories.find((c) => c.id === id);
     if (!target) return { ok: false, error: "Category not found" };
+    const children = db.categories.filter((c) => c.parentId === id);
+    if (children.length) {
+      return {
+        ok: false,
+        error: `“${target.name}” contains ${children.length} child categor${children.length === 1 ? "y" : "ies"}. Move or delete those first.`,
+      };
+    }
     const inUse = db.products.filter((p) => p.category === id || p.subcategory === id).length;
     if (inUse) {
       return {
