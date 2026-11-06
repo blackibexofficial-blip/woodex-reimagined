@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check,
+import { X, Check,
   Copy, Download, ChevronLeft, ChevronRight, Loader2, Package, PackageSearch, Pencil, Plus, Star, Trash2, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -254,6 +254,7 @@ export default function AdminProducts() {
         dimensions: editing.dimensions?.trim() || undefined,
         weightKg: editing.weightKg === undefined || Number.isNaN(editing.weightKg) ? undefined : editing.weightKg,
         optionSetIds: editing.optionSetIds ?? [],
+        specs: (editing.specs ?? []).map((r) => ({ label: r.label.trim(), value: r.value.trim() })).filter((r) => r.label && r.value),
       });
       setEditing(null);
       toast.success("Product updated.");
@@ -634,6 +635,46 @@ export default function AdminProducts() {
                   <p className="mt-1 text-[10px] text-muted-foreground">Attached sets render as selectors on the PDP (see <Link to="/admin/options" className="underline underline-offset-2 hover:text-foreground">Options</Link> for deltas & suffixes).</p>
                 </div>
               )}
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Spec table (dimensions · weight · materials · warranty)</span>
+                  <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setEditing({ ...editing, specs: [...(editing.specs ?? []), { label: "", value: "" }] })}>
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Add row
+                  </Button>
+                </div>
+                {(editing.specs ?? []).length === 0 ? (
+                  <p className="rounded-md border border-dashed border-border px-3 py-2 text-center text-[11px] text-muted-foreground">No spec rows — the static storefront carries the factory table; rows you add here persist in the admin demo DB.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {(editing.specs ?? []).map((row, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <Input
+                          value={row.label}
+                          onChange={(e) => setEditing({ ...editing, specs: (editing.specs ?? []).map((r, j) => (j === i ? { ...r, label: e.target.value } : r)) })}
+                          placeholder="Label (Dimensions)"
+                          className="w-36"
+                          aria-label={`Spec ${i + 1} label`}
+                        />
+                        <Input
+                          value={row.value}
+                          onChange={(e) => setEditing({ ...editing, specs: (editing.specs ?? []).map((r, j) => (j === i ? { ...r, value: e.target.value } : r)) })}
+                          placeholder="Value (e.g. 180 x 90 x 75 cm)"
+                          className="flex-1"
+                          aria-label={`Spec ${i + 1} value`}
+                        />
+                        <button
+                          type="button"
+                          className="shrink-0 text-muted-foreground hover:text-rose-500"
+                          aria-label={`Remove spec ${i + 1}`}
+                          onClick={() => setEditing({ ...editing, specs: (editing.specs ?? []).filter((_, j) => j !== i) })}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
           <DialogFooter className="justify-between sm:justify-between">

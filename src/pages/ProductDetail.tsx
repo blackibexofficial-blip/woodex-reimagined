@@ -96,6 +96,7 @@ const ProductDetail = () => {
         availability: product.inStock ? "InStock" : "OutOfStock",
         ratingValue: product.rating,
         reviewCount: product.reviews,
+        specs: product.specifications,
         url: pageUrl,
       })
     : null;

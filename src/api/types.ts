@@ -495,6 +495,8 @@ export interface AdminProduct {
   weightKg?: number;
   /** Attached option set ids (Finish / Fabric / Size …) — order matters on PDP. */
   optionSetIds?: string[];
+  /** Free-form spec rows (Dimensions / Weight / Material / Warranty…) — editable in admin. */
+  specs?: Array<{ label: string; value: string }>;
 }
 
 /* ── B2B price lists ("catalogs" — negotiated trade pricing) ──────────────── */
@@ -1085,7 +1087,7 @@ export interface AdminApi {
   getRevenueSeries(days: number): Promise<RevenuePoint[]>;
 
   listProducts(params?: ListParams & { category?: string; inStock?: boolean }): Promise<Paginated<AdminProduct>>;
-  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus" | "category" | "dimensions" | "weightKg" | "optionSetIds">>): Promise<AdminProduct | undefined>;
+  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus" | "category" | "dimensions" | "weightKg" | "optionSetIds" | "specs">>): Promise<AdminProduct | undefined>;
   /** Applies one bulk patch to many products atomically-ish (single persisted pass). */
   bulkUpdateProducts(ids: string[], patch: BulkProductPatch): Promise<{ updated: number }>;
   /** Create a product (demo: local catalogue insert; bagisto: POST, unverified). SKU auto-assigned. */

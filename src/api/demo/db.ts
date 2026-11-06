@@ -1243,6 +1243,7 @@ function buildSeed(): DemoDb {
       // deterministic pseudo-fresh dates spread over the last 60 days
       createdAt: new Date(Date.now() - (hashString(p.id) % 60) * 86400000).toISOString(),
       optionSetIds: optionSetIdsFor(p),
+      specs: p.specifications?.map((s) => ({ ...s })),
     };
   });
 

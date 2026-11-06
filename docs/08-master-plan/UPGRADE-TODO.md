@@ -134,8 +134,12 @@ slices instead of duplicating them.
   keyed by variant (`variantKey` = product + value ids + colour) and carry `variantLabel` end-to-end (drawer,
   checkout summary, quote basket, printable invoice, checkout order payload + order lines persist `sku`);
   stock remains product-level (documented). Live check 22/22 · e2e 33/33.
-- [ ] **P3.3** Spec table per product — dimensions (L×W×H), weight, materials, warranty; editable in admin;
-  rendered on PDP (ProductDetail.tsx) and used for the Product JSON-LD `additionalProperty`.
+- [x] **P3.3** Spec table per product — factory specs were already seeded (`specifications` label/value rows,
+  rendered by SpecificationTabs on the PDP); now: Product JSON-LD emits `additionalProperty` PropertyValue rows
+  (verified live in the ld+json script); the admin Products editor gained a free-form spec table (add/remove
+  label/value rows, seeded from the factory table) with save → demo-DB persistence round-trip (verified live);
+  `AdminProduct.specs` (+CSV-style round-trip via updateProduct patch). JSON-LD Product `sku` already varies by
+  variant selection (P3.2). Live check 11/11 · e2e 33/33 · lint 0 errors.
 - [ ] **P3.4** Advanced category control polish — evaluate per-category default option sets (avoid gold-plating;
   only if P3.1–P3.3 land clean).
 - [ ] **P3.5** Translations groundwork — Urdu `hreflang` + string externalization spike; **evaluate and report
