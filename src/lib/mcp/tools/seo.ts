@@ -117,7 +117,7 @@ export const seoAuditPage = defineTool({
     focusKeyphrase: z.string().min(1).optional().describe("Optional focus keyphrase to check (case-insensitive)."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: ({ path, focusKeyphrase }) => {
+  handler: ({ path, focusKeyphrase }: { path: string; focusKeyphrase?: string }) => {
     const page = resolvePage(path);
     const key = focusKeyphrase?.trim();
     const words = wordCount(page.body);
@@ -182,7 +182,7 @@ export const seoGenerateMeta = defineTool({
     brand: z.string().optional().describe("Brand suffix (default WOODEX)."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: ({ title, focusKeyphrase, pageType, brand }) => {
+  handler: ({ title, focusKeyphrase, pageType, brand }: { title: string; focusKeyphrase: string; pageType?: "home" | "product" | "blog" | "service" | "category" | "generic"; brand?: string }) => {
     const brandName = (brand ?? "WOODEX").trim() || "WOODEX";
     const key = focusKeyphrase.trim();
     const kind = pageType ?? "generic";
@@ -195,7 +195,7 @@ export const seoGenerateMeta = defineTool({
       generic: "engineered in Lahore with a 5-year warranty",
     };
     const cta = kind === "blog" ? "Read the full guide." : "Book a showroom visit today.";
-    const titleWithKey = includesKey(title, key) ? stripTags(title) : `${key.replace(/(^|\s)\S/g, (c) => c.toUpperCase())} — ${stripTags(title)}`;
+    const titleWithKey = includesKey(title, key) ? stripTags(title) : `${key.replace(/(^|\s)\S/g, (c: string) => c.toUpperCase())} — ${stripTags(title)}`;
     const suggestedTitle = trimWords(titleWithKey, 60);
     const described = `${stripTags(title)} — ${benefit[kind]}. ${cta}`;
     const withKey = includesKey(described, key) ? described : `${key} — ${described}`;
