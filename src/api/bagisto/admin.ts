@@ -19,7 +19,8 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
+  AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -690,6 +691,21 @@ export const bagistoAdminApi: AdminApi = {
     throw new BagistoApiError(501, "Showroom creation is not wired for Bagisto yet.");
   },
 
+  async listSeries(): Promise<AdminSeries[]> {
+    throw new BagistoApiError(501, "Series taxonomy is demo-only until a /series backend exists — see docs/07-admin-integration §8.");
+  },
+  async createSeries(): Promise<AdminSeries> {
+    throw new BagistoApiError(501, "Series creation is not wired for Bagisto yet.");
+  },
+  async updateSeries(): Promise<AdminSeries | undefined> {
+    throw new BagistoApiError(501, "Series update is not wired for Bagisto yet.");
+  },
+  async setSeriesActive(): Promise<AdminSeries | undefined> {
+    throw new BagistoApiError(501, "Series status is not wired for Bagisto yet.");
+  },
+  async deleteSeries(): Promise<boolean> {
+    throw new BagistoApiError(501, "Series deletion is not wired for Bagisto yet.");
+  },
   async updateShowroom(): Promise<AdminShowroom | undefined> {
     throw new BagistoApiError(501, "Showroom editing is not wired for Bagisto yet.");
   },

@@ -189,9 +189,19 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
   architecture (admin edits don't leak to PDP). Live check 22/22 (seed render · Sale Item OFF/ON round-trip · short
   desc/gallery persisted · Series picker · collection membership flip persisted · 0 console errors) · e2e 33/33 ·
   lint 0 errors.
-- [ ] **A2** Furniture Series taxonomy — series collections (Infinity, EK, Nova, Cubicle, Staff, …): series as a
-  managed entity (slug, name, hero, description) shared by `/series/:seriesId` storefront and collections admin;
-  link products to a series.
+- [x] **A2** Furniture Series taxonomy — managed master delivered: demo DB entity `AdminSeries` (slug, name,
+  tagline, badge, description, features[], accent color, sortOrder, active) + `/admin/series` (list/search/CRUD/
+  Live-Hidden toggle, linked-product count from the admin catalogue, delete refused while products or the static
+  catalogue reference it; HQ-style uniqueness for slugs enforced on create). A1’s product-editor Furniture Series
+  picker now reads the admin master (static seriesList fallback). **Storefront `/series/:seriesId` pages stay
+  static until the Bagisto cutover** — the admin master is the working surface and the SEO/URL layout is unchanged.
+  Build note: named imports from `@/data/products` mis-wire inside the shared demo-db chunk in production builds
+  (unbound identifier at module evaluation → blank admin until fixed); series seed is inlined in db.ts with a
+  keep-in-sync note, and `bun run e2e` (33/33) now guards this class of failure. Owner decision still stands:
+  Series = separate entity, NOT unified with collections. Live check 27/27 (seed render · count 88 · search ·
+  toggle · create/delete of unreferenced Staff Series · delete-guard for Ek Series · edited tagline persisted ·
+  A1 picker fed by master · 0 console errors) · e2e 33/33 · lint 0 errors. Data drift caveat: seed copy in
+  `SERIES_SEED` (db.ts) vs `seriesList` (`src/data/products.ts`) — edit both until Bagisto owns it.
 - [ ] **A3** Product Brands — dedicated brand manager (legacy "Product Brands"): name, logo, slug; products reference
   brand (Woodex today, room for others); filter in admin products + bulk editor.
 - [ ] **A4** Product Attributes — option sets & values (Finish, Size, Fabric…), values can adjust price and carry

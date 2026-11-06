@@ -48,6 +48,8 @@ import type {
   NewSalesChannelInput,
   SalesChannelKind,
   AdminShowroom,
+  AdminSeries,
+  NewSeriesInput,
   NewShowroomInput,
   AdminMaterial,
   NewMaterialInput,
@@ -131,6 +133,7 @@ interface DemoDb {
   bundles: AdminBundle[];
   salesChannels: AdminSalesChannel[];
   showrooms: AdminShowroom[];
+  series: AdminSeries[];
   materials: AdminMaterial[];
   projects: AdminProject[];
   blogPosts: AdminBlogPost[];
@@ -528,6 +531,63 @@ function buildSeedShowrooms(): AdminShowroom[] {
     mk("sr-rawalpindi", "WOODEX Rawalpindi", "Rawalpindi", "44 Saddar Road, Committee Chowk, Rawalpindi", "+92 51 222 WOODEX", "Mon–Sat: 9am–7pm", 33.6007, 73.0679, false, 40, 150),
     mk("sr-faisalabad", "WOODEX Faisalabad", "Faisalabad", "12 D-Ground, Faisalabad", "+92 41 333 WOODEX", "Mon–Sat: 9am–6pm", 31.4504, 73.135, false, 50, 140),
   ];
+}
+
+/**
+ * Demo seed for the Furniture Series master — inlined deliberately: this demo
+ * bundle mis-wires named imports from @/data/products inside the shared db
+ * chunk (unbound identifier at module evaluation — see A2 commit note), so the
+ * storefront's `seriesList` is intentionally NOT imported here.
+ * The /series/:seriesId storefront pages still read src/data/products.ts until
+ * the Bagisto cutover; keep the two in sync manually until then.
+ */
+const SERIES_SEED: Array<Omit<AdminSeries, "createdAt" | "updatedAt">> = [
+  {
+    id: "ek-series", name: "Ek Series", tagline: "Affordable quality for every workspace",
+    badge: "Budget-Friendly",
+    description: "The Ek Series delivers reliable quality at an accessible price point. Perfect for startups, schools, and growing businesses that need functional furniture without breaking the budget.",
+    features: ["Engineered wood construction", "Powder-coated steel frames", "Standard ergonomics", "3-year warranty"],
+    color: "#5a7a3a", active: true, sortOrder: 10,
+  },
+  {
+    id: "infinity-series", name: "Infinity Series", tagline: "Modular systems that grow with you",
+    badge: "Modular",
+    description: "The Infinity Series is built for flexibility. Every component connects seamlessly, allowing you to expand, reconfigure, and adapt your workspace as your team evolves.",
+    features: ["Fully modular components", "Expandable layouts", "Integrated cable management", "5-year warranty"],
+    color: "#3a5a7a", active: true, sortOrder: 20,
+  },
+  {
+    id: "woodex-series", name: "Woodex Series", tagline: "Premium flagship collection",
+    badge: "Premium",
+    description: "Our flagship Woodex Series represents the pinnacle of Pakistani craftsmanship. Designed for executives and discerning clients who demand nothing but the best.",
+    features: ["Solid hardwood & premium veneer", "Full-grain leather options", "Handcrafted detailing", "10-year warranty"],
+    color: "#7a5a3a", active: true, sortOrder: 30,
+  },
+  {
+    id: "cubicle-series", name: "Cubicle Series", tagline: "Privacy-focused workstation solutions",
+    badge: "Privacy",
+    description: "The Cubicle Series creates focused, private workspaces within open offices. Acoustic panels and intelligent layouts maximize productivity for individual contributors.",
+    features: ["Acoustic privacy panels", "Height-adjustable options", "Personal storage integration", "5-year warranty"],
+    color: "#5a5a7a", active: true, sortOrder: 40,
+  },
+  {
+    id: "nova-series", name: "Nova Series", tagline: "Minimalist design-forward furniture",
+    badge: "Minimal",
+    description: "Nova Series brings Scandinavian-inspired minimalism to Pakistani workspaces. Clean lines, hidden hardware, and slim profiles for design-conscious offices.",
+    features: ["Hidden hardware", "Slim steel frames", "Push-to-open drawers", "3-year warranty"],
+    color: "#7a7a5a", active: true, sortOrder: 50,
+  },
+];
+
+function buildSeedSeries(): AdminSeries[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  return SERIES_SEED.map((s, i) => ({
+    ...s,
+    features: [...s.features],
+    createdAt: iso(Math.max(30, 150 - i * 25)),
+    updatedAt: iso(Math.max(30, 150 - i * 25)),
+  }));
 }
 
 function channelFor(email: string, subtotal: number): string {
@@ -1353,7 +1413,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1381,6 +1441,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.bundles)) db.bundles = buildSeedBundles();
       if (!Array.isArray(db.salesChannels)) db.salesChannels = buildSeedSalesChannels();
       if (!Array.isArray(db.showrooms)) db.showrooms = buildSeedShowrooms();
+      if (!Array.isArray(db.series)) db.series = buildSeedSeries();
       if (!Array.isArray(db.materials)) db.materials = buildSeedMaterials();
       if (!Array.isArray(db.projects)) db.projects = buildSeedProjects();
       if (!Array.isArray(db.blogPosts)) db.blogPosts = buildSeedBlogPosts();
@@ -2115,6 +2176,84 @@ export const demoAdminApi: AdminApi = {
     let ok = false;
     update((db) => {
       const arr = (db.showrooms ??= []);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
+  },
+
+  async listSeries() {
+    return [...(loadDb().series ?? [])].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)).map((r) => ({ ...r, features: [...r.features] }));
+  },
+
+  async createSeries(input: NewSeriesInput) {
+    let created: AdminSeries | undefined;
+    update((db) => {
+      const arr = (db.series ??= []);
+      const name = input.name.trim();
+      if (!name) return;
+      const base = (input.id?.trim() || name
+        .toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
+      if (!base || arr.some((x) => x.id === base)) return;
+      const now = new Date().toISOString();
+      const maxOrder = Math.max(0, ...arr.map((r) => r.sortOrder));
+      created = {
+        id: base,
+        name,
+        tagline: input.tagline.trim(),
+        badge: input.badge.trim(),
+        description: input.description.trim(),
+        features: input.features.map((f) => f.trim()).filter(Boolean),
+        color: input.color.trim() || "#5a7a3a",
+        active: input.active ?? true,
+        sortOrder: typeof input.sortOrder === "number" ? input.sortOrder : maxOrder + 10,
+        createdAt: now,
+        updatedAt: now,
+      };
+      arr.push(created);
+    });
+    if (!created) throw new Error("A series with that slug already exists, or the name is empty.");
+    return created;
+  },
+
+  async updateSeries(id: string, patch: Partial<NewSeriesInput>) {
+    let updated: AdminSeries | undefined;
+    update((db) => {
+      const room = (db.series ??= []).find((x) => x.id === id);
+      if (!room) return;
+      if (typeof patch.name === "string" && patch.name.trim()) room.name = patch.name.trim();
+      if (typeof patch.tagline === "string") room.tagline = patch.tagline.trim();
+      if (typeof patch.badge === "string") room.badge = patch.badge.trim();
+      if (typeof patch.description === "string") room.description = patch.description.trim();
+      if (Array.isArray(patch.features)) room.features = patch.features.map((f) => f.trim()).filter(Boolean);
+      if (typeof patch.color === "string" && patch.color.trim()) room.color = patch.color.trim();
+      if (patch.active !== undefined) room.active = Boolean(patch.active);
+      if (patch.sortOrder !== undefined && Number.isFinite(patch.sortOrder)) room.sortOrder = patch.sortOrder;
+      room.updatedAt = new Date().toISOString();
+      updated = { ...room, features: [...room.features] };
+    });
+    return updated;
+  },
+
+  async setSeriesActive(id: string, active: boolean) {
+    let updated: AdminSeries | undefined;
+    update((db) => {
+      const room = (db.series ??= []).find((x) => x.id === id);
+      if (!room) return;
+      room.active = Boolean(active);
+      room.updatedAt = new Date().toISOString();
+      updated = { ...room, features: [...room.features] };
+    });
+    return updated;
+  },
+
+  async deleteSeries(id: string) {
+    if (products.some((p) => p.series === id)) return false; // referenced by the static catalogue
+    let ok = false;
+    update((db) => {
+      const arr = (db.series ??= []);
       const i = arr.findIndex((x) => x.id === id);
       if (i === -1) return;
       arr.splice(i, 1);

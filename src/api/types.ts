@@ -645,6 +645,32 @@ export interface NewShowroomInput {
   sortOrder?: number;
 }
 
+/* ── Furniture Series (admin-managed since A2; storefront reads static master until Bagisto) ── */
+export interface AdminSeries {
+  id: string;            // slug — matches the static `seriesList` ids and `/series/:seriesId` URLs
+  name: string;
+  tagline: string;
+  badge: string;
+  description: string;
+  features: string[];
+  color: string;          // hex accent used by the /series landing cards
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface NewSeriesInput {
+  id?: string;            // optional slug override on create; derived from name when omitted
+  name: string;
+  tagline: string;
+  badge: string;
+  description: string;
+  features: string[];
+  color: string;
+  active?: boolean;
+  sortOrder?: number;
+}
+
 /* ── Materials & finishes (admin-managed since P1.2) ─────────────────────── */
 export type AdminMaterialCategory = "wood" | "laminate" | "metal" | "fabric";
 export type AdminMaterialBrightness = "light" | "medium" | "dark" | "all";
@@ -1230,6 +1256,12 @@ export interface AdminApi {
   updateShowroom(id: string, patch: Partial<NewShowroomInput>): Promise<AdminShowroom | undefined>;
   setShowroomActive(id: string, active: boolean): Promise<AdminShowroom | undefined>;
   deleteShowroom(id: string): Promise<boolean>;
+  /** Furniture Series — managed taxonomy shared with /series/:seriesId (static master until Bagisto). */
+  listSeries(): Promise<AdminSeries[]>;
+  createSeries(input: NewSeriesInput): Promise<AdminSeries>;
+  updateSeries(id: string, patch: Partial<NewSeriesInput>): Promise<AdminSeries | undefined>;
+  setSeriesActive(id: string, active: boolean): Promise<AdminSeries | undefined>;
+  deleteSeries(id: string): Promise<boolean>;
   listMaterials(): Promise<AdminMaterial[]>;
   createMaterial(input: NewMaterialInput): Promise<AdminMaterial>;
   updateMaterial(id: string, patch: Partial<NewMaterialInput>): Promise<AdminMaterial | undefined>;

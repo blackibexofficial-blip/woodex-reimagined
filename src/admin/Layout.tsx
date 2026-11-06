@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
   Armchair, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, FileText,
-  Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, SlidersHorizontal,
+  Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, SlidersHorizontal, Layers,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
 import { isDemoMode } from "@/config/env";
@@ -25,6 +25,7 @@ const NAV_GROUPS: Array<{
       { to: "/admin/products", label: "Products", icon: Package },
       { to: "/admin/categories", label: "Categories", icon: Tags },
       { to: "/admin/collections", label: "Collections", icon: LayoutGrid },
+      { to: "/admin/series", label: "Series", icon: Layers },
       { to: "/admin/showrooms", label: "Showrooms", icon: Store },
       { to: "/admin/materials", label: "Materials & Colors", icon: Palette },
       { to: "/admin/options", label: "Options", icon: SlidersHorizontal },
@@ -69,7 +70,7 @@ function pageTitle(pathname: string) {
   const map: Record<string, string> = {
     dashboard: "Dashboard", analytics: "Analytics", products: "Products", categories: "Categories",
     orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", transfers: "Transfers", options: "Product Options", content: "Content", showrooms: "Showrooms",
-    media: "Media Library", settings: "Settings", inventory: "Inventory & Delivery Zones",
+    media: "Media Library", settings: "Settings", inventory: "Inventory & Delivery Zones", series: "Furniture Series",
   };
   return map[seg] ?? "Admin";
 }

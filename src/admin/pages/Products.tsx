@@ -230,12 +230,14 @@ export default function AdminProducts() {
   }, [api, debounced, category, stockFilter, page, sortValue]);
 
   const [optionSets, setOptionSets] = useState<AdminOptionSet[]>([]);
+  const [seriesOptions, setSeriesOptions] = useState<Array<{ id: string; name: string; active: boolean }>>(seriesList.map(({ id, name }) => ({ id, name, active: true })));
   const [collections, setCollections] = useState<AdminCollection[]>([]);
   /* Manual-collection membership — null = derive from collections each render; set once the user toggles a chip. */
   const [membership, setMembership] = useState<Set<string> | null>(null);
   useEffect(() => {
     api.listOptionSets().then(setOptionSets).catch(() => setOptionSets([]));
     api.listCollections().then(setCollections).catch(() => setCollections([]));
+    api.listSeries().then((rows) => setSeriesOptions(rows.map(({ id, name, active }) => ({ id, name, active })))).catch(() => { /* static seriesList fallback already in place */ });
   }, [api]);
 
   useEffect(() => { load(); }, [load]);
@@ -733,7 +735,7 @@ export default function AdminProducts() {
                   <SelectTrigger id="edit-series" className="bg-white"><SelectValue placeholder="No series" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">— no series —</SelectItem>
-                    {seriesList.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    {seriesOptions.filter((s) => s.active).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <p className="mt-1 text-[10px] text-muted-foreground">Matches the storefront /series/:seriesId page.</p>
