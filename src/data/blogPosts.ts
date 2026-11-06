@@ -1,9 +1,9 @@
-import blogErgonomic from "@/assets/blog-ergonomic.jpg";
-import blogHybrid from "@/assets/blog-hybrid-workspace.jpg";
-import blogSustainable from "@/assets/blog-sustainable.jpg";
-import blogColors from "@/assets/blog-office-colors.jpg";
-import blogCaseStudy from "@/assets/blog-case-study.jpg";
-import blogStandingDesk from "@/assets/blog-standing-desk.jpg";
+import blogErgonomic from "@/assets/blog-ergonomic.webp";
+import blogHybrid from "@/assets/blog-hybrid-workspace.webp";
+import blogSustainable from "@/assets/blog-sustainable.webp";
+import blogColors from "@/assets/blog-office-colors.webp";
+import blogCaseStudy from "@/assets/blog-case-study.webp";
+import blogStandingDesk from "@/assets/blog-standing-desk.webp";
 
 export interface BlogPost {
   id: string;

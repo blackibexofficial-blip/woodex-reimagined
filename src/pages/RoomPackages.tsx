@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import chairImage from "@/assets/chair-product.jpg";
-import deskImage from "@/assets/desk-product.jpg";
-import workstationImage from "@/assets/workstation-product.jpg";
-import proj1 from "@/assets/project-1.jpg";
+import chairImage from "@/assets/chair-product.webp";
+import deskImage from "@/assets/desk-product.webp";
+import workstationImage from "@/assets/workstation-product.webp";
+import proj1 from "@/assets/project-1.webp";
 
 const packages = [
   {

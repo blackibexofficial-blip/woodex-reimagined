@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import chairImg from "@/assets/product-office-chair.jpg";
-import execDeskImg from "@/assets/product-executive-desk.jpg";
-import workstationImg from "@/assets/product-workstation.jpg";
-import sofaImg from "@/assets/product-office-sofa.jpg";
+import chairImg from "@/assets/product-office-chair.webp";
+import execDeskImg from "@/assets/product-executive-desk.webp";
+import workstationImg from "@/assets/product-workstation.webp";
+import sofaImg from "@/assets/product-office-sofa.webp";
 
 const products = [
   { name: "Black Pearl Executive Chair", category: "Executive Chairs", image: chairImg, slug: "executive-ergonomic-chair" },

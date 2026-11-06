@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
-import servicesImg from "@/assets/services-office.jpg";
+import servicesImg from "@/assets/services-office.webp";
 
 const serviceList = [
   "3D Rendered Floor Plan",
@@ -17,7 +17,7 @@ const OurServices = () => (
     <div className="container mx-auto px-4">
       <div className="text-center mb-10">
         <h2 className="text-3xl lg:text-4xl font-bold mb-2">Our Services</h2>
-        <p className="text-accent font-semibold text-sm uppercase tracking-widest">How Can We Help?</p>
+        <p className="text-hon-green-dark font-semibold text-sm uppercase tracking-widest">How Can We Help?</p>
       </div>
       <div className="grid lg:grid-cols-2 gap-12 items-center">
         <div>

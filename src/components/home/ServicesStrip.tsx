@@ -18,7 +18,7 @@ const ServicesStrip = () => (
             <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent transition-colors">
               <s.icon className="h-6 w-6 text-accent group-hover:text-accent-foreground transition-colors" />
             </div>
-            <h3 className="font-bold text-sm mb-1 group-hover:text-accent transition-colors">{s.label}</h3>
+            <h2 className="font-bold text-sm mb-1 group-hover:text-accent transition-colors">{s.label}</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">{s.description}</p>
           </Link>
         ))}

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Mail, Phone, MapPin, Clock, Send, MessageCircle, ChevronDown } from "lucide-react";
+import { toast } from "sonner";
+import { getAdminApi } from "@/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import contactHero from "@/assets/contact-hero.jpg";
+import contactHero from "@/assets/contact-hero.webp";
+import { site, waLink } from "@/config/site";
 
 const showrooms = [
-  { city: "Lahore (HQ)", address: "123 Gulberg III, Main Boulevard, Lahore", phone: "+92 42 111 WOODEX", hours: "Mon–Sat: 9am–7pm" },
+  { city: "Lahore (HQ)", address: `${site.address.line1}, ${site.address.city}`, phone: site.phoneAlt, hours: site.hours },
   { city: "Karachi", address: "456 Clifton Block 5, Karachi", phone: "+92 21 111 WOODEX", hours: "Mon–Sat: 9am–7pm" },
   { city: "Islamabad", address: "789 Blue Area, F-7, Islamabad", phone: "+92 51 111 WOODEX", hours: "Mon–Sat: 10am–6pm" },
 ];
@@ -24,16 +27,38 @@ const faqs = [
 
 const Contact = () => {
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
     document.title = "Contact Us — WOODEX Pakistan | Showrooms in Lahore, Karachi, Islamabad";
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
+    if (sending) return;
+    const form = e.currentTarget;
+    const val = (id: string) => ((form.elements.namedItem(id) as HTMLInputElement | HTMLTextAreaElement | null)?.value ?? "").trim();
+    const subject = val("subject");
+    const message = val("message");
+    setSending(true);
+    try {
+      await getAdminApi().createLead({
+        type: "quote",
+        name: val("name"),
+        email: val("email") || undefined,
+        phone: val("phone") || "—",
+        summary: `Website enquiry — ${subject || "General"}: ${message.slice(0, 180)}`,
+      });
+      setSubmitted(true);
+      form.reset();
+      setTimeout(() => setSubmitted(false), 4000);
+    } catch (err) {
+      console.error("Contact lead capture failed:", err);
+      toast.error(`Could not send your message. Please call ${site.phone} instead.`);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -46,7 +71,7 @@ const Contact = () => {
           <img src={contactHero} alt="WOODEX Office Showroom" className="w-full h-full object-cover opacity-30" />
           <div className="absolute inset-0 flex items-center">
             <div className="container mx-auto px-4">
-              <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Contact Us</p>
+              <p className="text-hon-green-light text-xs font-bold uppercase tracking-widest mb-2">Contact Us</p>
               <h1 className="text-4xl lg:text-5xl font-black text-primary-foreground mb-3">Get in Touch</h1>
               <p className="text-primary-foreground/75 max-w-xl">
                 Have questions about our products or services? We'd love to hear from you.
@@ -63,10 +88,10 @@ const Contact = () => {
               <div className="space-y-4">
                 <h2 className="text-xl font-bold mb-6">Contact Information</h2>
                 {[
-                  { icon: Phone, title: "Call Us", lines: ["+92 300 1234567", "+92 42 111 WOODEX"] },
-                  { icon: Mail, title: "Email Us", lines: ["info@woodex.pk", "sales@woodex.pk"] },
-                  { icon: MapPin, title: "Head Office", lines: ["123 Gulberg III", "Lahore, Pakistan"] },
-                  { icon: Clock, title: "Business Hours", lines: ["Mon–Sat: 9am–7pm", "Sun: Closed"] },
+                  { icon: Phone, title: "Call Us", lines: [site.phone, site.phoneAlt] },
+                  { icon: Mail, title: "Email Us", lines: [site.email, site.salesEmail] },
+                  { icon: MapPin, title: "Head Office", lines: [site.address.line1, `${site.address.city}, ${site.address.country}`] },
+                  { icon: Clock, title: "Business Hours", lines: [site.hours, "Sun: Closed"] },
                 ].map((item) => (
                   <div key={item.title} className="flex gap-4 p-4 border border-border rounded-sm hover:border-accent transition-colors">
                     <div className="w-10 h-10 rounded-sm bg-hon-green-pale flex items-center justify-center flex-shrink-0">
@@ -110,7 +135,7 @@ const Contact = () => {
                         <div className="grid md:grid-cols-2 gap-5">
                           <div className="space-y-1.5">
                             <Label htmlFor="phone">Phone</Label>
-                            <Input id="phone" type="tel" placeholder="+92 300 1234567" />
+                            <Input id="phone" type="tel" placeholder={site.phone} />
                           </div>
                           <div className="space-y-1.5">
                             <Label htmlFor="subject">Subject</Label>
@@ -121,8 +146,8 @@ const Contact = () => {
                           <Label htmlFor="message">Message *</Label>
                           <Textarea id="message" placeholder="Tell us about your project..." className="min-h-[140px]" required />
                         </div>
-                        <Button type="submit" className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground font-semibold">
-                          Send Message
+                        <Button type="submit" disabled={sending} className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground font-semibold">
+                          {sending ? "Sending…" : "Send Message"}
                         </Button>
                       </form>
                     )}
@@ -137,8 +162,8 @@ const Contact = () => {
         <section className="border-t">
           <div className="w-full h-80 bg-section-mid">
             <iframe
-              title="WOODEX Head Office Location — Gulberg III, Lahore"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3401.456!2d74.3507!3d31.5204!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDMxJzEzLjQiTiA3NMKwMjEnMDIuNSJF!5e0!3m2!1sen!2spk!4v1234567890"
+              title={`WOODEX Head Office Location — ${site.address.city}`}
+              src={site.address.mapsEmbed}
               className="w-full h-full border-0"
               allowFullScreen
               loading="lazy"
@@ -201,15 +226,17 @@ const Contact = () => {
       </main>
 
       {/* WhatsApp Floating Button */}
-      <a
-        href="https://wa.me/923001234567?text=Hi%20WOODEX%2C%20I%27m%20interested%20in%20your%20furniture"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-[hsl(142,70%,45%)] hover:bg-[hsl(142,70%,38%)] text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
-        aria-label="Chat on WhatsApp"
-      >
-        <MessageCircle className="h-7 w-7" />
-      </a>
+      <div role="region" aria-label="Chat with WOODEX" className="fixed bottom-6 right-6 z-50">
+        <a
+          href={waLink("Hi WOODEX, I'm interested in your furniture")}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-14 h-14 bg-[hsl(142,70%,45%)] hover:bg-[hsl(142,70%,38%)] text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+          aria-label="Chat on WhatsApp"
+        >
+          <MessageCircle className="h-7 w-7" />
+        </a>
+      </div>
 
       <Footer />
     </div>

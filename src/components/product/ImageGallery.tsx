@@ -63,10 +63,7 @@ const ImageGallery = ({ images, productName }: ImageGalleryProps) => {
           <img
             src={images[selectedIndex]}
             alt={`${productName} - View ${selectedIndex + 1}`}
-            className={cn(
-              "w-full h-full object-cover transition-transform duration-300",
-              is360Mode && `rotate-[${rotation}deg]`
-            )}
+            className="w-full h-full object-cover transition-transform duration-300"
             style={{
               transform: isZoomed
                 ? `scale(2) translate(${50 - zoomPosition.x}%, ${50 - zoomPosition.y}%)`
@@ -98,6 +95,7 @@ const ImageGallery = ({ images, productName }: ImageGalleryProps) => {
           size="icon"
           className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg"
           onClick={handlePrev}
+          aria-label="Previous image"
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>
@@ -106,6 +104,7 @@ const ImageGallery = ({ images, productName }: ImageGalleryProps) => {
           size="icon"
           className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg"
           onClick={handleNext}
+          aria-label="Next image"
         >
           <ChevronRight className="h-5 w-5" />
         </Button>

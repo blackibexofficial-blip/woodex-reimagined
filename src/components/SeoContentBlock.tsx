@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import type { SeoBlock } from "@/data/seoContent";
+import { absUrl } from "@/config/site";
 import { buildFaqJsonLd, buildCollectionJsonLd } from "@/data/seoContent";
 
 interface Props {
@@ -23,7 +24,7 @@ interface Props {
  */
 const SeoContentBlock = ({ seo, path, hideIntro, hideFaqs }: Props) => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const url = `https://woodex-reimagined.lovable.app${path}`;
+  const url = absUrl(path);
 
   useEffect(() => {
     document.title = seo.title;

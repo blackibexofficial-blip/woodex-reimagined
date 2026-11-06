@@ -4,7 +4,7 @@ import { Building2, Users, TrendingUp, HeadphonesIcon, CheckCircle2, XCircle, Ar
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import b2bHero from "@/assets/b2b-hero.jpg";
+import b2bHero from "@/assets/b2b-hero.webp";
 
 const benefits = [
   { icon: Building2, title: "Corporate Solutions", description: "Large-scale office furnishing projects with dedicated project management from concept to completion." },

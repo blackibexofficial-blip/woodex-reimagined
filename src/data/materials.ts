@@ -1,20 +1,20 @@
 // Material texture imports
-import naturalOak from "@/assets/materials/natural-oak.jpg";
-import darkWalnut from "@/assets/materials/dark-walnut.jpg";
-import cherryWood from "@/assets/materials/cherry-wood.jpg";
-import maple from "@/assets/materials/maple.jpg";
-import teak from "@/assets/materials/teak.jpg";
-import mahogany from "@/assets/materials/mahogany.jpg";
-import thermoOak from "@/assets/materials/thermo-oak.jpg";
-import lightConcrete from "@/assets/materials/light-concrete.jpg";
-import matteBlack from "@/assets/materials/matte-black.jpg";
-import brushedChrome from "@/assets/materials/brushed-chrome.jpg";
-import whiteLaminate from "@/assets/materials/white-laminate.jpg";
-import navyFabric from "@/assets/materials/navy-fabric.jpg";
-import blackLeather from "@/assets/materials/black-leather.jpg";
-import greyMesh from "@/assets/materials/grey-mesh.jpg";
-import tanLeather from "@/assets/materials/tan-leather.jpg";
-import brushedGold from "@/assets/materials/brushed-gold.jpg";
+import naturalOak from "@/assets/materials/natural-oak.webp";
+import darkWalnut from "@/assets/materials/dark-walnut.webp";
+import cherryWood from "@/assets/materials/cherry-wood.webp";
+import maple from "@/assets/materials/maple.webp";
+import teak from "@/assets/materials/teak.webp";
+import mahogany from "@/assets/materials/mahogany.webp";
+import thermoOak from "@/assets/materials/thermo-oak.webp";
+import lightConcrete from "@/assets/materials/light-concrete.webp";
+import matteBlack from "@/assets/materials/matte-black.webp";
+import brushedChrome from "@/assets/materials/brushed-chrome.webp";
+import whiteLaminate from "@/assets/materials/white-laminate.webp";
+import navyFabric from "@/assets/materials/navy-fabric.webp";
+import blackLeather from "@/assets/materials/black-leather.webp";
+import greyMesh from "@/assets/materials/grey-mesh.webp";
+import tanLeather from "@/assets/materials/tan-leather.webp";
+import brushedGold from "@/assets/materials/brushed-gold.webp";
 
 export type MaterialCategory = "wood" | "laminate" | "metal" | "fabric";
 export type BrightnessLevel = "light" | "medium" | "dark" | "all";

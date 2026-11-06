@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { services } from "@/data/services";
-import heroImg from "@/assets/services-main-hero.jpg";
+import heroImg from "@/assets/services-main-hero.webp";
+import { site } from "@/config/site";
 
-const WA_PHONE = "923001234567";
 
 // "Make Your Space Work" — curated 6-item showcase mapped to underlying service pages
 const spaceWorkItems = [
@@ -187,7 +187,7 @@ const Services = () => {
                 <Link to="/quotation">Request a Quote</Link>
               </Button>
               <Button variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" asChild>
-                <a href={`https://wa.me/${WA_PHONE}?text=Hi%20WOODEX%2C%20I%27m%20interested%20in%20your%20services`} target="_blank" rel="noopener noreferrer">
+                <a href={`https://wa.me/${site.whatsapp}?text=Hi%20WOODEX%2C%20I%27m%20interested%20in%20your%20services`} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp Us
                 </a>
               </Button>

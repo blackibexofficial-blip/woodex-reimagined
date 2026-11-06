@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { blogPosts, getBlogPost } from "@/data/blogPosts";
+import { JsonLd } from "@/components/JsonLd";
+import { articleJsonLd, breadcrumbJsonLd } from "@/data/seoContent";
+import { absUrl } from "@/config/site";
 
 const BlogPost = () => {
   const { postId } = useParams<{ postId: string }>();
@@ -27,6 +30,27 @@ const BlogPost = () => {
     }
   }, [post]);
 
+  const pageUrl = post ? absUrl(`/blog/${post.id}`) : undefined;
+  const articleLd = post
+    ? articleJsonLd({
+        headline: post.title,
+        description: post.excerpt,
+        image: post.image ? absUrl(post.image) : undefined,
+        datePublished: Number.isNaN(Date.parse(post.date))
+          ? undefined
+          : new Date(post.date).toISOString().slice(0, 10),
+        author: post.author,
+        url: pageUrl ?? absUrl("/blog"),
+      })
+    : null;
+  const crumbLd = post
+    ? breadcrumbJsonLd([
+        { name: "Home", url: "/" },
+        { name: "Blog", url: "/blog" },
+        { name: post.title, url: `/blog/${post.id}` },
+      ])
+    : null;
+
   if (!post) return <Navigate to="/blog" replace />;
 
   const related = blogPosts.filter((p) => p.id !== post.id && p.category === post.category).slice(0, 3);
@@ -36,6 +60,8 @@ const BlogPost = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      {articleLd && <JsonLd id="article" data={articleLd} />}
+      {crumbLd && <JsonLd id="breadcrumb" data={crumbLd} />}
 
       <main className="flex-1">
         {/* Hero */}

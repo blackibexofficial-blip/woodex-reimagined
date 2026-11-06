@@ -1,10 +1,10 @@
-import customDesignImg from "@/assets/service-custom-design.jpg";
-import b2bImg from "@/assets/service-b2b-solutions.jpg";
-import customMfgImg from "@/assets/service-custom-manufacturing.jpg";
-import deliveryImg from "@/assets/service-delivery.jpg";
-import spacePlanningImg from "@/assets/service-space-planning.jpg";
-import afterSalesImg from "@/assets/service-after-sales.jpg";
-import projectMgmtImg from "@/assets/service-project-management.jpg";
+import customDesignImg from "@/assets/service-custom-design.webp";
+import b2bImg from "@/assets/service-b2b-solutions.webp";
+import customMfgImg from "@/assets/service-custom-manufacturing.webp";
+import deliveryImg from "@/assets/service-delivery.webp";
+import spacePlanningImg from "@/assets/service-space-planning.webp";
+import afterSalesImg from "@/assets/service-after-sales.webp";
+import projectMgmtImg from "@/assets/service-project-management.webp";
 
 export interface ServiceData {
   slug: string;

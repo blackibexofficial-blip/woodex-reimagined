@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local environment — never commit secrets (.env is already tracked in history; see docs/08-master-plan R8)
+.env
+.env.local
+.env.*.local

@@ -60,7 +60,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
         {/* Hover Overlay */}
         <div className="absolute inset-0 bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
           <Button size="icon" variant="secondary" className="rounded-full shadow-lg" asChild>
-            <Link to={`/shop/${product.id}`}>
+            <Link to={`/shop/${product.id}`} aria-label={`View ${product.name}`}>
               <Eye className="h-5 w-5" />
             </Link>
           </Button>

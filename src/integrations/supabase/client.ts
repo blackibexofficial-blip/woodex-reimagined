@@ -27,7 +27,11 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     }
 
     headers.set('apikey', supabaseKey);
-    return fetch(input, { ...init, headers });
+    // Bound every call: the historical backend host behind VITE_SUPABASE_URL is
+    // not reliably reachable, and an unbounded fetch stalls auth/data flows
+    // indefinitely on networks where it silently times out (CI runners hit this).
+    const signal = init?.signal ?? AbortSignal.timeout(5000);
+    return fetch(input, { ...init, headers, signal });
   };
 }
 

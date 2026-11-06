@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import proj1 from "@/assets/project-1.jpg";
-import proj2 from "@/assets/project-2.jpg";
-import proj3 from "@/assets/project-3.jpg";
-import proj4 from "@/assets/project-4.jpg";
-import proj5 from "@/assets/project-5.jpg";
-import proj6 from "@/assets/project-6.jpg";
-import projSalon from "@/assets/project-hair-salon.jpg";
+import proj1 from "@/assets/project-1.webp";
+import proj2 from "@/assets/project-2.webp";
+import proj3 from "@/assets/project-3.webp";
+import proj4 from "@/assets/project-4.webp";
+import proj5 from "@/assets/project-5.webp";
+import proj6 from "@/assets/project-6.webp";
+import projSalon from "@/assets/project-hair-salon.webp";
 
 const projectsData = [
   {
@@ -255,7 +255,7 @@ const ProjectDetail = () => {
                     </button>
                     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
                       {gallery.map((_, i) => (
-                        <button key={i} onClick={() => setGalleryIdx(i)} className={`h-1.5 rounded-full transition-all ${i === galleryIdx ? "w-6 bg-accent" : "w-1.5 bg-white/50"}`} />
+                        <button key={i} onClick={() => setGalleryIdx(i)} className={`h-1.5 rounded-full transition-all ${i === galleryIdx ? "w-6 bg-accent" : "w-1.5 bg-white/50"}`} aria-label={`Go to image ${i + 1}`} aria-current={i === galleryIdx} />
                       ))}
                     </div>
                   </div>

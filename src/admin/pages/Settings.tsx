@@ -1,0 +1,160 @@
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, XCircle, Loader2, Save, AlertTriangle, RotateCcw, Plug, Database, Server } from "lucide-react";
+import { toast } from "sonner";
+import { getAdminApi } from "@/api";
+import type { StoreSettings } from "@/api/types";
+import { config, isDemoMode, isSupabaseConfigured, isBagistoShopConfigured, isBagistoAdminConfigured } from "@/config/env";
+import { SectionCard } from "@/admin/components";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const FIELD = "mb-1 block text-xs font-medium text-muted-foreground";
+
+export default function AdminSettings() {
+  const api = useMemo(() => getAdminApi(), []);
+  const [settings, setSettings] = useState<StoreSettings | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  useEffect(() => {
+    api.getSettings().then(setSettings).catch(console.error);
+  }, [api]);
+
+  const set = <K extends keyof StoreSettings>(key: K, value: StoreSettings[K]) =>
+    setSettings((s) => (s ? { ...s, [key]: value } : s));
+
+  const save = async () => {
+    if (!settings) return;
+    setSaving(true);
+    await api.saveSettings(settings);
+    setSaving(false);
+    toast.success("Store settings saved.");
+  };
+
+  const resetDemo = async () => {
+    setResetting(true);
+    await api.resetDemoData();
+    setResetting(false);
+    toast.success("Demo data reset to seed. Reloading…");
+    setTimeout(() => window.location.reload(), 700);
+  };
+
+  const integrations = [
+    { label: "Storefront data (static catalogue)", ok: true, detail: "Products/services read from src/data/*" },
+    { label: "Supabase project", ok: isSupabaseConfigured, detail: isSupabaseConfigured ? `Project ${config.supabase.projectId || "configured"}` : "VITE_SUPABASE_* missing — running without it" },
+    { label: "Bagisto storefront API key", ok: isBagistoShopConfigured, detail: isBagistoShopConfigured ? config.bagisto.baseUrl : "Set VITE_API_MODE=bagisto + VITE_BAGISTO_API_URL + VITE_BAGISTO_STOREFRONT_KEY" },
+    { label: "Bagisto admin integration token", ok: isBagistoAdminConfigured, detail: isBagistoAdminConfigured ? "Bearer token present (keep it server-side in production!)" : "Not configured — admin uses demo dataset" },
+  ];
+
+  if (!settings) {
+    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  return (
+    <div className="grid max-w-5xl gap-6 lg:grid-cols-5">
+      {/* ── store profile form ─────────────────────────────────────────── */}
+      <SectionCard className="lg:col-span-3" title="Store profile" action={
+        <Button size="sm" onClick={save} disabled={saving} className="bg-accent text-accent-foreground hover:bg-hon-green-dark">
+          {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />} Save
+        </Button>
+      }>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="s-name" className={FIELD}>Store name</label>
+            <Input id="s-name" value={settings.storeName} onChange={(e) => set("storeName", e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="s-tagline" className={FIELD}>Tagline</label>
+            <Input id="s-tagline" value={settings.tagline} onChange={(e) => set("tagline", e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="s-phone" className={FIELD}>Phone</label>
+            <Input id="s-phone" value={settings.phone} onChange={(e) => set("phone", e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="s-whatsapp" className={FIELD}>WhatsApp</label>
+            <Input id="s-whatsapp" value={settings.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="s-email" className={FIELD}>Email</label>
+            <Input id="s-email" type="email" value={settings.email} onChange={(e) => set("email", e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="s-city" className={FIELD}>City</label>
+            <Input id="s-city" value={settings.city} onChange={(e) => set("city", e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="s-address" className={FIELD}>Address</label>
+            <Input id="s-address" value={settings.address} onChange={(e) => set("address", e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="s-currency" className={FIELD}>Currency</label>
+            <Select value={settings.currency} onValueChange={(v) => set("currency", v)}>
+              <SelectTrigger id="s-currency"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {["PKR", "AED", "SAR", "BHD", "USD"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label htmlFor="s-tax" className={FIELD}>Sales tax rate (%)</label>
+            <Input id="s-tax" type="number" min={0} step={0.5} value={settings.taxRate} onChange={(e) => set("taxRate", Number(e.target.value))} />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="s-delivery" className={FIELD}>Delivery note (shown at checkout)</label>
+            <Textarea id="s-delivery" rows={2} value={settings.deliveryNote} onChange={(e) => set("deliveryNote", e.target.value)} />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* ── integrations + danger zone ─────────────────────────────────── */}
+      <div className="space-y-6 lg:col-span-2">
+        <SectionCard title="Integration status" action={<Plug className="h-4 w-4 text-muted-foreground" />}>
+          <ul className="space-y-3">
+            {integrations.map((item) => (
+              <li key={item.label} className="flex items-start gap-2.5">
+                {item.ok
+                  ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
+                <span className="min-w-0">
+                  <span className={`block text-xs font-semibold ${item.ok ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
+                  <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">{item.detail}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 rounded-lg bg-secondary px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+            Mode: <span className="font-mono font-semibold">{config.apiMode}</span>. Switch to a live Bagisto backend by setting
+            <span className="font-mono"> VITE_API_MODE=bagisto </span> and the keys above — the admin UI needs no changes.
+            Full guide: <span className="font-mono">docs/07-admin-integration/README.md</span>
+          </p>
+        </SectionCard>
+
+        <SectionCard title="How this maps to Bagisto" action={<Server className="h-4 w-4 text-muted-foreground" />}>
+          <ul className="space-y-1.5 text-[11px] leading-5 text-muted-foreground">
+            <li className="flex gap-1.5"><span className="font-mono text-muted-foreground">01</span> Demo dataset stands in for Bagisto tables (products, orders, customers).</li>
+            <li className="flex gap-1.5"><span className="font-mono text-muted-foreground">02</span> <code className="rounded bg-muted px-1">src/api/bagisto/admin.ts</code> implements the same contract over <code className="rounded bg-muted px-1">/api/admin/*</code>.</li>
+            <li className="flex gap-1.5"><span className="font-mono text-muted-foreground">03</span> Admin tokens stay server-side in production (Laravel proxy) — never ship them publicly.</li>
+            <li className="flex gap-1.5"><span className="font-mono text-muted-foreground">04</span> Quote/B2B leads need a small custom Laravel package — see the runbook.</li>
+          </ul>
+        </SectionCard>
+
+        {isDemoMode && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-rose-800"><AlertTriangle className="h-4 w-4" /> Danger zone</p>
+            <p className="mt-1.5 text-xs leading-5 text-rose-700">Wipes the local demo database (products, orders, customers, leads, settings) and reseeds it from the catalogue.</p>
+            <Button variant="outline" onClick={resetDemo} disabled={resetting} className="mt-3 border-rose-300 bg-white text-rose-700 hover:bg-rose-100">
+              {resetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />} Reset demo data
+            </Button>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <Database className="h-3.5 w-3.5" /> Demo persistence key: <code className="font-mono">woodex.admin.db.v1</code>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,39 @@
+# Optional VPS path: Bagisto + MySQL 8 in one stack.
+#   1) cd backend && cp bagisto.env.example bagisto/.env   (after composer create-project bagisto/bagisto bagisto)
+#   2) docker compose up -d --build
+#   3) docker compose exec web php artisan bagisto:install
+# The Bagisto source lives in ./bagisto (gitignored — it is created by composer on the host).
+services:
+  web:
+    build: .
+    container_name: woodex-bagisto
+    ports:
+      - "8090:80"
+    volumes:
+      - ./bagisto:/var/www/bagisto
+    env_file:
+      - ./bagisto/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    container_name: woodex-bagisto-db
+    environment:
+      MYSQL_DATABASE: woodex_bagisto
+      MYSQL_USER: woodex_bagisto
+      MYSQL_PASSWORD: change-me
+      MYSQL_ROOT_PASSWORD: change-me-root
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pchange-me-root"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  dbdata:

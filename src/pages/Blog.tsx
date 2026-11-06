@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { blogPosts } from "@/data/blogPosts";
-import blogErgonomic from "@/assets/blog-ergonomic.jpg";
+import blogErgonomic from "@/assets/blog-ergonomic.webp";
 
 const categories = ["All", "Ergonomics", "Workspace Design", "Sustainability", "Interior Design", "Case Study"];
 

@@ -30,6 +30,8 @@ const QuoteBasket = () => {
       {/* Drawer */}
       <div
         ref={ref}
+        role="region"
+        aria-label="Quote basket"
         className={`fixed right-0 top-0 h-full w-full max-w-md bg-background shadow-2xl z-50 flex flex-col transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
@@ -43,7 +45,7 @@ const QuoteBasket = () => {
               <p className="text-xs text-primary-foreground/70">{totalItems} item{totalItems !== 1 ? "s" : ""} added</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-primary-foreground hover:text-accent hover:bg-primary-foreground/10">
+          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-primary-foreground hover:text-accent hover:bg-primary-foreground/10" aria-label="Close quote basket">
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -78,6 +80,7 @@ const QuoteBasket = () => {
                       size="icon"
                       className="h-7 w-7"
                       onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      aria-label="Decrease quantity"
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -87,6 +90,7 @@ const QuoteBasket = () => {
                       size="icon"
                       className="h-7 w-7"
                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      aria-label="Increase quantity"
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
@@ -95,6 +99,7 @@ const QuoteBasket = () => {
                       size="icon"
                       className="h-7 w-7 ml-auto text-muted-foreground hover:text-destructive"
                       onClick={() => removeItem(item.id)}
+                      aria-label="Remove item"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

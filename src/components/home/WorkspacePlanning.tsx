@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, Sun, GitFork, Maximize2, Monitor, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import sketchImg from "@/assets/workspace-planning-sketch.jpg";
-import proj1 from "@/assets/project-1.jpg";
-import proj2 from "@/assets/project-2.jpg";
+import sketchImg from "@/assets/workspace-planning-sketch.webp";
+import proj1 from "@/assets/project-1.webp";
+import proj2 from "@/assets/project-2.webp";
 
 const slides = [
   {
@@ -78,10 +78,10 @@ const WorkspacePlanning = () => {
                 <Link to="/services">Explore Services <ArrowRight className="h-4 w-4 ml-2" /></Link>
               </Button>
               <div className="flex gap-2">
-                <button onClick={() => setCurrent((c) => (c - 1 + slides.length) % slides.length)} className="w-8 h-8 rounded-full border border-border hover:border-accent flex items-center justify-center transition-colors">
+                <button onClick={() => setCurrent((c) => (c - 1 + slides.length) % slides.length)} aria-label="Previous project" className="w-8 h-8 rounded-full border border-border hover:border-accent flex items-center justify-center transition-colors">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <button onClick={() => setCurrent((c) => (c + 1) % slides.length)} className="w-8 h-8 rounded-full border border-border hover:border-accent flex items-center justify-center transition-colors">
+                <button onClick={() => setCurrent((c) => (c + 1) % slides.length)} aria-label="Next project" className="w-8 h-8 rounded-full border border-border hover:border-accent flex items-center justify-center transition-colors">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
@@ -91,7 +91,7 @@ const WorkspacePlanning = () => {
             <img src={slide.image} alt={slide.title} className="w-full rounded-sm shadow-lg transition-opacity duration-500" />
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
               {slides.map((_, i) => (
-                <button key={i} onClick={() => setCurrent(i)} className={`h-1.5 rounded-full transition-all ${i === current ? "w-6 bg-accent" : "w-1.5 bg-foreground/30"}`} />
+                <button key={i} onClick={() => setCurrent(i)} className={`h-1.5 rounded-full transition-all ${i === current ? "w-6 bg-accent" : "w-1.5 bg-foreground/30"}`} aria-label={`Go to planning slide ${i + 1}`} aria-current={i === current} />
               ))}
             </div>
           </div>

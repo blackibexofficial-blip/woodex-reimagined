@@ -9,10 +9,12 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useQuote } from "@/contexts/QuoteContext";
 import { formatPKR, products } from "@/data/products";
+import { getAdminApi } from "@/api";
 import { useEffect } from "react";
 import PrintableInvoice, { ClientInfo } from "@/components/quotation/PrintableInvoice";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { site } from "@/config/site";
 
 const benefits = [
   { icon: Clock, title: "24-Hour Response", description: "Receive detailed quotes within one business day" },
@@ -44,10 +46,41 @@ const Quotation = () => {
     document.title = "Get E-Quotation — WOODEX Pakistan | Free Quote Request";
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
+    if (submitting) return;
+    const form = e.currentTarget;
+    const val = (id: string) => ((form.elements.namedItem(id) as HTMLInputElement | null)?.value ?? "").trim();
+    const name = val("name");
+    const company = val("company");
+    const email = val("email");
+    const phone = val("phone");
+    const projectType = val("project-type");
+    const basketSummary = items.length
+      ? ` — basket: ${items.slice(0, 6).map((i) => `${i.name} x${i.quantity}`).join(", ")}${items.length > 6 ? "…" : ""} (${totalItems} items, est. ${formatPKR(totalPrice)})`
+      : "";
+    setSubmitting(true);
+    try {
+      await getAdminApi().createLead({
+        type: "quote",
+        name,
+        company: company || undefined,
+        email: email || undefined,
+        phone,
+        summary: `${projectType}${basketSummary}`,
+        value: items.length ? totalPrice : undefined,
+      });
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 5000);
+      toast.success("Quote request received — we'll reach out within 24 hours.");
+    } catch (err) {
+      console.error("Quote lead capture failed:", err);
+      toast.error(`Could not submit the request. Please call ${site.phone}.`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isClientInfoValid = clientInfo.name.trim() && clientInfo.location.trim() && clientInfo.contactNumber.trim() && clientInfo.whatsapp.trim();
@@ -74,14 +107,14 @@ const Quotation = () => {
       const body = encodeURIComponent(
         `Quotation Request\n\nClient: ${clientInfo.name}\nLocation: ${clientInfo.location}\nContact: ${clientInfo.contactNumber}\nWhatsApp: ${clientInfo.whatsapp}\n\nProducts:\n${decodeURIComponent(itemsList)}\n\nEstimated Total: ${formatPKR(totalPrice)}\nAdvance (75%): ${formatPKR(Math.round(totalPrice * 0.75))}\nBalance Due: ${formatPKR(Math.round(totalPrice * 0.25))}\n\nPlease confirm this quotation.`
       );
-      window.open(`mailto:info@woodex.pk?subject=${subject}&body=${body}`, "_blank");
+      window.open(`mailto:${site.email}?subject=${subject}&body=${body}`, "_blank");
       toast.success("Email client opened with quotation details!");
     } else if (action === "whatsapp") {
       const itemsList = items.map((item, i) => `${i + 1}. ${item.name} x${item.quantity} — ${formatPKR(item.price * item.quantity)}`).join("\n");
       const message = encodeURIComponent(
         `*WOODEX Quotation Request*\n\n*Client:* ${clientInfo.name}\n*Location:* ${clientInfo.location}\n*Contact:* ${clientInfo.contactNumber}\n\n*Products:*\n${itemsList}\n\n*Estimated Total:* ${formatPKR(totalPrice)}\n*Advance (75%):* ${formatPKR(Math.round(totalPrice * 0.75))}\n*Balance Due:* ${formatPKR(Math.round(totalPrice * 0.25))}\n\nPlease confirm this quotation.`
       );
-      window.open(`https://wa.me/923224000768?text=${message}`, "_blank");
+      window.open(`https://wa.me/${site.whatsapp}?text=${message}`, "_blank");
       toast.success("WhatsApp opened with quotation details!");
     }
   };
@@ -106,7 +139,7 @@ const Quotation = () => {
         {/* Hero */}
         <section className="bg-primary text-primary-foreground py-14">
           <div className="container mx-auto px-4">
-            <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Free Service</p>
+            <p className="text-hon-green-light text-xs font-bold uppercase tracking-widest mb-2">Free Service</p>
             <h1 className="text-4xl lg:text-5xl font-black mb-3">Get an E-Quotation</h1>
             <p className="text-primary-foreground/75 max-w-xl">
               Fast, transparent pricing for all your office furniture needs. Fill out the form and 
@@ -124,7 +157,7 @@ const Quotation = () => {
                   <b.icon className="h-5 w-5 flex-shrink-0" />
                   <div>
                     <p className="font-semibold text-sm">{b.title}</p>
-                    <p className="text-xs opacity-80">{b.description}</p>
+                    <p className="text-xs">{b.description}</p>
                   </div>
                 </div>
               ))}
@@ -233,11 +266,11 @@ const Quotation = () => {
                     </div>
                     <div className="col-span-4 sm:col-span-2 text-center text-sm text-muted-foreground">{item.color || "—"}</div>
                     <div className="col-span-4 sm:col-span-2 flex items-center justify-center gap-2">
-                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors">
+                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors" aria-label="Decrease quantity">
                         <Minus className="h-3 w-3" />
                       </button>
                       <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors">
+                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors" aria-label="Increase quantity">
                         <Plus className="h-3 w-3" />
                       </button>
                     </div>
@@ -383,15 +416,15 @@ const Quotation = () => {
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="phone">Phone Number *</Label>
-                          <Input id="phone" type="tel" placeholder="+92 300 1234567" required />
+                          <Input id="phone" type="tel" placeholder={site.phone} required />
                         </div>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="project-type">Project Type *</Label>
                         <Input id="project-type" placeholder="e.g., New office setup, Office renovation" required />
                       </div>
-                      <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 gap-2 uppercase tracking-wider text-xs">
-                        <ArrowRight className="h-4 w-4" /> Download Quote!
+                      <Button type="submit" size="lg" disabled={submitting} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 gap-2 uppercase tracking-wider text-xs">
+                        <ArrowRight className="h-4 w-4" /> {submitting ? "Submitting…" : "Download Quote!"}
                       </Button>
                       <p className="text-xs text-muted-foreground">
                         By submitting this form, you agree to our privacy policy. We'll only use your information to provide the requested quotation.
@@ -406,7 +439,7 @@ const Quotation = () => {
                     <div key={b.title} className="flex gap-4 items-start">
                       <ArrowRight className="h-5 w-5 text-accent flex-shrink-0 mt-1" strokeWidth={2.5} />
                       <div>
-                        <h4 className="font-bold text-base mb-1">{b.title}</h4>
+                        <h3 className="font-bold text-base mb-1">{b.title}</h3>
                         <p className="text-sm text-muted-foreground leading-relaxed">{b.description}</p>
                       </div>
                     </div>
@@ -436,7 +469,7 @@ const Quotation = () => {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="client-contact">Contact Number *</Label>
-              <Input id="client-contact" type="tel" placeholder="+92 300 1234567" value={clientInfo.contactNumber} onChange={(e) => setClientInfo(prev => ({ ...prev, contactNumber: e.target.value }))} />
+              <Input id="client-contact" type="tel" placeholder={site.phone} value={clientInfo.contactNumber} onChange={(e) => setClientInfo(prev => ({ ...prev, contactNumber: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="client-whatsapp">WhatsApp Number *</Label>

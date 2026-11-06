@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
-import receptionImg from "@/assets/product-reception-counter.jpg";
-import cubicleImg from "@/assets/product-cubicle.jpg";
-import storageImg from "@/assets/product-storage.jpg";
-import chairImg from "@/assets/product-office-chair.jpg";
-import staffImg from "@/assets/product-staff-desk.jpg";
-import sofaImg from "@/assets/product-office-sofa.jpg";
-import execImg from "@/assets/product-executive-desk.jpg";
-import meetingImg from "@/assets/product-meeting-table.jpg";
+import receptionImg from "@/assets/product-reception-counter.webp";
+import cubicleImg from "@/assets/product-cubicle.webp";
+import storageImg from "@/assets/product-storage.webp";
+import chairImg from "@/assets/product-office-chair.webp";
+import staffImg from "@/assets/product-staff-desk.webp";
+import sofaImg from "@/assets/product-office-sofa.webp";
+import execImg from "@/assets/product-executive-desk.webp";
+import meetingImg from "@/assets/product-meeting-table.webp";
 
 const categories = [
   { label: "Reception Desk", image: receptionImg, href: "/shop?category=reception-tables" },
@@ -26,7 +26,7 @@ const ProductCategoriesRow = () => (
         {categories.map((cat) => (
           <Link key={cat.label} to={cat.href} className="group flex-shrink-0 text-center w-[140px]">
             <div className="w-[120px] h-[120px] mx-auto mb-3 rounded-full overflow-hidden bg-muted border-2 border-transparent group-hover:border-accent transition-colors">
-              <img src={cat.image} alt={cat.label} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <img src={cat.image} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
             </div>
             <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">{cat.label}</p>
           </Link>
