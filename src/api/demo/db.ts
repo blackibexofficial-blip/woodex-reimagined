@@ -35,6 +35,9 @@ import type {
   NewOrderInput,
   NewAdminPriceListInput,
   PriceListStatus,
+  AdminBundle,
+  NewAdminBundleInput,
+  BundleStatus,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -58,6 +61,7 @@ interface DemoDb {
   collections: AdminCollection[];
   companies: AdminCompany[];
   priceLists: AdminPriceList[];
+  bundles: AdminBundle[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -289,6 +293,52 @@ function buildSeedCompanies(): AdminCompany[] {
   ];
 }
 
+function buildSeedBundles(): AdminBundle[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  const mk = (
+    id: string, name: string, description: string, image: string,
+    lines: AdminBundle["lines"], discountPct: number, popular: boolean, sortOrder: number,
+    status: BundleStatus, daysAgo: number,
+  ): AdminBundle => ({ id, name, description, image, lines, discountPct, popular, sortOrder, status, createdAt: iso(daysAgo), updatedAt: iso(daysAgo) });
+  return [
+    mk("bun-executive-office", "Executive Office Package", "Everything a C-suite office needs — coordinated desk, flagship chair and storage, one coordinated quote.", "desk", [
+      { productId: "sovereign-executive-desk", quantity: 1 },
+      { productId: "crown-leather-executive-chair", quantity: 1 },
+      { productId: "file-4-steel-cabinet", quantity: 1 },
+      { productId: "link-visitor-chair-chrome", quantity: 2 },
+    ], 10, false, 10, "active", 120),
+    mk("bun-team-workspace", "Team Workspace Package", "Complete four-person benching setup — workstations, task chairs and pedestals, ready to plug in.", "workstation", [
+      { productId: "bench-4-open-workstation", quantity: 1 },
+      { productId: "core-staff-task-chair", quantity: 4 },
+      { productId: "mobile-3-pedestal", quantity: 4 },
+    ], 10, true, 20, "active", 110),
+    mk("bun-meeting-room", "Meeting Room Package", "A boardroom that commands the room — conference table, seating and credenza in one quote.", "meeting", [
+      { productId: "connect-8-conference-table", quantity: 1 },
+      { productId: "nexus-conference-chair", quantity: 8 },
+      { productId: "credenza-72", quantity: 1 },
+    ], 8, false, 30, "active", 100),
+    mk("bun-startup", "Startup Bundle", "Launch your office from day one — six-person benching, chairs, storage and a reception counter.", "office", [
+      { productId: "bench-6-open-workstation", quantity: 1 },
+      { productId: "core-staff-task-chair", quantity: 6 },
+      { productId: "mobile-3-pedestal", quantity: 3 },
+      { productId: "first-linear-reception", quantity: 1 },
+    ], 7, false, 40, "active", 90),
+    mk("bun-managers-suite", "Manager's Suite", "A private office that projects leadership — desk, high-back seating, bookshelf and six-seat meeting table.", "chair", [
+      { productId: "sovereign-executive-desk", quantity: 1 },
+      { productId: "stride-manager-chair", quantity: 1 },
+      { productId: "bookshelf-glass-5-tier", quantity: 1 },
+      { productId: "connect-6-meeting-table", quantity: 1 },
+    ], 12, false, 50, "active", 80),
+    mk("bun-open-office", "Open Office Package", "Full open-plan setup with breakout seating — drafted by the merchandising team for review.", "sofa", [
+      { productId: "bench-4-open-workstation", quantity: 2 },
+      { productId: "core-staff-task-chair", quantity: 8 },
+      { productId: "locker-6-personal", quantity: 2 },
+      { productId: "marvel-3-seater-sofa", quantity: 1 },
+    ], 12, false, 60, "draft", 10),
+  ];
+}
+
 function buildSeedPriceLists(): AdminPriceList[] {
   const now = Date.now();
   const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
@@ -341,6 +391,20 @@ function buildSeedCollections(prods: AdminProduct[]): AdminCollection[] {
 }
 
 /** Price-list discount sanity: whole percent 0–60. */
+/** Normalise bundle lines: trim ids, clamp quantities, dedupe by product. */
+function sanitizeBundleLines(lines: AdminBundle["lines"] | undefined): AdminBundle["lines"] {
+  if (!Array.isArray(lines)) return [];
+  const merged = new Map<string, number>();
+  for (const line of lines) {
+    if (!line || typeof line.productId !== "string") continue;
+    const id = line.productId.trim();
+    if (!id) continue;
+    const qty = Math.max(1, Math.min(99, Math.floor(Number(line.quantity) || 1)));
+    merged.set(id, Math.min(99, (merged.get(id) ?? 0) + qty));
+  }
+  return [...merged.entries()].map(([productId, quantity]) => ({ productId, quantity }));
+}
+
 const clampPct = (n: number) => Math.min(60, Math.max(0, Math.round(Number(n) || 0)));
 const isoDate = (s?: string) => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? s : undefined);
 
@@ -548,7 +612,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -573,6 +637,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.collections)) db.collections = buildSeedCollections(db.products);
       if (!Array.isArray(db.companies)) db.companies = buildSeedCompanies();
       if (!Array.isArray(db.priceLists)) db.priceLists = buildSeedPriceLists();
+      if (!Array.isArray(db.bundles)) db.bundles = buildSeedBundles();
       if (!db.inventoryMeta || typeof db.inventoryMeta !== "object" || Array.isArray(db.inventoryMeta)) db.inventoryMeta = buildInventoryMeta(db.products);
       db.products.forEach((p, i) => {
         if (!p.sku) p.sku = `WDX-${String(i + 1001).padStart(4, "0")}`;
@@ -1068,6 +1133,86 @@ export const demoAdminApi: AdminApi = {
     let ok = false;
     update((db) => {
       const arr = (db.priceLists ??= []);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
+  },
+
+  async listBundles() {
+    const db = loadDb();
+    return [...(db.bundles ?? [])]
+      .map((b) => ({ ...b, lines: b.lines.map((l) => ({ ...l })) }))
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  },
+
+  async createBundle(input) {
+    let created: AdminBundle | undefined;
+    update((db) => {
+      const name = input.name.trim();
+      if (!name) return;
+      const now = new Date().toISOString();
+      const lines = sanitizeBundleLines(input.lines);
+      if (lines.length === 0) return;
+      const maxOrder = Math.max(0, ...(db.bundles ?? []).map((b) => b.sortOrder));
+      created = {
+        id: `bun-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+        name,
+        description: input.description?.trim() || undefined,
+        image: input.image || "desk",
+        lines,
+        discountPct: clampPct(input.discountPct),
+        popular: Boolean(input.popular),
+        sortOrder: typeof input.sortOrder === "number" ? input.sortOrder : maxOrder + 10,
+        status: "draft", // born as draft — owner activates deliberately
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.bundles ??= []).push(created);
+    });
+    if (!created) throw new Error("Give the bundle a name and at least one product.");
+    return created;
+  },
+
+  async updateBundle(id, patch) {
+    let updated: AdminBundle | undefined;
+    update((db) => {
+      const bundle = (db.bundles ??= []).find((x) => x.id === id);
+      if (!bundle) return;
+      if (patch.name !== undefined) { const n = patch.name.trim(); if (n) bundle.name = n; }
+      if (patch.description !== undefined) bundle.description = patch.description?.trim() || undefined;
+      if (patch.image !== undefined) bundle.image = patch.image || "desk";
+      if (patch.lines !== undefined) {
+        const lines = sanitizeBundleLines(patch.lines);
+        if (lines.length > 0) bundle.lines = lines;
+      }
+      if (patch.discountPct !== undefined) bundle.discountPct = clampPct(patch.discountPct);
+      if (patch.popular !== undefined) bundle.popular = Boolean(patch.popular);
+      if (patch.sortOrder !== undefined) bundle.sortOrder = patch.sortOrder;
+      bundle.updatedAt = new Date().toISOString();
+      updated = { ...bundle, lines: bundle.lines.map((l) => ({ ...l })) };
+    });
+    return updated;
+  },
+
+  async setBundleStatus(id, status: BundleStatus) {
+    let updated: AdminBundle | undefined;
+    update((db) => {
+      const bundle = (db.bundles ??= []).find((x) => x.id === id);
+      if (!bundle) return;
+      bundle.status = status;
+      bundle.updatedAt = new Date().toISOString();
+      updated = { ...bundle, lines: bundle.lines.map((l) => ({ ...l })) };
+    });
+    return updated;
+  },
+
+  async deleteBundle(id) {
+    let ok = false;
+    update((db) => {
+      const arr = (db.bundles ??= []);
       const i = arr.findIndex((x) => x.id === id);
       if (i === -1) return;
       arr.splice(i, 1);

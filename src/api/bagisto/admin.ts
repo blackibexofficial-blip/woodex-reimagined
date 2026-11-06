@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -424,6 +424,27 @@ export const bagistoAdminApi: AdminApi = {
 
   async deletePriceList(): Promise<boolean> {
     throw new BagistoApiError(501, "Price list deletion is not wired for Bagisto yet.");
+  },
+
+  // Curated room-package bundles have no verified Bagisto mapping yet — demo-only.
+  async listBundles(): Promise<AdminBundle[]> {
+    throw new BagistoApiError(501, "Bundles are demo-only until a Bagisto bundle mapping is verified — see docs/07-admin-integration §8.");
+  },
+
+  async createBundle(): Promise<AdminBundle> {
+    throw new BagistoApiError(501, "Bundle creation is not wired for Bagisto yet.");
+  },
+
+  async updateBundle(): Promise<AdminBundle | undefined> {
+    throw new BagistoApiError(501, "Bundle editing is not wired for Bagisto yet.");
+  },
+
+  async setBundleStatus(): Promise<AdminBundle | undefined> {
+    throw new BagistoApiError(501, "Bundle activation is not wired for Bagisto yet.");
+  },
+
+  async deleteBundle(): Promise<boolean> {
+    throw new BagistoApiError(501, "Bundle deletion is not wired for Bagisto yet.");
   },
 
   async listCollections(): Promise<AdminCollection[]> {

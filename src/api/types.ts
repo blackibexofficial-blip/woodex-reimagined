@@ -153,6 +153,41 @@ export interface NewAdminPriceListInput {
   endsAt?: string;
 }
 
+/* ── Bundles (merchandising) ───────────────────────────────────────────── */
+
+export type BundleStatus = "draft" | "active" | "archived";
+
+export interface AdminBundleLine {
+  productId: string;
+  quantity: number;
+}
+
+export interface AdminBundle {
+  id: string;
+  name: string;
+  description?: string;
+  status: BundleStatus;
+  /** Image key resolved by the renderers (see src/lib/bundleImages.ts). */
+  image: string;
+  lines: AdminBundleLine[];
+  /** Whole-percent off the catalogue sum — bundle price rounds to the nearest PKR 10. */
+  discountPct: number;
+  popular: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewAdminBundleInput {
+  name: string;
+  description?: string;
+  image: string;
+  lines: AdminBundleLine[];
+  discountPct: number;
+  popular?: boolean;
+  sortOrder?: number;
+}
+
 /* ── Collections (merchandising) ────────────────────────────────────────── */
 
 export type AdminCollectionKind = "manual" | "automatic";
@@ -430,6 +465,12 @@ export interface AdminApi {
   updatePriceList(id: string, patch: Partial<NewAdminPriceListInput>): Promise<AdminPriceList | undefined>;
   setPriceListStatus(id: string, status: PriceListStatus): Promise<AdminPriceList | undefined>;
   deletePriceList(id: string): Promise<boolean>;
+
+  listBundles(): Promise<AdminBundle[]>;
+  createBundle(input: NewAdminBundleInput): Promise<AdminBundle>;
+  updateBundle(id: string, patch: Partial<NewAdminBundleInput>): Promise<AdminBundle | undefined>;
+  setBundleStatus(id: string, status: BundleStatus): Promise<AdminBundle | undefined>;
+  deleteBundle(id: string): Promise<boolean>;
 
   listCollections(): Promise<AdminCollection[]>;
   /** Resolves a collection's member products (rule resolved live for automatic collections). */
