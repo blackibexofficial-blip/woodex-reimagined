@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminSalesChannel, AdminShowroom, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -40,6 +40,7 @@ const localOrderFrom = (input: NewOrderInput): AdminOrder => ({
   customerEmail: input.customerEmail ?? "",
   customerPhone: input.customerPhone,
   address: input.address,
+  channelId: input.channelId,
   city: input.city,
   items: input.items,
   subtotal: input.subtotal,
@@ -116,6 +117,7 @@ const mapOrder = (o: any): AdminOrder => ({
   customerPhone: o.customer_phone ?? o.addresses?.[0]?.phone ?? "",
   city: o.addresses?.[0]?.city ?? o.shipping_address?.city ?? "",
   address: o.addresses?.[0]?.address1 ?? o.shipping_address?.address1 ?? o.address1,
+  channelId: o.channel_code ?? o.channelId ?? undefined,
   items: (o.items ?? []).map((i: any) => ({
     id: String(i.product_id ?? i.id),
     name: i.name ?? i.product_name ?? "Item",
@@ -445,6 +447,56 @@ export const bagistoAdminApi: AdminApi = {
 
   async deleteBundle(): Promise<boolean> {
     throw new BagistoApiError(501, "Bundle deletion is not wired for Bagisto yet.");
+  },
+
+  // Sales channels & showroom registry are demo-backed master data. Bagisto channels exist
+  // server-side (channel_code) but the admin registry + attribution roll-up is not mapped yet.
+  async listSalesChannels(): Promise<AdminSalesChannel[]> {
+    throw new BagistoApiError(501, "Sales channel registry is demo-only until Bagisto channel mapping is verified — see docs/07-admin-integration §8.");
+  },
+
+  async createSalesChannel(): Promise<AdminSalesChannel> {
+    throw new BagistoApiError(501, "Channel creation is not wired for Bagisto yet.");
+  },
+
+  async updateSalesChannel(): Promise<AdminSalesChannel | undefined> {
+    throw new BagistoApiError(501, "Channel editing is not wired for Bagisto yet.");
+  },
+
+  async setSalesChannelEnabled(): Promise<AdminSalesChannel | undefined> {
+    throw new BagistoApiError(501, "Channel toggling is not wired for Bagisto yet.");
+  },
+
+  async deleteSalesChannel(): Promise<boolean> {
+    throw new BagistoApiError(501, "Channel deletion is not wired for Bagisto yet.");
+  },
+
+  async getChannelSales(): Promise<Array<{ channelId: string; orders: number; revenue: number }>> {
+    // Honest fallback: attribute everything to what the mapping can actually prove — web.
+    const local = JSON.parse(localStorage.getItem("woodex.web.orders") ?? "[]") as AdminOrder[];
+    if (!Array.isArray(local) || local.length === 0) return [];
+    const revenue = local.reduce((sum, o) => sum + (o.total ?? 0), 0);
+    return [{ channelId: "ch-web", orders: local.length, revenue }];
+  },
+
+  async listShowrooms(): Promise<AdminShowroom[]> {
+    throw new BagistoApiError(501, "Showroom registry is demo-only until a store-locator backend exists — see docs/07-admin-integration §8.");
+  },
+
+  async createShowroom(): Promise<AdminShowroom> {
+    throw new BagistoApiError(501, "Showroom creation is not wired for Bagisto yet.");
+  },
+
+  async updateShowroom(): Promise<AdminShowroom | undefined> {
+    throw new BagistoApiError(501, "Showroom editing is not wired for Bagisto yet.");
+  },
+
+  async setShowroomActive(): Promise<AdminShowroom | undefined> {
+    throw new BagistoApiError(501, "Showroom toggling is not wired for Bagisto yet.");
+  },
+
+  async deleteShowroom(): Promise<boolean> {
+    throw new BagistoApiError(501, "Showroom deletion is not wired for Bagisto yet.");
   },
 
   async listCollections(): Promise<AdminCollection[]> {

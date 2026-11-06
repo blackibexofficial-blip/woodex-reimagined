@@ -53,6 +53,7 @@ const Checkout = () => {
         customerEmail: formData.email.trim() || undefined,
         customerPhone: formData.phone.trim(),
         address: formData.address.trim(),
+        channelId: "ch-web",
         city: formData.city,
         notes: formData.notes.trim() || undefined,
         paymentMethod: paymentMethod === "bank" ? "bank-transfer" : "cod",

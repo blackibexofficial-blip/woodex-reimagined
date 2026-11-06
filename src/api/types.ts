@@ -28,6 +28,8 @@ export interface AdminOrder {
   customerPhone: string;
   /** Street address for fulfilment & the invoice (optional — legacy seeds lack it). */
   address?: string;
+  /** Sales channel this order came through (admin-managed registry). */
+  channelId?: string;
   city: string;
   items: AdminOrderItem[];
   subtotal: number;
@@ -185,6 +187,60 @@ export interface NewAdminBundleInput {
   lines: AdminBundleLine[];
   discountPct: number;
   popular?: boolean;
+  sortOrder?: number;
+}
+
+/* ── Sales channels & markets ─────────────────────────────────────────── */
+
+export type SalesChannelKind = "web" | "whatsapp" | "instagram" | "phone" | "showroom" | "b2b";
+
+export interface AdminSalesChannel {
+  id: string;
+  name: string;
+  kind: SalesChannelKind;
+  description?: string;
+  enabled: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewSalesChannelInput {
+  name: string;
+  kind: SalesChannelKind;
+  description?: string;
+  enabled?: boolean;
+  sortOrder?: number;
+}
+
+export interface AdminShowroom {
+  id: string;
+  name: string;
+  city: string;
+  address: string;
+  phone: string;
+  whatsapp?: string;
+  hours: string;
+  lat?: number;
+  lng?: number;
+  isHQ: boolean;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewShowroomInput {
+  name: string;
+  city: string;
+  address: string;
+  phone: string;
+  whatsapp?: string;
+  hours: string;
+  lat?: number;
+  lng?: number;
+  isHQ?: boolean;
+  active?: boolean;
   sortOrder?: number;
 }
 
@@ -385,6 +441,8 @@ export interface NewOrderItem {
 
 /** Payload from the storefront checkout → creates the order the admin sees. */
 export interface NewOrderInput {
+  /** Sales channel attribution — "ch-web" for storefront orders. */
+  channelId?: string;
   customerName: string;
   customerEmail?: string;
   customerPhone: string;
@@ -471,6 +529,19 @@ export interface AdminApi {
   updateBundle(id: string, patch: Partial<NewAdminBundleInput>): Promise<AdminBundle | undefined>;
   setBundleStatus(id: string, status: BundleStatus): Promise<AdminBundle | undefined>;
   deleteBundle(id: string): Promise<boolean>;
+
+  listSalesChannels(): Promise<AdminSalesChannel[]>;
+  createSalesChannel(input: NewSalesChannelInput): Promise<AdminSalesChannel>;
+  updateSalesChannel(id: string, patch: Partial<NewSalesChannelInput>): Promise<AdminSalesChannel | undefined>;
+  setSalesChannelEnabled(id: string, enabled: boolean): Promise<AdminSalesChannel | undefined>;
+  deleteSalesChannel(id: string): Promise<boolean>;
+  /** Attribution for non-cancelled orders, grouped by channel. */
+  getChannelSales(): Promise<Array<{ channelId: string; orders: number; revenue: number }>>;
+  listShowrooms(): Promise<AdminShowroom[]>;
+  createShowroom(input: NewShowroomInput): Promise<AdminShowroom>;
+  updateShowroom(id: string, patch: Partial<NewShowroomInput>): Promise<AdminShowroom | undefined>;
+  setShowroomActive(id: string, active: boolean): Promise<AdminShowroom | undefined>;
+  deleteShowroom(id: string): Promise<boolean>;
 
   listCollections(): Promise<AdminCollection[]>;
   /** Resolves a collection's member products (rule resolved live for automatic collections). */

@@ -38,6 +38,11 @@ import type {
   AdminBundle,
   NewAdminBundleInput,
   BundleStatus,
+  AdminSalesChannel,
+  NewSalesChannelInput,
+  SalesChannelKind,
+  AdminShowroom,
+  NewShowroomInput,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -62,6 +67,8 @@ interface DemoDb {
   companies: AdminCompany[];
   priceLists: AdminPriceList[];
   bundles: AdminBundle[];
+  salesChannels: AdminSalesChannel[];
+  showrooms: AdminShowroom[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -339,6 +346,48 @@ function buildSeedBundles(): AdminBundle[] {
   ];
 }
 
+function buildSeedSalesChannels(): AdminSalesChannel[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  const mk = (id: string, name: string, kind: SalesChannelKind, description: string, sortOrder: number, daysAgo: number): AdminSalesChannel =>
+    ({ id, name, kind, description, enabled: true, sortOrder, createdAt: iso(daysAgo), updatedAt: iso(daysAgo) });
+  return [
+    mk("ch-web", "Online Store", "web", "woodex.pk — every storefront order is attributed here.", 10, 200),
+    mk("ch-whatsapp", "WhatsApp", "whatsapp", "Orders taken over WhatsApp chat by the sales desk.", 20, 180),
+    mk("ch-instagram", "Instagram", "instagram", "Instagram DMs and Shop checkouts.", 30, 160),
+    mk("ch-phone", "Phone / Call Centre", "phone", "Phone orders keyed in by the support desk.", 40, 150),
+    mk("ch-showroom", "Showroom Walk-in", "showroom", "Walk-in purchases at physical showrooms, entered by staff.", 50, 140),
+    mk("ch-b2b", "B2B / Projects", "b2b", "Corporate and project contracts (fit-outs, CP&Q).", 60, 130),
+  ];
+}
+
+function buildSeedShowrooms(): AdminShowroom[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  const wa = "923001234567";
+  const mk = (
+    id: string, name: string, city: string, address: string, phone: string,
+    hours: string, lat: number | undefined, lng: number | undefined,
+    isHQ: boolean, sortOrder: number, daysAgo: number,
+  ): AdminShowroom =>
+    ({ id, name, city, address, phone, whatsapp: wa, hours, lat, lng, isHQ, active: true, sortOrder, createdAt: iso(daysAgo), updatedAt: iso(daysAgo) });
+  return [
+    mk("sr-lahore-hq", "WOODEX Lahore — Experience Centre", "Lahore (HQ)", "123 Gulberg III, Main Boulevard, Lahore", "+92 42 111 WOODEX", "Mon–Sat: 9am–7pm", 31.5204, 74.3587, true, 10, 200),
+    mk("sr-karachi", "WOODEX Karachi", "Karachi", "456 Clifton Block 5, Karachi", "+92 21 111 WOODEX", "Mon–Sat: 9am–7pm", 24.8607, 67.0011, false, 20, 180),
+    mk("sr-islamabad", "WOODEX Islamabad", "Islamabad", "789 Blue Area, F-7 Markaz, Islamabad", "+92 51 111 WOODEX", "Mon–Sat: 10am–6pm", 33.7294, 73.0931, false, 30, 160),
+    mk("sr-rawalpindi", "WOODEX Rawalpindi", "Rawalpindi", "44 Saddar Road, Committee Chowk, Rawalpindi", "+92 51 222 WOODEX", "Mon–Sat: 9am–7pm", 33.6007, 73.0679, false, 40, 150),
+    mk("sr-faisalabad", "WOODEX Faisalabad", "Faisalabad", "12 D-Ground, Faisalabad", "+92 41 333 WOODEX", "Mon–Sat: 9am–6pm", 31.4504, 73.135, false, 50, 140),
+  ];
+}
+
+function channelFor(email: string, subtotal: number): string {
+  let h = 0;
+  const key = `${email}:${subtotal}`;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  const b = h % 100;
+  return b < 55 ? "ch-web" : b < 70 ? "ch-whatsapp" : b < 80 ? "ch-instagram" : b < 92 ? "ch-showroom" : b < 97 ? "ch-phone" : "ch-b2b";
+}
+
 function buildSeedPriceLists(): AdminPriceList[] {
   const now = Date.now();
   const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
@@ -580,6 +629,7 @@ function buildSeed(): DemoDb {
       paymentMethod,
       status,
       placedAt: placed.toISOString(),
+      channelId: channelFor(customer.email, subtotal),
     });
   }
   orderDrafts.sort((a, b) => a.placedAt.localeCompare(b.placedAt));
@@ -612,7 +662,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -638,6 +688,11 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.companies)) db.companies = buildSeedCompanies();
       if (!Array.isArray(db.priceLists)) db.priceLists = buildSeedPriceLists();
       if (!Array.isArray(db.bundles)) db.bundles = buildSeedBundles();
+      if (!Array.isArray(db.salesChannels)) db.salesChannels = buildSeedSalesChannels();
+      if (!Array.isArray(db.showrooms)) db.showrooms = buildSeedShowrooms();
+      for (const o of db.orders) {
+        if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
+      }
       if (!db.inventoryMeta || typeof db.inventoryMeta !== "object" || Array.isArray(db.inventoryMeta)) db.inventoryMeta = buildInventoryMeta(db.products);
       db.products.forEach((p, i) => {
         if (!p.sku) p.sku = `WDX-${String(i + 1001).padStart(4, "0")}`;
@@ -1141,6 +1196,171 @@ export const demoAdminApi: AdminApi = {
     return ok;
   },
 
+  async listSalesChannels() {
+    return [...(loadDb().salesChannels ?? [])]
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
+      .map((c) => ({ ...c }));
+  },
+
+  async createSalesChannel(input) {
+    let created: AdminSalesChannel | undefined;
+    update((db) => {
+      const name = input.name.trim();
+      if (!name) return;
+      const kinds = new Set(["web", "whatsapp", "instagram", "phone", "showroom", "b2b"]);
+      const now = new Date().toISOString();
+      const maxOrder = Math.max(0, ...(db.salesChannels ?? []).map((c) => c.sortOrder));
+      created = {
+        id: `ch-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+        name,
+        kind: kinds.has(input.kind) ? input.kind : "web",
+        description: input.description?.trim() || undefined,
+        enabled: input.enabled ?? true,
+        sortOrder: typeof input.sortOrder === "number" ? input.sortOrder : maxOrder + 10,
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.salesChannels ??= []).push(created);
+    });
+    if (!created) throw new Error("Give the channel a name.");
+    return created;
+  },
+
+  async updateSalesChannel(id, patch) {
+    let updated: AdminSalesChannel | undefined;
+    update((db) => {
+      const ch = (db.salesChannels ??= []).find((x) => x.id === id);
+      if (!ch) return;
+      if (patch.name !== undefined) { const n = patch.name.trim(); if (n) ch.name = n; }
+      if (patch.kind !== undefined) ch.kind = patch.kind;
+      if (patch.description !== undefined) ch.description = patch.description?.trim() || undefined;
+      if (patch.enabled !== undefined) ch.enabled = Boolean(patch.enabled);
+      if (patch.sortOrder !== undefined) ch.sortOrder = patch.sortOrder;
+      ch.updatedAt = new Date().toISOString();
+      updated = { ...ch };
+    });
+    return updated;
+  },
+
+  async setSalesChannelEnabled(id, enabled: boolean) {
+    let updated: AdminSalesChannel | undefined;
+    update((db) => {
+      const ch = (db.salesChannels ??= []).find((x) => x.id === id);
+      if (!ch) return;
+      ch.enabled = Boolean(enabled);
+      ch.updatedAt = new Date().toISOString();
+      updated = { ...ch };
+    });
+    return updated;
+  },
+
+  async deleteSalesChannel(id) {
+    if (id === "ch-web") throw new Error("Online Store is the storefront default — disable it instead of deleting.");
+    const db = loadDb();
+    const attributed = db.orders.filter((o) => o.channelId === id).length;
+    if (attributed > 0) throw new Error(`${attributed} order(s) are attributed to this channel — disable it instead of deleting.`);
+    let ok = false;
+    update((db2) => {
+      const arr = (db2.salesChannels ??= []);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
+  },
+
+  async getChannelSales() {
+    const db = loadDb();
+    const agg = new Map<string, { channelId: string; orders: number; revenue: number }>();
+    for (const o of db.orders) {
+      if (o.status === "cancelled") continue;
+      const cid = o.channelId ?? "ch-web";
+      const a = agg.get(cid) ?? { channelId: cid, orders: 0, revenue: 0 };
+      a.orders += 1;
+      a.revenue += o.total;
+      agg.set(cid, a);
+    }
+    return [...agg.values()].sort((x, y) => y.revenue - x.revenue);
+  },
+
+  async listShowrooms() {
+    return [...(loadDb().showrooms ?? [])].sort((a, b) => a.sortOrder - b.sortOrder).map((r) => ({ ...r }));
+  },
+
+  async createShowroom(input) {
+    let created: AdminShowroom | undefined;
+    update((db) => {
+      const name = input.name.trim(); const city = input.city.trim(); const address = input.address.trim(); const phone = input.phone.trim(); const hours = input.hours.trim();
+      if (!name || !city || !address || !phone || !hours) return;
+      const now = new Date().toISOString();
+      const maxOrder = Math.max(0, ...(db.showrooms ?? []).map((r) => r.sortOrder));
+      if (input.isHQ) (db.showrooms ??= []).forEach((r) => { r.isHQ = false; });
+      created = {
+        id: `sr-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+        name, city, address, phone,
+        whatsapp: input.whatsapp?.trim() || undefined,
+        hours,
+        lat: typeof input.lat === "number" && Number.isFinite(input.lat) ? input.lat : undefined,
+        lng: typeof input.lng === "number" && Number.isFinite(input.lng) ? input.lng : undefined,
+        isHQ: Boolean(input.isHQ),
+        active: input.active ?? true,
+        sortOrder: typeof input.sortOrder === "number" ? input.sortOrder : maxOrder + 10,
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.showrooms ??= []).push(created);
+    });
+    if (!created) throw new Error("Name, city, address, phone and hours are required.");
+    return created;
+  },
+
+  async updateShowroom(id, patch) {
+    let updated: AdminShowroom | undefined;
+    update((db) => {
+      const room = (db.showrooms ??= []).find((x) => x.id === id);
+      if (!room) return;
+      if (patch.isHQ === true) (db.showrooms ?? []).forEach((r) => { if (r.id !== id) r.isHQ = false; });
+      for (const key of ["name", "city", "address", "phone", "hours"] as const) {
+        const v = patch[key];
+        if (typeof v === "string" && v.trim()) room[key] = v.trim();
+      }
+      if (patch.whatsapp !== undefined) room.whatsapp = patch.whatsapp?.trim() || undefined;
+      if (patch.lat !== undefined) room.lat = typeof patch.lat === "number" && Number.isFinite(patch.lat) ? patch.lat : undefined;
+      if (patch.lng !== undefined) room.lng = typeof patch.lng === "number" && Number.isFinite(patch.lng) ? patch.lng : undefined;
+      if (patch.isHQ !== undefined) room.isHQ = Boolean(patch.isHQ);
+      if (patch.active !== undefined) room.active = Boolean(patch.active);
+      if (patch.sortOrder !== undefined) room.sortOrder = patch.sortOrder;
+      room.updatedAt = new Date().toISOString();
+      updated = { ...room };
+    });
+    return updated;
+  },
+
+  async setShowroomActive(id, active: boolean) {
+    let updated: AdminShowroom | undefined;
+    update((db) => {
+      const room = (db.showrooms ??= []).find((x) => x.id === id);
+      if (!room) return;
+      room.active = Boolean(active);
+      room.updatedAt = new Date().toISOString();
+      updated = { ...room };
+    });
+    return updated;
+  },
+
+  async deleteShowroom(id) {
+    let ok = false;
+    update((db) => {
+      const arr = (db.showrooms ??= []);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
+  },
+
   async listBundles() {
     const db = loadDb();
     return [...(db.bundles ?? [])]
@@ -1568,6 +1788,7 @@ export const demoAdminApi: AdminApi = {
         customerEmail: input.customerEmail ?? "",
         customerPhone: input.customerPhone,
         address: input.address,
+        channelId: input.channelId ?? "ch-web",
         city: input.city,
         items: input.items,
         subtotal: input.subtotal,
