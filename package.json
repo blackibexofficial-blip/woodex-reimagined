@@ -11,7 +11,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "e2e": "node e2e/smoke.mjs",
+    "e2e": "bash e2e/run.sh",
     "e2e:a11y": "node e2e/a11y.mjs"
   },
   "dependencies": {
