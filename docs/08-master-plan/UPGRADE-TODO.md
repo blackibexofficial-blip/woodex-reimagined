@@ -302,10 +302,16 @@ legacy 81-page catalogue **stays separate** (furniture site only). See plan §11
   the demo DB; everyone saves drafts, publish = owner-only interim rule), history ≤20 + revert-as-draft, `/lab/:slug`
   renders any-status pages, seeded published `home` page, bagisto = 501 stubs (Wave 7). Gates: tsc 0 · eslint 0
   errors · production build ✓ · e2e 35/35 (+2) · live CRUD acceptance 10/10, 0 console errors.
-- [ ] **PB-2** Wave 2 — Sections & Elements libraries: 40-section UI-kit catalogue (thumbnails, label-in-Layers,
-  Sections/UI kit/Templates/Images tabs, category chips, click-to-add-after) + Elements palette (BASIC+WIDGETS)
-  + Layers panel (select/reorder/hide/lock). **Elements kit completion via free MIT Tailgrids per plan §5.3**
-  (vendored `src/components/tailgrids/*`, token-remapped, house-first, attribution + hex/Pro grep gate). Est. 5–7 d.
+- [x] **PB-2** Wave 2 — Sections & Elements libraries: 40-section UI-kit catalogue (inline-SVG thumbnails,
+  label-in-Layers) + Elements palette (BASIC+WIDGETS) + Layers panel (select/reorder/hide/lock). **LOCAL DONE 2026-11-07
+  (unpushed; delivery vehicle = PR #4 branch):** `catalogue-a/b.tsx` (40 sections, 10 categories) + `catalogue.ts` (manifest,
+  exactly-40 import-time guard) + `elements.tsx` (17 elements) + `library.tsx` (Library left-rail plugin: Sections | UI kit tabs —
+  Templates/Images disabled "Wave 3", search, chips with counts, "＋" appends at end) + Puck `outlinePlugin` for Layers + hidden/locked
+  radios on every block + `resolveLayerPermissions`. Insertion = append-at-end (insert-after-selected deferred to Wave 4).
+  **Tailgrids (free MIT only)** vendored to `src/components/tailgrids/*`, token-remapped, attribution + hex/Pro grep gate PASS;
+  wired (no museum files). Settings banner refreshed (Bagisto 501 stubs called out). Gates: tsc 0 · eslint 0 · build ✓ ·
+  e2e 39/39 (+4) · live acceptance (iframe canvas, see plan §5.4): add → hide (placeholder) → lock → save → storefront hides the block;
+  seeded `/lab/home` intact; 0 console errors.
 - [ ] **PB-3** Wave 3 — Theme: whole-website token panel (colours/fonts/base/heading scale), CSS custom
   properties, section skins Original/White/Cream/Navy, versioned `theme` singleton snapshots/restore. Est. 3–4 d.
 - [ ] **PB-4** Wave 4 — Inspector parity: Content/Style/Advanced tabs; Desktop/Tablet/Mobile × Normal/Hover;

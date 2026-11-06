@@ -398,6 +398,26 @@ Dialog/Toast etc. stay house-kit.
 has), charts beyond Recharts usage (stats block uses Recharts already in repo).
 **Attribution:** `THIRD_PARTY_LICENSES.md` gets a Tailgrids MIT entry; README credits Tailgrids for vendored elements.
 
+### 5.4 References (Wave 2 usage)
+
+- **TailGrids** — MIT © 2025 Tailgrids (<https://github.com/TailGrids/tailgrids>). Only the free, MIT-licensed
+  components; copied at source level into `src/components/tailgrids/{callout,divider,pricing-card,stats-card,tabs}.tsx`,
+  token-remapped to WOODEX tokens, with per-file attribution headers. **No** `@tailgrids/*` dependency, no Pro/premium
+  files; `THIRD_PARTY_LICENSES.md` (repo root) reproduces the license verbatim. Wire usage: `PricingToggled`→`tabs`,
+  `PricingCards`→`pricing-card`, `StatsRow`→`stats-card`, `NewsletterCard`→`callout`, `DividerLine` (element)→`divider`.
+- **Puck 0.24 plugin APIs** — `@puckeditor/core` (MIT): official `outlinePlugin({ label: "Layers" })` for the Layers rail
+  (collapse-all, per-item duplicate/delete); custom left-rail plugin slot for the **Library** (Sections | UI kit tabs,
+  search, category chips, inline-SVG thumbnails, counts); dynamic `resolvePermissions` per block for lock enforcement
+  (`drag/duplicate/delete/edit/insert = false`).
+- **Recharts** (existing admin dependency, already used on Analytics/Dashboard) — lazy-loaded for the `ChartBlock`
+  catalogue section via `React.lazy` so charts stay out of the main storefront bundle (own ~422 kB chunk, admin flow only).
+- **Decision (sections in v1):** sections are top-level blocks in `content[]` — no section nesting until the Wave 4
+  inspector (Slots). Hidden blocks render `null` on the storefront; the editor shows an amber dashed placeholder badge.
+  Locked blocks are inert (native Puck enforcement) and the panel refuses field edits.
+- **Insertion UX:** Library "＋" appends the block at the end of the page (insert-after-selected needs Puck's selection
+  internals — probed and deferred, Wave 4). A `key`-remount after insert re-reads `data` so canvas + Layers reflect the new block.
+- **Canvas is an iframe** (`preview-frame`, `about:srcdoc`) — all in-canvas automation (e2e, acceptance) must query the frame, not the top document.
+
 
 ---
 
@@ -414,7 +434,7 @@ starter document (`src/pages-builder/starter.ts`); localStorage persistence; adm
 **Known limitations:** per-browser localStorage; no media picker (image URL text field); scaled canvas;
 no multi-page list. All addressed in W1–W2.
 
-### Wave 1 — Foundation: pages slice, tree & draft/publish `[open]` (3–4 d)
+### Wave 1 — Foundation: pages slice, tree & draft/publish `[done]` (delivered 2026-11-06 on the PR #4 branch; owner-gated merge)
 Demo-DB `pages` slice (same pattern as showrooms/warranty); admin **Pages** workspace per §0A.2: folder tree,
 search, `+ New`, top-level model with slugs, draft⇄published, per-page duplicate, history (cap 20) + one-click
 revert, slug-collision guard vs `src/App.tsx` routes (unit test). Pages list shows status, updatedAt, SEO score
@@ -422,7 +442,7 @@ badge (once W5 lands; placeholder chip before). Publish persists the document on
 **Gate:** CRUD round-trip live check; publish/unpublish flips storefront render; revert works; folders CRUD;
 e2e gains ≥2 page-store checks.
 
-### Wave 2 — Sections & Elements libraries `[open]` (5–7 d)
+### Wave 2 — Sections & Elements libraries `[done]` (delivered 2026-11-07, PR #4 branch; owner-gated merge)
 Build the §5.1/§5.2/**§5.3** catalogues (elements may be vendored from **free MIT Tailgrids** per §5.3 rules) as Puck-registered components with WOODEX tokens: 40 sections across
 10 categories with thumbnail cards, "Label shown in Layers", tabs **Sections · UI kit · Templates · Images**,
 category chips (All 40 · Hero · Features · Pricing · Stats & charts · Testimonials · Team ·
@@ -431,6 +451,20 @@ and the Elements palette (BASIC + WIDGETS). **Layers panel**: select/reorder/hid
 label-driven layer names; lock prevents edit until unlocked.
 **Gate:** every catalogued section mounts with sane defaults; all elements placeable; hide/lock honored on
 storefront render; alt text required for Image; e2e +4.
+
+
+**Delivered 2026-11-07 (PR #4 branch).** `src/pages-builder/`: `shell.tsx` (BuilderModeContext store/editor, common hidden/locked layer fields,
+`resolveLayerPermissions`), `elements.tsx` (17 elements, fixed lucide icon set), `sections/catalogue-a.tsx` (18 sections: Hero×6, Features×6,
+Pricing×3, Stats×3), `sections/catalogue-b.tsx` (22 sections: Testimonials×3, Team×2, CTA×3, Content×4, Forms×4, Components×6),
+`sections/ChartBlock.tsx` (Recharts Bar|Line, lazy), `catalogue.ts` (manifest — exactly-40 guard at import, chips with counts),
+`thumbs.tsx` (inline-SVG category glyphs), `library.tsx` (Library left-rail plugin: Sections/UI kit tabs + Templates/Images disabled "Wave 3",
+search, chips, all-40), `blocks.tsx` rewired (legacy SectionHeading/ImageBanner/ButtonLink kept for seed compat; catalogue FeatureGrid supersedes
+the legacy one, same props contract). `blocksPlugin` + `libraryPlugin` + `outlinePlugin({label:"Layers"})` + `fieldsPlugin` wired in PageEditor;
+`LibraryActionsContext.insert` appends at end (crypto-ish id, per-block `defaultProps`, `key` remount, toast "Added — drag to reorder").
+Tailgrids MIT vendored + token-remapped (`src/components/tailgrids/*`) and wired — no museum files; grep gate: no foreign palette hex, no Pro.
+Gates: tsc 0 · eslint 0 errors · production build ✓ (charts stay in their own lazy chunk) · e2e **39/39** (+4: library rail, layers insert, UI kit, /lab/home) ·
+acceptance (editor iframe): add → select → hide → amber placeholder → lock engaged → save → `/lab/home` hides the block, seeded page intact, 0 console errors.
+Note: "click to add after the selected section" deferred — Library appends at end (Puck selection not exposed safely); tracked for Wave 4.
 
 ### Wave 3 — Theme: whole-website tokens `[open]` (3–4 d)
 §0A.6 panel exactly as observed, plus **two bundled presets** (owner §11-Q1): `woodex-reimagined` (default) and `woodex-legacy-interior` (brand navy #0C1628 · beige/light surface · Plus Jakarta Sans body+heading): COLOURS (brand navy / text / muted text / page background / light surface /
@@ -657,6 +691,18 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   `package.json` (npm `ci` cannot run) and bun.lock resolves tarballs from the Lovable pkg.dev cache (blocked here);
   local verification used public npmjs grafts under node_modules only — tracked files untouched; CI (bun + pkg.dev)
   remains the canonical gate.
+- **2026-11-07 (Wave 2, local)** — Sections & Elements libraries + Layers + Tailgrids completion implemented on
+  `arena/51eb86ae-woodex-reimagined` (unpushed at time of writing; PR #4 delivery vehicle). All §5.2 sections mounted
+  with hidden/locked layer fields + `resolveLayerPermissions`; hidden renders `null` on storefront (amber placeholder in editor);
+  lock is inert in canvas and refused at the panel (verified live). Layers = official `outlinePlugin` (custom TSX panel cancelled —
+  Puck 0.24 ships built-in Outline). Library rail = Sections | UI kit (+Templates/Images disabled, "Wave 3"); chips with live counts
+  ("All 40" …), search, inline-SVG thumbnails. Insertion = append-at-end via `LibraryActionsContext` + `key` remount (insert-after-selection
+  probed, deferred). Elements kit completed with **free MIT Tailgrids only** — vendored to `src/components/tailgrids/*`, token-remapped,
+  attribution in `THIRD_PARTY_LICENSES.md` (verbatim MIT); grep gate: zero foreign palette hex / Pro references; house-first (no existing house
+  component was replaced except the legacy FeatureGrid, superseded by the catalogue twin with identical props). Recharts kept out of the main
+  bundle (lazy Chunk). Settings banner no longer overpromises a one-env Bagisto flip (501 stubs called out honestly). Gates: tsc 0 · eslint 0 ·
+  build ✓ · e2e **39/39** (+4) · live acceptance (iframe canvas): add → hide (placeholder) → lock → save → storefront hides the block, seeded
+  page intact, 0 console errors. Insert-after-selection + section Slots land with the Wave 4 inspector; MCP seo tools follow as a separate small PR.
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
 - **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:

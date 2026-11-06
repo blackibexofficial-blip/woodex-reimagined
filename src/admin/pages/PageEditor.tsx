@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, History, Loader2, Save, Undo2, FileWarning } from "lucide-react";
-import { Puck } from "@puckeditor/core";
+import { Puck, blocksPlugin, outlinePlugin, fieldsPlugin } from "@puckeditor/core";
 import "@/pages-builder/puck-editor.css";
 import type { Data } from "@puckeditor/core";
 import { toast } from "sonner";
@@ -10,6 +10,8 @@ import type { AdminPage, AdminPageDoc } from "@/api/types";
 import { formatDateTime } from "@/admin/components";
 import { isOwnerSession } from "@/lib/owner";
 import { woodexConfig } from "@/pages-builder/blocks";
+import { libraryPlugin } from "@/pages-builder/library";
+import { BuilderModeContext, LibraryActionsContext } from "@/pages-builder/shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +37,7 @@ export default function AdminPageEditor() {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [doc, setDoc] = useState<AdminPageDoc | null>(null);
+  const [puckKey, setPuckKey] = useState(0); // remount Puck after Library inserts so canvas + Layers reflect the new block
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -91,6 +94,23 @@ export default function AdminPageEditor() {
     toast.success(publish ? `Published "${updated.title}" (v${updated.version}).` : `"${updated.title}" unpublished — draft again.`);
     if (publish && pageSlug !== updated.slug) navigate(`/admin/pages/${updated.slug}`, { replace: true });
   }, [api, page, dirty, owner, pageSlug, navigate, saveDraft]);
+
+  const insertBlock = useCallback((type: string, index?: number) => {
+    setDoc((prev) => {
+      if (!prev) return prev;
+      const cfg = (woodexConfig.components as Record<string, { defaultProps?: Record<string, unknown> } | undefined>)[type];
+      if (!cfg) return prev;
+      const id = `pb-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`;
+      const block = { type, props: { ...(cfg.defaultProps ?? {}), id } };
+      const content = [...prev.content];
+      const at = index === undefined || index < 0 || index > content.length ? content.length : index;
+      content.splice(at, 0, block as never);
+      return { ...prev, content };
+    });
+    setDirty(true);
+    setPuckKey((k) => k + 1); // force Puck to re-read `data`
+    toast.success("Block added — drag to reorder, or manage it in the Layers panel.");
+  }, []);
 
   const restoreVersion = useCallback(async (version: number) => {
     if (!page) return;
@@ -187,12 +207,18 @@ export default function AdminPageEditor() {
 
       {/* Editor */}
       <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border shadow-sm">
-        <Puck
-          config={woodexConfig}
-          data={toPuckData(doc)}
-          onChange={(data) => { setDoc(fromPuckData(data)); setDirty(true); }}
-          onPublish={() => doPublish(page.status !== "published")}
-        />
+        <LibraryActionsContext.Provider value={{ insert: (type: string) => insertBlock(type) }}>
+          <BuilderModeContext.Provider value="editor">
+            <Puck
+              key={puckKey}
+              config={woodexConfig}
+              data={toPuckData(doc)}
+              plugins={[blocksPlugin(), libraryPlugin(), outlinePlugin({ label: "Layers" }), fieldsPlugin()]}
+              onChange={(data) => { setDoc(fromPuckData(data)); setDirty(true); }}
+              onPublish={() => doPublish(page.status !== "published")}
+            />
+          </BuilderModeContext.Provider>
+        </LibraryActionsContext.Provider>
       </div>
     </div>
   );
