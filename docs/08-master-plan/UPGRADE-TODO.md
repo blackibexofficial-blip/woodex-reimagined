@@ -97,7 +97,10 @@ slices instead of duplicating them.
   `materializeOrder` path (channel `manual`, discountPct/discountAmount on the order). Seeded QOT-1001
   (Bilal Ahmed · sent) + QOT-1002 (Ravi Agro Foods · accepted). Leads nav label clarified to "Leads".
   Live check 24/24 (incl. invoice Discount row · 0 console errors) · e2e 33/33 · Bagisto stubbed 501.
-- [ ] **P2.6** Suppliers — supplier master (name, contact, city, payment terms, notes); referenced by POs.
+- [x] **P2.6** Suppliers — `/admin/suppliers`: purchasing master (company, contact, city, phone/email, NTN,
+  payment terms advance/COD/Net-15/30/45, notes, active flag); searchable; delete blocked when referenced by
+  POs (deactivate instead); live check 13/13 · e2e 33/33 · Bagisto stubbed 501. Seeded SUP-1001 Pak Wood &
+  Timber Co · SUP-1002 Sheikh Sawmills · SUP-1003 MetalKraft · SUP-1004 Al-Noor Foam. Nav group "Purchasing".
 - [ ] **P2.7** Purchase Orders — create PO to supplier (lines, expected date); receive against it (full/partial);
   receipt writes inbound stock movements; status draft → sent → partial → received.
 - [ ] **P2.8** Stock Transfers — showroom↔showroom / warehouse↔showroom transfer records; movement type
