@@ -3,12 +3,12 @@
  *
  * Three blocks:
  *   admin     — login tabs, demo gate, analytics, categories CRUD + in-use guard,
- *               media upload/delete, dashboard render (16 checks)
+ *               media upload/delete, dashboard render, Pages workspace, Wave 2\n *               library/layers/lab checks (22 checks)
  *   seo       — canonical + Organization/WebSite/LocalBusiness JSON-LD sitewide;
  *               Product/Article/Breadcrumb per page; zero lovable.app references (13 checks)
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
  *
- * Exit 0 = all checks pass. Run: bun run e2e
+ * Total: 39 checks (22 admin + 13 seo + 3 lazy + 1 no-console admin rail). Run: bun run e2e
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -151,6 +151,45 @@ async function adminSuite(browser) {
   await page.goto(`${ADMIN}/dashboard`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Revenue — last 30 days", 20000);
   ok("dashboard still renders", true);
+  await clickByText("a", "Pages");
+  await page.waitForFunction(() => location.pathname.endsWith("/admin/pages"), { timeout: 10000 }).catch(() => {});
+  ok("sidebar Pages link routes to /admin/pages", await page.evaluate(() => location.pathname.endsWith("/admin/pages")));
+  await waitText("Builder pages", 10000).catch(() => {});
+  const pagesSeeded = await page.evaluate(() => {
+    const t = document.body.innerText.toLowerCase();
+    return t.includes("home") && t.includes("published");
+  });
+  ok("Pages workspace lists the seeded published home page", pagesSeeded);
+
+  // --- Wave 2: Library rail + Layers outline + lab render ---
+  const clickRail = (text) =>
+    page.evaluate((t) => {
+      const el = [...document.querySelectorAll('[class*="_NavItem-link"]')].find((n) => n.textContent.trim() === t);
+      if (!el) return false;
+      el.click();
+      return true;
+    }, text);
+  await page.goto(`${ADMIN}/pages/home`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForSelector("input[aria-label='Page title']", { timeout: 15000 });
+  await clickRail("Library");
+  await waitText("All 40", 15000);
+  ok("library rail opens with All 40 sections", true);
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll("button")].find((n) => (n.getAttribute("aria-label") || "") === "Add Hero — centered with trust row");
+    btn && btn.click();
+  });
+  await new Promise((r) => setTimeout(r, 1200));
+  await clickRail("Layers");
+  await waitText("Hero — centered with trust row", 15000);
+  ok("inserted block shows up in the Layers outline", true);
+  await clickRail("Library");
+  await waitText("UI kit", 5000);
+  await clickByText("button", "UI kit");
+  await waitText("Divider line", 10000);
+  ok("UI kit tab lists elements", true);
+  await page.goto(`${BASE}/lab/home`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("Furniture that outlasts the brief", 15000);
+  ok("/lab/home renders the built page", true);
   ok("no console/page errors (admin flow)", logs.length === 0);
   await page.close();
 }

@@ -1196,6 +1196,72 @@ export interface ListParams {
 }
 
 /** The contract the admin panel implements against. Demo + Bagisto both satisfy this. */
+/** Pages builder (Wave 1) — a builder page stored on the admin side. */
+export interface AdminPageContentItem {
+  type: string;
+  props: Record<string, unknown> & { id?: string };
+}
+export interface AdminPageDoc {
+  root: { props: Record<string, unknown> };
+  content: AdminPageContentItem[];
+}
+export interface AdminPageSeo {
+  title?: string;
+  description?: string;
+  focusKeyphrase?: string;
+}
+export interface AdminPageHistoryEntry {
+  version: number;
+  publishedAt: string;
+  title: string;
+  doc: AdminPageDoc;
+}
+export interface AdminPage {
+  id: string;
+  slug: string;
+  title: string;
+  /** "page" = normal routable builder page; "chrome" = linked master (header/footer/announcement), reserved for Wave 4. */
+  kind: "page" | "chrome";
+  folderId: string | null;
+  status: "draft" | "published";
+  doc: AdminPageDoc;
+  seo?: AdminPageSeo;
+  updatedAt: string;
+  publishedAt: string | null;
+  version: number;
+  history: AdminPageHistoryEntry[];
+}
+export interface AdminPageFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
+}
+export interface NewPageInput {
+  title: string;
+  slug?: string;
+  folderId?: string | null;
+  /** Which seed to start from: the three-block home starter (default) or an empty document. */
+  starter?: "starter" | "blank";
+  kind?: "page" | "chrome";
+}
+export interface UpdatePageInput {
+  title?: string;
+  slug?: string;
+  folderId?: string | null;
+  doc?: AdminPageDoc;
+  seo?: AdminPageSeo;
+}
+export interface NewPageFolderInput {
+  name: string;
+  parentId?: string | null;
+}
+export interface UpdatePageFolderInput {
+  name?: string;
+  parentId?: string | null;
+  sortOrder?: number;
+}
+
 export interface AdminApi {
   getDashboardStats(): Promise<DashboardStats>;
   getRevenueSeries(days: number): Promise<RevenuePoint[]>;
@@ -1354,6 +1420,20 @@ export interface AdminApi {
   getWarrantyPage(): Promise<AdminWarrantyPage>;
   updateWarrantyPage(content: AdminWarrantyPage): Promise<AdminWarrantyPage>;
   resetWarrantyPage(): Promise<AdminWarrantyPage>;
+  /** Pages builder (Wave 1) — demo-DB pages slice; documents are Puck-shaped JSON. */
+  listPages(kind?: "page" | "chrome"): Promise<AdminPage[]>;
+  getPage(idOrSlug: string): Promise<AdminPage | undefined>;
+  createPage(input: NewPageInput): Promise<AdminPage>;
+  updatePage(id: string, patch: UpdatePageInput): Promise<AdminPage | undefined>;
+  publishPage(id: string): Promise<AdminPage | undefined>;
+  unpublishPage(id: string): Promise<AdminPage | undefined>;
+  duplicatePage(id: string): Promise<AdminPage | undefined>;
+  deletePage(id: string): Promise<boolean>;
+  revertPage(id: string, version: number): Promise<AdminPage | undefined>;
+  listPageFolders(): Promise<AdminPageFolder[]>;
+  createPageFolder(input: NewPageFolderInput): Promise<AdminPageFolder>;
+  updatePageFolder(id: string, patch: UpdatePageFolderInput): Promise<AdminPageFolder | undefined>;
+  deletePageFolder(id: string): Promise<boolean>;
   listMaterials(): Promise<AdminMaterial[]>;
   createMaterial(input: NewMaterialInput): Promise<AdminMaterial>;
   updateMaterial(id: string, patch: Partial<NewMaterialInput>): Promise<AdminMaterial | undefined>;

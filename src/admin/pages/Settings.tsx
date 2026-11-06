@@ -126,9 +126,11 @@ export default function AdminSettings() {
             ))}
           </ul>
           <p className="mt-4 rounded-lg bg-secondary px-3 py-2 text-[11px] leading-5 text-muted-foreground">
-            Mode: <span className="font-mono font-semibold">{config.apiMode}</span>. Switch to a live Bagisto backend by setting
-            <span className="font-mono"> VITE_API_MODE=bagisto </span> and the keys above — the admin UI needs no changes.
-            Full guide: <span className="font-mono">docs/07-admin-integration/README.md</span>
+            Mode: <span className="font-mono font-semibold">{config.apiMode}</span>. This admin is running on the seeded demo dataset,
+            standing in for Bagisto tables. Going live is NOT a one-line env flip yet — the <code className="rounded bg-muted px-1">/api/admin/*</code> endpoints
+            return 501 until the Laravel/Bagisto proxy ships; see <span className="font-mono">docs/07-admin-integration/README.md</span>.
+            The page builder (<span className="font-mono">Pages</span>) is fully usable in demo mode; published pages render at
+            <span className="font-mono"> /lab/:slug</span> and persist to the on-device demo database.
           </p>
         </SectionCard>
 

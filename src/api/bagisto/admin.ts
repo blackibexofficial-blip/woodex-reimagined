@@ -21,6 +21,8 @@ import { config } from "@/config/env";
 import type {
   AdminHomepageSections,
   AdminWarrantyPage,
+  AdminPage,
+  AdminPageFolder,
   AdminBrand,
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
@@ -738,6 +740,45 @@ export const bagistoAdminApi: AdminApi = {
   },
   async resetWarrantyPage(): Promise<AdminWarrantyPage> {
     throw new BagistoApiError(501, "Warranty page content is not wired for Bagisto yet.");
+  },
+  async listPages(): Promise<AdminPage[]> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until the Bagisto puck_data CMS mapping lands (Wave 7) — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async getPage(): Promise<AdminPage | undefined> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async createPage(): Promise<AdminPage> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async updatePage(): Promise<AdminPage | undefined> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async publishPage(): Promise<AdminPage | undefined> {
+    throw new BagistoApiError(501, "Pages builder publish is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async unpublishPage(): Promise<AdminPage | undefined> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async duplicatePage(): Promise<AdminPage | undefined> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async deletePage(): Promise<boolean> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async revertPage(): Promise<AdminPage | undefined> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async listPageFolders(): Promise<AdminPageFolder[]> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async createPageFolder(): Promise<AdminPageFolder> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async updatePageFolder(): Promise<AdminPageFolder | undefined> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
+  },
+  async deletePageFolder(): Promise<boolean> {
+    throw new BagistoApiError(501, "Pages builder is demo-only until Wave 7 — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");
   },
   async updateShowroom(): Promise<AdminShowroom | undefined> {
     throw new BagistoApiError(501, "Showroom editing is not wired for Bagisto yet.");
