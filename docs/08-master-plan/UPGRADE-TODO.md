@@ -272,8 +272,11 @@ scope **literal-all** (header/footer/announcement/all marketing pages); **zero-c
 - [x] **PB-0.1** Dependency integrated cleanly — `@puckeditor/core@0.24.0` in package.json; 63/45 overlay
   (repo majors kept); package-lock merged (64 entries, 0.24.0 on disk == lock); bun.lock hand-merged
   (64 entries, 780 pkgs strict-parse, `@puckeditor/core` added to workspace deps). `@measured/puck`
-  (deprecated) purged from tree, locks and scratch. **CI `bun install --frozen-lockfile` still unproven
-  until next push — watch the run.**
+  (deprecated) purged from tree, locks and scratch. **CI `bun install --frozen-lockfile` PROVEN green** —
+  first push failed on a duplicate `ws@8.22.1` key from the injection (JSON.parse cannot detect duplicate
+  keys; bun's parser can) → fixed in `7d5dd66` (one-line drop of the inferior duplicate). Push CI
+  42268579873 ✓ and PR re-run 42268591312 ✓ (`build-and-test` green).**Lesson: validate bun.lock with
+  bun itself, not JSON.parse.**
 - [x] **PB-0.2** WOODEX block registry — 4 real kit blocks in `src/pages-builder/blocks.tsx`
   (SectionHeading, FeatureGrid, ImageBanner, ButtonLink) + categories; JSON-only props, no HTML injection.
 - [x] **PB-0.3** Admin lab editor at `/admin/pages-lab` (ENGAGE nav, lazy chunk, vendored Puck CSS with remote
@@ -308,6 +311,32 @@ scope **literal-all** (header/footer/announcement/all marketing pages); **zero-c
 - [ ] **Known limits (accepted, documented):** demo gate ≠ RBAC; Bagisto writes stay 501 until Phase 3 backend
   provisioning; channel attribution is all-or-nothing at order level; bundles don't stack trade pricing.
 - [ ] **Housekeeping sweep** — remove any `console.log` remnants; `.node-version`/`bun` note in README (optional).
+
+## Pending task registry (consolidated 2026-11-06, post PR #3 merge)
+
+Everything outstanding after the merge — owner to triage; agent holds code-sized tasks only.
+
+**Owner-side / decisions**
+- [ ] **Vercel production verification** — `main` advanced `69985d3 → 44ff091` (PR #3 merge, 2026-11-06).
+  Vercel deploys production from `main`; agent has no Vercel access. Owner confirms the deployment and
+  that the storefront + admin are healthy. NOTE: `/lab/home` is now public (unlisted, `noindex`,
+  badged, read-only) — if unwanted on production, say so and a one-commit removal follows.
+- [ ] **PB owner questions (master plan §11)** — Site Chrome singleton exception; top-level vs `/p/<slug>`
+  URLs; CustomEmbed HTML block (default off); publish permission under real RBAC; legal-page copy drafter (+ deadline).
+- [ ] **PR #3 merged, no further merges pending authorisation** — next merges need the same explicit go-ahead.
+- [ ] **`Staff` footer link** — remove at owner's sign-off word (one-line change).
+- [ ] **Payment gateway** — parked (WhatsApp-first manual confirmation); revisit Easypaisa/JazzCash/card once merchant credentials exist.
+- [ ] **Vercel deployment checklist** (cPanel/Vercel cutover) — owner-side dashboard work.
+
+**Agent-code sized (no owner input needed)**
+- [ ] **B4 — Custom Design / Virtual Showroom (static)** — last open Phase 4 module; fold into Phase 4 sweep.
+- [ ] **PB-1 … PB-5** — page-builder waves 1–5 (see PB section above); PB-1 starts after the §11 answers.
+- [ ] **Housekeeping sweep** — any `console.log` remnants; `.node-version`/bun note in README (optional).
+
+**Parked / accepted**
+- [ ] **Known limits (accepted, documented):** demo gate ≠ RBAC; Bagisto writes stay 501 until Phase 3
+  backend provisioning; channel attribution all-or-nothing at order level; bundles don't stack trade pricing.
+- [ ] **Page-builder literal-all risk review** — revisit R1 (per-page chrome) at Wave 1 kickoff.
 
 ## Verification gate (every module)
 

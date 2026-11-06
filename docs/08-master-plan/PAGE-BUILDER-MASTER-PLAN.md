@@ -7,6 +7,10 @@
 > **Companion to:** `README.md` (older doc) and `UPGRADE-TODO.md` (execution checklist) in this folder.
 > Where those disagree with this file on the page builder, this one wins.
 >
+> **Last updated: 2026-11-06** — Wave 0 shipped; CI green; **PR #3 MERGED by owner authorisation
+> 2026-11-06 (merge commit `44ff091`, main `69985d3 → 44ff091`)**. Vercel production tracks `main`;
+> `/lab/home` is public but unlisted, `noindex` and read-only — owner may request its removal at any time.
+>
 > **Owner-confirmed decisions (2026-11-06, chat):**
 > - **Scope: `literal-all`** — header, footer, announcement bar, hero/heading/CTA/feature-grid and every
 >   marketing page (home, showrooms/location, services, materials, warranty, custom design, legal, …)
@@ -44,6 +48,7 @@ zero SaaS, zero new infrastructure.
 with a *WOODEX blocks* palette (Section heading, Feature grid, Image banner, Button), a starter "home"
 page, localStorage persistence, and a Publish button. `/lab/home` renders the same page read-only on the
 storefront with a noindex badge. Verified 2026-11-06: 12/12 live checks, e2e 33/33, typecheck/lint/build clean.
+Since merged (2026-11-06), this state ships on production (see header note).
 
 **What is deliberately not done:** multi-page list, draft/publish workflow, media picker, theme blocks
 (header/footer/announcement), storefront route migration, sitemap/SEO wiring, Bagisto mapping — all sequenced in §6.
@@ -231,6 +236,11 @@ starter document (`src/pages-builder/starter.ts`); localStorage persistence; adm
 ~301 kB lazy chunk; storefront main bundle +1.4 kB) · e2e 33/33 · live check **12/12** (login → nav → editor
 mount → banner → canvas select via scale-corrected pointer events → field edit → Publish → `/lab/home` shows
 the edited eyebrow; 0 console errors).
+**CI note (same day):** first push failed `bun install --frozen-lockfile` on a duplicate `ws@8.22.1` key in the
+hand-merged bun.lock (JSON.parse silently tolerates duplicate keys — invalid per bun's parser). Fixed in `7d5dd66`;
+push run 42268579873 ✓ and PR re-run 42268591312 ✓ green. **Lesson for all future lockfile surgery: validate with
+bun's own parser, never JSON.parse.**
+
 **Known limitations:** persistence is per-browser localStorage; no media picker (image URL by text field);
 canvas is scaled (selection UX papercuts for automation, fine for humans); no multi-page list; desktop-only panel.
 
@@ -357,9 +367,10 @@ main bundle only grew ≈1.4 kB (route registration); rollback of the feature is
 
 - **Pinned:** `@puckeditor/core` `^0.24.0` in package.json; **0.24.0 exact** on disk and in both lockfiles.
 - **bun.lock was hand-merged 2026-11-06** (64 injected entries, `fast-equals@5.4.5` carried as chain-key
-  `@puckeditor/core/@tiptap/react/fast-equals`; top-level `fast-equals@5.2.2` retained). Strict JSON re-parse
-  (trailing-comma tolerant) = **780 packages**; `--frozen-lockfile` CI run must pass on the next push — watch it.
-  If CI fails, regenerate `bun.lock` on a bun-enabled host in a dedicated fix-up commit.
+  `@puckeditor/core/@tiptap/react/fast-equals`; top-level `fast-equals@5.2.2` retained; one duplicate `ws` entry
+  dropped in `7d5dd66`). Final state: **780 packages, zero duplicates**, parses under bun's own parser; frozen-lockfile
+  CI **proven green** on the merge runs (42268579873 ✓ / 42268591312 ✓). Rule of record: any future hand-merge is
+  validated with `bun install --frozen-lockfile` itself in a scratch copy — JSON.parse cannot detect duplicate keys.
 - **puck.css vendored** at `src/pages-builder/puck-editor.css`; only change vs upstream: the remote
   `@import "https://rsms.me/inter/inter.css"` was removed (self-contained build; Inter comes from `index.html`).
   On every Puck upgrade: re-copy `dist/index.css` → delete the matching `@import` line → diff hunks → gates.
@@ -378,3 +389,22 @@ main bundle only grew ≈1.4 kB (route registration); rollback of the feature is
 Tracked in `UPGRADE-TODO.md` (see the **Page builder (Puck)** section): Wave 0 items ticked; Waves 1–5
 queued with owners implied (agent) and gates from §8. This document is the strategy; the to-do file is
 the tracker — update both in the same commit per wave.
+
+---
+
+## 14. Status log
+
+- **2026-11-06 (AM)** — Owner scope decisions: scope `literal-all`, zero-cost hard constraint, deliverable
+  plan + spike. Package decision: `@puckeditor/core@0.24.0` (MIT). Dependency surgery completed across
+  package.json / package-lock.json / bun.lock; repo majors preserved; `@measured/puck` purged.
+- **2026-11-06 (midday)** — Wave 0 implemented: block registry, starter doc, lab editor
+  (`/admin/pages-lab`, ENGAGE → Pages Lab), read-only `/lab/:slug` storefront render (noindex, badged).
+  Gates green; live check 12/12 (canvas-select via scale-corrected pointer events → eyebrow edit →
+  Publish → `/lab/home` renders the edit; 0 console errors). Spike committed as `312e282`; e2e 33/33.
+- **2026-11-06 (PM)** — CI failure diagnosed (bun parse error: duplicate `ws` key, invisible to JSON.parse);
+  fixed (`7d5dd66`); push CI and PR re-run both **green**. Duplicate-key scan added to the §12 rule of record.
+- **2026-11-06 (merge)** — Owner authorised: **"yes, merge."** PR #3 MERGED 2026-11-06T18:29:20Z, merge commit
+  `44ff091` (`main` `69985d3 → 44ff091`). Vercel production tracks `main` — deploy verification is owner-side;
+  `/lab/home` is now reachable in production (unlisted, noindex, badged, read-only; removal available on request).
+- **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
+  module; Vercel cutover checklist is owner-side.
