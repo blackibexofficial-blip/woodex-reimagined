@@ -204,6 +204,11 @@ export const bagistoAdminApi: AdminApi = {
     return wrap((res.data ?? []).map(mapProduct), m.page, m.perPage, m.total);
   },
 
+  async bulkUpdateProducts(): Promise<{ updated: number }> {
+    // No verified Bagisto bulk-update mapping (catalog rules exist but payloads are unverified).
+    throw new BagistoApiError(501, "Bulk assortment edits are demo-only until the Bagisto product-update mapping is verified — see docs/07-admin-integration §8.");
+  },
+
   async updateProduct(id, patch) {
     // Bagisto product update: PUT /api/admin/catalog/products/{id}
     await request(`/catalog/products/${encodeURIComponent(id)}`, {

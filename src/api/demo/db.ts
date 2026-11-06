@@ -1196,6 +1196,62 @@ export const demoAdminApi: AdminApi = {
     return ok;
   },
 
+  async bulkUpdateProducts(ids, patch) {
+    const wanted = new Set(ids);
+    if (wanted.size === 0) return { updated: 0 };
+    let updated = 0;
+    update((db) => {
+      const round10 = (n: number) => Math.max(1, Math.round(n / 10) * 10);
+      for (const p of db.products) {
+        if (!wanted.has(p.id)) continue;
+        switch (patch.kind) {
+          case "pricePct": {
+            const pct = Math.max(-50, Math.min(100, patch.pct));
+            const apply = (n: number) => round10(n * (1 + pct / 100));
+            p.price = apply(p.price);
+            if (patch.includeCompareAt && p.compareAtPrice !== undefined) {
+              p.compareAtPrice = apply(p.compareAtPrice);
+              if (p.compareAtPrice < p.price) delete p.compareAtPrice;
+            } else if (p.compareAtPrice !== undefined && p.compareAtPrice < p.price) {
+              delete p.compareAtPrice;
+            }
+            updated++;
+            break;
+          }
+          case "markOnSale": {
+            const pct = Math.max(1, Math.min(60, Math.floor(patch.pct)));
+            const candidate = round10(p.price * (1 - pct / 100));
+            if (candidate >= p.price) break; // rounding collapsed — skip rather than zero-difference "sale"
+            p.compareAtPrice = p.price;
+            p.price = candidate;
+            updated++;
+            break;
+          }
+          case "clearSale":
+            if (p.compareAtPrice !== undefined) { delete p.compareAtPrice; updated++; }
+            break;
+          case "stockStatus":
+            p.stockStatus = patch.status;
+            if (patch.status === "out_of_stock") { p.stock = 0; p.inStock = false; }
+            else if (patch.status === "in_stock") { if (p.stock === 0) p.stock = 1; p.inStock = true; }
+            else p.inStock = true; // made_to_order is sellable — qty untouched
+            break;
+          case "bestSeller":
+            p.isBestSeller = Boolean(patch.value);
+            updated++;
+            break;
+          case "stockDelta":
+            p.stock = Math.max(0, p.stock + Math.trunc(patch.delta));
+            touchProductMeta(db, p.id);
+            syncFulfilment(p);
+            updated++;
+            break;
+        }
+      }
+    });
+    return { updated };
+  },
+
   async listSalesChannels() {
     return [...(loadDb().salesChannels ?? [])]
       .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))

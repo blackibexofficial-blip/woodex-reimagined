@@ -298,6 +298,15 @@ export interface NewAdminProductInput {
 }
 
 /** One validated CSV import row (upsert key = id, else sku). */
+/** Bulk assortment edits — discriminated by `kind`, applied server-side in one pass. */
+export type BulkProductPatch =
+  | { kind: "pricePct"; pct: number; includeCompareAt?: boolean }
+  | { kind: "stockStatus"; status: StockStatus }
+  | { kind: "markOnSale"; pct: number }
+  | { kind: "clearSale" }
+  | { kind: "bestSeller"; value: boolean }
+  | { kind: "stockDelta"; delta: number };
+
 export interface ProductImportRow {
   id?: string;
   sku?: string;
@@ -484,6 +493,8 @@ export interface AdminApi {
 
   listProducts(params?: ListParams & { category?: string; inStock?: boolean }): Promise<Paginated<AdminProduct>>;
   updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus" | "category" | "dimensions" | "weightKg">>): Promise<AdminProduct | undefined>;
+  /** Applies one bulk patch to many products atomically-ish (single persisted pass). */
+  bulkUpdateProducts(ids: string[], patch: BulkProductPatch): Promise<{ updated: number }>;
   /** Create a product (demo: local catalogue insert; bagisto: POST, unverified). SKU auto-assigned. */
   createProduct(input: NewAdminProductInput): Promise<AdminProduct>;
   /** Clone a product as "<name> (Copy)" with a fresh SKU; copy lands out of stock. */
