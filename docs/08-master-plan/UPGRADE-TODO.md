@@ -48,9 +48,11 @@ demo DB slice + admin page + storefront read with static-data fallback.
   counts, active switch, edit/delete), tabbed dialog (Core / SEO / Overview / Process steps / Benefits / Inclusions
   one-per-line / FAQs / Case study / related-service pills excluding self / Visibility + sortOrder); wholesale nested
   replace on save; slug immutable on edit, auto-deduped on create; create auto-numbers `number` and bumps `sortOrder`.
-  Storefront `/services` grid filters live `active` (left-rail `spaceWorkItems` intentionally static); `/services/:slug`
-  ready-gated (same deep-link redirect class as P1.4 — fixed preemptively) and reads live related rail. Live check 8/8
-  (7 seeds → create→live grid + deep-linked detail → delete→7) · e2e 33/33 · 0 console errors. Inactive services
+  Storefront `/services` reads the live catalogue after the owner's page redesign (main 1fb680b/97942a3/8092ed0/69985d3
+  removed the catalogue grid — hero + highlight cards now resolve against live *active* services; admin-created services
+  are reachable via `/services/:slug` and any editorial links). `/services/:slug` ready-gated (same deep-link redirect
+  class as P1.4 — fixed preemptively) and reads live related rail. Live check 8/8 pre-redesign
+  (7 seeds → create→storefront + deep-linked detail → delete→7) · e2e 33/33 · 0 console errors. Inactive services
   redirect to /services on direct URL. Sitemap stays build-time static — admin-created services enter on next deploy
   (documented in the page footer). Bagisto backend stubbed 501 (CMS slice not provisioned).
 - [x] **P1.6** Content hub refresh — `/admin/content` retired the read-only placeholder (static `src/data/*` listings)
