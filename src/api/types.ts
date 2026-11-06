@@ -697,6 +697,19 @@ export interface NewBrandInput {
   sortOrder?: number;
 }
 
+/* ── Homepage sections (admin-managed since A6; storefront is static until Bagisto) ── */
+export type HomepageRailMode = "auto" | "manual";
+export interface AdminHomepageRail {
+  /** "auto" — storefront derives the rail from product flags at cutover (admin previews the rule).
+   *  "manual" — the ordered productIds below (capped at 12). */
+  mode: HomepageRailMode;
+  productIds: string[];
+}
+export interface AdminHomepageSections {
+  bestSellers: AdminHomepageRail;
+  carousel: AdminHomepageRail;
+}
+
 /* ── Materials & finishes (admin-managed since P1.2) ─────────────────────── */
 export type AdminMaterialCategory = "wood" | "laminate" | "metal" | "fabric";
 export type AdminMaterialBrightness = "light" | "medium" | "dark" | "all";
@@ -1306,6 +1319,9 @@ export interface AdminApi {
   updateBrand(id: string, patch: Partial<NewBrandInput>): Promise<AdminBrand | undefined>;
   setBrandActive(id: string, active: boolean): Promise<AdminBrand | undefined>;
   deleteBrand(id: string): Promise<boolean>;
+  /** Homepage Best Sellers rail + Home Carousel — mode (auto vs manual) and manual order. */
+  getHomepageSections(): Promise<AdminHomepageSections>;
+  updateHomepageSections(patch: Partial<AdminHomepageSections>): Promise<AdminHomepageSections>;
   listMaterials(): Promise<AdminMaterial[]>;
   createMaterial(input: NewMaterialInput): Promise<AdminMaterial>;
   updateMaterial(id: string, patch: Partial<NewMaterialInput>): Promise<AdminMaterial | undefined>;

@@ -218,8 +218,16 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
   `updateCategory`. Live check 34/34 · e2e 33/33 · lint 0 · clean rebuild · real `tsc -p tsconfig.app.json` exit 0.
   Process note: root `npx tsc --noEmit` is vacuous (solution tsconfig with `files: []`); local typecheck must be
   `bun run typecheck`, which mirrors CI’s Typecheck step — CI was already gating correctly all along.
-- [ ] **A6** Homepage section control — admin toggles for Best Sellers / Home Carousel (auto from flags vs manual
-  pick), plus carousel ordering.
+- [x] **A6** Homepage section control — DONE (`/admin/homepage`, Commerce nav): two rails (Best Sellers / Home
+  Carousel), each with mode `auto` (flags-derived preview) or `manual` (explicit pick, up/down ordering, cap 12,
+  dedup). Auto preview reads honestly (best sellers = isBestSeller by reviews desc top 8; carousel = in-stock by
+  reviews desc top 6). `getHomepageSections` / `updateHomepageSections` on AdminApi; demo DB master bundle with
+  seed; stale ids pruned on save (intersect with DB) with a warning chip; auto mode clears picked ids. NOTE: A6 is
+  the SITE-WIDE homepage rail master — A5's per-category `homepageBestSellers`/`homepageCarousel` switches are a
+  DIFFERENT, category-level surface; both kept. Bagisto cutover maps these to Bagisto CMS blocks. Storefront
+  stays static until cutover (admin is the working surface). Live check ALL PASS (nav · auto previews · manual
+  pick ×2 · reorder persists across reload · back to auto · 0 console errors) · e2e 33/33 · lint 0 errors ·
+  clean rebuild · `bun run typecheck` exit 0.
 
 ### B. Storefront surfaces with no admin editor yet
 - [x] **B1** Showrooms admin — DONE (`/admin/showrooms`): list/search/create/edit/delete; fields name · city ·

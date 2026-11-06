@@ -19,6 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
+  AdminHomepageSections,
   AdminBrand,
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
@@ -721,6 +722,12 @@ export const bagistoAdminApi: AdminApi = {
   },
   async deleteBrand(): Promise<boolean> {
     throw new BagistoApiError(501, "Brand deletion is not wired for Bagisto yet.");
+  },
+  async getHomepageSections(): Promise<AdminHomepageSections> {
+    throw new BagistoApiError(501, "Homepage sections are demo-only until a homepage backend exists — see docs/07-admin-integration §8.");
+  },
+  async updateHomepageSections(): Promise<AdminHomepageSections> {
+    throw new BagistoApiError(501, "Homepage sections are not wired for Bagisto yet.");
   },
   async updateShowroom(): Promise<AdminShowroom | undefined> {
     throw new BagistoApiError(501, "Showroom editing is not wired for Bagisto yet.");

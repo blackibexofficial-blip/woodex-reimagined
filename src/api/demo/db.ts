@@ -52,6 +52,7 @@ import type {
   NewSeriesInput,
   AdminBrand,
   NewBrandInput,
+  AdminHomepageSections,
   NewShowroomInput,
   AdminMaterial,
   NewMaterialInput,
@@ -137,6 +138,7 @@ interface DemoDb {
   showrooms: AdminShowroom[];
   series: AdminSeries[];
   brands: AdminBrand[];
+  homepageSections: AdminHomepageSections;
   materials: AdminMaterial[];
   projects: AdminProject[];
   blogPosts: AdminBlogPost[];
@@ -588,6 +590,11 @@ const SERIES_SEED: Array<Omit<AdminSeries, "createdAt" | "updatedAt">> = [
  * is Woodex today — seed a single house brand; the manager exists for the day
  * partner brands ship. FK on products: brandId === "woodex".
  */
+const HOMEPAGE_SECTIONS_SEED: AdminHomepageSections = {
+  bestSellers: { mode: "auto", productIds: [] },
+  carousel: { mode: "auto", productIds: [] },
+};
+
 const BRAND_SEED: Array<Omit<AdminBrand, "createdAt" | "updatedAt">> = [
   {
     id: "woodex", name: "Woodex", tagline: "Pakistan's office furniture makers since the workshop years",
@@ -1437,7 +1444,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1467,6 +1474,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.showrooms)) db.showrooms = buildSeedShowrooms();
       if (!Array.isArray(db.series)) db.series = buildSeedSeries();
       if (!Array.isArray(db.brands)) db.brands = buildSeedBrands();
+      if (!db.homepageSections || typeof db.homepageSections !== "object") db.homepageSections = { bestSellers: { mode: "auto", productIds: [] }, carousel: { mode: "auto", productIds: [] } };
       for (const p of db.products) if (p.brandId === undefined) p.brandId = "woodex";
       if (!Array.isArray(db.materials)) db.materials = buildSeedMaterials();
       if (!Array.isArray(db.projects)) db.projects = buildSeedProjects();
@@ -2371,6 +2379,48 @@ export const demoAdminApi: AdminApi = {
       ok = true;
     });
     return ok;
+  },
+
+  async getHomepageSections() {
+    const sections = loadDb().homepageSections ?? HOMEPAGE_SECTIONS_SEED;
+    const cloneRail = (r: AdminHomepageSections["bestSellers"]): AdminHomepageSections["bestSellers"] =>
+      ({ mode: r.mode === "manual" ? "manual" : "auto", productIds: [...r.productIds] });
+    return { bestSellers: cloneRail(sections.bestSellers), carousel: cloneRail(sections.carousel) };
+  },
+
+  async updateHomepageSections(patch) {
+    const validRail = (r: AdminHomepageSections["bestSellers"] | undefined) => {
+      if (!r) return undefined;
+      if (r.mode !== "auto" && r.mode !== "manual") throw new Error('Rail mode must be "auto" or "manual".');
+      return r;
+    };
+    validRail(patch.bestSellers);
+    validRail(patch.carousel);
+    let merged: AdminHomepageSections | undefined;
+    update((db) => {
+      const current = (db.homepageSections ??= {
+        bestSellers: { mode: "auto", productIds: [] },
+        carousel: { mode: "auto", productIds: [] },
+      });
+      const knownIds = new Set((db.products ?? []).map((p) => p.id));
+      const applyRail = (name: "bestSellers" | "carousel", rail: AdminHomepageSections["bestSellers"] | undefined) => {
+        if (!rail) return;
+        if (rail.mode === "auto") {
+          current[name] = { mode: "auto", productIds: [] };
+          return;
+        }
+        const ids = [...new Set(rail.productIds)].filter((id) => knownIds.has(id)).slice(0, 12);
+        current[name] = { mode: "manual", productIds: ids };
+      };
+      applyRail("bestSellers", patch.bestSellers);
+      applyRail("carousel", patch.carousel);
+      merged = {
+        bestSellers: { mode: current.bestSellers.mode, productIds: [...current.bestSellers.productIds] },
+        carousel: { mode: current.carousel.mode, productIds: [...current.carousel.productIds] },
+      };
+    });
+    if (!merged) throw new Error("Could not persist homepage sections.");
+    return merged;
   },
 
   async listMaterials() {
