@@ -53,8 +53,10 @@ demo DB slice + admin page + storefront read with static-data fallback.
   (7 seeds → create→live grid + deep-linked detail → delete→7) · e2e 33/33 · 0 console errors. Inactive services
   redirect to /services on direct URL. Sitemap stays build-time static — admin-created services enter on next deploy
   (documented in the page footer). Bagisto backend stubbed 501 (CMS slice not provisioned).
-- [ ] **P1.6** Content hub refresh — `/admin/content` becomes a launchpad linking to the four new editors
-  (retire the read-only placeholder copy).
+- [x] **P1.6** Content hub refresh — `/admin/content` retired the read-only placeholder (static `src/data/*` listings)
+  and is now a launchpad: one card per editor (Materials & Colors, Projects, Blog, Services) with live content counts,
+  client-side "Open editor" routing and a storefront "view live" link; intro banner notes instant demo-store
+  publishing + build-time sitemap lag. Live check 6/6 · e2e 33/33 · 0 console errors. **Phase 1 complete.**
 
 ## Phase 2 — Commerce ops (Spree-style order lifecycle)
 
