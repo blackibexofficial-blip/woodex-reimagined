@@ -166,6 +166,11 @@ slices instead of duplicating them.
 - **Furniture Series:** a **separate entity** (own admin page, own storefront /series/:seriesId, FK on products) —
   NOT unified with collections.
 - Reference repos (spree/spree, spree.sh dashboard, bagisto/nextjs-commerce) are design references only.
+- **P3.5 (2026-11-06):** **Option C — defer Urdu / hreflang for launch** (English-only, groundwork stays:
+  `en_PK` locale, sitemap + JSON-LD language metadata already correct; no fake hreflang). Revisit when Urdu
+  demand is real; options A/B documented in `docs/08-master-plan/urdu-hreflang-spike.md`.
+- **Phase 4 order (owner-picked):** A1 (done) → **B1** (done) — further Phase 4 sequence undecided.
+- **PR #3 (2026-11-06):** keep open; continue stacking work on the branch. Do NOT merge without explicit owner request.
 
 ## Phase 4 — Owner audit upgrades (legacy lbpanel + Spree parity) — proposed, pending owner priority
 
@@ -197,9 +202,13 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
   pick), plus carousel ordering.
 
 ### B. Storefront surfaces with no admin editor yet
-- [ ] **B1** Showrooms admin — `/admin/showrooms`: list/create/edit/delete showroom records (name, city, address,
-  phone, hours, image, map link) feeding storefront `/showrooms` + left-rail "Visit our showrooms" — demo DB slice
-  + types already exist (`showrooms`, `NewShowroomInput`); only the page + nav + route are missing.
+- [x] **B1** Showrooms admin — DONE (`/admin/showrooms`): list/search/create/edit/delete; fields name · city ·
+  address · phone · WhatsApp link · hours · lat/lng · sortOrder · **HQ** (exactly one; setting another unsets it,
+  HQ delete blocked) · live/hidden toggle feeding the storefront list. Wired in sidebar nav + admin route + crumb
+  label; demo DB slice + API methods used as-is. Client-side required validation added (demo DB also enforces
+  name/city/address/phone/hours). Live check 23/23 (seed render · search · create · edit round-trip · active
+  toggle · HQ guard · delete · 0 console errors) · e2e 33/33 · lint 0 errors. Storefront `/showrooms` page stays
+  static by accepted architecture — wiring demo master → storefront happens with the Bagisto cutover.
 - [ ] **B2** Warranty page content — `/warranty` is hardcoded; add editable content entry (optional, low value).
 - [x] **B3** Services / Blog / Materials & Colors / Projects — admin editors DONE (P1.2–P1.5).
 - [ ] **B4** Custom Design consultation blocks; Virtual Showroom (WDS) content — static; admin only if owner wants.
