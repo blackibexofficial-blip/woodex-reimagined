@@ -163,7 +163,7 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
 ### C. Orders & purchasing (Spree parity) — Phase 2 remainders
 - [x] **P2.4** Draft Orders — `/admin/drafts`; convert → pending order (source `manual`). DONE (see Phase 2 log).
 - [ ] **P2.5** Quotes — priced quotation from a lead (lines, discount %, validity); printable; convert → order.
-- [ ] **P2.6** Suppliers — master (name, contact, city, payment terms, notes); referenced by POs.
+- [x] **P2.6** Suppliers — purchasing master. DONE (see Phase 2 log).
 - [ ] **P2.7** Purchase Orders — create PO (lines, expected date); receive full/partial (stock inbound).
 - [ ] **P2.8** Transfers — move stock between locations/warehouses.
 

@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -419,6 +419,22 @@ export const bagistoAdminApi: AdminApi = {
 
   async convertQuote(): Promise<AdminOrder | undefined> {
     throw new BagistoApiError(501, "Quote conversion is not wired for Bagisto yet.");
+  },
+
+  async listSuppliers(): Promise<AdminSupplier[]> {
+    throw new BagistoApiError(501, "Suppliers are not wired for Bagisto yet (no native entity). Use VITE_API_MODE=demo.");
+  },
+
+  async createSupplier(): Promise<AdminSupplier> {
+    throw new BagistoApiError(501, "Supplier creation is not wired for Bagisto yet.");
+  },
+
+  async updateSupplier(): Promise<AdminSupplier | undefined> {
+    throw new BagistoApiError(501, "Supplier updates are not wired for Bagisto yet.");
+  },
+
+  async deleteSupplier(): Promise<boolean> {
+    throw new BagistoApiError(501, "Supplier deletion is not wired for Bagisto yet.");
   },
 
   async listCustomers(params) {

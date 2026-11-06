@@ -272,6 +272,38 @@ export interface NewQuoteInput {
 }
 export type AdminQuotePatch = Partial<NewQuoteInput> & { status?: QuoteStatus };
 
+/* ── Suppliers (purchasing master — referenced by purchase orders) ────────── */
+export type SupplierTerms = "advance" | "cod" | "net15" | "net30" | "net45";
+export interface AdminSupplier {
+  id: string;            // e.g. "SUP-1001"
+  name: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+  /** NTN / sales-tax registration — optional. */
+  taxId?: string;
+  paymentTerms: SupplierTerms;
+  notes?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface NewSupplierInput {
+  name: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+  taxId?: string;
+  paymentTerms?: SupplierTerms;
+  notes?: string;
+  active?: boolean;
+}
+export type AdminSupplierPatch = Partial<NewSupplierInput>;
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -971,6 +1003,11 @@ export interface AdminApi {
   deleteQuote(id: string): Promise<boolean>;
   /** Requires ≥1 line; same materialisation path as createOrder (channel `manual`); order carries the discount. */
   convertQuote(id: string, paymentMethod?: PaymentMethod): Promise<AdminOrder | undefined>;
+  listSuppliers(params?: ListParams & { active?: "all" | "active" | "inactive" }): Promise<AdminSupplier[]>;
+  createSupplier(input: NewSupplierInput): Promise<AdminSupplier>;
+  updateSupplier(id: string, patch: AdminSupplierPatch): Promise<AdminSupplier | undefined>;
+  /** False or throw when referenced by purchase orders — deactivate instead. */
+  deleteSupplier(id: string): Promise<boolean>;
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;

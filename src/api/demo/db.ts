@@ -81,6 +81,9 @@ import type {
   AdminQuotePatch,
   NewQuoteInput,
   QuoteStatus,
+  AdminSupplier,
+  AdminSupplierPatch,
+  NewSupplierInput,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -116,6 +119,7 @@ interface DemoDb {
   claims: AdminClaim[];
   draftOrders: AdminDraftOrder[];
   quotes: AdminQuote[];
+  suppliers: AdminSupplier[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -811,6 +815,28 @@ function createQuoteInDb(db: DemoDb, input: NewQuoteInput): AdminQuote {
   return quote;
 }
 
+/** Deterministic seed suppliers — the four vendors the demo POs draw from. */
+function buildSeedSuppliers(): AdminSupplier[] {
+  const t = new Date(Date.now() - 120 * 86400000).toISOString();
+  const mk = (
+    id: string,
+    name: string,
+    contactName: string,
+    email: string,
+    phone: string,
+    city: string,
+    paymentTerms: AdminSupplier["paymentTerms"],
+    notes: string,
+    taxId?: string,
+  ): AdminSupplier => ({ id, name, contactName, email, phone, city, taxId, paymentTerms, notes, active: true, createdAt: t, updatedAt: t });
+  return [
+    mk("SUP-1001", "Pak Wood & Timber Co", "Rana Imran", "imran@pakwood.com.pk", "+92 300 4561230", "Lahore", "net30", "Sawn timber, MDF and melamine boards — primary sheet supplier for the executive and Ballmer ranges.", "52751-8"),
+    mk("SUP-1002", "Sheikh Sawmills & Boards", "Sheikh Zubair", "sales@sheikhsawmills.pk", "+92 321 6745123", "Faisalabad", "net45", "Raw lumber + veneer sheets; secondary source when Pak Wood is short on stock.", "51234-5"),
+    mk("SUP-1003", "MetalKraft Industries", "Kamran Shah", "orders@metalkraft.pk", "+92 301 5550192", "Gujranwala", "net15", "Welded frames, telescopic slides, hinges and locks — hardware for storage lines.", "49871-2"),
+    mk("SUP-1004", "Al-Noor Foam & Upholstery", "Noor Ahmed", "noor@alnoorfoam.pk", "+92 315 2098711", "Karachi", "cod", "High-density foam, fabric and leather — sofas, chair cushions and reception seating."),
+  ];
+}
+
 const CLAIM_TRANSITIONS: Record<ClaimStatus, ClaimStatus[]> = {
   reported: ["assessing", "rejected"],
   assessing: ["approved", "rejected"],
@@ -1129,7 +1155,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts) };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1166,6 +1192,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.claims)) db.claims = buildSeedClaims(db.orders);
       if (!Array.isArray(db.draftOrders)) db.draftOrders = buildSeedDraftOrders(db.products);
       if (!Array.isArray(db.quotes)) db.quotes = buildSeedQuotes(db.products);
+      if (!Array.isArray(db.suppliers)) db.suppliers = buildSeedSuppliers();
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -2834,6 +2861,83 @@ export const demoAdminApi: AdminApi = {
       });
     });
     return order;
+  },
+
+  async listSuppliers(params?: ListParams & { active?: "all" | "active" | "inactive" }) {
+    const db = loadDb();
+    const q = (params?.query ?? "").trim().toLowerCase();
+    let rows = [...(db.suppliers ?? [])];
+    if (params?.active === "active") rows = rows.filter((r) => r.active);
+    else if (params?.active === "inactive") rows = rows.filter((r) => !r.active);
+    if (q) rows = rows.filter((r) => [r.id, r.name, r.contactName ?? "", r.city ?? "", r.email ?? "", r.phone ?? "", r.taxId ?? "", r.paymentTerms].join(" ").toLowerCase().includes(q));
+    rows.sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
+    return rows;
+  },
+
+  async createSupplier(input: NewSupplierInput) {
+    let created: AdminSupplier | undefined;
+    update((db) => {
+      const name = input.name?.trim();
+      if (!name) throw new Error("Supplier name is required.");
+      const now = new Date().toISOString();
+      const maxSeq = (db.suppliers ?? []).reduce((max, s) => Math.max(max, Number(s.id.replace(/\D/g, "")) || 0), 1000);
+      created = {
+        id: `SUP-${maxSeq + 1}`,
+        name,
+        contactName: input.contactName?.trim() || undefined,
+        email: input.email?.trim() || undefined,
+        phone: input.phone?.trim() || undefined,
+        city: input.city?.trim() || undefined,
+        address: input.address?.trim() || undefined,
+        taxId: input.taxId?.trim() || undefined,
+        paymentTerms: input.paymentTerms ?? "net30",
+        notes: input.notes?.trim() || undefined,
+        active: input.active ?? true,
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.suppliers ??= []).push(created);
+    });
+    if (!created) throw new Error("Failed to create supplier");
+    return created;
+  },
+
+  async updateSupplier(id: string, patch: AdminSupplierPatch) {
+    let updated: AdminSupplier | undefined;
+    update((db) => {
+      const t = (db.suppliers ??= []).find((x) => x.id === id);
+      if (!t) return;
+      if (patch.name !== undefined) {
+        const v = patch.name.trim();
+        if (!v) throw new Error("Supplier name is required.");
+        t.name = v;
+      }
+      if (patch.contactName !== undefined) t.contactName = patch.contactName.trim() || undefined;
+      if (patch.email !== undefined) t.email = patch.email.trim() || undefined;
+      if (patch.phone !== undefined) t.phone = patch.phone.trim() || undefined;
+      if (patch.city !== undefined) t.city = patch.city.trim() || undefined;
+      if (patch.address !== undefined) t.address = patch.address.trim() || undefined;
+      if (patch.taxId !== undefined) t.taxId = patch.taxId.trim() || undefined;
+      if (patch.paymentTerms !== undefined) t.paymentTerms = patch.paymentTerms;
+      if (patch.notes !== undefined) t.notes = patch.notes.trim() || undefined;
+      if (patch.active !== undefined) t.active = patch.active;
+      t.updatedAt = new Date().toISOString();
+      updated = { ...t };
+    });
+    return updated;
+  },
+
+  async deleteSupplier(id: string) {
+    let okFlag = false;
+    update((db) => {
+      const t = (db.suppliers ?? []).find((x) => x.id === id);
+      if (!t) return;
+      const used = ((db as DemoDb & { purchaseOrders?: Array<{ supplierId: string }> }).purchaseOrders ?? []).some((po) => po.supplierId === id);
+      if (used) throw new Error(`Supplier ${t.id} is referenced by purchase orders — deactivate it instead.`);
+      db.suppliers = db.suppliers.filter((x) => x.id !== id);
+      okFlag = true;
+    });
+    return okFlag;
   },
 
   async listBundles() {
