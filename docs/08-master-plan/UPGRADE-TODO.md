@@ -64,9 +64,14 @@ Goal: orders stop being "shipped/delivered" only — returns, exchanges, claims,
 purchasing side (suppliers, POs, transfers). All demo DB; each module links back to the existing order/inventory
 slices instead of duplicating them.
 
-- [ ] **P2.1** Returns — create/track/close: reason codes (damaged / wrong item / not as described / changed mind),
-  line items, receipt inspection, refund or replacement decision, optional restock on receipt (stock movement).
-  Admin page + entry point from delivered orders.
+- [x] **P2.1** Returns — `/admin/returns`: create/track/close RMAs with reason codes (damaged / wrong item / not as
+  described / changed mind / other), line-item selection with qty steppers (capped at ordered qty), requested →
+  received → inspected → refunded | replaced | rejected pipeline with transition guards, receipt inspection note,
+  refund amount editable at inspection (prefilled from line value), optional restock on receipt posting `return`
+  stock movements (reuses adjustLineStock), full lifecycle noted on the order timeline. Seeded from delivered
+  orders (RMA-1001 requested / RMA-1002 inspected). Entry point from delivered orders ("Request return" button in
+  the order dialog → deep link opens the create flow via ?new=1&order=). Live check 12/12 (seeds → create →
+  full pipeline → timeline assertion) · e2e 33/33 · 0 console errors. Bagisto stubbed 501 (no RMA in Bagisto core).
 - [ ] **P2.2** Exchanges — replace item(s) on a delivered order; price difference (pay/refund) handling; links to return.
 - [ ] **P2.3** Claims — warranty / damage claims pipeline (report → assess → approve/reject → resolve), tie-in with
   5-year warranty messaging; distinct from returns (not necessarily refund-oriented).

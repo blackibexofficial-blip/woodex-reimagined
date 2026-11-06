@@ -56,6 +56,12 @@ import type {
   NewBlogPostInput,
   AdminService,
   NewServiceInput,
+  AdminReturn,
+  AdminReturnItem,
+  AdminReturnPatch,
+  NewReturnInput,
+  ReturnReason,
+  ReturnStatus,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -86,6 +92,7 @@ interface DemoDb {
   projects: AdminProject[];
   blogPosts: AdminBlogPost[];
   services: AdminService[];
+  returns: AdminReturn[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -573,6 +580,77 @@ function buildSeedOrderEvents(orders: AdminOrder[]): AdminOrderEvent[] {
 }
 
 /** Applies a stock delta for an order line, logging an honest clamped movement. */
+const RETURN_TRANSITIONS: Record<ReturnStatus, ReturnStatus[]> = {
+  requested: ["received"],
+  received: ["inspected"],
+  inspected: ["refunded", "replaced", "rejected"],
+  refunded: [],
+  replaced: [],
+  rejected: [],
+};
+
+const RETURN_REASON_LABELS: Record<ReturnReason, string> = {
+  damaged: "Damaged in transit",
+  wrong_item: "Wrong item delivered",
+  not_as_described: "Not as described",
+  changed_mind: "Changed mind",
+  other: "Other",
+};
+
+const newEventId = () => `ev-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`;
+
+/** Deterministic seed returns derived from delivered orders (pipeline spread). */
+function buildSeedReturns(orders: AdminOrder[]): AdminReturn[] {
+  const delivered = orders.filter((o) => o.status === "delivered").sort((a, b) => b.placedAt.localeCompare(a.placedAt));
+  const out: AdminReturn[] = [];
+  const t1 = new Date(Date.now() - 2 * 86400000).toISOString();
+  if (delivered[0] && delivered[0].items[0]) {
+    const o = delivered[0];
+    const line = o.items[0];
+    out.push({
+      id: "RMA-1001",
+      orderId: o.id,
+      customerName: o.customerName,
+      customerEmail: o.customerEmail,
+      customerPhone: o.customerPhone,
+      city: o.city,
+      items: [{ id: line.id, name: line.name, image: line.image, quantity: 1, price: line.price }],
+      reason: "damaged",
+      reasonDetail: "Finish chipped during transit — customer shared photos on WhatsApp",
+      status: "requested",
+      refundAmount: line.price,
+      restock: true,
+      createdAt: t1,
+      updatedAt: t1,
+    });
+  }
+  const t2 = new Date(Date.now() - 6 * 86400000).toISOString();
+  if (delivered[1] && delivered[1].items.length) {
+    const o = delivered[1];
+    const items = o.items.slice(0, 2).map((it) => ({
+      id: it.id, name: it.name, image: it.image, quantity: Math.min(it.quantity, 2), price: it.price,
+    }));
+    out.push({
+      id: "RMA-1002",
+      orderId: o.id,
+      customerName: o.customerName,
+      customerEmail: o.customerEmail,
+      customerPhone: o.customerPhone,
+      city: o.city,
+      items,
+      reason: "not_as_described",
+      reasonDetail: "Grain colour darker than the website photos",
+      status: "inspected",
+      refundAmount: items.reduce((s, it) => s + it.price * it.quantity, 0),
+      restock: false,
+      inspectionNote: "Units received in original packaging — no physical damage; mismatch confirmed.",
+      createdAt: t2,
+      updatedAt: t2,
+    });
+  }
+  return out;
+}
+
 function adjustLineStock(
   db: DemoDb,
   orderId: string,
@@ -753,7 +831,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders) };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -785,6 +863,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.projects)) db.projects = buildSeedProjects();
       if (!Array.isArray(db.blogPosts)) db.blogPosts = buildSeedBlogPosts();
       if (!Array.isArray(db.services)) db.services = buildSeedServices();
+      if (!Array.isArray(db.returns)) db.returns = buildSeedReturns(db.orders);
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -1879,6 +1958,101 @@ export const demoAdminApi: AdminApi = {
       ok = true;
     });
     return ok;
+  },
+
+  /* ── Returns (RMA) ─────────────────────────────────────────── */
+  async listReturns(params = {}) {
+    const db = loadDb();
+    let items = [...(db.returns ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const status = params.status ?? "all";
+    if (status !== "all") items = items.filter((r) => r.status === status);
+    items = items.filter((r) => matchQuery(params.query, [r.id, r.orderId, r.customerName, r.customerEmail, r.city, r.reason]));
+    return paginate(items, params);
+  },
+
+  async getReturn(id) {
+    return (loadDb().returns ?? []).find((r) => r.id === id);
+  },
+
+  async createReturn(input) {
+    let created: AdminReturn | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const order = db.orders.find((o) => o.id === input.orderId);
+      if (!order) return;
+      if (order.status !== "delivered") throw new Error("Only delivered orders can be returned.");
+      const wanted = new Map(input.items.map((l) => [l.productId, Math.max(0, Math.trunc(l.quantity) || 0)]));
+      const items: AdminReturnItem[] = [];
+      for (const line of order.items) {
+        const qty = Math.min(wanted.get(line.id) ?? 0, line.quantity);
+        if (qty > 0) items.push({ id: line.id, name: line.name, image: line.image, quantity: qty, price: line.price });
+      }
+      if (items.length === 0) throw new Error("Select at least one item to return.");
+      const seq = (db.returns ?? []).reduce((max, r) => Math.max(max, Number(r.id.replace(/\D/g, "")) || 0), 1000) + 1;
+      const refundAmount = items.reduce((s, it) => s + it.price * it.quantity, 0);
+      created = {
+        id: `RMA-${seq}`,
+        orderId: order.id,
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+        city: order.city,
+        items,
+        reason: input.reason,
+        reasonDetail: input.reasonDetail?.trim() || undefined,
+        status: "requested",
+        refundAmount,
+        restock: input.restock ?? true,
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.returns ??= []).push(created);
+      (db.orderEvents ??= []).push({
+        id: newEventId(),
+        orderId: order.id,
+        note: `Return ${created.id} opened — ${RETURN_REASON_LABELS[created.reason]}`,
+        createdAt: now,
+      });
+    });
+    return created;
+  },
+
+  async updateReturn(id, patch: AdminReturnPatch) {
+    let updated: AdminReturn | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const r = (db.returns ??= []).find((x) => x.id === id);
+      if (!r) return;
+      const terminal = r.status === "refunded" || r.status === "replaced" || r.status === "rejected";
+      if (terminal) throw new Error(`Return ${r.id} is closed — no further edits.`);
+      if (patch.inspectionNote !== undefined) r.inspectionNote = patch.inspectionNote.trim() || undefined;
+      if (patch.restock !== undefined) r.restock = patch.restock;
+      if (patch.refundAmount !== undefined) {
+        const amt = Number(patch.refundAmount);
+        if (!Number.isFinite(amt) || amt < 0) throw new Error("Refund amount must be a positive number.");
+        r.refundAmount = Math.round(amt);
+      }
+      if (patch.status !== undefined && patch.status !== r.status) {
+        const allowed = RETURN_TRANSITIONS[r.status] ?? [];
+        if (!allowed.includes(patch.status)) {
+          throw new Error(`Return ${r.id} cannot move from ${r.status} to ${patch.status}.`);
+        }
+        r.status = patch.status;
+        if (patch.status === "received" && r.restock) {
+          for (const line of r.items) adjustLineStock(db, r.orderId, line, "in", `Return ${r.id} restock —`, now);
+        }
+        const note =
+          patch.status === "received" ? `Return ${r.id} received at warehouse`
+          : patch.status === "inspected" ? `Return ${r.id} inspected${r.inspectionNote ? ` — ${r.inspectionNote}` : ""}`
+          : patch.status === "refunded" ? `Return ${r.id} refunded — Rs ${(r.refundAmount ?? 0).toLocaleString("en-PK")}`
+          : patch.status === "replaced" ? `Return ${r.id} — replacement to be dispatched`
+          : `Return ${r.id} rejected${r.inspectionNote ? ` — ${r.inspectionNote}` : ""}`;
+        (db.orderEvents ??= []).push({ id: newEventId(), orderId: r.orderId, note, createdAt: now });
+      }
+      r.updatedAt = now;
+      updated = { ...r };
+    });
+    return updated;
   },
 
   async listBundles() {

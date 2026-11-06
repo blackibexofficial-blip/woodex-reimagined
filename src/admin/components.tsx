@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { LeadStatus, OrderStatus, PaymentMethod } from "@/api/types";
+import type { LeadStatus, OrderStatus, PaymentMethod, ReturnStatus } from "@/api/types";
 
 /* ── formatters ─────────────────────────────────────────────────────────── */
 export const formatPKR = (n: number) =>
@@ -39,6 +39,18 @@ const leadStyles: Record<LeadStatus, string> = {
   won: "bg-emerald-100 text-emerald-800 border-emerald-200",
   lost: "bg-border text-muted-foreground border-muted-foreground",
 };
+const returnStyles: Record<ReturnStatus, string> = {
+  requested: "bg-amber-100 text-amber-800 border-amber-200",
+  received: "bg-sky-100 text-sky-800 border-sky-200",
+  inspected: "bg-violet-100 text-violet-800 border-violet-200",
+  refunded: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  replaced: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  rejected: "bg-rose-100 text-rose-800 border-rose-200",
+};
+export const ReturnStatusBadge = ({ status }: { status: ReturnStatus }) => (
+  <Badge variant="outline" className={cn("capitalize font-medium", returnStyles[status])}>{status}</Badge>
+);
+
 const paymentLabels: Record<PaymentMethod, string> = {
   cod: "Cash on Delivery",
   "bank-transfer": "Bank Transfer",

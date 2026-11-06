@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -313,6 +313,24 @@ export const bagistoAdminApi: AdminApi = {
     // Bagisto keeps its own status history (order_status_history in reports); surfacing it
     // here needs a verified mapper — intentionally 501 until docs/07 provisioning happens.
     throw new BagistoApiError(501, "Order lifecycle events are not wired for Bagisto yet (unverified report payloads). Use VITE_API_MODE=demo for the events timeline.");
+  },
+
+  async listReturns(): Promise<Paginated<AdminReturn>> {
+    // Returns/RMA are not in Bagisto core (operations/RMA is a paid Marketplace add-on) —
+    // no verified mapping; intentionally 501 until docs/07 provisioning happens.
+    throw new BagistoApiError(501, "Returns/RMA are not wired for Bagisto yet — Bagisto core has no RMA module. Use VITE_API_MODE=demo.");
+  },
+
+  async getReturn(): Promise<AdminReturn | undefined> {
+    throw new BagistoApiError(501, "Returns/RMA are not wired for Bagisto yet — Bagisto core has no RMA module. Use VITE_API_MODE=demo.");
+  },
+
+  async createReturn(): Promise<AdminReturn | undefined> {
+    throw new BagistoApiError(501, "Return creation is not wired for Bagisto yet.");
+  },
+
+  async updateReturn(): Promise<AdminReturn | undefined> {
+    throw new BagistoApiError(501, "Return updates are not wired for Bagisto yet.");
   },
 
   async listCustomers(params) {

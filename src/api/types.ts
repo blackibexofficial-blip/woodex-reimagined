@@ -56,6 +56,49 @@ export interface AdminOrderEvent {
   createdAt: string;          // ISO
 }
 
+/* ── Returns (RMA) ──────────────────────────────────────────────────────── */
+export type ReturnReason = "damaged" | "wrong_item" | "not_as_described" | "changed_mind" | "other";
+/** requested → received → inspected → refunded | replaced | rejected */
+export type ReturnStatus = "requested" | "received" | "inspected" | "refunded" | "replaced" | "rejected";
+export interface AdminReturnItem {
+  id: string;            // order line id (== product id in the demo seed)
+  name: string;
+  image?: string;
+  quantity: number;
+  price: number;
+}
+export interface AdminReturn {
+  id: string;            // e.g. "RMA-1001"
+  orderId: string;       // e.g. "WDX-1042"
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  city: string;
+  items: AdminReturnItem[];
+  reason: ReturnReason;
+  reasonDetail?: string;
+  status: ReturnStatus;
+  /** Editable while inspected; defaults to the full value of the returned lines. */
+  refundAmount?: number;
+  /** Restock lines into inventory when status → received. */
+  restock: boolean;
+  inspectionNote?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface NewReturnItemInput {
+  productId: string;
+  quantity: number;
+}
+export interface NewReturnInput {
+  orderId: string;
+  items: NewReturnItemInput[];
+  reason: ReturnReason;
+  reasonDetail?: string;
+  restock?: boolean;
+}
+export type AdminReturnPatch = Partial<Pick<AdminReturn, "status" | "inspectionNote" | "restock" | "refundAmount">>;
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -717,6 +760,12 @@ export interface AdminApi {
   updateOrderCourier(id: string, patch: Partial<Pick<AdminOrder, "courierName" | "trackingNumber" | "internalNotes">>): Promise<AdminOrder | undefined>;
   /** Lifecycle ledger for one order, oldest first. */
   getOrderEvents(orderId: string): Promise<AdminOrderEvent[]>;
+  listReturns(params?: ListParams & { status?: ReturnStatus | "all" }): Promise<Paginated<AdminReturn>>;
+  getReturn(id: string): Promise<AdminReturn | undefined>;
+  /** Undefined when the order is missing; throws on non-delivered orders or empty line selection. */
+  createReturn(input: NewReturnInput): Promise<AdminReturn | undefined>;
+  /** Throws on illegal status transitions and edits to closed returns. */
+  updateReturn(id: string, patch: AdminReturnPatch): Promise<AdminReturn | undefined>;
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;
