@@ -112,6 +112,49 @@ slices instead of duplicating them.
 - [ ] **P3.5** Translations groundwork — Urdu `hreflang` + string externalization spike; **evaluate and report
   before committing to full RTL** (master-plan Phase 5 item; do not gold-plate).
 
+## Phase 4 — Owner audit upgrades (legacy lbpanel + Spree parity) — proposed, pending owner priority
+
+Captured from the owner brief (screenshots of the legacy woodexfurniture.pk/lbpanel product + category forms,
+Spree dashboard map, and the current React build). Not sequenced yet — owner to pick priority order (see questions).
+
+### A. Catalogue parity (legacy admin has these today; our admin doesn't fully)
+- [ ] **A1** Product editor upgrade — parity with legacy: Old Price vs Current Price display, Stock, SKU (exists),
+  **Best Sellers** and **Sale Item** toggles, Short Description / Product Details / Specifications, multi-image
+  gallery; plus "Collection(s)" and "Furniture Series" pickers on the product. Check current editor field coverage
+  first; reuse demo DB `AdminProduct` + extend types where missing.
+- [ ] **A2** Furniture Series taxonomy — series collections (Infinity, EK, Nova, Cubicle, Staff, …): series as a
+  managed entity (slug, name, hero, description) shared by `/series/:seriesId` storefront and collections admin;
+  link products to a series.
+- [ ] **A3** Product Brands — dedicated brand manager (legacy "Product Brands"): name, logo, slug; products reference
+  brand (Woodex today, room for others); filter in admin products + bulk editor.
+- [ ] **A4** Product Attributes — option sets & values (Finish, Size, Fabric…), values can adjust price and carry
+  SKU suffix. **Overlaps P3.1 — do not duplicate; treat P3.1 as the implementation task.**
+- [ ] **A5** Category editor upgrade — legacy fields: Hero Style, Homepage sections (Best Sellers / Home Carousel
+  switches), Short Description, Background Image, Long Description; keep our slug/parent/sortOrder.
+- [ ] **A6** Homepage section control — admin toggles for Best Sellers / Home Carousel (auto from flags vs manual
+  pick), plus carousel ordering.
+
+### B. Storefront surfaces with no admin editor yet
+- [x] **B1** Showrooms admin — `/admin/showrooms`: list/create/edit/delete showroom records (name, city, address,
+  phone, hours, image, map link) feeding storefront `/showrooms` + left-rail "Visit our showrooms" — demo DB slice
+  + types already exist (`showrooms`, `NewShowroomInput`); only the page + nav + route are missing.
+- [ ] **B2** Warranty page content — `/warranty` is hardcoded; add editable content entry (optional, low value).
+- [x] **B3** Services / Blog / Materials & Colors / Projects — admin editors DONE (P1.2–P1.5).
+- [ ] **B4** Custom Design consultation blocks; Virtual Showroom (WDS) content — static; admin only if owner wants.
+
+### C. Orders & purchasing (Spree parity) — Phase 2 remainders
+- [ ] **P2.4** Draft Orders — admin builds order manually; convert → pending order (source `manual`).
+- [ ] **P2.5** Quotes — priced quotation from a lead (lines, discount %, validity); printable; convert → order.
+- [ ] **P2.6** Suppliers — master (name, contact, city, payment terms, notes); referenced by POs.
+- [ ] **P2.7** Purchase Orders — create PO (lines, expected date); receive full/partial (stock inbound).
+- [ ] **P2.8** Transfers — move stock between locations/warehouses.
+
+### D. Shop flow — audit findings
+- The storefront ALREADY has cart + checkout (CartContext, CartDrawer, 352-line /checkout with COD + bank transfer,
+  WhatsApp confirmation hand-off, demo order persisted to admin Orders). No code missing for COD flow.
+- Real payment gateways (Easypaisa / JazzCash / card) remain parked — needs merchant credentials (owner-only).
+- bagisto/nextjs-commerce and Spree links are design references only; no live backend until Bagisto is provisioned.
+
 ## Cross-cutting / parked
 
 - [ ] **Payment gateway** — parked intentionally: "WhatsApp-first manual confirmation" is the chosen flow.
