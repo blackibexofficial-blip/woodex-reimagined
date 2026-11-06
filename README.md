@@ -14,7 +14,7 @@ bun install
 bun run dev        # http://localhost:8080
 ```
 
-Other scripts: `bun run build` (production build → `dist/`) · `bun run typecheck` (strict `tsc --noEmit` gate — clean) · `bun run preview` (serve the build) · `bun run lint` (0 errors; warnings only from fast-refresh hints)
+Other scripts: `bun run build` (regenerates `sitemap.xml`, then production build → `dist/`) · `bun run typecheck` (strict `tsc --noEmit` gate — clean) · `bun run preview` (serve the build) · `bun run lint` (0 errors; warnings only from fast-refresh hints)
 
 ### Admin panel preview — `/admin`
 
@@ -48,6 +48,7 @@ else touches `import.meta.env`):
 | `VITE_BAGISTO_API_URL` / `VITE_BAGISTO_STOREFRONT_KEY` / `VITE_BAGISTO_ADMIN_TOKEN` | Bagisto connection — see `docs/07-admin-integration` |
 | `VITE_ADMIN_EMAIL` / `VITE_ADMIN_PASSWORD` | Demo `/admin` gate |
 | `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_PROJECT_ID` | Supabase project — enables optional "Sign in with Supabase" on `/admin/login`; schema + edge functions vendored in `backend/supabase/` |
+| `VITE_GA4_ID` | GA4 measurement id (`G-XXXXXXX`) — optional; blank = analytics fully disabled (no script, no network). Page views tracked on SPA route changes |
 
 ## Project layout
 

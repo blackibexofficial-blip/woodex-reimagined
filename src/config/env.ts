@@ -55,6 +55,11 @@ export const config = {
     currency: str(raw.VITE_BAGISTO_CURRENCY, "PKR"),
   },
 
+  /** Google Analytics 4 measurement id ("G-XXXXXXX"). Blank = analytics fully disabled. */
+  ga4: {
+    id: str(raw.VITE_GA4_ID),
+  },
+
   admin: {
     /** Demo-only gate for the /admin preview. NOT a real access control in demo mode. */
     email: str(raw.VITE_ADMIN_EMAIL, "admin@woodex.pk"),

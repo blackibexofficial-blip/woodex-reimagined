@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { absUrl } from "@/config/site";
 import { organizationJsonLd, websiteJsonLd, localBusinessJsonLd } from "@/data/seoContent";
 import { JsonLd } from "@/components/JsonLd";
+import { trackPageview } from "@/lib/analytics";
 
 /**
  * Mounted once inside <BrowserRouter>. Owns the two things every route needs
@@ -18,7 +19,7 @@ import { JsonLd } from "@/components/JsonLd";
  * individual pages.
  */
 const RouteHead = () => {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
     let canon = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -28,7 +29,8 @@ const RouteHead = () => {
       document.head.appendChild(canon);
     }
     canon.setAttribute("href", absUrl(pathname));
-  }, [pathname]);
+    trackPageview(pathname + search);
+  }, [pathname, search]);
 
   return (
     <>
