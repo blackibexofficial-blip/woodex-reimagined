@@ -703,6 +703,16 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   bundle (lazy Chunk). Settings banner no longer overpromises a one-env Bagisto flip (501 stubs called out honestly). Gates: tsc 0 · eslint 0 ·
   build ✓ · e2e **39/39** (+4) · live acceptance (iframe canvas): add → hide (placeholder) → lock → save → storefront hides the block, seeded
   page intact, 0 console errors. Insert-after-selection + section Slots land with the Wave 4 inspector; MCP seo tools follow as a separate small PR.
+- **2026-11-07 (MCP SEO micro-PR, post-W2)** — Owner directive: separate small read-only MCP slice. `src/lib/mcp/tools/seo.ts` adds
+  `seo_audit_page` (deterministic advisory audit of `/`, `/product/<id>`, `/blog/<id>`, `/service/<slug>` from the image-free snapshot:
+  title 30–60 · description 120–160 · optional focus-keyphrase in title/description/density · body depth ≥300 words · headings · slug hygiene;
+  weighted 0–100 score + concrete suggestions) and `seo_generate_meta` (template-based title/description/OG/Twitter/slug suggestions with
+  word-boundary 60/160 trims, keyphrase front-loading analysis, stuffing detection). No external calls and no write paths — `readOnlyHint`,
+  `idempotentHint`; the write-tool set (`create_page`/`upsert_section`/`run_seo_audit`/…) remains Wave 6 / PB-6. `supabase/functions/mcp/index.ts`
+  regenerated with the changes while keeping the locked `npm:@lovable.dev/mcp-js@3.0.4` specifiers (no version drift). The local gate environment
+  had no node_modules, so the bundle was hand-spliced from source (strip/rename rules matched against the mcp-js output); handlers were executed
+  against the live snapshot via a stubbed-tool harness (all page types, error paths, stuffing case — all pass) and the spliced bundle parses clean
+  (`vm.SourceTextModule`). CI (bun + pkg.dev) is the canonical gate for this slice. MCP `version` → 0.2.0.
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
 - **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:
