@@ -1,7 +1,7 @@
 /**
  * Shared E2E bootstrap: serve the production build on :4173 and launch a
  * headless chromium (@sparticuz/chromium — works offline on a laptop AND in CI,
- * no browser download step needed).
+ * no browser download step needed). Waits/connects over IPv4 127.0.0.1.
  *
  * Usage:
  *   import { withServer, launchBrowser } from "./lib.mjs";
@@ -16,7 +16,10 @@ import { default as chromium, inflate, setupLambdaEnvironment } from "@sparticuz
 import puppeteer from "puppeteer-core";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-export const BASE = "http://localhost:4173";
+// IPv4 literal: on CI runners `localhost` resolves to ::1 first (Node ≥ 17
+// verbatim DNS order), and the preview server bound on IPv4 refuses it —
+// which looked exactly like a 45 s timeout and killed the whole E2E step.
+export const BASE = "http://127.0.0.1:4173";
 export const ADMIN = `${BASE}/admin`;
 
 export async function launchBrowser() {
@@ -49,7 +52,8 @@ async function waitForServer(url, timeoutMs = 45000) {
 
 /**
  * Ensures dist/ exists (builds when missing), starts `vite preview` bound to
- * 0.0.0.0:4173 (kept off 8080 so the dev server / live preview keeps running), waits for it, runs `fn`, and always tears the server down.
+ * 127.0.0.1:4173 (kept off 8080 so the dev server / live preview keeps running;
+ * IPv4 to match BASE under verbatim-DNS CI resolvers), waits for it, runs `fn`, and always tears the server down.
  */
 export async function withServer(fn) {
   if (!fs.existsSync(path.join(ROOT, "dist", "index.html"))) {
@@ -58,7 +62,7 @@ export async function withServer(fn) {
     await new Promise((resolve, reject) => build.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`build failed (${code})`)))));
   }
 
-  const server = spawn("bun", ["run", "vite", "preview", "--host", "0.0.0.0", "--port", "4173", "--strictPort"], {
+  const server = spawn("bun", ["run", "vite", "preview", "--host", "127.0.0.1", "--port", "4173", "--strictPort"], {
     cwd: ROOT,
     stdio: ["ignore", "pipe", "pipe"],
   });
