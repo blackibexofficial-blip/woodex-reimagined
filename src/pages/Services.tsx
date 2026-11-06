@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { services } from "@/data/services";
+import { useServices } from "@/lib/useServices";
 import { site } from "@/config/site";
 
 const serviceHighlights = [
@@ -56,6 +56,11 @@ const serviceReasons = [
 ];
 
 const Services = () => {
+  // Catalogue is admin-managed (/admin/services since P1.5); static bundle is the offline fallback.
+  // Inactive services vanish from the hero and the highlight cards; detail pages redirect to /services.
+  const { services } = useServices();
+  const activeServices = services.filter((s) => s.active);
+
   useEffect(() => {
     document.title = "Office Furniture Services in Pakistan | WOODEX";
     const meta = document.querySelector('meta[name="description"]') || (() => {
@@ -78,7 +83,7 @@ const Services = () => {
       <main className="flex-1">
         <section className="relative isolate overflow-hidden bg-primary text-primary-foreground">
           <img
-            src={services[0]?.hero}
+            src={activeServices[0]?.hero}
             alt="WOODEX office furniture and workplace design services"
             className="absolute inset-0 -z-20 h-full w-full object-cover opacity-35"
             width={1536}
@@ -115,7 +120,7 @@ const Services = () => {
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {serviceHighlights.map((item, index) => {
-                const service = services.find((entry) => entry.slug === item.slug);
+                const service = activeServices.find((entry) => entry.slug === item.slug);
                 if (!service) return null;
 
                 return (

@@ -13,7 +13,9 @@ interface ProductCardProps {
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const { addItem: addToQuote } = useQuote();
-  const { addItem: addToCart } = useCart();
+  const { addItem: addToCart, effectiveUnitPrice, tradeDiscountFor } = useCart();
+  const trade = tradeDiscountFor({ category: product.category });
+  const tradePrice = trade ? effectiveUnitPrice({ price: product.price, category: product.category }) : product.price;
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
@@ -123,8 +125,14 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-base font-bold text-foreground">{formatPKR(product.price)}</p>
-            {product.originalPrice && (
+            <p className="text-base font-bold text-foreground">
+              {formatPKR(tradePrice)}
+              {trade && <span className="ml-1.5 align-middle rounded-full bg-hon-green/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-hon-green-dark">Trade −{trade.pct}%</span>}
+            </p>
+            {trade && (
+              <p className="text-xs text-muted-foreground line-through">{formatPKR(product.price)}</p>
+            )}
+            {!trade && product.originalPrice && (
               <p className="text-xs text-muted-foreground line-through">{formatPKR(product.originalPrice)}</p>
             )}
           </div>

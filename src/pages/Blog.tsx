@@ -1,22 +1,34 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Calendar, Clock, ArrowRight, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { blogPosts } from "@/data/blogPosts";
+import { formatBlogDate } from "@/data/blogPosts";
+import { useBlogPosts } from "@/lib/useBlogPosts";
 import blogErgonomic from "@/assets/blog-ergonomic.webp";
-
-const categories = ["All", "Ergonomics", "Workspace Design", "Sustainability", "Interior Design", "Case Study"];
 
 const Blog = () => {
   useEffect(() => {
     document.title = "Blog — WOODEX Pakistan | Office Design Tips, Trends & Case Studies";
   }, []);
 
-  const featured = blogPosts.find((p) => p.featured);
-  const rest = blogPosts.filter((p) => !p.featured);
+  // Journal is admin-managed (/admin/blog since P1.4); seeded fallback offline.
+  const { posts: allPosts } = useBlogPosts();
+  const [activeCategory, setActiveCategory] = useState("All");
+
+  const posts = useMemo(() => allPosts.filter((p) => p.active), [allPosts]);
+  const categories = useMemo(
+    () => ["All", ...new Set(posts.map((p) => p.category).filter(Boolean))],
+    [posts],
+  );
+  const visible = useMemo(
+    () => (activeCategory === "All" ? posts : posts.filter((p) => p.category === activeCategory)),
+    [posts, activeCategory],
+  );
+  const featured = activeCategory === "All" ? posts.find((p) => p.featured) : undefined;
+  const rest = useMemo(() => visible.filter((p) => p !== featured), [visible, featured]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -40,7 +52,7 @@ const Blog = () => {
                 Expert insights on office design, ergonomics, sustainability, and workspace productivity from Pakistan's leading furniture manufacturer.
               </p>
               <div className="flex gap-6 mt-6 text-xs text-primary-foreground/60 uppercase tracking-widest">
-                <span><span className="text-accent font-bold text-base">{blogPosts.length}</span> &nbsp;Articles</span>
+                <span><span className="text-accent font-bold text-base">{posts.length}</span> &nbsp;Articles</span>
                 <span><span className="text-accent font-bold text-base">{categories.length - 1}</span> &nbsp;Categories</span>
                 <span><span className="text-accent font-bold text-base">Weekly</span> &nbsp;Updates</span>
               </div>
@@ -55,9 +67,10 @@ const Blog = () => {
               {categories.map((cat) => (
                 <Button
                   key={cat}
-                  variant={cat === "All" ? "default" : "outline"}
+                  onClick={() => setActiveCategory(cat)}
+                  variant={cat === activeCategory ? "default" : "outline"}
                   size="sm"
-                  className={cat === "All" ? "bg-accent text-accent-foreground hover:bg-hon-green-dark whitespace-nowrap" : "border-border hover:border-accent hover:text-accent whitespace-nowrap"}
+                  className={cat === activeCategory ? "bg-accent text-accent-foreground hover:bg-hon-green-dark whitespace-nowrap" : "border-border hover:border-accent hover:text-accent whitespace-nowrap"}
                 >
                   {cat}
                 </Button>
@@ -86,7 +99,7 @@ const Blog = () => {
                   <p className="text-muted-foreground leading-relaxed mb-6 text-base">{featured.excerpt}</p>
                   <div className="flex items-center gap-5 text-xs text-muted-foreground mb-7 pb-7 border-b border-border">
                     <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-accent" />{featured.author}</span>
-                    <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-accent" />{featured.date}</span>
+                    <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-accent" />{formatBlogDate(featured.date)}</span>
                     <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-accent" />{featured.readTime}</span>
                   </div>
                   <Button className="bg-accent hover:bg-hon-green-dark text-accent-foreground px-7 group/btn">
@@ -109,7 +122,7 @@ const Blog = () => {
                 </div>
                 <h2 className="text-3xl font-bold">Latest Articles</h2>
               </div>
-              <p className="text-sm text-muted-foreground">Showing {rest.length} of {blogPosts.length} articles</p>
+              <p className="text-sm text-muted-foreground">Showing {rest.length} of {posts.length} articles</p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-7">
               {rest.map((post) => (
@@ -130,7 +143,7 @@ const Blog = () => {
                     <p className="text-sm text-muted-foreground leading-relaxed mb-5 line-clamp-3 flex-1">{post.excerpt}</p>
                     <div className="flex items-center justify-between text-xs text-muted-foreground pt-4 border-t border-border">
                       <span className="flex items-center gap-1.5"><User className="h-3 w-3 text-accent" />{post.author}</span>
-                      <span className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-accent" />{post.date}</span>
+                      <span className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-accent" />{formatBlogDate(post.date)}</span>
                     </div>
                     <span className="mt-4 text-accent text-xs font-bold uppercase tracking-widest flex items-center gap-1 opacity-0 group-hover:opacity-100 -translate-y-1 group-hover:translate-y-0 transition-all">
                       Read Article <ArrowRight className="h-3 w-3" />

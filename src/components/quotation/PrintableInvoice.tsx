@@ -103,10 +103,10 @@ const PrintableInvoice = forwardRef<HTMLDivElement, PrintableInvoiceProps>(
           </thead>
           <tbody>
             {items.map((item, idx) => (
-              <tr key={item.id}>
+              <tr key={`${item.id}-${idx}`}>
                 <td className="col-sr">{idx + 1}</td>
                 <td className="col-item">{item.name}</td>
-                <td className="col-desc">{item.category}{item.color ? ` — ${item.color}` : ""}</td>
+                <td className="col-desc">{item.category}{item.variantLabel ? ` — ${item.variantLabel}` : item.color ? ` — ${item.color}` : ""}</td>
                 <td className="col-qty">{item.quantity}</td>
                 <td className="col-unit">{formatPKR(item.price)}</td>
                 <td className="col-total">{formatPKR(item.price * item.quantity)}</td>

@@ -1,87 +1,42 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import chairImage from "@/assets/chair-product.webp";
-import deskImage from "@/assets/desk-product.webp";
-import workstationImage from "@/assets/workstation-product.webp";
-import proj1 from "@/assets/project-1.webp";
+import { getAdminApi } from "@/api";
+import type { AdminBundle } from "@/api/types";
+import { bundleMath, bundleUnitCount } from "@/lib/bundles";
+import { bundleImage } from "@/lib/bundleImages";
+import { products, formatPKR } from "@/data/products";
 
-const packages = [
-  {
-    id: 1,
-    title: "Executive Office Package",
-    image: deskImage,
-    badge: "Save 10%",
-    price: "PKR 450,000",
-    originalPrice: "PKR 500,000",
-    items: ["Executive L-Desk", "High-back Leather Chair", "2-Door Storage Cabinet", "Visitor Chairs (2)"],
-    description: "Everything a C-suite office needs. Crafted for authority and comfort.",
-    popular: false,
-  },
-  {
-    id: 2,
-    title: "Team Workspace Package",
-    image: workstationImage,
-    badge: "Best Value",
-    price: "PKR 820,000",
-    originalPrice: "PKR 900,000",
-    items: ["4-Person Benching Workstation", "Task Chairs (4)", "Under-desk Pedestals (4)", "Cable Management System"],
-    description: "Complete 4-person workstation solution ready to plug in and produce.",
-    popular: true,
-  },
-  {
-    id: 3,
-    title: "Meeting Room Package",
-    image: proj1,
-    badge: "Save 8%",
-    price: "PKR 320,000",
-    originalPrice: "PKR 348,000",
-    items: ["8-Seat Conference Table", "Meeting Chairs (8)", "Credenza", "Presentation Board"],
-    description: "A complete boardroom setup that makes every meeting feel professional.",
-    popular: false,
-  },
-  {
-    id: 4,
-    title: "Startup Bundle",
-    image: workstationImage,
-    badge: "Save 7%",
-    price: "PKR 680,000",
-    originalPrice: "PKR 733,000",
-    items: ["6-Person Workstation", "Ergonomic Chairs (6)", "Mobile Storage Units (3)", "Reception Desk"],
-    description: "Launch your office from day one with everything your team needs.",
-    popular: false,
-  },
-  {
-    id: 5,
-    title: "Manager's Suite",
-    image: deskImage,
-    badge: "Save 12%",
-    price: "PKR 580,000",
-    originalPrice: "PKR 659,000",
-    items: ["L-Shaped Executive Desk", "Executive Chair", "5-Shelf Bookcase", "Round Meeting Table (4)"],
-    description: "A private office that projects leadership and supports focused work.",
-    popular: false,
-  },
-  {
-    id: 6,
-    title: "Open Office Package",
-    image: chairImage,
-    badge: "Save 12%",
-    price: "PKR 1,100,000",
-    originalPrice: "PKR 1,250,000",
-    items: ["8-Person Benching System", "Ergonomic Chairs (8)", "Storage Lockers (8)", "Breakout Lounge Seating"],
-    description: "A full open-plan setup with flexible seating for modern collaborative teams.",
-    popular: false,
-  },
-];
+const productById = new Map(products.map((p) => [p.id, p]));
 
 const RoomPackages = () => {
+  const [bundles, setBundles] = useState<AdminBundle[] | null>(null); // null = loading
+  const [loadError, setLoadError] = useState(false);
+
   useEffect(() => {
     document.title = "Room Packages — WOODEX Pakistan | Bundled Office Furniture Solutions";
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    getAdminApi().listBundles()
+      .then((rows) => {
+        if (!live) return;
+        setBundles(
+          rows
+            .filter((b) => b.status === "active")
+            .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
+        );
+      })
+      .catch((e) => {
+        console.warn("[woodex] bundles unavailable", e);
+        if (live) { setLoadError(true); setBundles([]); }
+      });
+    return () => { live = false; };
   }, []);
 
   return (
@@ -95,7 +50,7 @@ const RoomPackages = () => {
             <p className="text-accent text-xs font-bold uppercase tracking-widest mb-2">Bundled Solutions</p>
             <h1 className="text-4xl lg:text-5xl font-black mb-3">Room Packages</h1>
             <p className="text-primary-foreground/75 max-w-xl">
-              Complete office solutions with bundled savings. Each package includes coordinated furniture 
+              Complete office solutions with bundled savings. Each package includes coordinated furniture
               pieces designed to work together seamlessly.
             </p>
           </div>
@@ -115,61 +70,103 @@ const RoomPackages = () => {
           </div>
         </section>
 
-        {/* Packages Grid */}
+        {/* Packages Grid — driven live off the admin-managed bundles */}
         <section className="py-16 bg-background">
           <div className="container mx-auto px-4">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-7">
-              {packages.map((pkg) => (
-                <div
-                  key={pkg.id}
-                  className={`group border-2 rounded-sm overflow-hidden hover:shadow-xl transition-all ${
-                    pkg.popular ? "border-accent" : "border-border hover:border-accent"
-                  }`}
-                >
-                  {pkg.popular && (
-                    <div className="bg-accent text-accent-foreground text-xs font-bold py-2 text-center uppercase tracking-wider">
-                      ⭐ Most Popular Choice
-                    </div>
-                  )}
-                  <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                    <img
-                      src={pkg.image}
-                      alt={pkg.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute top-3 left-3">
-                      <Badge className="bg-accent text-accent-foreground text-xs">{pkg.badge}</Badge>
+            {bundles === null ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-7" aria-busy="true" aria-live="polite">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="border-2 border-border rounded-sm overflow-hidden animate-pulse">
+                    <div className="aspect-[4/3] bg-muted" />
+                    <div className="p-6 space-y-3">
+                      <div className="h-5 w-3/4 bg-muted rounded" />
+                      <div className="h-4 w-full bg-muted rounded" />
+                      <div className="h-7 w-1/3 bg-muted rounded" />
+                      <div className="h-24 w-full bg-muted rounded" />
                     </div>
                   </div>
-
-                  <div className="p-6">
-                    <h3 className="font-bold text-xl mb-2 group-hover:text-accent transition-colors">{pkg.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-4">{pkg.description}</p>
-
-                    <div className="flex items-center gap-3 mb-5">
-                      <span className="text-2xl font-black text-accent">{pkg.price}</span>
-                      <span className="text-sm text-muted-foreground line-through">{pkg.originalPrice}</span>
-                    </div>
-
-                    <div className="space-y-2 mb-6 border-t pt-4">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Includes:</p>
-                      {pkg.items.map((item) => (
-                        <div key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
-                          {item}
+                ))}
+              </div>
+            ) : bundles.length === 0 ? (
+              <div className="max-w-xl mx-auto text-center py-10">
+                <h2 className="text-2xl font-bold mb-2">Packages are being curated</h2>
+                <p className="text-muted-foreground mb-6">
+                  {loadError
+                    ? "Our catalogue bundles couldn't be loaded right now — the team can put a custom package together for you meanwhile."
+                    : "Our merchandising team is putting together the next set of packages — or request a custom one now."}
+                </p>
+                <Button className="bg-accent hover:bg-hon-green-dark text-accent-foreground" asChild>
+                  <Link to="/quotation">Request Custom Quote <ArrowRight className="h-4 w-4 ml-2" /></Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-7">
+                {bundles.map((bundle) => {
+                  const m = bundleMath(bundle, (id) => productById.get(id));
+                  const units = bundleUnitCount(bundle);
+                  const lines = bundle.lines
+                    .map((l) => ({ line: l, product: productById.get(l.productId) }))
+                    .filter((x) => x.product);
+                  return (
+                    <div
+                      key={bundle.id}
+                      className={`group border-2 rounded-sm overflow-hidden hover:shadow-xl transition-all flex flex-col ${
+                        bundle.popular ? "border-accent" : "border-border hover:border-accent"
+                      }`}
+                    >
+                      {bundle.popular && (
+                        <div className="bg-accent text-accent-foreground text-xs font-bold py-2 text-center uppercase tracking-wider">
+                          ⭐ Most Popular Choice
                         </div>
-                      ))}
-                    </div>
+                      )}
+                      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                        <img
+                          src={bundleImage(bundle.image)}
+                          alt={bundle.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute top-3 left-3">
+                          <Badge className="bg-accent text-accent-foreground text-xs">Save {bundle.discountPct}%</Badge>
+                        </div>
+                      </div>
 
-                    <Button className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground" asChild>
-                      <Link to="/quotation">
-                        Get Quote <ArrowRight className="h-4 w-4 ml-2" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                      <div className="p-6 flex flex-col flex-1">
+                        <h3 className="font-bold text-xl mb-2 group-hover:text-accent transition-colors">{bundle.name}</h3>
+                        {bundle.description && <p className="text-sm text-muted-foreground mb-4">{bundle.description}</p>}
+
+                        <div className="flex flex-wrap items-baseline gap-3 mb-1">
+                          <span className="text-2xl font-black text-accent">{formatPKR(m.price)}</span>
+                          {m.retail > m.price && (
+                            <span className="text-sm text-muted-foreground line-through">{formatPKR(m.retail)}</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] font-semibold text-hon-green-dark mb-5">You save {formatPKR(m.save)} vs buying separately</p>
+
+                        <div className="space-y-2 mb-6 border-t pt-4">
+                          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Includes {units} items:</p>
+                          {lines.map(({ line, product }) => (
+                            <div key={line.productId} className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+                              <Link to={`/shop/${product!.id}`} className="hover:text-accent hover:underline transition-colors">
+                                {product!.name}{line.quantity > 1 ? ` ×${line.quantity}` : ""}
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-auto">
+                          <Button className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground" asChild>
+                            <Link to="/quotation">
+                              Get Quote <ArrowRight className="h-4 w-4 ml-2" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
 
@@ -180,7 +177,7 @@ const RoomPackages = () => {
               <div className="w-12 h-1 bg-accent mx-auto mb-5" />
               <h2 className="text-3xl font-bold mb-3">Need a Custom Package?</h2>
               <p className="text-muted-foreground text-lg mb-7">
-                Our team can create a tailored solution that perfectly matches your requirements and budget. 
+                Our team can create a tailored solution that perfectly matches your requirements and budget.
                 Just tell us what you need.
               </p>
               <div className="flex flex-wrap gap-4 justify-center">

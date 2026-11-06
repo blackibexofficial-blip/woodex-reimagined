@@ -9,12 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, Truck, CreditCard, Banknote, ChevronLeft, CheckCircle, MapPin, Phone, User, Mail } from "lucide-react";
+import { ShoppingCart, Truck, CreditCard, Banknote, ChevronLeft, CheckCircle, MapPin, MessageCircle } from "lucide-react";
 import Header from "@/components/Header";
+import TradeBanner from "@/components/TradeBanner";
 import Footer from "@/components/Footer";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, cartLineKey } from "@/contexts/CartContext";
 import { formatPKR } from "@/data/products";
-import { site } from "@/config/site";
+import { site, waLink } from "@/config/site";
 
 const cities = [
   "Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan",
@@ -22,12 +23,18 @@ const cities = [
 ];
 
 const Checkout = () => {
-  const { items, totalPrice, totalItems, clearCart } = useCart();
-  const navigate = useNavigate();
+  const { items, totalPrice, totalItems, clearCart, tradeSavings, retailTotal, effectiveUnitPrice } = useCart();
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [placing, setPlacing] = useState(false);
-  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
+  const [placedOrder, setPlacedOrder] = useState<{
+    id: string | null;
+    total: number;
+    count: number;
+    payment: string;
+    name: string;
+    phone: string;
+  } | null>(null);
   const [formData, setFormData] = useState({
     name: "", email: "", phone: "", address: "", city: "Lahore", notes: "",
   });
@@ -52,15 +59,24 @@ const Checkout = () => {
         customerName: formData.name.trim(),
         customerEmail: formData.email.trim() || undefined,
         customerPhone: formData.phone.trim(),
+        address: formData.address.trim(),
+        channelId: "ch-web",
         city: formData.city,
         notes: formData.notes.trim() || undefined,
         paymentMethod: paymentMethod === "bank" ? "bank-transfer" : "cod",
-        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
+        items: items.map((i) => ({ id: i.id, name: i.variantLabel ? `${i.name} — ${i.variantLabel}` : i.name, sku: i.variantSku, price: effectiveUnitPrice(i), quantity: i.quantity, image: i.image })),
         subtotal: totalPrice,
         shipping: deliveryFee,
         total: grandTotal,
       });
-      setPlacedOrderId(order.id);
+      setPlacedOrder({
+        id: order.id,
+        total: grandTotal,
+        count: totalItems,
+        payment: paymentMethod,
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+      });
       setOrderPlaced(true);
       clearCart();
       window.scrollTo(0, 0);
@@ -85,16 +101,37 @@ const Checkout = () => {
             <p className="text-muted-foreground mb-2">
               Thank you for your order. Our team will contact you within 24 hours to confirm delivery details.
             </p>
-            {placedOrderId && (
+            {placedOrder?.id && (
               <p className="text-sm font-semibold mb-2">
-                Order reference: <span className="font-mono text-accent">{placedOrderId}</span>
+                Order reference: <span className="font-mono text-accent">{placedOrder.id}</span>
               </p>
             )}
-            <p className="text-sm text-muted-foreground mb-8">
-              {paymentMethod === "cod"
-                ? "Payment will be collected on delivery."
-                : "Our team will share bank details for transfer."}
+            <p className="text-sm text-muted-foreground mb-6">
+              {placedOrder?.payment === "cod"
+                ? "Payment is collected on delivery. Our team verifies every order on WhatsApp before dispatch."
+                : "Our team will share bank transfer details on WhatsApp after your order."}
             </p>
+            {placedOrder && (
+              <div className="mb-6">
+                <Button
+                  className="bg-[#25D366] hover:bg-[#1fb855] text-[#053b1e] font-semibold h-12 px-6 text-base"
+                  asChild
+                >
+                  <a
+                    href={waLink(
+                      `Assalamualaikum WOODEX! Order ${placedOrder.id} placed — ${placedOrder.count} item(s), total ${formatPKR(placedOrder.total)} (${placedOrder.payment === "cod" ? "Cash on Delivery" : "Bank Transfer"}). Name: ${placedOrder.name}, phone: ${placedOrder.phone}. Please confirm availability & delivery schedule.`
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageCircle className="mr-2 h-5 w-5" /> Confirm my order on WhatsApp
+                  </a>
+                </Button>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Fastest confirmation — pre-filled with your order reference &amp; total. We reply within business hours.
+                </p>
+              </div>
+            )}
             <div className="flex flex-wrap gap-3 justify-center">
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
                 <Link to="/shop">Continue Shopping</Link>
@@ -132,6 +169,7 @@ const Checkout = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      <TradeBanner />
       <main className="flex-1">
         {/* Hero */}
         <section className="bg-primary text-primary-foreground py-8">
@@ -236,7 +274,7 @@ const Checkout = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {items.map((item) => (
-                        <div key={`${item.id}-${item.color}`} className="flex gap-3">
+                        <div key={cartLineKey(item)} className="flex gap-3">
                           {item.image && (
                             <div className="w-12 h-12 rounded-sm overflow-hidden flex-shrink-0 bg-muted">
                               <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -244,10 +282,11 @@ const Checkout = () => {
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium line-clamp-1">{item.name}</p>
+                            {item.variantLabel && <p className="text-xs font-medium text-foreground/80 line-clamp-1">{item.variantLabel}</p>}
                             {item.color && <p className="text-xs text-muted-foreground">{item.color}</p>}
                             <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                           </div>
-                          <p className="text-sm font-semibold whitespace-nowrap">{formatPKR(item.price * item.quantity)}</p>
+                          <p className="text-sm font-semibold whitespace-nowrap">{formatPKR(effectiveUnitPrice(item) * item.quantity)}</p>
                         </div>
                       ))}
 
@@ -258,6 +297,18 @@ const Checkout = () => {
                           <span className="text-muted-foreground">Subtotal ({totalItems} items)</span>
                           <span className="font-medium">{formatPKR(totalPrice)}</span>
                         </div>
+                        {tradeSavings > 0 && (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Retail value</span>
+                              <span className="line-through text-muted-foreground">{formatPKR(retailTotal)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-hon-green-dark font-semibold">Trade savings</span>
+                              <span className="font-semibold text-hon-green-dark">−{formatPKR(tradeSavings)}</span>
+                            </div>
+                          </>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Delivery</span>
                           <span className="font-medium">{deliveryFee === 0 ? <span className="text-accent">FREE</span> : formatPKR(deliveryFee)}</span>

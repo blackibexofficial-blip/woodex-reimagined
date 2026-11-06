@@ -506,6 +506,8 @@ export interface ProductJsonLdInput {
   ratingValue?: number;
   reviewCount?: number;
   url: string;
+  /** Spec rows (dimensions, materials, warranty…) → schema.org additionalProperty. */
+  specs?: Array<{ label: string; value: string }>;
 }
 
 export const productJsonLd = (p: ProductJsonLdInput) => ({
@@ -524,6 +526,9 @@ export const productJsonLd = (p: ProductJsonLdInput) => ({
     availability: p.availability === "InStock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
     seller: { "@type": "Organization", name: site.name },
   },
+  ...(p.specs && p.specs.length > 0
+    ? { additionalProperty: p.specs.map((s) => ({ "@type": "PropertyValue", name: s.label, value: s.value })) }
+    : {}),
   ...(p.ratingValue && p.reviewCount
     ? { aggregateRating: { "@type": "AggregateRating", ratingValue: p.ratingValue, reviewCount: p.reviewCount } }
     : {}),

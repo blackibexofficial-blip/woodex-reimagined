@@ -6,65 +6,12 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { site } from "@/config/site";
-
-const warrantyTiers = [
-  {
-    name: "Standard Warranty",
-    duration: "3 Years",
-    applies: "Ek Series — Entry level products",
-    coverage: [
-      "Manufacturing defects in materials",
-      "Structural frame integrity",
-      "Drawer mechanism failures",
-      "Surface delamination",
-    ],
-    excludes: ["Normal wear and tear", "Accidental damage", "Unauthorized modifications"],
-  },
-  {
-    name: "Enhanced Warranty",
-    duration: "5 Years",
-    applies: "Infinity Series — Mid-range products",
-    popular: true,
-    coverage: [
-      "All Standard Warranty coverage",
-      "Upholstery defects (first 2 years)",
-      "Pneumatic mechanism failures (chairs)",
-      "Veneer defects & bubbling",
-      "Hardware including hinges, rails",
-    ],
-    excludes: ["Normal wear and tear", "Sun fade on upholstery", "Water damage"],
-  },
-  {
-    name: "Premium Warranty",
-    duration: "10 Years",
-    applies: "Woodex Series — Premium products",
-    coverage: [
-      "All Enhanced Warranty coverage",
-      "Complete structural warranty",
-      "Free annual maintenance check",
-      "Priority repair service (48hr response)",
-      "Free part replacement for life",
-    ],
-    excludes: ["Accidental damage", "Improper use damage"],
-  },
-];
-
-const claimSteps = [
-  { step: "01", title: "Contact Us", description: `Call ${site.phone} or email ${site.warrantyEmail} with your order number and issue description.` },
-  { step: "02", title: "Assessment", description: "Our team will assess your claim within 24 hours and may request photos or a site visit." },
-  { step: "03", title: "Resolution", description: "Approved claims are resolved within 7 business days — repair, replacement, or part dispatch." },
-  { step: "04", title: "Follow Up", description: "We follow up after resolution to ensure you're completely satisfied with the outcome." },
-];
-
-const faqs = [
-  { q: "How do I register my WOODEX warranty?", a: `Your warranty is automatically registered upon delivery. Keep your invoice as proof of purchase. You can also email invoice details to ${site.warrantyEmail} for confirmation.` },
-  { q: "Is the warranty transferable?", a: "Woodex Series (10-year) warranties are transferable to new occupants of the same premises. Ek and Infinity Series warranties are non-transferable." },
-  { q: "What proof do I need for a warranty claim?", a: "Original invoice, photos of the defect, and product serial number (found on a label under or behind the furniture)." },
-  { q: "Do you offer on-site repair?", a: "Yes. For Woodex Series customers, on-site repair is the primary resolution method. For other series, we may require items to be returned to our facility." },
-  { q: "What is not covered?", a: "Normal wear and tear, damage from misuse, water damage beyond minor spills, unauthorized modifications, and commercial use of residential products." },
-];
+import { useWarrantyPage } from "@/lib/useWarrantyPage";
 
 const Warranty = () => {
+  const { content } = useWarrantyPage();
+  const { hero, tiers, steps, faqs } = content;
+
   useEffect(() => {
     document.title = "Warranty Information — WOODEX Pakistan";
   }, []);
@@ -83,13 +30,12 @@ const Warranty = () => {
                 <Shield className="h-7 w-7 text-accent-foreground" />
               </div>
               <div>
-                <p className="text-accent text-xs font-bold uppercase tracking-widest">Peace of Mind</p>
-                <h1 className="text-4xl lg:text-5xl font-black">Warranty Policy</h1>
+                <p className="text-accent text-xs font-bold uppercase tracking-widest">{hero.eyebrow}</p>
+                <h1 className="text-4xl lg:text-5xl font-black">{hero.title}</h1>
               </div>
             </div>
             <p className="text-primary-foreground/75 max-w-xl mt-4">
-              Every WOODEX product is backed by a comprehensive warranty. We stand behind our craftsmanship — 
-              if something's wrong, we'll make it right.
+              {hero.subtitle}
             </p>
           </div>
         </section>
@@ -103,7 +49,7 @@ const Warranty = () => {
               <p className="text-muted-foreground">Choose a series to see its warranty coverage</p>
             </div>
             <div className="grid md:grid-cols-3 gap-6">
-              {warrantyTiers.map((tier) => (
+              {tiers.map((tier) => (
                 <div
                   key={tier.name}
                   className={`p-7 border-2 rounded-sm transition-all ${tier.popular ? "border-accent shadow-lg" : "border-border hover:border-accent"}`}
@@ -149,13 +95,13 @@ const Warranty = () => {
               <p className="text-muted-foreground">Simple, 4-step process — most claims resolved within 7 days</p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {claimSteps.map((step, idx) => (
-                <div key={step.step} className="text-center relative">
+              {steps.map((step, idx) => (
+                <div key={step.id} className="text-center relative">
                   <div className="relative">
                     <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground font-black text-xl flex items-center justify-center mx-auto mb-4">
-                      {step.step}
+                      {String(idx + 1).padStart(2, "0")}
                     </div>
-                    {idx < claimSteps.length - 1 && (
+                    {idx < steps.length - 1 && (
                       <div className="hidden lg:block absolute top-8 left-[calc(50%+32px)] right-0 h-px bg-border" />
                     )}
                   </div>
@@ -189,6 +135,7 @@ const Warranty = () => {
         </section>
 
         {/* FAQ */}
+        {faqs.length > 0 && (
         <section className="py-16 bg-section-light border-t">
           <div className="container mx-auto px-4 max-w-3xl">
             <div className="text-center mb-12">
@@ -196,7 +143,7 @@ const Warranty = () => {
             </div>
             <div className="space-y-4">
               {faqs.map((faq) => (
-                <div key={faq.q} className="border border-border rounded-sm bg-background overflow-hidden">
+                <div key={faq.id} className="border border-border rounded-sm bg-background overflow-hidden">
                   <div className="p-5">
                     <h3 className="font-bold mb-2 text-foreground">{faq.q}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
@@ -206,6 +153,7 @@ const Warranty = () => {
             </div>
           </div>
         </section>
+        )}
 
         {/* CTA */}
         <section className="py-14 bg-primary text-primary-foreground">

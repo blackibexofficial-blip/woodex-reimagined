@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
   Armchair, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, FileText,
-  Image, Settings, LogOut, ArrowLeft, Menu, X, Store,
+  Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, SlidersHorizontal, Layers, BadgeCheck, LayoutTemplate, Hammer,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
 import { isDemoMode } from "@/config/env";
@@ -24,15 +24,45 @@ const NAV_GROUPS: Array<{
     items: [
       { to: "/admin/products", label: "Products", icon: Package },
       { to: "/admin/categories", label: "Categories", icon: Tags },
+      { to: "/admin/collections", label: "Collections", icon: LayoutGrid },
+      { to: "/admin/series", label: "Series", icon: Layers },
+      { to: "/admin/brands", label: "Brands", icon: BadgeCheck },
+      { to: "/admin/homepage", label: "Homepage", icon: LayoutTemplate },
+      { to: "/admin/showrooms", label: "Showrooms", icon: Store },
+      { to: "/admin/materials", label: "Materials & Colors", icon: Palette },
+      { to: "/admin/options", label: "Options", icon: SlidersHorizontal },
+      { to: "/admin/projects", label: "Projects", icon: Briefcase },
+      { to: "/admin/price-lists", label: "Price Lists", icon: BadgePercent },
+      { to: "/admin/bundles", label: "Bundles", icon: Boxes },
+      { to: "/admin/sales-channels", label: "Channels & Markets", icon: RadioTower },
+      { to: "/admin/bulk-editor", label: "Bulk Editor", icon: ListChecks },
+      { to: "/admin/inventory", label: "Inventory", icon: Warehouse },
       { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
+      { to: "/admin/drafts", label: "Drafts", icon: FileEdit },
+      { to: "/admin/quotes", label: "Quotes", icon: ScrollText },
+      { to: "/admin/returns", label: "Returns", icon: Undo2 },
+      { to: "/admin/exchanges", label: "Exchanges", icon: ArrowLeftRight },
+      { to: "/admin/claims", label: "Claims", icon: ShieldCheck },
       { to: "/admin/customers", label: "Customers", icon: Users },
+    ],
+  },
+  {
+    label: "Purchasing",
+    items: [
+      { to: "/admin/suppliers", label: "Suppliers", icon: Truck },
+      { to: "/admin/purchase-orders", label: "Purchase Orders", icon: PackagePlus },
+      { to: "/admin/transfers", label: "Transfers", icon: ArrowLeftRight },
     ],
   },
   {
     label: "Engage",
     items: [
-      { to: "/admin/leads", label: "Quotes & B2B", icon: ClipboardList },
+      { to: "/admin/leads", label: "Leads", icon: ClipboardList },
+      { to: "/admin/blog", label: "Blog", icon: Newspaper },
+      { to: "/admin/services", label: "Services", icon: Wrench },
       { to: "/admin/content", label: "Content", icon: FileText },
+      { to: "/admin/warranty", label: "Warranty", icon: ShieldCheck },
+      { to: "/admin/pages-lab", label: "Pages Lab", icon: Hammer },
       { to: "/admin/media", label: "Media", icon: Image },
     ],
   },
@@ -43,8 +73,8 @@ function pageTitle(pathname: string) {
   const seg = pathname.split("/")[2] ?? "dashboard";
   const map: Record<string, string> = {
     dashboard: "Dashboard", analytics: "Analytics", products: "Products", categories: "Categories",
-    orders: "Orders", customers: "Customers", leads: "Quotes & B2B Leads", content: "Content",
-    media: "Media Library", settings: "Settings",
+    orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", transfers: "Transfers", options: "Product Options", content: "Content", warranty: "Warranty Content", "pages-lab": "Pages Lab (spike)", showrooms: "Showrooms",
+    media: "Media Library", settings: "Settings", inventory: "Inventory & Delivery Zones", series: "Furniture Series", brands: "Product Brands", homepage: "Homepage Sections",
   };
   return map[seg] ?? "Admin";
 }

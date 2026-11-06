@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "bun run generate-sitemap && vite build",
     "generate-sitemap": "bun --preload ./scripts/stub-assets.ts scripts/generate-sitemap.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -17,6 +17,7 @@
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@lovable.dev/mcp-js": "^3.0.4",
+    "@puckeditor/core": "^0.24.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",

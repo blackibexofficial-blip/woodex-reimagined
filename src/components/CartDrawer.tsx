@@ -3,11 +3,11 @@ import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Minus, Plus, Trash2, X } from "lucide-react";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, cartLineKey } from "@/contexts/CartContext";
 import { formatPKR } from "@/data/products";
 
 const CartDrawer = () => {
-  const { items, removeItem, updateQuantity, totalItems, totalPrice, isOpen, setIsOpen } = useCart();
+  const { items, removeItem, updateQuantity, totalItems, totalPrice, retailTotal, tradeSavings, tradeSession, effectiveUnitPrice, tradeDiscountFor, isOpen, setIsOpen } = useCart();
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -27,6 +27,11 @@ const CartDrawer = () => {
             <ShoppingCart className="h-5 w-5 text-accent" />
             Shopping Cart ({totalItems})
           </SheetTitle>
+          {tradeSession && (
+            <p role="status" className="-mt-1 flex items-center gap-1.5 text-[11px] font-medium text-hon-green-dark">
+              Trade pricing for {tradeSession.companyName} — negotiated rates from your account manager.
+            </p>
+          )}
         </SheetHeader>
 
         {items.length === 0 ? (
@@ -42,7 +47,7 @@ const CartDrawer = () => {
           <>
             <div className="flex-1 overflow-y-auto space-y-3 py-4">
               {items.map((item) => (
-                <div key={`${item.id}-${item.color}`} className="flex gap-3 p-3 border border-border rounded-sm">
+                <div key={cartLineKey(item)} className="flex gap-3 p-3 border border-border rounded-sm">
                   {item.image && (
                     <div className="w-16 h-16 rounded-sm overflow-hidden flex-shrink-0 bg-muted">
                       <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -56,12 +61,25 @@ const CartDrawer = () => {
                     >
                       {item.name}
                     </Link>
+                    {item.variantLabel && <p className="text-xs font-medium text-foreground/80">{item.variantLabel}</p>}
                     {item.color && <p className="text-xs text-muted-foreground">{item.color}</p>}
-                    <p className="text-sm font-bold text-accent mt-1">{formatPKR(item.price)}</p>
+                    {(() => {
+                      const d = tradeDiscountFor(item);
+                      const unit = effectiveUnitPrice(item);
+                      return d ? (
+                        <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
+                          <span className="text-[10px] text-muted-foreground line-through">{formatPKR(item.price)}</span>
+                          <span className="text-sm font-bold text-hon-green-dark">{formatPKR(unit)}</span>
+                          <span className="rounded-full bg-hon-green/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-hon-green-dark">Trade −{d.pct}%</span>
+                        </p>
+                      ) : (
+                        <p className="text-sm font-bold text-accent mt-1">{formatPKR(item.price)}</p>
+                      );
+                    })()}
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center border border-border rounded-sm">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(cartLineKey(item), item.quantity - 1)}
                           className="p-1 hover:bg-muted transition-colors"
                           aria-label="Decrease quantity"
                         >
@@ -69,14 +87,14 @@ const CartDrawer = () => {
                         </button>
                         <span className="w-8 text-center text-xs font-medium">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(cartLineKey(item), item.quantity + 1)}
                           className="p-1 hover:bg-muted transition-colors"
                           aria-label="Increase quantity"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>
-                      <button onClick={() => removeItem(item.id)} className="p-1 text-muted-foreground hover:text-destructive transition-colors" aria-label="Remove item">
+                      <button onClick={() => removeItem(cartLineKey(item))} className="p-1 text-muted-foreground hover:text-destructive transition-colors" aria-label="Remove item">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -86,6 +104,18 @@ const CartDrawer = () => {
             </div>
 
             <div className="border-t border-border pt-4 space-y-3">
+              {tradeSavings > 0 && (
+                <>
+                  <div className="flex justify-between items-center text-xs text-muted-foreground">
+                    <span>Retail</span>
+                    <span className="line-through">{formatPKR(retailTotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold text-hon-green-dark">
+                    <span>Trade savings</span>
+                    <span>−{formatPKR(tradeSavings)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between items-center">
                 <span className="font-semibold">Subtotal</span>
                 <span className="font-bold text-lg">{formatPKR(totalPrice)}</span>

@@ -1,4 +1,15 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { getAdminApi } from "@/api";
+import type { AdminPriceList } from "@/api/types";
+import {
+  applicableDiscount,
+  clearTradeSession,
+  discounted,
+  readTradeSession,
+  writeTradeSession,
+  type AppliedTradeDiscount,
+  type TradeSession,
+} from "@/lib/tradePricing";
 
 export interface CartItem {
   id: string;
@@ -8,16 +19,36 @@ export interface CartItem {
   quantity: number;
   color?: string;
   image?: string;
+  /** Deterministic key of the chosen variant (product id + selected option value ids). */
+  variantKey?: string;
+  /** Human-readable selection, e.g. "Finish: Dark Walnut · Fabric: Sand Beige". */
+  variantLabel?: string;
+  /** SKU with option suffixes, e.g. "WDX-1001|DW-FI-S" — or the static product id for un-configured PDP. */
+  variantSku?: string;
 }
+
+/** Line-identity key — variant combination when present, else product + color. */
+export const cartLineKey = (i: Pick<CartItem, "id" | "color" | "variantKey">): string =>
+  i.variantKey ?? `${i.id}::${i.color ?? ""}`;
 
 interface CartContextType {
   items: CartItem[];
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  removeItem: (lineKey: string) => void;
+  updateQuantity: (lineKey: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
+  /** Grand total the customer will pay — trade-aware when signed in. */
   totalPrice: number;
+  /** Always retail. */
+  retailTotal: number;
+  tradeSavings: number;
+  tradeSession: TradeSession | null;
+  refreshTradeLists: () => Promise<void>;
+  signInTrade: (company: { id: string; name: string; contactName: string }) => void;
+  signOutTrade: () => void;
+  effectiveUnitPrice: (item: Pick<CartItem, "price" | "category">) => number;
+  tradeDiscountFor: (item: Pick<CartItem, "category">) => AppliedTradeDiscount | null;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 }
@@ -34,17 +65,59 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
   const [isOpen, setIsOpen] = useState(false);
+  const [tradeSession, setTradeSession] = useState<TradeSession | null>(() => readTradeSession());
+  const [priceLists, setPriceLists] = useState<AdminPriceList[]>([]);
 
   useEffect(() => {
     localStorage.setItem("woodex-cart", JSON.stringify(items));
   }, [items]);
 
+  const refreshTradeLists = useCallback(async () => {
+    try {
+      setPriceLists(await getAdminApi().listPriceLists());
+    } catch (e) {
+      console.warn("[woodex] trade price lists unavailable — pricing stays retail", e);
+      setPriceLists([]);
+    }
+  }, []);
+
+  // Load on mount and whenever the signed-in company changes
+  useEffect(() => {
+    void refreshTradeLists();
+  }, [refreshTradeLists, tradeSession?.companyId]);
+
+  const signInTrade = useCallback((company: { id: string; name: string; contactName: string }) => {
+    const session: TradeSession = { companyId: company.id, companyName: company.name, contactName: company.contactName, signedInAt: new Date().toISOString() };
+    writeTradeSession(session);
+    setTradeSession(session);
+  }, []);
+
+  const signOutTrade = useCallback(() => {
+    clearTradeSession();
+    setTradeSession(null);
+  }, []);
+
+  const tradeDiscountFor = useCallback(
+    (item: Pick<CartItem, "category">): AppliedTradeDiscount | null =>
+      tradeSession ? applicableDiscount(priceLists, tradeSession.companyId, item.category) : null,
+    [priceLists, tradeSession],
+  );
+
+  const effectiveUnitPrice = useCallback(
+    (item: Pick<CartItem, "price" | "category">): number => {
+      const d = tradeDiscountFor(item);
+      return d ? discounted(item.price, d.pct) : item.price;
+    },
+    [tradeDiscountFor],
+  );
+
   const addItem = useCallback((item: Omit<CartItem, "quantity"> & { quantity?: number }) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.id === item.id && i.color === item.color);
+      const key = cartLineKey(item);
+      const existing = prev.find((i) => cartLineKey(i) === key);
       if (existing) {
         return prev.map((i) =>
-          i.id === item.id && i.color === item.color ? { ...i, quantity: i.quantity + (item.quantity || 1) } : i
+          cartLineKey(i) === key ? { ...i, quantity: i.quantity + (item.quantity || 1) } : i
         );
       }
       return [...prev, { ...item, quantity: item.quantity || 1 }];
@@ -52,16 +125,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsOpen(true);
   }, []);
 
-  const removeItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  const removeItem = useCallback((key: string) => {
+    setItems((prev) => prev.filter((i) => cartLineKey(i) !== key));
   }, []);
 
-  const updateQuantity = useCallback((id: string, quantity: number) => {
+  const updateQuantity = useCallback((key: string, quantity: number) => {
     if (quantity <= 0) {
-      setItems((prev) => prev.filter((i) => i.id !== id));
+      setItems((prev) => prev.filter((i) => cartLineKey(i) !== key));
     } else {
       setItems((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, quantity } : i))
+        prev.map((i) => (cartLineKey(i) === key ? { ...i, quantity } : i))
       );
     }
   }, []);
@@ -71,11 +144,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
-  const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const totalPrice = items.reduce((sum, i) => sum + effectiveUnitPrice(i) * i.quantity, 0);
+  const retailTotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const tradeSavings = retailTotal - totalPrice;
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isOpen, setIsOpen }}
+      value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, retailTotal, tradeSavings, tradeSession, refreshTradeLists, signInTrade, signOutTrade, effectiveUnitPrice, tradeDiscountFor, isOpen, setIsOpen }}
     >
       {children}
     </CartContext.Provider>

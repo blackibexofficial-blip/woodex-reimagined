@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { X, Sun, SunMedium, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { materials, materialCategories, type MaterialCategory, type BrightnessLevel, type Material } from "@/data/materials";
+import { materialCategories, type MaterialCategory, type BrightnessLevel, type Material } from "@/data/materials";
+import { useMaterials } from "@/lib/useMaterials";
 
 interface MaterialPanelProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ const MaterialPanel = ({
   selectedMaterialId,
   onSelectMaterial,
 }: MaterialPanelProps) => {
+  const materials = useMaterials();
   const [activeCategory, setActiveCategory] = useState<MaterialCategory | "all">("all");
   const [brightness, setBrightness] = useState<BrightnessLevel>("all");
 

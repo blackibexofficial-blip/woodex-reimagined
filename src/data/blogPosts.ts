@@ -147,3 +147,14 @@ export const blogPosts: BlogPost[] = [
 ];
 
 export const getBlogPost = (id: string) => blogPosts.find((p) => p.id === id);
+
+/** Renders both legacy ("Feb 15, 2025") and ISO ("2025-02-15") dates as "MMM D, YYYY". */
+export const formatBlogDate = (raw: string): string => {
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw.trim());
+  if (iso) return `${MONTHS[Number(iso[2]) - 1]} ${Number(iso[3])}, ${iso[1]}`;
+  const t = Date.parse(raw);
+  if (Number.isNaN(t)) return raw;
+  const d = new Date(t);
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+};

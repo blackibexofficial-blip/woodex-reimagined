@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
+import TradeBanner from "@/components/TradeBanner";
 import Footer from "@/components/Footer";
 import ImageGallery from "@/components/product/ImageGallery";
 import ColorSwatches from "@/components/product/ColorSwatches";
@@ -32,6 +33,8 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { getProductById, products, categories, formatPKR } from "@/data/products";
+import { optionSetsForProduct, priceDeltaFor, skuSuffixFor } from "@/data/options";
+import { cn } from "@/lib/utils";
 import { useQuote } from "@/contexts/QuoteContext";
 import { JsonLd } from "@/components/JsonLd";
 import { productJsonLd, breadcrumbJsonLd } from "@/data/seoContent";
@@ -44,11 +47,43 @@ const ProductDetail = () => {
   const product = getProductById(productId || "");
   
   const [selectedColor, setSelectedColor] = useState(product?.colors[0]);
+  const optionSets = useMemo(() => (product ? optionSetsForProduct(product) : []), [product]);
+  const [variantSelection, setVariantSelection] = useState<Record<string, string>>({});
+
+  /* Default-select the first value of each attached set (and drop stale selections). */
+  useEffect(() => {
+    if (!product) return;
+    setVariantSelection((prev) => {
+      const next: Record<string, string> = {};
+      for (const set of optionSetsForProduct(product)) {
+        const keep = prev[set.id] && set.values.some((v) => v.id === prev[set.id]) ? prev[set.id] : undefined;
+        next[set.id] = keep ?? set.values[0]?.id ?? "";
+      }
+      return next;
+    });
+  }, [product]);
+
+  const variantDelta = product ? priceDeltaFor(optionSets, variantSelection) : 0;
+  const variantPrice = product ? product.price + variantDelta : 0;
+  const variantSkuSuffix = product ? skuSuffixFor(optionSets, variantSelection) : "";
+  const variantSku = product && variantSkuSuffix ? `${product.id}-${variantSkuSuffix}` : undefined;
+  const variantLabel = product && optionSets.length > 0
+    ? optionSets
+        .map((set) => {
+          const v = set.values.find((x) => x.id === variantSelection[set.id]);
+          return v ? `${set.name}: ${v.label}` : null;
+        })
+        .filter(Boolean)
+        .join(" · ")
+    : undefined;
+  const variantKey = product && optionSets.length > 0
+    ? `${product.id}|${optionSets.map((s) => variantSelection[s.id] ?? "").join("+")}|${selectedColor?.name ?? ""}`
+    : undefined;
   const [quantity, setQuantity] = useState(1);
   const [addedToQuote, setAddedToQuote] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const { addItem } = useQuote();
-  const { addItem: addToCart } = useCart();
+  const { addItem: addToCart, effectiveUnitPrice, tradeDiscountFor } = useCart();
 
   const pageUrl = absUrl(`/shop/${product?.id ?? ""}`);
   const productLd = product
@@ -56,11 +91,12 @@ const ProductDetail = () => {
         name: product.name,
         description: product.shortDescription,
         image: product.images[0] ? absUrl(product.images[0]) : undefined,
-        sku: product.id,
+        sku: variantSku ?? product.id,
         price: product.price,
         availability: product.inStock ? "InStock" : "OutOfStock",
         ratingValue: product.rating,
         reviewCount: product.reviews,
+        specs: product.specifications,
         url: pageUrl,
       })
     : null;
@@ -78,10 +114,13 @@ const ProductDetail = () => {
       id: product.id,
       name: product.name,
       category: product.category,
-      price: product.price,
+      price: variantPrice,
       quantity,
       color: selectedColor?.name,
       image: product.images[0],
+      variantKey,
+      variantLabel,
+      variantSku,
     });
     setAddedToQuote(true);
     setTimeout(() => setAddedToQuote(false), 2500);
@@ -93,10 +132,13 @@ const ProductDetail = () => {
       id: product.id,
       name: product.name,
       category: product.category,
-      price: product.price,
+      price: variantPrice,
       quantity,
       color: selectedColor?.name,
       image: product.images[0],
+      variantKey,
+      variantLabel,
+      variantSku,
     });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2500);
@@ -106,6 +148,7 @@ const ProductDetail = () => {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
+      <TradeBanner />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
@@ -127,8 +170,10 @@ const ProductDetail = () => {
 
   const categoryName = categories.find(c => c.id === product.category)?.name || product.category;
   
+  const trade = tradeDiscountFor({ category: product.category });
+  const tradePrice = trade ? effectiveUnitPrice({ price: variantPrice, category: product.category }) : variantPrice;
   const discount = product.originalPrice
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    ? Math.max(0, Math.round(((product.originalPrice - variantPrice) / product.originalPrice) * 100))
     : 0;
 
   // Get related products (same category, excluding current)
@@ -143,6 +188,7 @@ const ProductDetail = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      <TradeBanner />
       {productLd && <JsonLd id="product" data={productLd} />}
       {crumbLd && <JsonLd id="breadcrumb" data={crumbLd} />}
 
@@ -221,9 +267,15 @@ const ProductDetail = () => {
               </div>
 
               {/* Price */}
-              <div className="flex items-baseline gap-3">
-                <span className="text-4xl font-bold">{formatPKR(product.price)}</span>
-                {product.originalPrice && (
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <span className="text-4xl font-bold">{formatPKR(tradePrice)}</span>
+                {trade && (
+                  <>
+                    <span className="text-xl text-muted-foreground line-through">{formatPKR(variantPrice)}</span>
+                    <span className="rounded-full bg-hon-green/10 px-2 py-1 text-[10px] font-bold uppercase text-hon-green-dark">Trade −{trade.pct}%</span>
+                  </>
+                )}
+                {!trade && product.originalPrice && (
                   <>
                     <span className="text-xl text-muted-foreground line-through">
                       {formatPKR(product.originalPrice)}
@@ -245,6 +297,46 @@ const ProductDetail = () => {
                   selectedColor={selectedColor}
                   onColorChange={setSelectedColor}
                 />
+              )}
+
+              {/* Option sets — price, SKU and cart line follow the selection */}
+              {optionSets.length > 0 && (
+                <div className="space-y-3">
+                  {optionSets.map((set) => (
+                    <div key={set.id} className="space-y-1.5">
+                      <span className="text-sm font-medium">{set.name}</span>
+                      <div className="flex flex-wrap gap-2">
+                        {set.values.map((v) => {
+                          const active = variantSelection[set.id] === v.id;
+                          return (
+                            <button
+                              key={v.id}
+                              type="button"
+                              aria-pressed={active}
+                              onClick={() => setVariantSelection((prev) => ({ ...prev, [set.id]: v.id }))}
+                              className={cn(
+                                "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                                active
+                                  ? "border-accent bg-accent text-accent-foreground"
+                                  : "border-border bg-white text-foreground hover:border-accent",
+                              )}
+                            >
+                              {v.label}
+                              {v.priceDelta !== 0 && (
+                                <span className={cn("ml-1 tabular-nums", active ? "text-accent-foreground/80" : "text-muted-foreground")}>
+                                  {v.priceDelta > 0 ? "+" : "−"}PKR {Math.abs(v.priceDelta).toLocaleString("en-PK")}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  {variantSku && (
+                    <p className="text-[11px] text-muted-foreground">SKU: <span className="font-mono">{variantSku}</span> — stock is tracked at product level.</p>
+                  )}
+                </div>
               )}
 
               {/* Quantity */}
@@ -273,7 +365,7 @@ const ProductDetail = () => {
                   </div>
                   <span className="text-muted-foreground">
                     Total: <span className="font-semibold text-foreground">
-                      {formatPKR(product.price * quantity)}
+                      {formatPKR(tradePrice * quantity)}
                     </span>
                   </span>
                 </div>

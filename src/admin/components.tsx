@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { LeadStatus, OrderStatus, PaymentMethod } from "@/api/types";
+import type { ClaimStatus, DraftOrderStatus, ExchangeStatus, LeadStatus, OrderStatus, PaymentMethod, PurchaseOrderStatus, QuoteStatus, ReturnStatus, TransferStatus } from "@/api/types";
 
 /* ── formatters ─────────────────────────────────────────────────────────── */
 export const formatPKR = (n: number) =>
@@ -39,6 +39,82 @@ const leadStyles: Record<LeadStatus, string> = {
   won: "bg-emerald-100 text-emerald-800 border-emerald-200",
   lost: "bg-border text-muted-foreground border-muted-foreground",
 };
+const returnStyles: Record<ReturnStatus, string> = {
+  requested: "bg-amber-100 text-amber-800 border-amber-200",
+  received: "bg-sky-100 text-sky-800 border-sky-200",
+  inspected: "bg-violet-100 text-violet-800 border-violet-200",
+  refunded: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  replaced: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  rejected: "bg-rose-100 text-rose-800 border-rose-200",
+};
+export const ReturnStatusBadge = ({ status }: { status: ReturnStatus }) => (
+  <Badge variant="outline" className={cn("capitalize font-medium", returnStyles[status])}>{status}</Badge>
+);
+const exchangeStyles: Record<ExchangeStatus, string> = {
+  requested: "bg-amber-100 text-amber-800 border-amber-200",
+  approved: "bg-violet-100 text-violet-800 border-violet-200",
+  shipped: "bg-sky-100 text-sky-800 border-sky-200",
+  completed: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  rejected: "bg-rose-100 text-rose-800 border-rose-200",
+};
+export const ExchangeStatusBadge = ({ status }: { status: ExchangeStatus }) => (
+  <Badge variant="outline" className={cn("capitalize font-medium", exchangeStyles[status])}>{status}</Badge>
+);
+const claimStyles: Record<ClaimStatus, string> = {
+  reported: "bg-amber-100 text-amber-800 border-amber-200",
+  assessing: "bg-sky-100 text-sky-800 border-sky-200",
+  approved: "bg-violet-100 text-violet-800 border-violet-200",
+  rejected: "bg-rose-100 text-rose-800 border-rose-200",
+  resolved: "bg-emerald-100 text-emerald-800 border-emerald-200",
+};
+export const ClaimStatusBadge = ({ status }: { status: ClaimStatus }) => (
+  <Badge variant="outline" className={cn("capitalize font-medium", claimStyles[status])}>{status}</Badge>
+);
+const draftStyles: Record<DraftOrderStatus, string> = {
+  draft: "bg-amber-100 text-amber-800 border-amber-200",
+  converted: "bg-emerald-100 text-emerald-800 border-emerald-200",
+};
+export const DraftOrderStatusBadge = ({ status }: { status: DraftOrderStatus }) => (
+  <Badge variant="outline" className={cn("capitalize font-medium", draftStyles[status])}>{status}</Badge>
+);
+
+const quoteStyles: Record<QuoteStatus, string> = {
+  draft: "bg-amber-100 text-amber-800 border-amber-200",
+  sent: "bg-sky-100 text-sky-800 border-sky-200",
+  accepted: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  declined: "bg-rose-100 text-rose-800 border-rose-200",
+  converted: "bg-emerald-600 text-white border-emerald-600",
+};
+export const QuoteStatusBadge = ({ status }: { status: QuoteStatus }) => (
+  <Badge variant="outline" className={cn("capitalize font-medium", quoteStyles[status])}>{status}</Badge>
+);
+
+const transferStyles: Record<TransferStatus, string> = {
+  draft: "bg-amber-100 text-amber-800 border-amber-200",
+  in_transit: "bg-sky-100 text-sky-800 border-sky-200",
+  received: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  cancelled: "bg-slate-200 text-slate-600 border-slate-300",
+};
+const transferLabels: Record<TransferStatus, string> = {
+  draft: "Draft",
+  in_transit: "In transit",
+  received: "Received",
+  cancelled: "Cancelled",
+};
+const poStyles: Record<PurchaseOrderStatus, string> = {
+  draft: "bg-amber-100 text-amber-800 border-amber-200",
+  sent: "bg-sky-100 text-sky-800 border-sky-200",
+  partial: "bg-blue-100 text-blue-800 border-blue-200",
+  received: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  cancelled: "bg-slate-200 text-slate-600 border-slate-300",
+};
+export const PurchaseOrderStatusBadge = ({ status }: { status: PurchaseOrderStatus }) => (
+  <Badge variant="outline" className={cn("capitalize font-medium", poStyles[status])}>{status}</Badge>
+);
+export const TransferStatusBadge = ({ status }: { status: TransferStatus }) => (
+  <Badge variant="outline" className={cn("font-medium", transferStyles[status])}>{transferLabels[status]}</Badge>
+);
+
 const paymentLabels: Record<PaymentMethod, string> = {
   cod: "Cash on Delivery",
   "bank-transfer": "Bank Transfer",

@@ -1,0 +1,324 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { BadgeCheck, Globe, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { getAdminApi } from "@/api";
+import type { AdminBrand } from "@/api/types";
+import { SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+
+type FormState = {
+  id: string; name: string; tagline: string; description: string;
+  logo: string; website: string; active: boolean; sortOrder: string;
+};
+const emptyForm: FormState = {
+  id: "", name: "", tagline: "", description: "", logo: "", website: "", active: true, sortOrder: "",
+};
+
+const slugify = (name: string) =>
+  name.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+export default function AdminBrands() {
+  const api = useMemo(() => getAdminApi(), []);
+  const [items, setItems] = useState<AdminBrand[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [query, setQuery] = useState("");
+
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<AdminBrand | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [saving, setSaving] = useState(false);
+
+  const [deleteTarget, setDeleteTarget] = useState<AdminBrand | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [rows, all] = await Promise.all([
+        api.listBrands(),
+        api.listProducts({ perPage: 5000 }).catch(() => ({ items: [], total: 0, page: 1, perPage: 5000 })),
+      ]);
+      setItems(rows);
+      const map: Record<string, number> = {};
+      for (const p of all.items as Array<{ brandId?: string }>) {
+        if (p.brandId) map[p.brandId] = (map[p.brandId] ?? 0) + 1;
+      }
+      setCounts(map);
+    } catch {
+      toast.error("Could not load brands.");
+    } finally {
+      setLoading(false);
+    }
+  }, [api]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((b) => [b.name, b.id, b.tagline, b.website ?? ""].some((f) => f.toLowerCase().includes(q)));
+  }, [items, query]);
+
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
+
+  const openCreate = () => { setEditTarget(null); setForm(emptyForm); setEditorOpen(true); };
+  const openEdit = (b: AdminBrand) => {
+    setEditTarget(b);
+    setForm({
+      id: b.id, name: b.name, tagline: b.tagline, description: b.description,
+      logo: b.logo ?? "", website: b.website ?? "", active: b.active, sortOrder: String(b.sortOrder),
+    });
+    setEditorOpen(true);
+  };
+
+  const idPreview = editTarget ? editTarget.id : (form.id.trim() || slugify(form.name));
+
+  const save = async () => {
+    const payload = {
+      id: editTarget ? undefined : (idPreview || undefined),
+      name: form.name.trim(),
+      tagline: form.tagline.trim(),
+      description: form.description.trim(),
+      logo: form.logo.trim() || undefined,
+      website: form.website.trim() || undefined,
+      active: form.active,
+      sortOrder: form.sortOrder.trim() === "" ? undefined : Number(form.sortOrder),
+    };
+    if (!payload.name) return toast.error("Brand name is required.");
+    if (payload.sortOrder !== undefined && Number.isNaN(payload.sortOrder)) return toast.error("Sort order must be a number.");
+    if (payload.website && !/^https?:\/\//.test(payload.website)) return toast.error("Website must start with http(s)://");
+    setSaving(true);
+    try {
+      if (editTarget) {
+        const updated = await api.updateBrand(editTarget.id, payload);
+        if (updated) toast.success(`${updated.name} saved.`);
+      } else {
+        const created = await api.createBrand(payload);
+        toast.success(`${created.id} added — products can now reference it via brandId.`);
+      }
+      setEditorOpen(false);
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save the brand.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActive = async (b: AdminBrand) => {
+    try {
+      const updated = await api.setBrandActive(b.id, !b.active);
+      if (updated) toast.success(`${updated.name} — ${updated.active ? "live" : "hidden"}.`);
+      await load();
+    } catch {
+      toast.error("Could not update brand status.");
+    }
+  };
+
+  const doDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const okFlag = await api.deleteBrand(deleteTarget.id);
+      if (okFlag) {
+        toast.success(`${deleteTarget.name} deleted.`);
+        setDeleteTarget(null);
+        await load();
+      } else {
+        toast.error("Brand not found — or still referenced by products.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search brands by name, slug or website…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-9 bg-white"
+            aria-label="Search brands"
+          />
+        </div>
+        <Button onClick={openCreate} className="bg-accent hover:bg-accent/90 text-accent-foreground whitespace-nowrap">
+          <Plus className="mr-1.5 h-4 w-4" /> New brand
+        </Button>
+      </div>
+
+      <p className="rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-[11px] leading-5 text-muted-foreground">
+        Brand master — the catalogue is <span className="font-semibold">Woodex</span> today; room for partner brands.
+        Products reference a brand via <code className="rounded bg-secondary px-1">brandId</code> (set it per product in the editor, or
+        bulk-assign in the Bulk Editor). Brands in use by products cannot be deleted — hide them instead. Storefront pages are unchanged.
+      </p>
+
+      <SectionCard title={`Product Brands (${filtered.length})`}>
+        {loading ? (
+          <SectionSkeleton rows={3} />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={BadgeCheck}
+            title="No brands found"
+            hint={query ? "Try a different search — name, slug or website." : "Add the Woodex master or a partner brand — products reference it via brandId."}
+          />
+        ) : (
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Brand</TableHead>
+                  <TableHead>Website</TableHead>
+                  <TableHead className="text-right">Products</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Order</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((b) => {
+                  const count = counts[b.id] ?? 0;
+                  return (
+                    <TableRow key={b.id} className={cn(!b.active && "opacity-60")}>
+                      <TableCell>
+                        <p className="flex items-center gap-2 text-sm font-semibold leading-snug">
+                          {b.logo ? (
+                            <img src={b.logo} alt="" loading="lazy" className="h-6 w-6 rounded border border-border bg-white object-contain p-0.5" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
+                          ) : (
+                            <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded border border-border bg-secondary text-[10px] font-black text-muted-foreground">{b.name.slice(0, 2).toUpperCase()}</span>
+                          )}
+                          {b.name}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{b.id}</p>
+                        {b.tagline && <p className="mt-0.5 max-w-[260px] text-[10px] leading-snug text-muted-foreground">{b.tagline}</p>}
+                      </TableCell>
+                      <TableCell className="max-w-[200px]">
+                        {b.website ? (
+                          <a href={b.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-hon-green-dark hover:underline break-all">
+                            <Globe className="h-3 w-3 shrink-0" />{b.website.replace(/^https?:\/\//, "")}
+                          </a>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs font-semibold">{count}</TableCell>
+                      <TableCell>
+                        <button type="button" onClick={() => toggleActive(b)} aria-pressed={b.active} title={b.active ? "Hide brand" : "Show brand"}>
+                          <Badge variant="outline" className={cn("font-medium cursor-pointer", b.active ? "border-emerald-200 bg-emerald-100 text-emerald-800" : "border-slate-200 bg-slate-100 text-slate-600")}>
+                            {b.active ? "Live" : "Hidden"}
+                          </Badge>
+                        </button>
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">{b.sortOrder}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(b)} aria-label={`Edit ${b.id}`} title="Edit brand">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(b)} aria-label={`Delete ${b.id}`} title="Delete brand" disabled={count > 0}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* ── create / edit dialog ────────────────────────────────────── */}
+      <Dialog open={editorOpen} onOpenChange={(open) => !open && setEditorOpen(false)}>
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><BadgeCheck className="h-5 w-5 text-hon-green-dark" /> {editTarget ? `Edit ${editTarget.name}` : "New brand"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="br-name" className="mb-1.5 block text-xs font-medium text-muted-foreground">Brand name *</Label>
+                <Input id="br-name" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Renova Home" className="bg-white" autoFocus />
+              </div>
+              <div>
+                <Label htmlFor="br-id" className="mb-1.5 block text-xs font-medium text-muted-foreground">Slug {editTarget ? "(locked)" : "(auto from name)"}</Label>
+                <Input id="br-id" value={editTarget ? editTarget.id : (form.id.trim() || idPreview)} onChange={(e) => set("id", e.target.value)} placeholder={idPreview || "renova-home"} disabled={!!editTarget} className="bg-white font-mono text-xs" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="br-tagline" className="mb-1.5 block text-xs font-medium text-muted-foreground">Tagline</Label>
+              <Input id="br-tagline" value={form.tagline} onChange={(e) => set("tagline", e.target.value)} placeholder="Partner collections for hospitality and home" className="bg-white" />
+            </div>
+            <div>
+              <Label htmlFor="br-desc" className="mb-1.5 block text-xs font-medium text-muted-foreground">Description</Label>
+              <Textarea id="br-desc" rows={2} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="What this brand makes, materials story, market positioning…" className="bg-white" />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="br-logo" className="mb-1.5 block text-xs font-medium text-muted-foreground">Logo URL</Label>
+                <Input id="br-logo" value={form.logo} onChange={(e) => set("logo", e.target.value)} placeholder="/brands/woodex.png" className="bg-white font-mono text-xs" />
+              </div>
+              <div>
+                <Label htmlFor="br-website" className="mb-1.5 block text-xs font-medium text-muted-foreground">Website</Label>
+                <Input id="br-website" value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://woodexfurniture.pk" className="bg-white font-mono text-xs" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <Label htmlFor="br-sort" className="mb-1.5 block text-xs font-medium text-muted-foreground">Sort order</Label>
+                <Input id="br-sort" inputMode="numeric" value={form.sortOrder} onChange={(e) => set("sortOrder", e.target.value)} placeholder="10" className="bg-white" />
+              </div>
+            </div>
+            <label className="flex w-max items-center gap-2 rounded-lg border border-border bg-secondary/40 px-4 py-2.5 text-sm text-foreground">
+              <Switch checked={form.active} onCheckedChange={(v) => set("active", v)} /> Live in brand lists
+            </label>
+            {form.logo.trim() && (
+              <img src={form.logo.trim()} alt="" className="h-10 w-auto rounded border border-border bg-white p-1 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditorOpen(false)}>Cancel</Button>
+            <Button onClick={save} disabled={saving} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+              {editTarget ? "Save changes" : "Add brand"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── delete confirm ──────────────────────────────────────────── */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Delete brand?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{deleteTarget?.name}</span> (<code className="text-foreground">{deleteTarget?.id}</code>) will be removed from the brand master.
+            {(counts[deleteTarget?.id ?? ""] ?? 0) > 0 && <span className="mt-1 block font-medium text-amber-700">Still referenced by {counts[deleteTarget?.id ?? ""]} product(s) — the delete will be refused.</span>}
+          </p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Keep it</Button>
+            <Button onClick={doDelete} disabled={deleting} variant="destructive">
+              {deleting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+              Delete permanently
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

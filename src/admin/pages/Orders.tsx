@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Download, Eye, Loader2, Phone, ShoppingCart } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, Eye, History, Loader2, MessageCircle, Phone, Printer, Save, ShieldCheck, ShoppingCart, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { AdminOrder, OrderStatus } from "@/api/types";
+import type { AdminOrder, AdminOrderEvent, OrderStatus } from "@/api/types";
 import { formatPKR, formatDateTime, timeAgo, OrderStatusBadge, paymentLabel, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,15 @@ const STATUS_TABS: Array<{ value: OrderStatus | "all"; label: string }> = [
 ];
 const ALL_STATUSES: OrderStatus[] = ["pending", "processing", "shipped", "delivered", "cancelled"];
 
+/** wa.me expects digits-only, international format — map local PK mobile forms. */
+function whatsAppNumber(raw: string) {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("92")) return digits;
+  if (digits.startsWith("0")) return `92${digits.slice(1)}`;
+  return digits;
+}
+
 export default function AdminOrders() {
   const api = useMemo(() => getAdminApi(), []);
   const [status, setStatus] = useState<OrderStatus | "all">("all");
@@ -48,6 +58,11 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<AdminOrder | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [courierDraft, setCourierDraft] = useState("");
+  const [trackingDraft, setTrackingDraft] = useState("");
+  const [notesDraft, setNotesDraft] = useState("");
+  const [savingCourier, setSavingCourier] = useState(false);
+  const [events, setEvents] = useState<AdminOrderEvent[] | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query), 250);
@@ -71,6 +86,21 @@ export default function AdminOrders() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [status, debounced]);
 
+  useEffect(() => {
+    if (!selected) { setEvents(null); return; }
+    setCourierDraft(selected.courierName ?? "");
+    setTrackingDraft(selected.trackingNumber ?? "");
+    setNotesDraft(selected.internalNotes ?? "");
+    let alive = true;
+    setEvents(null);
+    api.getOrderEvents(selected.id)
+      .then((list) => { if (alive) setEvents(list); })
+      .catch((e) => { console.warn("[woodex admin] order events unavailable", e); if (alive) setEvents([]); });
+    return () => { alive = false; };
+    // only reset when the dialog target changes — draft edits must not clobber in-flight loads
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id, api]);
+
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
   const changeStatus = async (order: AdminOrder, next: OrderStatus) => {
@@ -78,9 +108,42 @@ export default function AdminOrders() {
     const updated = await api.updateOrderStatus(order.id, next);
     setSavingStatus(false);
     if (updated) {
-      setSelected({ ...updated });
+      setSelected({ ...updated, courierName: updated.courierName, trackingNumber: updated.trackingNumber, internalNotes: updated.internalNotes });
       setRows((rs) => rs.map((r) => (r.id === updated.id ? { ...r, status: updated.status } : r)));
+      void refreshEvents(updated.id);
       toast.success(`Order ${updated.id} → ${next}`);
+    }
+  };
+
+  const refreshEvents = async (orderId: string) => {
+    try {
+      const list = await api.getOrderEvents(orderId);
+      setEvents(list);
+    } catch {
+      // timeline stays as-is when the ledger can't be reached
+    }
+  };
+
+  const saveCourier = async () => {
+    if (!selected) return;
+    setSavingCourier(true);
+    try {
+      const updated = await api.updateOrderCourier(selected.id, {
+        courierName: courierDraft,
+        trackingNumber: trackingDraft,
+        internalNotes: notesDraft,
+      });
+      if (updated) {
+        setSelected({ ...updated });
+        setRows((rs) => rs.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+        await refreshEvents(selected.id);
+        toast.success("Dispatch details saved.");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not save dispatch details.");
+    } finally {
+      setSavingCourier(false);
     }
   };
 
@@ -98,6 +161,10 @@ export default function AdminOrders() {
       setExporting(false);
     }
   };
+
+  const waHref = selected
+    ? `https://wa.me/${whatsAppNumber(selected.customerPhone)}?text=${encodeURIComponent(`Hi ${selected.customerName.split(" ")[0]}, this is WOODEX about your order ${selected.id} — ${paymentLabel(selected.paymentMethod)}, total ${formatPKR(selected.total)}.`)}`
+    : "#";
 
   return (
     <div className="space-y-4">
@@ -213,6 +280,58 @@ export default function AdminOrders() {
                 </p>
               </div>
 
+              {/* dispatch & fulfilment */}
+              <div className="space-y-2 rounded-lg border border-muted p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Dispatch &amp; fulfilment</p>
+                  <div className="flex items-center gap-1.5">
+                    <a href={waHref} target="_blank" rel="noreferrer" aria-label="WhatsApp customer" title="Message customer on WhatsApp" className="flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1.5 text-xs font-medium text-foreground hover:border-hon-green-light hover:text-hon-green-dark">
+                      <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                    </a>
+                    <a href={`/admin/invoice/${selected.id}`} target="_blank" rel="noreferrer" aria-label="Print invoice" title="Open printable invoice" className="flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1.5 text-xs font-medium text-foreground hover:border-hon-green-light hover:text-hon-green-dark">
+                      <Printer className="h-3.5 w-3.5" /> Invoice
+                    </a>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Input value={courierDraft} onChange={(e) => setCourierDraft(e.target.value)} placeholder="Courier (TCS, Leopards…)" aria-label="Courier name" className="h-9 bg-white text-xs" />
+                  <Input value={trackingDraft} onChange={(e) => setTrackingDraft(e.target.value)} placeholder="Consignment / tracking #" aria-label="Consignment number" className="h-9 bg-white text-xs" />
+                </div>
+                <textarea value={notesDraft} onChange={(e) => setNotesDraft(e.target.value)} placeholder="Internal notes (gate code, call-back, damage…)" aria-label="Internal notes" rows={2} className="w-full rounded-md border border-input bg-white px-3 py-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-hon-green-light" />
+                <div className="flex justify-end">
+                  <Button size="sm" variant="outline" onClick={saveCourier} disabled={savingCourier}>
+                    {savingCourier ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+                    Save dispatch details
+                  </Button>
+                </div>
+              </div>
+
+              {/* activity timeline */}
+              <div>
+                <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <History className="h-3.5 w-3.5" /> Activity
+                </div>
+                {events === null ? (
+                  <p className="text-xs text-muted-foreground">Loading timeline…</p>
+                ) : events.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No recorded activity for this order yet.</p>
+                ) : (
+                  <ol className="max-h-44 space-y-1.5 overflow-y-auto pr-1 text-xs">
+                    {[...events].reverse().map((ev) => (
+                      <li key={ev.id} className="flex items-start gap-2 rounded-md bg-secondary px-2.5 py-2 leading-snug">
+                        <span className="whitespace-nowrap text-[10px] leading-5 text-muted-foreground">{formatDateTime(ev.createdAt)}</span>
+                        <span className="min-w-0 text-foreground">
+                          {ev.fromStatus && ev.toStatus && (
+                            <span className="mr-1.5 font-mono text-[10px] font-semibold uppercase text-muted-foreground">{ev.fromStatus} → {ev.toStatus}</span>
+                          )}
+                          {ev.note ?? "Status updated"}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+
               {/* status control */}
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-muted-foreground" htmlFor="order-status">Update status</label>
@@ -228,6 +347,25 @@ export default function AdminOrders() {
             </div>
           )}
           <DialogFooter>
+            {selected?.status === "delivered" && (
+              <>
+                <Button variant="outline" asChild className="border-amber-300 text-amber-900 hover:bg-amber-50">
+                  <Link to={`/admin/returns?new=1&order=${selected.id}`} onClick={() => setSelected(null)}>
+                    <Undo2 className="mr-1.5 h-4 w-4" /> Request return
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild className="border-sky-300 text-sky-900 hover:bg-sky-50">
+                  <Link to={`/admin/exchanges?new=1&order=${selected.id}`} onClick={() => setSelected(null)}>
+                    <ArrowLeftRight className="mr-1.5 h-4 w-4" /> Request exchange
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild className="border-emerald-300 text-emerald-900 hover:bg-emerald-50">
+                  <Link to={`/admin/claims?new=1&order=${selected.id}`} onClick={() => setSelected(null)}>
+                    <ShieldCheck className="mr-1.5 h-4 w-4" /> File claim
+                  </Link>
+                </Button>
+              </>
+            )}
             <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>

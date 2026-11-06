@@ -1,105 +1,123 @@
-import { useMemo, useState } from "react";
-import { FileText, Newspaper, Search, ExternalLink, Info } from "lucide-react";
-import { blogPosts } from "@/data/blogPosts";
-import { services } from "@/data/services";
-import { formatDate, SectionCard, EmptyState } from "@/admin/components";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Link } from "react-router-dom";
+import { Palette, Briefcase, Newspaper, Wrench, ArrowRight, ExternalLink, Info, FileText, ShieldCheck } from "lucide-react";
+import { useMaterials } from "@/lib/useMaterials";
+import { useProjects } from "@/lib/useProjects";
+import { useBlogPosts } from "@/lib/useBlogPosts";
+import { useServices } from "@/lib/useServices";
 
 /**
- * Content hub — read-only view of the storefront content collections today.
- * Full editing ships with the Bagisto/Laravel panel (docs/07-admin-integration);
- * until then, content changes are made in src/data/* and code-reviewed.
+ * Content hub — launchpad for the four storefront content editors (P1.2–P1.5).
+ * Each card links into the live editor and out to the rendered storefront page.
+ * The read-only placeholder was retired once the editors shipped.
  */
 export default function AdminContent() {
-  const [tab, setTab] = useState<"blog" | "services">("blog");
-  const [query, setQuery] = useState("");
+  const materials = useMaterials();
+  const projects = useProjects();
+  const { posts } = useBlogPosts();
+  const { services } = useServices();
 
-  const filteredPosts = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return blogPosts.filter((p) => !q || [p.title, p.excerpt, p.category, p.author].some((f) => f.toLowerCase().includes(q)));
-  }, [query]);
-
-  const filteredServices = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return services.filter((s) => !q || [s.title, s.tagline, s.shortTitle].some((f) => f.toLowerCase().includes(q)));
-  }, [query]);
+  const cards = [
+    {
+      icon: Palette,
+      title: "Materials & Colors",
+      tint: "bg-amber-100 text-amber-800",
+      desc: "Wood species, finishes and colorway swatches — powers the storefront materials library and PDP finish pickers.",
+      count: `${materials.length} materials`,
+      editor: "/admin/materials",
+      live: "/materials",
+    },
+    {
+      icon: Briefcase,
+      title: "Projects",
+      tint: "bg-emerald-100 text-emerald-800",
+      desc: "Case-study portfolio — client, sector, scope, photography and testimonials shown on /projects.",
+      count: `${projects.length} projects`,
+      editor: "/admin/projects",
+      live: "/projects",
+    },
+    {
+      icon: Newspaper,
+      title: "Blog / Journal",
+      tint: "bg-sky-100 text-sky-800",
+      desc: "Articles with featured picks, categories, read time and an ordered content-block editor.",
+      count: `${posts.length} posts`,
+      editor: "/admin/blog",
+      live: "/blog",
+    },
+    {
+      icon: Wrench,
+      title: "Services",
+      tint: "bg-violet-100 text-violet-800",
+      desc: "The services catalogue — overview, process steps, benefits, inclusions, FAQs and case studies per page.",
+      count: `${services.length} services`,
+      editor: "/admin/services",
+      live: "/services",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Warranty",
+      tint: "bg-rose-100 text-rose-800",
+      desc: "The /warranty policy page — hero copy, coverage tiers, claim process and FAQs.",
+      count: "1 policy page",
+      editor: "/admin/warranty",
+      live: "/warranty",
+    },
+  ];
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "blog" | "services")}>
-          <TabsList>
-            <TabsTrigger value="blog"><Newspaper className="mr-1.5 h-3.5 w-3.5" />Blog posts ({filteredPosts.length})</TabsTrigger>
-            <TabsTrigger value="services"><FileText className="mr-1.5 h-3.5 w-3.5" />Services ({filteredServices.length})</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="relative sm:max-w-xs w-full">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search content…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9 bg-white" />
-        </div>
-      </div>
-
-      {/* headless note */}
-      <div className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs text-sky-900">
+      <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <p>
-          Storefront content is code-managed (<code className="rounded bg-sky-100 px-1">src/data/blogPosts.ts</code>, <code className="rounded bg-sky-100 px-1">src/data/services.ts</code>).
-          Editorial editing moves into the Bagisto/TailAdmin panel once the backend is live — see
-          <code className="ml-1 rounded bg-sky-100 px-1">docs/07-admin-integration</code>.
+          <span className="font-semibold">One roof for storefront content.</span> Each editor below writes straight to
+          the live content store — changes appear on the site immediately, no deploy needed. A Bagisto/Laravel panel
+          replaces this hub once the backend is provisioned (see <code className="rounded bg-emerald-100 px-1">docs/07-admin-integration</code>).
+          Note: sitemap.xml is generated at build time — new content enters it on the next deploy.
         </p>
       </div>
 
-      {tab === "blog" ? (
-        <SectionCard title="Journal / Blog">
-          {filteredPosts.length === 0 ? (
-            <EmptyState icon={Newspaper} title="No posts match" hint="Try a different search term." />
-          ) : (
-            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredPosts.map((post) => (
-                <li key={post.id} className="group overflow-hidden rounded-xl border border-border bg-white shadow-sm transition hover:shadow-md">
-                  <div className="relative h-36 overflow-hidden">
-                    <img src={post.image} alt={post.title} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-                    <Badge className="absolute left-3 top-3 border-0 bg-primary/80 text-hon-green-light backdrop-blur">{post.category}</Badge>
-                  </div>
-                  <div className="p-4">
-                    <a href={`/blog/${post.id}`} target="_blank" rel="noreferrer" className="flex items-start justify-between gap-2">
-                      <h3 className="text-sm font-semibold leading-snug text-foreground">{post.title}</h3>
-                      <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition group-hover:text-hon-green-dark" />
-                    </a>
-                    <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-muted-foreground">{post.excerpt}</p>
-                    <p className="mt-2.5 text-[11px] uppercase tracking-wide text-muted-foreground">{post.author} · {formatDate(post.date)} · {post.readTime}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </SectionCard>
-      ) : (
-        <SectionCard title="Services catalogue">
-          {filteredServices.length === 0 ? (
-            <EmptyState icon={FileText} title="No services match" hint="Try a different search term." />
-          ) : (
-            <ul className="grid gap-4 sm:grid-cols-2">
-              {filteredServices.map((service) => (
-                <li key={service.slug} className="flex gap-4 rounded-xl border border-border p-4 transition hover:border-hon-green-light hover:shadow-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-hon-green-pale text-sm font-black text-hon-green-dark">
-                    {service.number}
-                  </div>
-                  <div className="min-w-0">
-                    <a href={`/services/${service.slug}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-hon-green-dark">
-                      {service.title}
-                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                    </a>
-                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{service.tagline}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </SectionCard>
-      )}
+      <div className="flex items-center gap-2 pt-1">
+        <FileText className="h-4 w-4 text-muted-foreground" />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Storefront editors</h2>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {cards.map((card) => (
+          <div key={card.title} className="flex flex-col rounded-xl border border-border bg-white p-5 shadow-sm transition hover:shadow-md">
+            <div className="flex items-start gap-4">
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${card.tint}`}>
+                <card.icon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold leading-snug text-foreground">{card.title}</h3>
+                <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{card.desc}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
+              <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">{card.count}</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={card.live}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-hon-green-dark"
+                  aria-label={`View ${card.title} on the storefront`}
+                  title="View on storefront"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+                <Link
+                  to={card.editor}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                >
+                  Open editor
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

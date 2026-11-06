@@ -34,6 +34,7 @@ const BlogPost = lazy(() => import("./pages/BlogPost"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 // Admin panel — separate async chunk, storefront visitors never download it.
 const AdminApp = lazy(() => import("./admin/AdminApp"));
+const LabPreview = lazy(() => import("./pages-builder/LabPreview"));
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,7 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               {/* Admin panel — self-contained (own auth + layout) */}
               <Route path="/admin/*" element={<AdminApp />} />
+              <Route path="/lab/:slug" element={<LabPreview />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -42,7 +42,7 @@ Related: `backend/README.md` (server provisioning), `backend/bagisto.env.example
 | Demo dataset (localStorage, seeded from real catalogue) | `src/api/demo/db.ts` | ✅ live |
 | Bagisto REST client (Shop + Admin) | `src/api/bagisto/admin.ts` | ✅ written, activates with `VITE_API_MODE=bagisto` |
 | Adapter factory | `src/api/index.ts` → `getAdminApi()` | ✅ done |
-| Admin panel UI (dashboard, products, orders, customers, leads, content, settings) | `src/admin/**` | ✅ live at `/admin` |
+| Admin panel UI (dashboard, products, orders, customers, leads, inventory + delivery zones, content, settings) | `src/admin/**` | ✅ live at `/admin` · inventory & delivery zones land with the fulfilment upgrade (demo-backed; Bagisto WMS stubbed) |
 | Storefront → admin order capture (checkout) | `Checkout.tsx` → `createOrder` | ✅ verified E2E (WDX-1065 test order) |
 | Storefront → admin lead capture (quotation + contact forms) | `Quotation.tsx` / `Contact.tsx` → `createLead` | ✅ verified E2E |
 | Backend deployment bundle + runbook | `backend/` | ✅ docs + Docker reference |

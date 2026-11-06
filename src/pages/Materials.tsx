@@ -1,41 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import materialsHero from "@/assets/materials-hero.webp";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { getAdminApi } from "@/api";
+import { pageSwatchSeed, type PageSwatch } from "@/data/materialsPage";
 
-const woodFinishes = [
-  { name: "Dark Walnut", hex: "#3e2723", description: "Rich, deep brown with natural grain" },
-  { name: "Natural Oak", hex: "#c4a35a", description: "Warm golden tone, light wood feel" },
-  { name: "Espresso", hex: "#3c2415", description: "Very dark brown, near-black elegance" },
-  { name: "White Oak", hex: "#d4c5a9", description: "Light, Scandinavian-inspired finish" },
-  { name: "Sheesham", hex: "#7a4f2d", description: "Pakistani teak, warm reddish brown" },
-  { name: "Beech", hex: "#c9a87c", description: "Light honey tone, smooth grain" },
-];
+const seedFinishes: PageSwatch[] = pageSwatchSeed;
 
-const fabricColors = [
-  { name: "Charcoal Black", hex: "#1a1a1a" },
-  { name: "Slate Gray", hex: "#4a5568" },
-  { name: "Navy Blue", hex: "#1e3a5f" },
-  { name: "Burgundy", hex: "#722f37" },
-  { name: "Dove Gray", hex: "#9ca3af" },
-  { name: "Forest Green", hex: "#15803d" },
-  { name: "Cream", hex: "#f5f0e0" },
-  { name: "Royal Blue", hex: "#2563eb" },
-  { name: "Beige", hex: "#d4b896" },
-  { name: "Teal", hex: "#0d9488" },
-  { name: "Cognac Brown", hex: "#8b4513" },
-  { name: "Off-White", hex: "#f8f6f0" },
-];
-
-const metalFinishes = [
-  { name: "Chrome Silver", hex: "#c0c0c0", description: "Bright, reflective, modern" },
-  { name: "Matte Black", hex: "#1a1a1a", description: "Contemporary, sleek, industrial" },
-  { name: "Brushed Nickel", hex: "#8a8a8a", description: "Subtle sheen, durable" },
-  { name: "Antique Brass", hex: "#b5a642", description: "Warm, vintage, sophisticated" },
-  { name: "Powder White", hex: "#f0f0f0", description: "Clean, minimalist, bright" },
-];
+const FALLBACK_SWATCH: PageSwatch = { name: "—", hex: "#888888", category: "wood" };
 
 const materials = [
   {
@@ -65,8 +39,43 @@ const materials = [
 ];
 
 const Materials = () => {
-  const [selectedWood, setSelectedWood] = useState(woodFinishes[0]);
-  const [selectedFabric, setSelectedFabric] = useState(fabricColors[0]);
+  // Finishes are admin-managed (/admin/materials since P1.2). The seed module
+  // doubles as the offline fallback; the API replaces it once loaded. Laminate
+  // swatches are grouped with wood — both read as hard surface finishes.
+  const [swatches, setSwatches] = useState<PageSwatch[]>(seedFinishes);
+
+  useEffect(() => {
+    let on = true;
+    getAdminApi()
+      .listMaterials()
+      .then((rows) => {
+        if (!on) return;
+        const live = rows
+          .filter((m) => m.active && m.hex)
+          .map((m): PageSwatch => ({
+            name: m.name,
+            hex: m.hex as string,
+            description: m.description,
+            category: m.category === "metal" ? "metal" : m.category === "fabric" ? "fabric" : "wood",
+          }));
+        if (live.length > 0) setSwatches(live);
+      })
+      .catch(() => {
+        /* demo API unavailable — seeded swatches stay */
+      });
+    return () => {
+      on = false;
+    };
+  }, []);
+
+  const woodFinishes = useMemo(() => swatches.filter((s) => s.category === "wood"), [swatches]);
+  const fabricColors = useMemo(() => swatches.filter((s) => s.category === "fabric"), [swatches]);
+  const metalFinishes = useMemo(() => swatches.filter((s) => s.category === "metal"), [swatches]);
+
+  const [selectedWoodName, setSelectedWoodName] = useState("Dark Walnut");
+  const [selectedFabricName, setSelectedFabricName] = useState("Charcoal Black");
+  const selectedWood = woodFinishes.find((w) => w.name === selectedWoodName) ?? woodFinishes[0] ?? FALLBACK_SWATCH;
+  const selectedFabric = fabricColors.find((f) => f.name === selectedFabricName) ?? fabricColors[0] ?? FALLBACK_SWATCH;
 
   useEffect(() => {
     document.title = "Materials & Colors — WOODEX Pakistan";
@@ -95,7 +104,7 @@ const Materials = () => {
           <div className="container mx-auto px-4">
             <div className="w-12 h-1 bg-accent mb-5" />
             <h2 className="text-3xl font-bold mb-2">Wood Finishes</h2>
-            <p className="text-muted-foreground mb-10">Choose from 6 premium wood finishes for tables, desks, and storage</p>
+            <p className="text-muted-foreground mb-10">Choose from {woodFinishes.length} premium finishes for tables, desks, and storage</p>
             <div className="grid lg:grid-cols-2 gap-10 items-start">
               {/* Preview */}
               <div className="sticky top-28">
@@ -116,7 +125,7 @@ const Materials = () => {
                   {woodFinishes.map((finish) => (
                     <button
                       key={finish.name}
-                      onClick={() => setSelectedWood(finish)}
+                      onClick={() => setSelectedWoodName(finish.name)}
                       className={`p-4 border rounded-sm text-left transition-all hover:shadow-md ${selectedWood.name === finish.name ? "border-accent shadow-md" : "border-border"}`}
                     >
                       <div className="w-12 h-8 rounded mb-3 border border-border" style={{ backgroundColor: finish.hex }} />
@@ -135,7 +144,7 @@ const Materials = () => {
           <div className="container mx-auto px-4">
             <div className="w-12 h-1 bg-accent mb-5" />
             <h2 className="text-3xl font-bold mb-2">Fabric & Upholstery Colors</h2>
-            <p className="text-muted-foreground mb-10">12 standard colors for office chairs, sofas, and seating</p>
+            <p className="text-muted-foreground mb-10">{fabricColors.length} standard colors for office chairs, sofas, and seating</p>
             <div className="grid lg:grid-cols-2 gap-10 items-start">
               <div className="sticky top-28">
                 <div
@@ -152,7 +161,7 @@ const Materials = () => {
                 {fabricColors.map((color) => (
                   <button
                     key={color.name}
-                    onClick={() => setSelectedFabric(color)}
+                    onClick={() => setSelectedFabricName(color.name)}
                     title={color.name}
                     className={`w-12 h-12 rounded-full border-4 transition-all hover:scale-110 ${selectedFabric.name === color.name ? "border-accent scale-110" : "border-background shadow-md"}`}
                     style={{ backgroundColor: color.hex }}
