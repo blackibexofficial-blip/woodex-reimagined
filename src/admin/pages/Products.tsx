@@ -5,14 +5,15 @@ import { X, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { AdminProduct, AdminOptionSet, NewAdminProductInput, ProductImportRow, ProductImportResult } from "@/api/types";
-import { categories } from "@/data/products";
+import type { AdminCollection, AdminProduct, AdminOptionSet, NewAdminProductInput, ProductImportRow, ProductImportResult } from "@/api/types";
+import { categories, seriesList } from "@/data/products";
 import { formatPKR, formatNumber, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const PER_PAGE = 10;
@@ -229,8 +230,12 @@ export default function AdminProducts() {
   }, [api, debounced, category, stockFilter, page, sortValue]);
 
   const [optionSets, setOptionSets] = useState<AdminOptionSet[]>([]);
+  const [collections, setCollections] = useState<AdminCollection[]>([]);
+  /* Manual-collection membership — null = derive from collections each render; set once the user toggles a chip. */
+  const [membership, setMembership] = useState<Set<string> | null>(null);
   useEffect(() => {
     api.listOptionSets().then(setOptionSets).catch(() => setOptionSets([]));
+    api.listCollections().then(setCollections).catch(() => setCollections([]));
   }, [api]);
 
   useEffect(() => { load(); }, [load]);
@@ -255,7 +260,32 @@ export default function AdminProducts() {
         weightKg: editing.weightKg === undefined || Number.isNaN(editing.weightKg) ? undefined : editing.weightKg,
         optionSetIds: editing.optionSetIds ?? [],
         specs: (editing.specs ?? []).map((r) => ({ label: r.label.trim(), value: r.value.trim() })).filter((r) => r.label && r.value),
+        shortDescription: editing.shortDescription?.trim() || undefined,
+        description: editing.description?.trim() || undefined,
+        images: (editing.images ?? []).map((u) => u.trim()).filter(Boolean).slice(0, 12),
+        image: (editing.images ?? []).map((u) => u.trim()).filter(Boolean)[0] ?? editing.image,
+        seriesId: editing.seriesId,
       });
+      /* sync manual-collection membership diffs */
+      const manualCols = collections.filter((c) => c.kind === "manual");
+      const finalSet = membership ?? new Set(manualCols.filter((c) => c.productIds.includes(editing.id)).map((c) => c.id));
+      const membershipUpdates = manualCols
+        .filter((c) => c.productIds.includes(editing.id) !== finalSet.has(c.id))
+        .map((c) => {
+          const nextIds = finalSet.has(c.id)
+            ? [...c.productIds.filter((id) => id !== editing.id), editing.id]
+            : c.productIds.filter((id) => id !== editing.id);
+          return api.updateCollection(c.id, { productIds: nextIds });
+        });
+      if (membershipUpdates.length > 0) {
+        try {
+          await Promise.all(membershipUpdates);
+          setCollections(await api.listCollections());
+        } catch {
+          toast.error("Product saved, but updating collection membership failed.");
+        }
+      }
+      setMembership(null);
       setEditing(null);
       toast.success("Product updated.");
       load();
@@ -429,7 +459,7 @@ export default function AdminProducts() {
                       <td className="px-5 py-2.5 text-right">
                         <span className="font-semibold">{formatPKR(p.price)}</span>
                         {p.compareAtPrice && p.compareAtPrice > p.price && (
-                          <span className="block text-[11px] text-muted-foreground line-through">{formatPKR(p.compareAtPrice)}</span>
+                          <span className="block text-[11px] text-muted-foreground"><span className="line-through">{formatPKR(p.compareAtPrice)}</span><span className="ml-1 rounded bg-rose-600 px-1 align-middle text-[9px] font-bold text-white">SALE</span></span>
                         )}
                       </td>
                       <td className="px-5 py-2.5 text-right">
@@ -439,7 +469,7 @@ export default function AdminProducts() {
                       <td className="px-5 py-2.5"><Switch checked={p.inStock} onCheckedChange={(v) => toggleStock(p, v)} aria-label="Toggle in stock" /></td>
                       <td className="px-5 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => setEditing({ ...p })} aria-label="Edit product" title="Edit product">
+                          <Button size="icon" variant="ghost" onClick={() => { setMembership(null); setEditing({ ...p }); }} aria-label="Edit product" title="Edit product">
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button size="icon" variant="ghost" onClick={() => duplicateProduct(p)} disabled={duplicatingId === p.id} aria-label={`Duplicate ${p.name}`} title="Duplicate product">
@@ -565,6 +595,13 @@ export default function AdminProducts() {
                   <Input id="edit-compare" type="number" min={0} value={editing.compareAtPrice ?? ""} onChange={(e) => setEditing({ ...editing, compareAtPrice: e.target.value === "" ? undefined : Number(e.target.value) })} />
                 </div>
               </div>
+              {editing.compareAtPrice !== undefined && editing.compareAtPrice > editing.price ? (
+                <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800">
+                  Old {formatPKR(editing.compareAtPrice)} → Current {formatPKR(editing.price)} — storefront shows the strike-through and a Save {Math.round(((editing.compareAtPrice - editing.price) / editing.compareAtPrice) * 100)}% badge.
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">Set “Compare-at” above the current price to get the Old vs Current price display on the PDP.</p>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-sku">SKU</label>
@@ -587,10 +624,34 @@ export default function AdminProducts() {
                   <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-stock">Units in stock</label>
                   <Input id="edit-stock" type="number" min={0} value={editing.stock} onChange={(e) => setEditing({ ...editing, stock: Number(e.target.value) })} />
                 </div>
-                <div className="flex items-end gap-4 pb-2">
+                <div className="flex flex-wrap items-end gap-3 pb-2">
                   <label className="flex items-center gap-2 text-sm text-foreground"><Switch checked={editing.inStock} onCheckedChange={(v) => setEditing({ ...editing, inStock: v })} /> In stock</label>
-                  <label className="flex items-center gap-2 text-sm text-foreground"><Switch checked={editing.isBestSeller} onCheckedChange={(v) => setEditing({ ...editing, isBestSeller: v })} /> Featured</label>
+                  <label className="flex items-center gap-2 text-sm text-foreground"><Switch checked={editing.isBestSeller} onCheckedChange={(v) => setEditing({ ...editing, isBestSeller: v })} /> Best Seller</label>
+                  <label className="flex items-center gap-2 text-sm text-foreground" title="Sale Item — backed by Compare-at > Current price (single source of truth)"><Switch checked={editing.compareAtPrice !== undefined && editing.compareAtPrice > editing.price} onCheckedChange={(v) => {
+                    if (v) setEditing({ ...editing, compareAtPrice: Math.round((editing.price * 1.15) / 10) * 10 });
+                    else setEditing({ ...editing, compareAtPrice: undefined });
+                  }} /> Sale Item</label>
                 </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-short">Short Description</label>
+                <Input id="edit-short" value={editing.shortDescription ?? ""} onChange={(e) => setEditing({ ...editing, shortDescription: e.target.value })} placeholder="One-liner shown under the title on the PDP" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-desc">Product Details</label>
+                <Textarea id="edit-desc" rows={3} value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} placeholder="Long-form description — materials, build, care, warranty notes…" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-images">Image URLs (one per line) — first is the primary thumbnail</label>
+                <Textarea id="edit-images" rows={2} value={(editing.images ?? (editing.image ? [editing.image] : [])).join("\n")} onChange={(e) => setEditing({ ...editing, images: e.target.value.split("\n").map((u) => u.trim()).filter(Boolean) })} placeholder="chair-product.webp" className="font-mono text-[10px]" />
+                {(editing.images ?? []).length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {(editing.images ?? []).slice(0, 6).map((src, i) => (
+                      <img key={i} src={src} alt="" loading="lazy" className="h-11 w-11 rounded border border-border object-cover" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
+                    ))}
+                    {(editing.images ?? []).length > 6 && <span className="self-center text-[10px] text-muted-foreground">+{(editing.images ?? []).length - 6} more</span>}
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -635,6 +696,48 @@ export default function AdminProducts() {
                   <p className="mt-1 text-[10px] text-muted-foreground">Attached sets render as selectors on the PDP (see <Link to="/admin/options" className="underline underline-offset-2 hover:text-foreground">Options</Link> for deltas & suffixes).</p>
                 </div>
               )}
+              {(() => {
+                const manualCols = collections.filter((c) => c.kind === "manual");
+                const memberSet = membership ?? new Set(manualCols.filter((c) => editing.id && c.productIds.includes(editing.id)).map((c) => c.id));
+                if (manualCols.length === 0) return null;
+                return (
+                  <div>
+                    <span className="mb-1 block text-xs font-medium text-muted-foreground">Collections (manual picks — automatic collections derive from rules)</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {manualCols.map((c) => {
+                        const on = memberSet.has(c.id);
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => setMembership(new Set((() => { const n = new Set(memberSet); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; })()))}
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                              on ? "border-accent bg-accent text-accent-foreground" : "border-border bg-white text-muted-foreground hover:border-accent hover:text-foreground",
+                            )}
+                          >
+                            {on && <Check className="h-3 w-3" />}
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-1 text-[10px] text-muted-foreground">Toggles sync on save — automatic (rule-based) collections are not shown.</p>
+                  </div>
+                );
+              })()}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-series">Furniture Series</label>
+                <Select value={editing.seriesId ?? "__none__"} onValueChange={(v) => setEditing({ ...editing, seriesId: v === "__none__" ? undefined : v })}>
+                  <SelectTrigger id="edit-series" className="bg-white"><SelectValue placeholder="No series" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— no series —</SelectItem>
+                    {seriesList.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-muted-foreground">Matches the storefront /series/:seriesId page.</p>
+              </div>
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">Spec table (dimensions · weight · materials · warranty)</span>

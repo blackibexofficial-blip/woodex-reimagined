@@ -497,6 +497,14 @@ export interface AdminProduct {
   optionSetIds?: string[];
   /** Free-form spec rows (Dimensions / Weight / Material / Warranty…) — editable in admin. */
   specs?: Array<{ label: string; value: string }>;
+  /** Short blurb (legacy "Short Description"). */
+  shortDescription?: string;
+  /** Long-form product details (legacy "Product Details"). */
+  description?: string;
+  /** Gallery URLs — images[0] is the primary thumbnail admin-wide. */
+  images?: string[];
+  /** FK to storefront /series/:seriesId (ek-series, infinity-series…). */
+  seriesId?: string;
 }
 
 /* ── B2B price lists ("catalogs" — negotiated trade pricing) ──────────────── */
@@ -1087,7 +1095,7 @@ export interface AdminApi {
   getRevenueSeries(days: number): Promise<RevenuePoint[]>;
 
   listProducts(params?: ListParams & { category?: string; inStock?: boolean }): Promise<Paginated<AdminProduct>>;
-  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus" | "category" | "dimensions" | "weightKg" | "optionSetIds" | "specs">>): Promise<AdminProduct | undefined>;
+  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus" | "category" | "dimensions" | "weightKg" | "optionSetIds" | "specs" | "shortDescription" | "description" | "images" | "seriesId" | "image">>): Promise<AdminProduct | undefined>;
   /** Applies one bulk patch to many products atomically-ish (single persisted pass). */
   bulkUpdateProducts(ids: string[], patch: BulkProductPatch): Promise<{ updated: number }>;
   /** Create a product (demo: local catalogue insert; bagisto: POST, unverified). SKU auto-assigned. */

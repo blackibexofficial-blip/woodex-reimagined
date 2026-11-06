@@ -173,10 +173,17 @@ Captured from the owner brief (screenshots of the legacy woodexfurniture.pk/lbpa
 Spree dashboard map, and the current React build). Not sequenced yet — owner to pick priority order (see questions).
 
 ### A. Catalogue parity (legacy admin has these today; our admin doesn't fully)
-- [ ] **A1** Product editor upgrade — parity with legacy: Old Price vs Current Price display, Stock, SKU (exists),
-  **Best Sellers** and **Sale Item** toggles, Short Description / Product Details / Specifications, multi-image
-  gallery; plus "Collection(s)" and "Furniture Series" pickers on the product. Check current editor field coverage
-  first; reuse demo DB `AdminProduct` + extend types where missing.
+- [x] **A1** Product editor upgrade — legacy parity delivered (React admin Products → edit): Old vs Current price
+  advisory line (computed, incl. strike-through % on PDP terms) · Stock + SKU (existed) · **Best Seller** relabelled
+  from "Featured" · **Sale Item** toggle — deliberately backed by the single compare-at source of truth
+  (on ⇔ compareAtPrice > price; ON seeds ≈ +15%, OFF clears; list shows a SALE badge) · Short Description +
+  Product Details fields (seeded from the static catalogue) · free-form Spec table (P3.3) · multi-image gallery
+  (URL-per-line editor + thumbnail strip, primary = images[0] synced on save) · **Collections picker** (manual
+  collections only, chips, membership diffed + synced on save via updateCollection) · **Furniture Series** picker
+  (static series list, FK `seriesId`, matches /series/:seriesId). Storefront remains static by accepted
+  architecture (admin edits don't leak to PDP). Live check 22/22 (seed render · Sale Item OFF/ON round-trip · short
+  desc/gallery persisted · Series picker · collection membership flip persisted · 0 console errors) · e2e 33/33 ·
+  lint 0 errors.
 - [ ] **A2** Furniture Series taxonomy — series collections (Infinity, EK, Nova, Cubicle, Staff, …): series as a
   managed entity (slug, name, hero, description) shared by `/series/:seriesId` storefront and collections admin;
   link products to a series.

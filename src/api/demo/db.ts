@@ -1244,6 +1244,10 @@ function buildSeed(): DemoDb {
       createdAt: new Date(Date.now() - (hashString(p.id) % 60) * 86400000).toISOString(),
       optionSetIds: optionSetIdsFor(p),
       specs: p.specifications?.map((s) => ({ ...s })),
+      shortDescription: p.shortDescription,
+      description: p.description,
+      images: [...p.images],
+      seriesId: p.series,
     };
   });
 
@@ -1553,6 +1557,7 @@ export const demoAdminApi: AdminApi = {
         dimensions: input.dimensions,
         weightKg: input.weightKg,
         optionSetIds: optionSetIdsFor({ subcategory: input.subcategory, category: input.category }),
+        images: input.image ? [input.image] : undefined,
       };
       syncFulfilment(p);
       if (input.stockStatus === "made_to_order") p.stockStatus = "made_to_order";
