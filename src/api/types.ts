@@ -10,6 +10,8 @@ export type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "
 export type PaymentMethod = "cod" | "bank-transfer" | "easypaisa" | "jazzcash" | "card";
 export type LeadType = "quote" | "b2b";
 export type LeadStatus = "new" | "contacted" | "quoted" | "won" | "lost";
+export type StockStatus = "in_stock" | "out_of_stock" | "made_to_order";
+export type StockMovementType = "inbound" | "outbound" | "return" | "damage" | "adjustment";
 
 export interface AdminOrderItem {
   id: string;
@@ -67,14 +69,60 @@ export interface AdminProduct {
   name: string;
   category: string;
   subcategory?: string;
+  sku: string;
   price: number;
   compareAtPrice?: number;
   image?: string;
   inStock: boolean;
   stock: number;
+  /** Fulfilment mode: sell from stock, blocked, or built to order. */
+  stockStatus: StockStatus;
   isBestSeller: boolean;
   rating: number;
   reviews: number;
+}
+
+/* ── Inventory & fulfilment ─────────────────────────────────────────────── */
+
+export interface AdminInventoryItem {
+  productId: string;
+  name: string;
+  sku: string;
+  category: string;
+  image?: string;
+  quantity: number;
+  lowStockThreshold: number;
+  location: string;
+  stockStatus: StockStatus;
+  lastUpdated: string;   // ISO
+}
+
+export interface AdminStockMovement {
+  id: string;
+  productId: string;
+  productName: string;
+  productSku: string;
+  type: StockMovementType;
+  /** Signed delta actually applied to stock (already clamped at zero). */
+  quantity: number;
+  notes?: string;
+  createdAt: string;     // ISO
+}
+
+export interface AdminDeliveryZone {
+  id: string;
+  zoneName: string;
+  city: string;
+  postalCodes: string[];
+  standardCost: number;
+  expressCost: number;
+  sameDayCost: number;
+  standardDays: number;
+  expressDays: number;
+  codAvailable: boolean;
+  isActive: boolean;
+  createdAt: string;     // ISO
+  updatedAt: string;     // ISO
 }
 
 export interface DashboardStats {
@@ -179,7 +227,7 @@ export interface AdminApi {
   getRevenueSeries(days: number): Promise<RevenuePoint[]>;
 
   listProducts(params?: ListParams & { category?: string; inStock?: boolean }): Promise<Paginated<AdminProduct>>;
-  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller">>): Promise<AdminProduct | undefined>;
+  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus">>): Promise<AdminProduct | undefined>;
 
   listOrders(params?: ListParams & { status?: OrderStatus | "all" }): Promise<Paginated<AdminOrder>>;
   getOrder(id: string): Promise<AdminOrder | undefined>;
@@ -204,6 +252,24 @@ export interface AdminApi {
   ): Promise<AdminCategory | undefined>;
   /** Refuses (returns ok:false + reason) while products still reference the category. */
   deleteCategory(id: string): Promise<{ ok: boolean; error?: string }>;
+
+  /* Inventory & fulfilment */
+  /** All catalogue products joined with their stock metadata, worst-stocked first. */
+  listInventory(params?: ListParams & { filter?: "all" | "in" | "low" | "out" | "made_to_order" }): Promise<AdminInventoryItem[]>;
+  /**
+   * Applies a stock delta and records an audit movement.
+   * For `adjustment`, `quantity` is taken as-is (may be negative); otherwise the
+   * type implies the sign (inbound/return +, outbound/damage −) and the magnitude
+   * (absolute value) is used. Clamps at zero and records the *applied* delta.
+   */
+  adjustStock(input: { productId: string; type: StockMovementType; quantity: number; notes?: string }): Promise<{ item: AdminInventoryItem; movement: AdminStockMovement } | undefined>;
+  listStockMovements(params?: { productId?: string; limit?: number }): Promise<AdminStockMovement[]>;
+
+  /* Delivery zones — base/express/same-day costs + COD, demo-backed until Bagisto WMS wiring */
+  listDeliveryZones(): Promise<AdminDeliveryZone[]>;
+  /** Creates a zone when `id` is omitted; otherwise updates the existing zone. */
+  saveDeliveryZone(input: Omit<AdminDeliveryZone, "id" | "createdAt" | "updatedAt"> & { id?: string }): Promise<AdminDeliveryZone>;
+  deleteDeliveryZone(id: string): Promise<boolean>;
 
   /** Media library — demo-backed, persisted in localStorage as data URLs (keep files small). */
   listMediaAssets(): Promise<AdminMediaAsset[]>;

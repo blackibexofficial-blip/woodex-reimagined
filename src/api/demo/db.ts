@@ -33,6 +33,9 @@ interface DemoDb {
   customers: AdminCustomer[];
   leads: AdminLead[];
   settings: StoreSettings;
+  inventoryMeta: Record<string, { lowStockThreshold: number; location: string; lastUpdated: string }>;
+  movements: AdminStockMovement[];
+  zones: AdminDeliveryZone[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -157,6 +160,72 @@ function buildSeedMedia(): AdminMediaAsset[] {
   return out;
 }
 
+/* ── inventory seeds ────────────────────────────────────────────────────── */
+/** Deterministic per-product thresholds / locations (stable across fresh seeds). */
+function buildInventoryMeta(adminProducts: AdminProduct[]): DemoDb["inventoryMeta"] {
+  const meta: DemoDb["inventoryMeta"] = {};
+  for (const p of adminProducts) {
+    meta[p.id] = {
+      lowStockThreshold: 6 + (hashString(p.id) % 10), // 6–15 units
+      location: hashString(`${p.id}#loc`) % 4 === 0 ? "Showroom Floor — Lahore" : "Main Warehouse — Lahore",
+      lastUpdated: new Date(Date.now() - ((hashString(`${p.id}#upd`) % 45) + 2) * 86400000).toISOString(),
+    };
+  }
+  return meta;
+}
+
+const defaultInventoryMeta = (id: string) => ({
+  lowStockThreshold: 6 + (hashString(id) % 10),
+  location: hashString(`${id}#loc`) % 4 === 0 ? "Showroom Floor — Lahore" : "Main Warehouse — Lahore",
+  lastUpdated: new Date().toISOString(),
+});
+
+/** 3 default delivery zones — base / express / same-day costs + COD (owner-requested rates). */
+function buildSeedZones(): AdminDeliveryZone[] {
+  const created = new Date(Date.now() - 120 * 86400000).toISOString();
+  const mk = (id: string, zoneName: string, city: string, postalCodes: string[]): AdminDeliveryZone => ({
+    id, zoneName, city, postalCodes,
+    standardCost: 2000, expressCost: 5000, sameDayCost: 8000,
+    standardDays: 3, expressDays: 1,
+    codAvailable: true, isActive: true,
+    createdAt: created, updatedAt: created,
+  });
+  return [
+    mk("zone-lahore", "Lahore City", "Lahore", ["54000", "54590", "54660", "54772", "54900"]),
+    mk("zone-isb-rwp", "Islamabad & Rawalpindi", "Islamabad", ["44000", "44010", "44030", "44150", "46000"]),
+    mk("zone-karachi", "Karachi City", "Karachi", ["74000", "74200", "74400", "74800", "75600"]),
+  ];
+}
+
+function buildSeedMovements(adminProducts: AdminProduct[]): AdminStockMovement[] {
+  const rand = mulberry32(77077);
+  const out: AdminStockMovement[] = [];
+  const note: Record<StockMovementType, string> = {
+    inbound: "Goods received from factory batch",
+    outbound: "Dispatch for order fulfilment",
+    return: "Customer return restocked",
+    damage: "Damaged on the floor — written off",
+    adjustment: "Cycle count correction",
+  };
+  for (let i = 0; i < 16; i++) {
+    const p = adminProducts[Math.floor(rand() * adminProducts.length)];
+    const type = pick(rand, ["inbound", "inbound", "outbound", "outbound", "outbound", "return", "damage", "adjustment"] as const);
+    const magnitude = type === "inbound" ? 10 + Math.floor(rand() * 40) : type === "outbound" ? 1 + Math.floor(rand() * 6) : 1 + Math.floor(rand() * 2);
+    const signed = type === "inbound" || type === "return" ? magnitude : type === "adjustment" ? (rand() < 0.5 ? -magnitude : magnitude) : -magnitude;
+    out.push({
+      id: `mov-seed-${i + 1}`,
+      productId: p.id,
+      productName: p.name,
+      productSku: p.sku,
+      type,
+      quantity: signed,
+      notes: note[type],
+      createdAt: new Date(Date.now() - Math.floor(rand() * 30) * 86400000 - Math.floor(rand() * 20) * 3600000).toISOString(),
+    });
+  }
+  return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "category";
 
@@ -164,18 +233,21 @@ function buildSeed(): DemoDb {
   const rand = mulberry32(20261106);
 
   /* products from the live catalogue */
-  const adminProducts: AdminProduct[] = products.map((p) => {
+  const adminProducts: AdminProduct[] = products.map((p, i) => {
     const stock = p.inStock ? (hashString(p.id) % 90) + 3 : 0;
+    const madeToOrder = p.inStock && hashString(`${p.id}#mto`) % 100 < 14; // ~a seventh of the catalogue is built to order
     return {
       id: p.id,
       name: p.name,
       category: p.category,
       subcategory: (p as { subcategory?: string }).subcategory,
+      sku: `WDX-${String(i + 1001).padStart(4, "0")}`,
       price: p.price,
       compareAtPrice: p.originalPrice,
       image: p.images[0],
       inStock: p.inStock,
       stock,
+      stockStatus: p.inStock ? (madeToOrder ? "made_to_order" : "in_stock") : "out_of_stock",
       isBestSeller: Boolean(p.isBestSeller),
       rating: p.rating,
       reviews: p.reviews,
@@ -283,7 +355,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -299,9 +371,17 @@ function loadDb(): DemoDb {
     const raw = localStorage.getItem(DB_KEY);
     if (raw) {
       const db = JSON.parse(raw) as DemoDb;
-      // migrate payloads saved before categories/media existed
+      // migrate payloads saved before categories/media/inventory existed
       if (!Array.isArray(db.categories)) db.categories = buildSeedCategories();
       if (!Array.isArray(db.media)) db.media = buildSeedMedia();
+      if (!Array.isArray(db.movements)) db.movements = [];
+      if (!Array.isArray(db.zones)) db.zones = buildSeedZones();
+      if (!db.inventoryMeta || typeof db.inventoryMeta !== "object" || Array.isArray(db.inventoryMeta)) db.inventoryMeta = buildInventoryMeta(db.products);
+      db.products.forEach((p, i) => {
+        if (!p.sku) p.sku = `WDX-${String(i + 1001).padStart(4, "0")}`;
+        if (!p.stockStatus) p.stockStatus = p.stock === 0 ? "out_of_stock" : "in_stock";
+        if (!db.inventoryMeta[p.id]) db.inventoryMeta[p.id] = defaultInventoryMeta(p.id);
+      });
       memory = db;
       return memory;
     }
@@ -331,6 +411,34 @@ function paginate<T>(items: T[], { page = 1, perPage = 10 }: ListParams) {
 }
 
 const PKR = (n: number) => n; // amounts stay numeric; UI formats with Intl.NumberFormat
+const clampInt = (n: number, min: number, max: number) => Math.min(max, Math.max(min, Math.trunc(Number(n) || 0)));
+
+/** Keeps stock/inStock/stockStatus coherent. `made_to_order` is preserved (built to order, shelf qty not relevant). */
+const syncFulfilment = (p: AdminProduct) => {
+  if (p.stockStatus !== "made_to_order") p.stockStatus = p.stock > 0 ? "in_stock" : "out_of_stock";
+  p.inStock = p.stock > 0;
+};
+
+const inventoryItemFor = (db: DemoDb, p: AdminProduct): AdminInventoryItem => {
+  const meta = db.inventoryMeta[p.id] ?? defaultInventoryMeta(p.id);
+  return {
+    productId: p.id,
+    name: p.name,
+    sku: p.sku,
+    category: p.category,
+    image: p.image,
+    quantity: p.stock,
+    lowStockThreshold: meta.lowStockThreshold,
+    location: meta.location,
+    stockStatus: p.stockStatus,
+    lastUpdated: meta.lastUpdated,
+  };
+};
+
+const touchProductMeta = (db: DemoDb, productId: string) => {
+  const meta = (db.inventoryMeta[productId] ??= defaultInventoryMeta(productId));
+  meta.lastUpdated = new Date().toISOString();
+};
 
 export const demoAdminApi: AdminApi = {
   async getDashboardStats(): Promise<DashboardStats> {
@@ -385,7 +493,14 @@ export const demoAdminApi: AdminApi = {
     let updated: AdminProduct | undefined;
     update((db) => {
       const p = db.products.find((x) => x.id === id);
-      if (p) { Object.assign(p, patch); updated = { ...p }; }
+      if (!p) return;
+      const explicitStatus = patch.stockStatus !== undefined;
+      Object.assign(p, patch);
+      if (!explicitStatus && patch.stock !== undefined) syncFulfilment(p);      // shelf qty changed → derive fulfilment from it
+      if (patch.stock !== undefined) touchProductMeta(db, p.id);
+      if (explicitStatus && p.stockStatus === "out_of_stock") p.inStock = false;
+      else if (explicitStatus && p.stock > 0) p.inStock = true;
+      updated = { ...p };
     });
     return updated;
   },
@@ -507,6 +622,99 @@ export const demoAdminApi: AdminApi = {
     }
     update((d) => { d.categories = d.categories.filter((c) => c.id !== id); });
     return { ok: true };
+  },
+
+  async listInventory(params = {}) {
+    const db = loadDb();
+    const filter = params.filter ?? "all";
+    let items = db.products.map((p) => inventoryItemFor(db, p));
+    if (filter === "in") items = items.filter((i) => i.stockStatus !== "made_to_order" && i.quantity > i.lowStockThreshold);
+    else if (filter === "low") items = items.filter((i) => i.stockStatus !== "made_to_order" && i.quantity > 0 && i.quantity <= i.lowStockThreshold);
+    else if (filter === "out") items = items.filter((i) => i.stockStatus !== "made_to_order" && i.quantity === 0);
+    else if (filter === "made_to_order") items = items.filter((i) => i.stockStatus === "made_to_order");
+    items = items.filter((i) => matchQuery(params.query, [i.name, i.sku, i.category]));
+    return items.sort((a, b) => a.quantity - b.quantity || a.name.localeCompare(b.name));
+  },
+
+  async adjustStock(input) {
+    let out: { item: AdminInventoryItem; movement: AdminStockMovement } | undefined;
+    update((db) => {
+      const p = db.products.find((x) => x.id === input.productId);
+      if (!p) return;
+      const magnitude = Math.abs(Math.trunc(Number(input.quantity)) || 0);
+      const signed =
+        input.type === "adjustment"
+          ? Math.trunc(Number(input.quantity)) || 0
+          : input.type === "inbound" || input.type === "return"
+            ? magnitude
+            : -magnitude;
+      const before = p.stock;
+      p.stock = Math.max(0, before + signed);
+      syncFulfilment(p);
+      touchProductMeta(db, p.id);
+      const movement: AdminStockMovement = {
+        id: `mov-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+        productId: p.id,
+        productName: p.name,
+        productSku: p.sku,
+        type: input.type,
+        quantity: p.stock - before, // applied delta after clamping — honest audit trail
+        notes: input.notes?.trim() || undefined,
+        createdAt: new Date().toISOString(),
+      };
+      if (movement.quantity !== 0 || input.type === "adjustment" || movement.notes) db.movements.unshift(movement);
+      out = { item: inventoryItemFor(db, p), movement };
+    });
+    return out;
+  },
+
+  async listStockMovements(params = {}) {
+    let items = [...loadDb().movements];
+    if (params.productId) items = items.filter((m) => m.productId === params.productId);
+    return items.slice(0, params.limit ?? 60);
+  },
+
+  async listDeliveryZones() {
+    return loadDb().zones.map((z) => ({ ...z, postalCodes: [...z.postalCodes] }));
+  },
+
+  async saveDeliveryZone(input) {
+    const nowIso = new Date().toISOString();
+    const clean = {
+      zoneName: input.zoneName.trim() || "Untitled zone",
+      city: input.city.trim() || "—",
+      postalCodes: (input.postalCodes ?? []).map((s: string) => String(s).trim()).filter(Boolean).slice(0, 40),
+      standardCost: Math.max(0, Number(input.standardCost) || 0),
+      expressCost: Math.max(0, Number(input.expressCost) || 0),
+      sameDayCost: Math.max(0, Number(input.sameDayCost) || 0),
+      standardDays: clampInt(input.standardDays, 0, 30),
+      expressDays: clampInt(input.expressDays, 0, 30),
+      codAvailable: Boolean(input.codAvailable),
+      isActive: Boolean(input.isActive),
+    };
+    let out: AdminDeliveryZone | undefined;
+    update((db) => {
+      const idx = input.id ? db.zones.findIndex((z) => z.id === input.id) : -1;
+      if (idx >= 0) {
+        const z = db.zones[idx];
+        db.zones[idx] = { ...z, ...clean, updatedAt: nowIso };
+        out = { ...db.zones[idx] };
+      } else {
+        out = { id: `zone-${slugify(clean.zoneName) || "zone"}-${Date.now().toString(36)}`, ...clean, createdAt: nowIso, updatedAt: nowIso };
+        db.zones.push(out);
+      }
+    });
+    return out!;
+  },
+
+  async deleteDeliveryZone(id) {
+    let removed = false;
+    update((db) => {
+      const before = db.zones.length;
+      db.zones = db.zones.filter((z) => z.id !== id);
+      removed = db.zones.length < before;
+    });
+    return removed;
   },
 
   async listMediaAssets() {

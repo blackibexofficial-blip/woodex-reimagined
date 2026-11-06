@@ -151,7 +151,7 @@ export default function AdminProducts() {
                               {p.isBestSeller && <Star className="h-3.5 w-3.5 shrink-0 fill-hon-green-light text-accent" />}
                               <span className="truncate">{p.name}</span>
                             </p>
-                            <p className="font-mono text-[10px] uppercase text-muted-foreground">{p.id}</p>
+                            <p className="font-mono text-[10px] uppercase text-muted-foreground" title={p.id}>{p.sku}</p>
                           </div>
                         </div>
                       </td>
@@ -200,7 +200,7 @@ export default function AdminProducts() {
             <div className="space-y-4 py-2">
               <div className="flex items-center gap-3 rounded-lg bg-secondary p-3">
                 {editing.image && <img src={editing.image} alt="" className="h-14 w-14 rounded-md object-cover" />}
-                <p className="text-xs text-muted-foreground">ID: <span className="font-mono">{editing.id}</span></p>
+                <p className="text-xs text-muted-foreground">SKU: <span className="font-mono">{editing.sku}</span> · ID: <span className="font-mono">{editing.id}</span></p>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-name">Name</label>
@@ -214,6 +214,23 @@ export default function AdminProducts() {
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-compare">Compare-at</label>
                   <Input id="edit-compare" type="number" min={0} value={editing.compareAtPrice ?? ""} onChange={(e) => setEditing({ ...editing, compareAtPrice: e.target.value === "" ? undefined : Number(e.target.value) })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-sku">SKU</label>
+                  <Input id="edit-sku" value={editing.sku} readOnly disabled className="bg-muted font-mono text-xs" aria-label="SKU (read-only)" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-status">Fulfilment</label>
+                  <Select value={editing.stockStatus} onValueChange={(v) => setEditing({ ...editing, stockStatus: v as AdminProduct["stockStatus"] })}>
+                    <SelectTrigger id="edit-status" className="bg-white"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="in_stock">In stock</SelectItem>
+                      <SelectItem value="out_of_stock">Out of stock</SelectItem>
+                      <SelectItem value="made_to_order">Made to order</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">

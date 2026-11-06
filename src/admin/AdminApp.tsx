@@ -6,6 +6,7 @@ import AdminDashboard from "@/admin/pages/Dashboard";
 import AdminAnalytics from "@/admin/pages/Analytics";
 import AdminProducts from "@/admin/pages/Products";
 import AdminCategories from "@/admin/pages/Categories";
+import AdminInventory from "@/admin/pages/Inventory";
 import AdminOrders from "@/admin/pages/Orders";
 import AdminCustomers from "@/admin/pages/Customers";
 import AdminLeads from "@/admin/pages/Leads";
@@ -30,6 +31,7 @@ export default function AdminApp() {
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="categories" element={<AdminCategories />} />
+          <Route path="inventory" element={<AdminInventory />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="leads" element={<AdminLeads />} />

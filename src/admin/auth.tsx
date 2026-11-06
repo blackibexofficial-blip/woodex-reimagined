@@ -39,9 +39,11 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const login: AdminAuthContextValue["login"] = async (email, password) => {
     await new Promise((r) => setTimeout(r, 650)); // simulate a backend round-trip
+    // Demo gate only: tolerate leading/trailing whitespace on the password —
+    // mobile keyboards and paste-ins commonly introduce a stray trailing space.
     const ok =
       email.trim().toLowerCase() === config.admin.email.toLowerCase() &&
-      password === config.admin.password;
+      password.trim() === config.admin.password;
     if (!ok) return { ok: false, error: "Invalid credentials. Check the demo credentials hint below." };
     const next: AdminUser = { email: email.trim().toLowerCase(), name: "WOODEX Admin", signedInAt: new Date().toISOString() };
     localStorage.setItem(config.admin.sessionKey, JSON.stringify(next));

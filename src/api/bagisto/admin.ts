@@ -98,6 +98,8 @@ const mapProduct = (p: any): AdminProduct => ({
   image: p.images?.[0]?.url ?? p.base_image?.medium_url ?? p.base_image?.url,
   inStock: Boolean(p.in_stock ?? p.is_in_stock ?? true),
   stock: Number(p.inventories?.[0]?.qty ?? p.total_qty ?? p.quantity ?? 0),
+  stockStatus: (p.in_stock ?? p.is_in_stock ?? true) ? "in_stock" : "out_of_stock",
+  sku: String(p.sku ?? p.slug ?? p.id ?? ""),
   isBestSeller: Boolean(p.is_featured ?? p.is_best_seller ?? false),
   rating: Number(p.average_rating ?? p.rating ?? 0),
   reviews: Number(p.reviews_count ?? p.review_count ?? 0),
@@ -342,6 +344,33 @@ export const bagistoAdminApi: AdminApi = {
 
   async deleteMediaAsset(): Promise<boolean> {
     throw new BagistoApiError(501, "Media deletion on Bagisto is not wired yet.");
+  },
+
+  async listInventory() {
+    // Sellable qty exists per product (mapped above). The WMS layer — per-location
+    // stock, movement audit log, thresholds, zones — is not in Bagisto core; tracking
+    // it there needs a custom package. See docs/07-admin-integration.
+    throw new BagistoApiError(501, "Inventory module is not wired for Bagisto yet — use the product stock column for now, or VITE_API_MODE=demo for the preview. See docs/07-admin-integration.");
+  },
+
+  async adjustStock() {
+    throw new BagistoApiError(501, "Stock adjustments are not wired for Bagisto yet — Bagisto adjusts qty via product inventories. See docs/07-admin-integration.");
+  },
+
+  async listStockMovements() {
+    throw new BagistoApiError(501, "Stock movement history is not exposed by Bagisto core — WMS package required. See docs/07-admin-integration.");
+  },
+
+  async listDeliveryZones() {
+    throw new BagistoApiError(501, "Delivery zones (base/express/same-day, COD) are not in Bagisto core — model as cart rules or a custom package. See docs/07-admin-integration.");
+  },
+
+  async saveDeliveryZone() {
+    throw new BagistoApiError(501, "Delivery zone editing is not wired for Bagisto yet. See docs/07-admin-integration.");
+  },
+
+  async deleteDeliveryZone() {
+    throw new BagistoApiError(501, "Delivery zone deletion is not wired for Bagisto yet. See docs/07-admin-integration.");
   },
 
   async resetDemoData() {
