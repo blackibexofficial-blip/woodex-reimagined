@@ -9,6 +9,7 @@ import { idbDeleteMany, idbGetAll, idbPutMany } from "@/api/demo/mediaStore";
 import { products, categoryGroups } from "@/data/products";
 import { materials as finishSeed } from "@/data/materials";
 import { pageSwatchSeed } from "@/data/materialsPage";
+import { projectsDisplay as projectSeed } from "@/data/projects";
 import type {
   AdminApi,
   AdminCategory,
@@ -47,6 +48,8 @@ import type {
   NewShowroomInput,
   AdminMaterial,
   NewMaterialInput,
+  AdminProject,
+  NewProjectInput,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -74,6 +77,7 @@ interface DemoDb {
   salesChannels: AdminSalesChannel[];
   showrooms: AdminShowroom[];
   materials: AdminMaterial[];
+  projects: AdminProject[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -398,6 +402,18 @@ function buildSeedMaterials(): AdminMaterial[] {
   return [...finishes, ...swatches];
 }
 
+function buildSeedProjects(): AdminProject[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  return projectSeed.map((p, i) => ({
+    ...p,
+    active: true,
+    sortOrder: (i + 1) * 10,
+    createdAt: iso(300 - i * 25),
+    updatedAt: iso(300 - i * 25),
+  }));
+}
+
 function buildSeedShowrooms(): AdminShowroom[] {
   const now = Date.now();
   const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
@@ -699,7 +715,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -728,6 +744,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.salesChannels)) db.salesChannels = buildSeedSalesChannels();
       if (!Array.isArray(db.showrooms)) db.showrooms = buildSeedShowrooms();
       if (!Array.isArray(db.materials)) db.materials = buildSeedMaterials();
+      if (!Array.isArray(db.projects)) db.projects = buildSeedProjects();
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -1530,6 +1547,107 @@ export const demoAdminApi: AdminApi = {
     let ok = false;
     update((db) => {
       const arr = (db.materials ??= []);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
+  },
+
+  async listProjects() {
+    const db = loadDb();
+    return [...(db.projects ??= [])]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((r) => ({ ...r, furnitureUsed: [...r.furnitureUsed], testimonial: r.testimonial ? { ...r.testimonial } : undefined }));
+  },
+
+  async createProject(input) {
+    let created: AdminProject | undefined;
+    update((db) => {
+      const arr = (db.projects ??= []);
+      const name = input.title.trim();
+      const base = `proj-${slugify(name) || "project"}`;
+      const ids = new Set(arr.map((m) => m.id));
+      let id = base;
+      let n = 1;
+      while (ids.has(id)) id = `${base}-${++n}`;
+      const maxOrder = Math.max(0, ...arr.map((r) => r.sortOrder));
+      const nowIso = new Date().toISOString();
+      created = {
+        id,
+        title: name,
+        client: input.client.trim(),
+        category: input.category.trim(),
+        image: input.image?.trim() || "",
+        beforeImage: input.beforeImage?.trim() || undefined,
+        location: input.location?.trim() || "",
+        sqft: input.sqft?.trim() || "",
+        year: input.year?.trim() || "",
+        employees: input.employees?.trim() || "",
+        duration: input.duration?.trim() || "",
+        description: input.description?.trim() || "",
+        challenge: input.challenge?.trim() || undefined,
+        solution: input.solution?.trim() || undefined,
+        furnitureUsed: input.furnitureUsed ? [...input.furnitureUsed] : [],
+        testimonial: input.testimonial ? { ...input.testimonial } : undefined,
+        rating: input.rating,
+        active: input.active ?? true,
+        sortOrder: input.sortOrder ?? maxOrder + 10,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      arr.push(created);
+    });
+    if (!created) throw new Error("Failed to create project");
+    return created;
+  },
+
+  async updateProject(id, patch) {
+    let updated: AdminProject | undefined;
+    update((db) => {
+      const proj = (db.projects ??= []).find((x) => x.id === id);
+      if (!proj) return;
+      if (patch.title !== undefined) proj.title = patch.title.trim() || proj.title;
+      if (patch.client !== undefined) proj.client = patch.client.trim();
+      if (patch.category !== undefined) proj.category = patch.category.trim();
+      if (patch.image !== undefined) proj.image = patch.image.trim();
+      if (patch.beforeImage !== undefined) proj.beforeImage = patch.beforeImage.trim() || undefined;
+      if (patch.location !== undefined) proj.location = patch.location.trim();
+      if (patch.sqft !== undefined) proj.sqft = patch.sqft.trim();
+      if (patch.year !== undefined) proj.year = patch.year.trim();
+      if (patch.employees !== undefined) proj.employees = patch.employees.trim();
+      if (patch.duration !== undefined) proj.duration = patch.duration.trim();
+      if (patch.description !== undefined) proj.description = patch.description.trim();
+      if (patch.challenge !== undefined) proj.challenge = patch.challenge.trim() || undefined;
+      if (patch.solution !== undefined) proj.solution = patch.solution.trim() || undefined;
+      if (patch.furnitureUsed !== undefined) proj.furnitureUsed = [...patch.furnitureUsed];
+      if (patch.testimonial !== undefined) proj.testimonial = patch.testimonial ? { ...patch.testimonial } : undefined;
+      if (patch.rating !== undefined) proj.rating = patch.rating;
+      if (patch.active !== undefined) proj.active = patch.active;
+      if (patch.sortOrder !== undefined) proj.sortOrder = patch.sortOrder;
+      proj.updatedAt = new Date().toISOString();
+      updated = { ...proj, furnitureUsed: [...proj.furnitureUsed], testimonial: proj.testimonial ? { ...proj.testimonial } : undefined };
+    });
+    return updated;
+  },
+
+  async setProjectActive(id, active: boolean) {
+    let updated: AdminProject | undefined;
+    update((db) => {
+      const proj = (db.projects ??= []).find((x) => x.id === id);
+      if (!proj) return;
+      proj.active = active;
+      proj.updatedAt = new Date().toISOString();
+      updated = { ...proj, furnitureUsed: [...proj.furnitureUsed], testimonial: proj.testimonial ? { ...proj.testimonial } : undefined };
+    });
+    return updated;
+  },
+
+  async deleteProject(id) {
+    let ok = false;
+    update((db) => {
+      const arr = (db.projects ??= []);
       const i = arr.findIndex((x) => x.id === id);
       if (i === -1) return;
       arr.splice(i, 1);

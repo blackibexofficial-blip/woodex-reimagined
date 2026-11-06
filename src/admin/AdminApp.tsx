@@ -8,6 +8,7 @@ import AdminProducts from "@/admin/pages/Products";
 import AdminCategories from "@/admin/pages/Categories";
 import AdminCollections from "@/admin/pages/Collections";
 import AdminMaterials from "@/admin/pages/Materials";
+import AdminProjects from "@/admin/pages/Projects";
 import AdminPriceLists from "@/admin/pages/PriceLists";
 import AdminBundles from "@/admin/pages/Bundles";
 import AdminSalesChannels from "@/admin/pages/SalesChannels";
@@ -42,6 +43,7 @@ export default function AdminApp() {
           <Route path="categories" element={<AdminCategories />} />
           <Route path="collections" element={<AdminCollections />} />
           <Route path="materials" element={<AdminMaterials />} />
+          <Route path="projects" element={<AdminProjects />} />
           <Route path="price-lists" element={<AdminPriceLists />} />
           <Route path="bundles" element={<AdminBundles />} />
           <Route path="sales-channels" element={<AdminSalesChannels />} />

@@ -31,8 +31,12 @@ demo DB slice + admin page + storefront read with static-data fallback.
   `/admin/materials` (search, category tabs, image/hex, applicable parts, active toggle, sort order),
   room configurator reads live via `useMaterials()` (static fallback), `/materials` renders hex swatches
   live (static fallback). Live check 9/9 (create → visible on storefront → delete) · e2e 33/33 · 0 console errors.
-- [ ] **P1.3** Projects (case studies) — extract the inline `projects` array out of `src/pages/Projects.tsx` into
-  `src/data/projects.ts`; demo DB slice + admin CRUD; `/projects` and `/projects/:id` read live.
+- [x] **P1.3** Projects (case studies) — inline data extracted to `src/data/projects.ts` (single source; the
+  duplicate divergent copies in `Projects.tsx` / `ProjectDetail.tsx` are gone), demo DB slice `projects`, full
+  admin CRUD at `/admin/projects` (core + images + content + per-line furniture list + testimonial/rating +
+  visibility/sort), `/projects` and `/projects/:id` read live via `useProjects()` with static fallback. Rich
+  case-study sections hide gracefully on admin-created entries. Live check 9/9 (list, filter, detail, create →
+  storefront → detail → delete, 0 console errors) · e2e 33/33.
 - [ ] **P1.4** Blog / Journal — admin editor replacing the read-only panel: list/create/edit/delete, structured
   content blocks (`{ heading?, body }[]`), tags, featured flag, publish date; storefront `/blog` + `/blog/:id` read
   live; per-post JSON-LD (`articleJsonLd`) keeps working off the same source.

@@ -295,7 +295,55 @@ export const MATERIAL_PART_LABELS: Record<AdminMaterialPart, string> = {
   storage: "Storage",
 };
 
+/* ── Projects / case studies (admin-managed since P1.3) ─────────────────── */
+export interface AdminProject {
+  id: string;
+  title: string;
+  client: string;
+  category: string;
+  image: string;
+  beforeImage?: string;
+  location: string;
+  sqft: string;
+  year: string;
+  employees: string;
+  duration: string;
+  description: string;
+  challenge?: string;
+  solution?: string;
+  furnitureUsed: string[];
+  testimonial?: { text: string; author: string; role: string };
+  /** 0–5, optional for admin-created projects */
+  rating?: number;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewProjectInput {
+  title: string;
+  client: string;
+  category: string;
+  image?: string;
+  beforeImage?: string;
+  location?: string;
+  sqft?: string;
+  year?: string;
+  employees?: string;
+  duration?: string;
+  description?: string;
+  challenge?: string;
+  solution?: string;
+  furnitureUsed?: string[];
+  testimonial?: { text: string; author: string; role: string };
+  rating?: number;
+  active?: boolean;
+  sortOrder?: number;
+}
+
 /* ── Collections (merchandising) ────────────────────────────────────────── */
+
 
 
 export type AdminCollectionKind = "manual" | "automatic";
@@ -610,6 +658,11 @@ export interface AdminApi {
   updateMaterial(id: string, patch: Partial<NewMaterialInput>): Promise<AdminMaterial | undefined>;
   setMaterialActive(id: string, active: boolean): Promise<AdminMaterial | undefined>;
   deleteMaterial(id: string): Promise<boolean>;
+  listProjects(): Promise<AdminProject[]>;
+  createProject(input: NewProjectInput): Promise<AdminProject>;
+  updateProject(id: string, patch: Partial<NewProjectInput>): Promise<AdminProject | undefined>;
+  setProjectActive(id: string, active: boolean): Promise<AdminProject | undefined>;
+  deleteProject(id: string): Promise<boolean>;
 
   listCollections(): Promise<AdminCollection[]>;
   /** Resolves a collection's member products (rule resolved live for automatic collections). */
