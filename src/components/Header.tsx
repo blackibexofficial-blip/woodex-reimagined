@@ -6,8 +6,8 @@ import { useQuote } from "@/contexts/QuoteContext";
 import { useCart } from "@/contexts/CartContext";
 import QuoteBasket from "@/components/QuoteBasket";
 import CartDrawer from "@/components/CartDrawer";
-import megaOfficeImg from "@/assets/hero-slide-1.jpg";
-import megaHomeImg from "@/assets/hero-slide-3.jpg";
+import megaOfficeImg from "@/assets/hero-slide-1.webp";
+import megaHomeImg from "@/assets/hero-slide-3.webp";
 
 const megaMenuProducts = {
   office: {

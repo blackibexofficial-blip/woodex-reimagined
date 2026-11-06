@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
-import servicesImg from "@/assets/services-office.jpg";
+import servicesImg from "@/assets/services-office.webp";
 
 const serviceList = [
   "3D Rendered Floor Plan",

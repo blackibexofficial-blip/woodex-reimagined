@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import { QuoteItem } from "@/contexts/QuoteContext";
 import { formatPKR } from "@/data/products";
-import woodexLogo from "@/assets/woodex-logo.png";
+import woodexLogo from "@/assets/woodex-logo.webp";
 import { site } from "@/config/site";
 
 export interface ClientInfo {

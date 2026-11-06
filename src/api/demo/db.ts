@@ -145,7 +145,7 @@ function buildSeedMedia(): AdminMediaAsset[] {
       const h = Math.abs(hashString(img));
       out.push({
         id: `med-${h.toString(36)}`,
-        name: `${String(p.id).replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${out.length + 1}.jpg`,
+        name: `${String(p.id).replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${out.length + 1}.webp`,
         url: img,
         mime: "image/jpeg",
         size: 140_000 + (h % 340_000), // approx. bytes — seeded catalogue imagery

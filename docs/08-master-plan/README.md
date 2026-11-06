@@ -210,11 +210,14 @@ Cloud API order notifications · PDF quotation automation (backend/supabase alre
 - [x] **P0** `scripts/generate-sitemap.ts` (bun preload stub, mirrors mcp-snapshot) walks data modules —
       **182 URLs** (148 products, 5 series, 7 services, 6 posts + 16 static routes). Runs on every
       `bun run build`; `public/sitemap.xml` is generated, never hand-edited.
-- [ ] **P1** GA4 (gtag) deferred loader + web-vitals; env-gated (`VITE_GA4_ID`).
-- [ ] **P1** Route-level code splitting for heavy pages (RoomPackages, VirtualShowroom, Blog*,
-      Shop*) → cut initial chunk below ~500 kB; re-measure.
-- [ ] **P1** Fix Browserslist warning (`npx update-browserslist-db@latest`) — cosmetic.
-- [ ] **P1** AVIF/WebP decision + `<picture>` in Gallery/ProductCard; compress `src/assets/*`.
+- [x] **P1** GA4 foundation — env-gated (`VITE_GA4_ID`), deferred/async, route views on SPA
+      navigation via `<RouteHead />`; inert when blank. (web-vitals event still open.)
+- [x] **P1** Route-level code splitting — every storefront page lazy (Index/NotFound eager).
+      Entry chunk 721 kB → 403 kB min (191→112 kB gzip); Vite advisory eliminated. SPA nav verified.
+- [x] **P1** Browserslist DB updated (caniuse-lite) — warning gone.
+- [x] **P1** WebP pipeline — all 93 images converted (q80, stripped): src/assets 8.76→6.01 MB,
+      dist/assets 11→8.2 MB. Single-format WebP chosen (universal since 2021; no `<picture>` dual-serve
+      needed); imports rewritten; demo-DB media names aligned.
 - [ ] **P1** Resolve admin token story for production (server proxy or Bagisto staff session) —
       removes the browser-secret anti-pattern.
 - [ ] **P2** Wire Bagisto Categories/Media adapters (mappers + storage) OR retire with docs pointer.

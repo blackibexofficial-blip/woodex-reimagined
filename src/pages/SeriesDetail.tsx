@@ -9,9 +9,9 @@ import { seriesList, getProductsBySeries } from "@/data/products";
 import { useEffect } from "react";
 import SeoContentBlock from "@/components/SeoContentBlock";
 import { getSeriesSeo } from "@/data/seoContent";
-import execImg from "@/assets/series-executive.jpg";
-import modernImg from "@/assets/series-modern.jpg";
-import ecoImg from "@/assets/series-eco.jpg";
+import execImg from "@/assets/series-executive.webp";
+import modernImg from "@/assets/series-modern.webp";
+import ecoImg from "@/assets/series-eco.webp";
 
 const seriesImages: Record<string, string> = {
   "ek-series": ecoImg,

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import RoomConfigurator from "@/components/configurator/RoomConfigurator";
-import showroomImg from "@/assets/virtual-showroom-hero.jpg";
+import showroomImg from "@/assets/virtual-showroom-hero.webp";
 
 const features = [
   { icon: Monitor, title: "Real-Time 3D Preview", description: "Photorealistic rendering of every product from any angle, in your actual room dimensions." },

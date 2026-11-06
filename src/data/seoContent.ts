@@ -562,6 +562,6 @@ export const articleJsonLd = (a: ArticleJsonLdInput) => ({
   ...(a.image ? { image: [a.image] } : {}),
   ...(a.datePublished ? { datePublished: a.datePublished } : {}),
   author: { "@type": "Person", name: a.author },
-  publisher: { "@type": "Organization", name: site.name, logo: { "@type": "ImageObject", url: absUrl("/og-cover.jpg") } },
+  publisher: { "@type": "Organization", name: site.name, logo: { "@type": "ImageObject", url: absUrl("/og-cover.webp") } },
   mainEntityOfPage: a.url,
 });

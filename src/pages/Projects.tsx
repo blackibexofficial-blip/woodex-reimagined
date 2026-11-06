@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
-import projectsHero from "@/assets/projects-hero.jpg";
+import projectsHero from "@/assets/projects-hero.webp";
 import { Link } from "react-router-dom";
 import { ArrowRight, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import proj1 from "@/assets/project-1.jpg";
-import proj2 from "@/assets/project-2.jpg";
-import proj3 from "@/assets/project-3.jpg";
-import proj4 from "@/assets/project-4.jpg";
-import proj5 from "@/assets/project-5.jpg";
-import proj6 from "@/assets/project-6.jpg";
-import projSalon from "@/assets/project-hair-salon.jpg";
+import proj1 from "@/assets/project-1.webp";
+import proj2 from "@/assets/project-2.webp";
+import proj3 from "@/assets/project-3.webp";
+import proj4 from "@/assets/project-4.webp";
+import proj5 from "@/assets/project-5.webp";
+import proj6 from "@/assets/project-6.webp";
+import projSalon from "@/assets/project-hair-salon.webp";
 
 const projects = [
   { id: 7, title: "Gents Grooming Lounge — DHA Lahore", client: "Private Boutique Salon", category: "Hospitality", image: projSalon, location: "DHA Phase 5, Lahore", sqft: "3,500 sq ft", description: "Concept-to-execution turnkey fit-out of a premium men's hair salon — walnut joinery, brass-framed mirrors, deep forest green feature wall, custom barber stations and private grooming alcoves." },

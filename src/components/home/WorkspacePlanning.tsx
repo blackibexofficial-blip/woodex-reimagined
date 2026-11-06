@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, Sun, GitFork, Maximize2, Monitor, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import sketchImg from "@/assets/workspace-planning-sketch.jpg";
-import proj1 from "@/assets/project-1.jpg";
-import proj2 from "@/assets/project-2.jpg";
+import sketchImg from "@/assets/workspace-planning-sketch.webp";
+import proj1 from "@/assets/project-1.webp";
+import proj2 from "@/assets/project-2.webp";
 
 const slides = [
   {

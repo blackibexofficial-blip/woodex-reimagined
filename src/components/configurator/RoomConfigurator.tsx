@@ -7,9 +7,9 @@ import HotspotMarker from "./HotspotMarker";
 import MaterialPanel from "./MaterialPanel";
 import { materials, type Material } from "@/data/materials";
 
-import roomOpen from "@/assets/configurator-room-open.jpg";
-import roomExec from "@/assets/configurator-room-executive.jpg";
-import roomConf from "@/assets/configurator-room-conference.jpg";
+import roomOpen from "@/assets/configurator-room-open.webp";
+import roomExec from "@/assets/configurator-room-executive.webp";
+import roomConf from "@/assets/configurator-room-conference.webp";
 
 type FurniturePart = Material["applicableTo"][number];
 

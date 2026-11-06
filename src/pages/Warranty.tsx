@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import warrantyHero from "@/assets/warranty-hero.jpg";
+import warrantyHero from "@/assets/warranty-hero.webp";
 import { Link } from "react-router-dom";
 import { Shield, CheckCircle2, Phone, Mail, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";

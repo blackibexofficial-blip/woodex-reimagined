@@ -4,9 +4,9 @@ import { Award, Target, Users, Globe, ArrowRight, ChevronDown, Leaf, Shield, Hea
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import factoryImg from "@/assets/about-factory.jpg";
-import aboutHero from "@/assets/about-hero.jpg";
-import manufacturingImg from "@/assets/about-manufacturing.jpg";
+import factoryImg from "@/assets/about-factory.webp";
+import aboutHero from "@/assets/about-hero.webp";
+import manufacturingImg from "@/assets/about-manufacturing.webp";
 
 const stats = [
   { icon: Award, number: "20+", label: "Years of Craft" },

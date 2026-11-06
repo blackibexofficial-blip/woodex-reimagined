@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
-import receptionImg from "@/assets/product-reception-counter.jpg";
-import cubicleImg from "@/assets/product-cubicle.jpg";
-import storageImg from "@/assets/product-storage.jpg";
-import chairImg from "@/assets/product-office-chair.jpg";
-import staffImg from "@/assets/product-staff-desk.jpg";
-import sofaImg from "@/assets/product-office-sofa.jpg";
-import execImg from "@/assets/product-executive-desk.jpg";
-import meetingImg from "@/assets/product-meeting-table.jpg";
+import receptionImg from "@/assets/product-reception-counter.webp";
+import cubicleImg from "@/assets/product-cubicle.webp";
+import storageImg from "@/assets/product-storage.webp";
+import chairImg from "@/assets/product-office-chair.webp";
+import staffImg from "@/assets/product-staff-desk.webp";
+import sofaImg from "@/assets/product-office-sofa.webp";
+import execImg from "@/assets/product-executive-desk.webp";
+import meetingImg from "@/assets/product-meeting-table.webp";
 
 const categories = [
   { label: "Reception Desk", image: receptionImg, href: "/shop?category=reception-tables" },

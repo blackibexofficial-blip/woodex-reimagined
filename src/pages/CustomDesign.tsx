@@ -4,10 +4,10 @@ import { ArrowRight, MessageCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import heroImg from "@/assets/custom-design-hero.jpg";
-import shopImg from "@/assets/custom-design-shop.jpg";
-import floorplanImg from "@/assets/custom-design-floorplan.jpg";
-import tabletImg from "@/assets/custom-design-tablet.jpg";
+import heroImg from "@/assets/custom-design-hero.webp";
+import shopImg from "@/assets/custom-design-shop.webp";
+import floorplanImg from "@/assets/custom-design-floorplan.webp";
+import tabletImg from "@/assets/custom-design-tablet.webp";
 import { site } from "@/config/site";
 
 

@@ -106,7 +106,7 @@ export interface AdminCategory {
 
 export interface AdminMediaAsset {
   id: string;
-  name: string;          // e.g. "executive-desk-hero.jpg"
+  name: string;          // e.g. "executive-desk-hero.webp"
   url: string;           // asset path or data: URL (demo uploads)
   mime: string;          // e.g. "image/jpeg"
   size: number;          // bytes (approximate for seeded catalogue imagery)

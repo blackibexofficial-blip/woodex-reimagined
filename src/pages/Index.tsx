@@ -13,22 +13,22 @@ import GoogleReviews from "@/components/home/GoogleReviews";
 import ClientLogos from "@/components/home/ClientLogos";
 import FAQSection from "@/components/home/FAQSection";
 
-import slide1 from "@/assets/hero-slide-1.jpg";
-import slide2 from "@/assets/hero-slide-2.jpg";
-import slide3 from "@/assets/hero-slide-3.jpg";
-import slide4 from "@/assets/hero-slide-4.jpg";
-import slide5 from "@/assets/hero-slide-5.jpg";
-import chairsImg from "@/assets/category-chairs.jpg";
-import desksImg from "@/assets/category-executive.jpg";
-import workstationsImg from "@/assets/category-workstations.jpg";
-import tablesImg from "@/assets/category-tables.jpg";
-import storageImg from "@/assets/category-storage.jpg";
-import bedroomCatImg from "@/assets/category-bedroom.jpg";
-import livingCatImg from "@/assets/category-living.jpg";
-import diningCatImg from "@/assets/category-dining.jpg";
-import proj1 from "@/assets/project-1.jpg";
-import proj2 from "@/assets/project-2.jpg";
-import proj3 from "@/assets/project-3.jpg";
+import slide1 from "@/assets/hero-slide-1.webp";
+import slide2 from "@/assets/hero-slide-2.webp";
+import slide3 from "@/assets/hero-slide-3.webp";
+import slide4 from "@/assets/hero-slide-4.webp";
+import slide5 from "@/assets/hero-slide-5.webp";
+import chairsImg from "@/assets/category-chairs.webp";
+import desksImg from "@/assets/category-executive.webp";
+import workstationsImg from "@/assets/category-workstations.webp";
+import tablesImg from "@/assets/category-tables.webp";
+import storageImg from "@/assets/category-storage.webp";
+import bedroomCatImg from "@/assets/category-bedroom.webp";
+import livingCatImg from "@/assets/category-living.webp";
+import diningCatImg from "@/assets/category-dining.webp";
+import proj1 from "@/assets/project-1.webp";
+import proj2 from "@/assets/project-2.webp";
+import proj3 from "@/assets/project-3.webp";
 
 const slides = [
   { image: slide1, title: "Design For Your Workspace", subtitle: "From concept to installation — design, manufacture, and deliver", cta: "Shop Now", ctaHref: "/shop?category=workstations" },

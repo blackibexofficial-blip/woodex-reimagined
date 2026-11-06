@@ -50,7 +50,7 @@ export const site = {
   hours: "Mon–Sat: 9am–7pm",
 
   /** Open Graph fallback image (absolute path from site root). */
-  ogImage: "/og-cover.jpg",
+  ogImage: "/og-cover.webp",
 } as const;
 
 export type SiteConfig = typeof site;
