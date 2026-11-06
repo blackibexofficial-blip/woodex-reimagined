@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AdminAuthProvider } from "@/admin/auth";
 import AdminLayout from "@/admin/Layout";
@@ -38,6 +39,8 @@ import AdminBlog from "@/admin/pages/Blog";
 import AdminServices from "@/admin/pages/Services";
 import AdminMedia from "@/admin/pages/Media";
 import AdminSettings from "@/admin/pages/Settings";
+
+const AdminPagesLab = lazy(() => import("@/admin/pages/PagesLab"));
 
 /**
  * WOODEX admin — mounted at /admin/*.
@@ -90,6 +93,7 @@ export default function AdminApp() {
           <Route path="warranty" element={<AdminWarranty />} />
           <Route path="media" element={<AdminMedia />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="pages-lab" element={<Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading Pages Lab…</div>}><AdminPagesLab /></Suspense>} />
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
       </Routes>

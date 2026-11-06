@@ -263,6 +263,42 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
 - Real payment gateways (Easypaisa / JazzCash / card) remain parked — needs merchant credentials (owner-only).
 - bagisto/nextjs-commerce and Spree links are design references only; no live backend until Bagisto is provisioned.
 
+## Page builder (Puck) — plan + Wave 0 spike shipped 2026-11-06
+
+Full strategy: `docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md`. Owner decisions (2026-11-06):
+scope **literal-all** (header/footer/announcement/all marketing pages); **zero-cost hard constraint**
+(no paid SaaS); deliverable **plan + spike**. Recommendation: `@puckeditor/core@0.24.0` (MIT).
+
+- [x] **PB-0.1** Dependency integrated cleanly — `@puckeditor/core@0.24.0` in package.json; 63/45 overlay
+  (repo majors kept); package-lock merged (64 entries, 0.24.0 on disk == lock); bun.lock hand-merged
+  (64 entries, 780 pkgs strict-parse, `@puckeditor/core` added to workspace deps). `@measured/puck`
+  (deprecated) purged from tree, locks and scratch. **CI `bun install --frozen-lockfile` still unproven
+  until next push — watch the run.**
+- [x] **PB-0.2** WOODEX block registry — 4 real kit blocks in `src/pages-builder/blocks.tsx`
+  (SectionHeading, FeatureGrid, ImageBanner, ButtonLink) + categories; JSON-only props, no HTML injection.
+- [x] **PB-0.3** Admin lab editor at `/admin/pages-lab` (ENGAGE nav, lazy chunk, vendored Puck CSS with remote
+  rsms.me `@import` stripped) — localStorage persistence (`woodex.pages.lab.v1`), Publish → toast.
+- [x] **PB-0.4** Read-only storefront render at `/lab/:slug` — `<Render>`, floating "Lab preview — spike,
+  not published" badge, `noindex,nofollow`, no Header/Footer, starter fallback. Live check **12/12**
+  (editor mount → scale-corrected canvas select → field edit → Publish → /lab/home renders the edit;
+  0 console errors) · e2e 33/33 · typecheck 0 · lint 0 errors · clean rebuild (Puck splits ~301 kB lazy
+  chunk; storefront main bundle +1.4 kB).
+- [ ] **PB-1** Wave 1 — demo-DB `pages` slice + admin pages list (create/edit/duplicate/delete,
+  draft⇄published, history/revert) + **Site Chrome singleton** (announcement/header/footer — one deliberate
+  deviation from literal-all; needs owner sign-off) + media picker. Est. 3–4 d.
+- [ ] **PB-2** Wave 2 — `PuckPage` engine + storefront migration to builder content, lowest risk first
+  (warranty → services → materials → showrooms → custom design → legal → home); static fallback kept;
+  screenshot parity + owner sign-off per page. Est. 5–7 d.
+- [ ] **PB-3** Wave 3 — new-page registry (collision check vs App.tsx routes), draft preview links,
+  build-time sitemap from published pages, noindex switch; **author privacy/terms/returns as builder pages**
+  (legal never existed). Est. 4–6 d.
+- [ ] **PB-4** Wave 4 — publish validator (alt text, safe URLs, heading order), root SEO fields enforced,
+  axe clean on lab, perf budget verified (<250 kB gzip excluding admin). Est. 3–4 d.
+- [ ] **PB-5** Wave 5 — Bagisto CMS mapping (puck_data custom attribute behind `getAdminApi()`), demo-DB →
+  Bagisto migration, env-flag rollback. Est. 4–5 d.
+- [ ] **PB owner questions** — Chrome singleton exception; top-level vs `/p/<slug>` URLs; CustomEmbed HTML
+  block (default off); publish permission under real RBAC; legal copy drafter. See master plan §11.
+
 ## Cross-cutting / parked
 
 - [ ] **Payment gateway** — parked intentionally: "WhatsApp-first manual confirmation" is the chosen flow.
