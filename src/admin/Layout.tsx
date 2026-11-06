@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
   Armchair, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, FileText,
-  Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck,
+  Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
 import { isDemoMode } from "@/config/env";
@@ -45,6 +45,7 @@ const NAV_GROUPS: Array<{
     label: "Purchasing",
     items: [
       { to: "/admin/suppliers", label: "Suppliers", icon: Truck },
+      { to: "/admin/purchase-orders", label: "Purchase Orders", icon: PackagePlus },
     ],
   },
   {
@@ -64,7 +65,7 @@ function pageTitle(pathname: string) {
   const seg = pathname.split("/")[2] ?? "dashboard";
   const map: Record<string, string> = {
     dashboard: "Dashboard", analytics: "Analytics", products: "Products", categories: "Categories",
-    orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", content: "Content",
+    orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", content: "Content",
     media: "Media Library", settings: "Settings", inventory: "Inventory & Delivery Zones",
   };
   return map[seg] ?? "Admin";

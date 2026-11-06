@@ -101,8 +101,13 @@ slices instead of duplicating them.
   payment terms advance/COD/Net-15/30/45, notes, active flag); searchable; delete blocked when referenced by
   POs (deactivate instead); live check 13/13 · e2e 33/33 · Bagisto stubbed 501. Seeded SUP-1001 Pak Wood &
   Timber Co · SUP-1002 Sheikh Sawmills · SUP-1003 MetalKraft · SUP-1004 Al-Noor Foam. Nav group "Purchasing".
-- [ ] **P2.7** Purchase Orders — create PO to supplier (lines, expected date); receive against it (full/partial);
-  receipt writes inbound stock movements; status draft → sent → partial → received.
+- [x] **P2.7** Purchase Orders — `/admin/purchase-orders`: create PO to supplier (catalogue lines at 60% cost
+  default — editable per line, or free lines); expected date; draft → sent → partial → received; cancel blocked
+  once anything is received; receive dialog supports partial receipts — catalogue lines lift on-hand stock and
+  write inbound movements (`Purchase order PO-… receipt` in the ledger); draft-only edit/delete; overdue badge.
+  Seeded PO-1001 (draft · Pak Wood) + PO-1002 (sent · MetalKraft). Live check 27/27 (create → send → partial
+  receive → full receive → movement in /admin/inventory · cancel · delete · 0 console errors) · e2e 33/33 ·
+  Bagisto stubbed 501.
 - [ ] **P2.8** Stock Transfers — showroom↔showroom / warehouse↔showroom transfer records; movement type
   `transfer` (in/out legs); location picker reusing the showroom master.
 
@@ -167,7 +172,7 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
 - [x] **P2.4** Draft Orders — `/admin/drafts`; convert → pending order (source `manual`). DONE (see Phase 2 log).
 - [ ] **P2.5** Quotes — priced quotation from a lead (lines, discount %, validity); printable; convert → order.
 - [x] **P2.6** Suppliers — purchasing master. DONE (see Phase 2 log).
-- [ ] **P2.7** Purchase Orders — create PO (lines, expected date); receive full/partial (stock inbound).
+- [x] **P2.7** Purchase Orders — draft → sent → partial → received; receipt writes inbound movements. DONE (see Phase 2 log).
 - [ ] **P2.8** Transfers — move stock between locations/warehouses.
 
 ### D. Shop flow — audit findings

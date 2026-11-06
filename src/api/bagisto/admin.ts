@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -435,6 +435,34 @@ export const bagistoAdminApi: AdminApi = {
 
   async deleteSupplier(): Promise<boolean> {
     throw new BagistoApiError(501, "Supplier deletion is not wired for Bagisto yet.");
+  },
+
+  async listPurchaseOrders(): Promise<Paginated<AdminPurchaseOrder>> {
+    throw new BagistoApiError(501, "Purchase orders are not wired for Bagisto yet (needs inventory/purchase module). Use VITE_API_MODE=demo.");
+  },
+
+  async getPurchaseOrder(): Promise<AdminPurchaseOrder | undefined> {
+    throw new BagistoApiError(501, "Purchase orders are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
+  async createPurchaseOrder(): Promise<AdminPurchaseOrder> {
+    throw new BagistoApiError(501, "Purchase order creation is not wired for Bagisto yet.");
+  },
+
+  async updatePurchaseOrder(): Promise<AdminPurchaseOrder | undefined> {
+    throw new BagistoApiError(501, "Purchase order updates are not wired for Bagisto yet.");
+  },
+
+  async setPurchaseOrderStatus(): Promise<AdminPurchaseOrder | undefined> {
+    throw new BagistoApiError(501, "Purchase order status is not wired for Bagisto yet.");
+  },
+
+  async receivePurchaseOrder(): Promise<AdminPurchaseOrder | undefined> {
+    throw new BagistoApiError(501, "Purchase order receipt is not wired for Bagisto yet.");
+  },
+
+  async deletePurchaseOrder(): Promise<boolean> {
+    throw new BagistoApiError(501, "Purchase order deletion is not wired for Bagisto yet.");
   },
 
   async listCustomers(params) {

@@ -84,6 +84,13 @@ import type {
   AdminSupplier,
   AdminSupplierPatch,
   NewSupplierInput,
+  AdminPurchaseOrder,
+  AdminPurchaseOrderLine,
+  AdminPurchaseOrderPatch,
+  NewPurchaseOrderInput,
+  NewPurchaseOrderLineInput,
+  PurchaseOrderReceipt,
+  PurchaseOrderStatus,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -120,6 +127,7 @@ interface DemoDb {
   draftOrders: AdminDraftOrder[];
   quotes: AdminQuote[];
   suppliers: AdminSupplier[];
+  purchaseOrders: AdminPurchaseOrder[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -837,6 +845,81 @@ function buildSeedSuppliers(): AdminSupplier[] {
   ];
 }
 
+/** Validate/normalise PO lines — catalogue lines keep productId (receipts write stock); received starts at 0. */
+function sanitizePoLines(lines: NewPurchaseOrderLineInput[]): AdminPurchaseOrderLine[] {
+  const items: AdminPurchaseOrderLine[] = [];
+  let seq = 1;
+  for (const line of lines ?? []) {
+    const name = line.name?.trim();
+    const costPrice = Number(line.costPrice);
+    const qty = Math.max(1, Math.trunc(Number(line.quantity) || 1));
+    if (!name || !Number.isFinite(costPrice) || costPrice < 0) continue;
+    items.push({
+      id: line.productId?.trim() ? `pol-${line.productId.trim()}-${seq}` : `pol-free-${Date.now().toString(36)}-${seq}`,
+      productId: line.productId?.trim() || undefined,
+      name,
+      sku: line.sku?.trim() || undefined,
+      image: line.image,
+      costPrice: Math.round(costPrice),
+      quantity: qty,
+      receivedQuantity: 0,
+    });
+    seq += 1;
+  }
+  return items;
+}
+
+/** Deterministic seed POs — one draft (boards from Pak Wood) and one sent PO (hardware from MetalKraft). */
+function buildSeedPurchaseOrders(products: AdminProduct[]): AdminPurchaseOrder[] {
+  const priced = products.filter((p) => p.price > 0);
+  if (priced.length < 3) return [];
+  const bySub = (sub: string) => priced.find((p) => p.subcategory === sub);
+  const meeting = bySub("meeting-tables") ?? priced[0];
+  const staff = bySub("staff-tables") ?? priced.find((p) => p.id !== meeting.id) ?? priced[1];
+  const chair = bySub("chairs") ?? priced.find((p) => p.id !== meeting.id && p.id !== staff.id) ?? priced[2];
+  const cost = (p: AdminProduct) => Math.max(1, Math.round(p.price * 0.6));
+  const now = Date.now();
+  const t1 = new Date(now - 1 * 86400000).toISOString();
+  const t3 = new Date(now - 3 * 86400000).toISOString();
+  const day = (offset: number) => new Date(now + offset * 86400000).toISOString().slice(0, 10);
+
+  const draftLines: AdminPurchaseOrderLine[] = [
+    { id: "pol-1001-1", productId: meeting.id, name: meeting.name, sku: meeting.sku, image: meeting.image, costPrice: cost(meeting), quantity: 2, receivedQuantity: 0 },
+    { id: "pol-1001-2", productId: chair.id, name: chair.name, sku: chair.sku, image: chair.image, costPrice: cost(chair), quantity: 24, receivedQuantity: 0 },
+  ];
+  const sentLines: AdminPurchaseOrderLine[] = [
+    { id: "pol-1002-1", name: "Soft-close hinges 107°", costPrice: 145, quantity: 500, receivedQuantity: 0 },
+    { id: "pol-1002-2", name: "Telescopic slides 45mm", costPrice: 380, quantity: 300, receivedQuantity: 0 },
+  ];
+  const sum = (ls: AdminPurchaseOrderLine[]) => ls.reduce((s, l) => s + l.costPrice * l.quantity, 0);
+  return [
+    {
+      id: "PO-1001",
+      supplierId: "SUP-1001",
+      supplierName: "Pak Wood & Timber Co",
+      lines: draftLines,
+      subtotal: sum(draftLines),
+      expectedDate: day(14),
+      notes: "Advance 50% on order confirmation; balance on delivery.",
+      status: "draft",
+      createdAt: t1,
+      updatedAt: t1,
+    },
+    {
+      id: "PO-1002",
+      supplierId: "SUP-1003",
+      supplierName: "MetalKraft Industries",
+      lines: sentLines,
+      subtotal: sum(sentLines),
+      expectedDate: day(10),
+      notes: "Net-15 terms · invoice on delivery.",
+      status: "sent",
+      createdAt: t3,
+      updatedAt: t3,
+    },
+  ];
+}
+
 const CLAIM_TRANSITIONS: Record<ClaimStatus, ClaimStatus[]> = {
   reported: ["assessing", "rejected"],
   assessing: ["approved", "rejected"],
@@ -1155,7 +1238,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts) };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1193,6 +1276,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.draftOrders)) db.draftOrders = buildSeedDraftOrders(db.products);
       if (!Array.isArray(db.quotes)) db.quotes = buildSeedQuotes(db.products);
       if (!Array.isArray(db.suppliers)) db.suppliers = buildSeedSuppliers();
+      if (!Array.isArray(db.purchaseOrders)) db.purchaseOrders = buildSeedPurchaseOrders(db.products);
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -2935,6 +3019,149 @@ export const demoAdminApi: AdminApi = {
       const used = ((db as DemoDb & { purchaseOrders?: Array<{ supplierId: string }> }).purchaseOrders ?? []).some((po) => po.supplierId === id);
       if (used) throw new Error(`Supplier ${t.id} is referenced by purchase orders — deactivate it instead.`);
       db.suppliers = db.suppliers.filter((x) => x.id !== id);
+      okFlag = true;
+    });
+    return okFlag;
+  },
+
+  async listPurchaseOrders(params?: ListParams & { status?: PurchaseOrderStatus | "all" }) {
+    const db = loadDb();
+    const q = (params?.query ?? "").trim().toLowerCase();
+    let rows = [...(db.purchaseOrders ?? [])];
+    if (params?.status && params.status !== "all") rows = rows.filter((r) => r.status === params.status);
+    if (q) rows = rows.filter((r) => [r.id, r.supplierName, r.notes ?? "", r.expectedDate ?? "", ...r.lines.map((l) => l.name)].join(" ").toLowerCase().includes(q));
+    rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const page = params?.page ?? 1;
+    const perPage = params?.perPage ?? 60;
+    return { items: rows.slice((page - 1) * perPage, page * perPage), total: rows.length, page, perPage };
+  },
+
+  async getPurchaseOrder(id: string) {
+    return (loadDb().purchaseOrders ?? []).find((x) => x.id === id);
+  },
+
+  async createPurchaseOrder(input: NewPurchaseOrderInput) {
+    let created: AdminPurchaseOrder | undefined;
+    update((db) => {
+      const supplier = (db.suppliers ?? []).find((s) => s.id === input.supplierId);
+      if (!supplier) throw new Error("Pick a supplier first.");
+      const lines = sanitizePoLines(input.lines ?? []);
+      if (lines.length === 0) throw new Error("Add at least one line to the purchase order.");
+      const now = new Date().toISOString();
+      const maxSeq = (db.purchaseOrders ?? []).reduce((max, p) => Math.max(max, Number(p.id.replace(/\D/g, "")) || 0), 1000);
+      created = {
+        id: `PO-${maxSeq + 1}`,
+        supplierId: supplier.id,
+        supplierName: supplier.name,
+        lines,
+        subtotal: lines.reduce((s, l) => s + l.costPrice * l.quantity, 0),
+        expectedDate: input.expectedDate || undefined,
+        notes: input.notes?.trim() || undefined,
+        status: input.status === "sent" ? "sent" : "draft",
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.purchaseOrders ??= []).push(created);
+    });
+    if (!created) throw new Error("Failed to create purchase order");
+    return created;
+  },
+
+  async updatePurchaseOrder(id: string, patch: AdminPurchaseOrderPatch) {
+    let updated: AdminPurchaseOrder | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.purchaseOrders ??= []).find((x) => x.id === id);
+      if (!t) return;
+      if (t.status !== "draft") throw new Error(`PO ${t.id} is ${t.status} — only draft POs can be edited.`);
+      if (patch.supplierId !== undefined) {
+        const supplier = (db.suppliers ?? []).find((s) => s.id === patch.supplierId);
+        if (!supplier) throw new Error("Supplier not found.");
+        t.supplierId = supplier.id;
+        t.supplierName = supplier.name;
+      }
+      if (patch.lines !== undefined) {
+        const lines = sanitizePoLines(patch.lines);
+        if (lines.length === 0) throw new Error("A purchase order needs at least one line.");
+        t.lines = lines;
+        t.subtotal = lines.reduce((s, l) => s + l.costPrice * l.quantity, 0);
+      }
+      if (patch.expectedDate !== undefined) t.expectedDate = patch.expectedDate || undefined;
+      if (patch.notes !== undefined) t.notes = patch.notes.trim() || undefined;
+      t.updatedAt = now;
+      updated = { ...t, lines: t.lines.map((l) => ({ ...l })) };
+    });
+    return updated;
+  },
+
+  async setPurchaseOrderStatus(id: string, status: "sent" | "cancelled") {
+    let updated: AdminPurchaseOrder | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.purchaseOrders ??= []).find((x) => x.id === id);
+      if (!t) return;
+      const received = t.lines.some((l) => l.receivedQuantity > 0);
+      if (status === "sent" && t.status !== "draft") throw new Error(`PO ${t.id} is already ${t.status}.`);
+      if (status === "cancelled" && (t.status === "received" || t.status === "cancelled")) throw new Error(`PO ${t.id} is ${t.status} — it can no longer be cancelled.`);
+      if (status === "cancelled" && received) throw new Error(`PO ${t.id} has received goods — cancel is blocked.`);
+      t.status = status;
+      t.updatedAt = now;
+      updated = { ...t, lines: t.lines.map((l) => ({ ...l })) };
+    });
+    return updated;
+  },
+
+  async receivePurchaseOrder(id: string, receipts: PurchaseOrderReceipt[]) {
+    let updated: AdminPurchaseOrder | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.purchaseOrders ??= []).find((x) => x.id === id);
+      if (!t) return;
+      if (t.status === "cancelled") throw new Error(`PO ${t.id} is cancelled.`);
+      if (t.status === "received") return;
+      if (t.status === "draft") throw new Error(`PO ${t.id} is a draft — mark it sent first.`);
+      for (const r of receipts ?? []) {
+        const line = t.lines.find((l) => l.id === r.lineId);
+        if (!line) continue;
+        const qty = Math.min(Math.max(0, Math.trunc(Number(r.quantity) || 0)), line.quantity - line.receivedQuantity);
+        if (qty <= 0) continue;
+        line.receivedQuantity += qty;
+        if (line.productId) {
+          const p = db.products.find((x) => x.id === line.productId);
+          if (p) {
+            p.stock += qty;
+            syncFulfilment(p);
+            touchProductMeta(db, p.id);
+            db.movements.unshift({
+              id: `mov-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+              productId: p.id,
+              productName: p.name,
+              productSku: p.sku,
+              type: "inbound",
+              quantity: qty,
+              notes: `Purchase order ${t.id} receipt`,
+              createdAt: now,
+            });
+          }
+        }
+      }
+      const totalReceived = t.lines.reduce((s, l) => s + l.receivedQuantity, 0);
+      const allReceived = t.lines.every((l) => l.receivedQuantity >= l.quantity);
+      if (totalReceived === 0) t.status = "sent";
+      else if (allReceived) { t.status = "received"; t.receivedAt = now; }
+      else t.status = "partial";
+      t.updatedAt = now;
+      updated = { ...t, lines: t.lines.map((l) => ({ ...l })) };
+    });
+    return updated;
+  },
+
+  async deletePurchaseOrder(id: string) {
+    let okFlag = false;
+    update((db) => {
+      const t = (db.purchaseOrders ?? []).find((x) => x.id === id);
+      if (!t || t.status !== "draft") return;
+      db.purchaseOrders = db.purchaseOrders.filter((x) => x.id !== id);
       okFlag = true;
     });
     return okFlag;

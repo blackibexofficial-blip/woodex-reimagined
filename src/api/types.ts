@@ -304,6 +304,59 @@ export interface NewSupplierInput {
 }
 export type AdminSupplierPatch = Partial<NewSupplierInput>;
 
+/* ── Purchase Orders (replenishment from suppliers) ──────────────────────── */
+export type PurchaseOrderStatus = "draft" | "sent" | "partial" | "received" | "cancelled";
+export interface AdminPurchaseOrderLine {
+  id: string;
+  productId?: string;    // catalogue line — receipt writes inbound stock movements
+  name: string;
+  sku?: string;
+  image?: string;
+  costPrice: number;     // PKR — what WOODEX pays the supplier
+  quantity: number;      // ordered units
+  receivedQuantity: number;
+}
+export interface AdminPurchaseOrder {
+  id: string;            // e.g. "PO-1001"
+  supplierId: string;
+  supplierName: string;  // snapshot at creation/save
+  lines: AdminPurchaseOrderLine[];
+  subtotal: number;      // Σ costPrice × quantity
+  expectedDate?: string; // ISO date (yyyy-mm-dd)
+  notes?: string;
+  status: PurchaseOrderStatus;
+  createdAt: string;
+  updatedAt: string;
+  receivedAt?: string;   // set when every line is fully received
+}
+export interface NewPurchaseOrderLineInput {
+  productId?: string;
+  name: string;
+  sku?: string;
+  image?: string;
+  costPrice: number;
+  quantity: number;
+}
+export interface NewPurchaseOrderInput {
+  supplierId: string;
+  lines: NewPurchaseOrderLineInput[];
+  expectedDate?: string;
+  notes?: string;
+  /** Creates as draft (default) or straight to sent. */
+  status?: "draft" | "sent";
+}
+export interface AdminPurchaseOrderPatch {
+  supplierId?: string;
+  lines?: NewPurchaseOrderLineInput[];
+  expectedDate?: string;
+  notes?: string;
+}
+/** One receipt entry per line — quantity is clamped to the remaining units. */
+export interface PurchaseOrderReceipt {
+  lineId: string;
+  quantity: number;
+}
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -1008,6 +1061,17 @@ export interface AdminApi {
   updateSupplier(id: string, patch: AdminSupplierPatch): Promise<AdminSupplier | undefined>;
   /** False or throw when referenced by purchase orders — deactivate instead. */
   deleteSupplier(id: string): Promise<boolean>;
+  listPurchaseOrders(params?: ListParams & { status?: PurchaseOrderStatus | "all" }): Promise<Paginated<AdminPurchaseOrder>>;
+  getPurchaseOrder(id: string): Promise<AdminPurchaseOrder | undefined>;
+  createPurchaseOrder(input: NewPurchaseOrderInput): Promise<AdminPurchaseOrder>;
+  /** Draft POs only — throws once the PO has been sent. */
+  updatePurchaseOrder(id: string, patch: AdminPurchaseOrderPatch): Promise<AdminPurchaseOrder | undefined>;
+  /** draft → sent · draft|sent → cancelled (only while nothing has been received). */
+  setPurchaseOrderStatus(id: string, status: "sent" | "cancelled"): Promise<AdminPurchaseOrder | undefined>;
+  /** Applies a (partial) receipt — inbound stock movements for catalogue lines; auto-advances status. */
+  receivePurchaseOrder(id: string, receipts: PurchaseOrderReceipt[]): Promise<AdminPurchaseOrder | undefined>;
+  /** Draft POs only. */
+  deletePurchaseOrder(id: string): Promise<boolean>;
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;
