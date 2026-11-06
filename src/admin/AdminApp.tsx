@@ -19,6 +19,7 @@ import AdminInvoice from "@/admin/pages/Invoice";
 import AdminCustomers from "@/admin/pages/Customers";
 import AdminLeads from "@/admin/pages/Leads";
 import AdminContent from "@/admin/pages/Content";
+import AdminBlog from "@/admin/pages/Blog";
 import AdminMedia from "@/admin/pages/Media";
 import AdminSettings from "@/admin/pages/Settings";
 
@@ -52,6 +53,7 @@ export default function AdminApp() {
           <Route path="orders" element={<AdminOrders />} />
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="leads" element={<AdminLeads />} />
+          <Route path="blog" element={<AdminBlog />} />
           <Route path="content" element={<AdminContent />} />
           <Route path="media" element={<AdminMedia />} />
           <Route path="settings" element={<AdminSettings />} />

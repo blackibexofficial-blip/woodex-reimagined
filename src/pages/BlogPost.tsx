@@ -5,14 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { blogPosts, getBlogPost } from "@/data/blogPosts";
+import { formatBlogDate } from "@/data/blogPosts";
+import { useBlogPosts } from "@/lib/useBlogPosts";
 import { JsonLd } from "@/components/JsonLd";
 import { articleJsonLd, breadcrumbJsonLd } from "@/data/seoContent";
 import { absUrl } from "@/config/site";
 
 const BlogPost = () => {
   const { postId } = useParams<{ postId: string }>();
-  const post = postId ? getBlogPost(postId) : undefined;
+  // Admin-managed journal (/admin/blog since P1.4); seeded fallback offline.
+  const { posts: allPosts, ready } = useBlogPosts();
+  const post = postId ? allPosts.find((p) => p.id === postId && p.active) : undefined;
 
   useEffect(() => {
     if (post) {
@@ -51,10 +54,23 @@ const BlogPost = () => {
       ])
     : null;
 
+  if (!ready) {
+    // Live query still settling — admin-created posts are absent from the bundled fallback.
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-muted-foreground animate-pulse">Loading article…</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   if (!post) return <Navigate to="/blog" replace />;
 
-  const related = blogPosts.filter((p) => p.id !== post.id && p.category === post.category).slice(0, 3);
-  const fallback = blogPosts.filter((p) => p.id !== post.id).slice(0, 3);
+  const related = allPosts.filter((p) => p.id !== post.id && p.active && p.category === post.category).slice(0, 3);
+  const fallback = allPosts.filter((p) => p.id !== post.id && p.active).slice(0, 3);
   const recommendations = related.length ? related : fallback;
 
   return (
@@ -83,7 +99,7 @@ const BlogPost = () => {
               </h1>
               <div className="flex flex-wrap items-center gap-5 text-xs text-primary-foreground/75 uppercase tracking-widest">
                 <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-accent" />{post.author}</span>
-                <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-accent" />{post.date}</span>
+                <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-accent" />{formatBlogDate(post.date)}</span>
                 <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-accent" />{post.readTime}</span>
               </div>
             </div>

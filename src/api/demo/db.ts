@@ -10,6 +10,7 @@ import { products, categoryGroups } from "@/data/products";
 import { materials as finishSeed } from "@/data/materials";
 import { pageSwatchSeed } from "@/data/materialsPage";
 import { projectsDisplay as projectSeed } from "@/data/projects";
+import { blogPosts as blogSeed } from "@/data/blogPosts";
 import type {
   AdminApi,
   AdminCategory,
@@ -50,6 +51,8 @@ import type {
   NewMaterialInput,
   AdminProject,
   NewProjectInput,
+  AdminBlogPost,
+  NewBlogPostInput,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -78,6 +81,7 @@ interface DemoDb {
   showrooms: AdminShowroom[];
   materials: AdminMaterial[];
   projects: AdminProject[];
+  blogPosts: AdminBlogPost[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -414,6 +418,20 @@ function buildSeedProjects(): AdminProject[] {
   }));
 }
 
+function buildSeedBlogPosts(): AdminBlogPost[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  return blogSeed.map((p, i) => ({
+    ...p,
+    featured: p.featured ?? false,
+    active: true,
+    content: p.content.map((c) => ({ ...c })),
+    tags: [...p.tags],
+    createdAt: iso(120 - i * 12),
+    updatedAt: iso(120 - i * 12),
+  }));
+}
+
 function buildSeedShowrooms(): AdminShowroom[] {
   const now = Date.now();
   const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
@@ -715,7 +733,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -745,6 +763,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.showrooms)) db.showrooms = buildSeedShowrooms();
       if (!Array.isArray(db.materials)) db.materials = buildSeedMaterials();
       if (!Array.isArray(db.projects)) db.projects = buildSeedProjects();
+      if (!Array.isArray(db.blogPosts)) db.blogPosts = buildSeedBlogPosts();
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -1648,6 +1667,95 @@ export const demoAdminApi: AdminApi = {
     let ok = false;
     update((db) => {
       const arr = (db.projects ??= []);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
+  },
+
+  async listBlogPosts() {
+    const db = loadDb();
+    const epoch = (d: string) => {
+      const t = Date.parse(d);
+      return Number.isNaN(t) ? 0 : t;
+    };
+    return [...(db.blogPosts ??= [])]
+      .sort((a, b) => epoch(b.date) - epoch(a.date))
+      .map((r) => ({ ...r, content: r.content.map((c) => ({ ...c })), tags: [...r.tags] }));
+  },
+
+  async createBlogPost(input) {
+    let created: AdminBlogPost | undefined;
+    update((db) => {
+      const arr = (db.blogPosts ??= []);
+      const base = slugify(input.title.trim()) || "post";
+      const ids = new Set(arr.map((m) => m.id));
+      let id = base;
+      let n = 1;
+      while (ids.has(id)) id = `${base}-${++n}`;
+      const nowIso = new Date().toISOString();
+      created = {
+        id,
+        title: input.title.trim(),
+        excerpt: input.excerpt?.trim() || "",
+        image: input.image?.trim() || "",
+        category: input.category.trim(),
+        author: input.author.trim(),
+        date: input.date.trim(),
+        readTime: input.readTime?.trim() || "5 min read",
+        featured: input.featured ?? false,
+        active: input.active ?? true,
+        content: input.content ? input.content.map((c) => ({ ...c })) : [],
+        tags: input.tags ? [...input.tags] : [],
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      arr.push(created);
+    });
+    if (!created) throw new Error("Failed to create blog post");
+    return created;
+  },
+
+  async updateBlogPost(id, patch) {
+    let updated: AdminBlogPost | undefined;
+    update((db) => {
+      const post = (db.blogPosts ??= []).find((x) => x.id === id);
+      if (!post) return;
+      if (patch.title !== undefined) post.title = patch.title.trim() || post.title;
+      if (patch.excerpt !== undefined) post.excerpt = patch.excerpt.trim();
+      if (patch.image !== undefined) post.image = patch.image.trim();
+      if (patch.category !== undefined) post.category = patch.category.trim();
+      if (patch.author !== undefined) post.author = patch.author.trim();
+      if (patch.date !== undefined) post.date = patch.date.trim();
+      if (patch.readTime !== undefined) post.readTime = patch.readTime.trim();
+      if (patch.featured !== undefined) post.featured = patch.featured;
+      if (patch.active !== undefined) post.active = patch.active;
+      if (patch.content !== undefined) post.content = patch.content.map((c) => ({ ...c }));
+      if (patch.tags !== undefined) post.tags = [...patch.tags];
+      post.updatedAt = new Date().toISOString();
+      updated = { ...post, content: post.content.map((c) => ({ ...c })), tags: [...post.tags] };
+    });
+    return updated;
+  },
+
+  async setBlogPostActive(id, active: boolean) {
+    let updated: AdminBlogPost | undefined;
+    update((db) => {
+      const post = (db.blogPosts ??= []).find((x) => x.id === id);
+      if (!post) return;
+      post.active = active;
+      post.updatedAt = new Date().toISOString();
+      updated = { ...post, content: post.content.map((c) => ({ ...c })), tags: [...post.tags] };
+    });
+    return updated;
+  },
+
+  async deleteBlogPost(id) {
+    let ok = false;
+    update((db) => {
+      const arr = (db.blogPosts ??= []);
       const i = arr.findIndex((x) => x.id === id);
       if (i === -1) return;
       arr.splice(i, 1);

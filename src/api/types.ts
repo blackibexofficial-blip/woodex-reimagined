@@ -342,7 +342,47 @@ export interface NewProjectInput {
   sortOrder?: number;
 }
 
+/* ── Blog / Journal (admin-managed since P1.4) ──────────────────────────── */
+export interface AdminBlogContentBlock {
+  heading?: string;
+  body: string;
+}
+
+export interface AdminBlogPost {
+  /** URL slug, e.g. "ergonomic-office-guide-2025" */
+  id: string;
+  title: string;
+  excerpt: string;
+  image: string;
+  category: string;
+  author: string;
+  /** Free-form date string — ISO (admin-created) or legacy "Feb 15, 2025" (seed). */
+  date: string;
+  readTime: string;
+  featured: boolean;
+  active: boolean;
+  content: AdminBlogContentBlock[];
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewBlogPostInput {
+  title: string;
+  category: string;
+  author: string;
+  date: string;
+  excerpt?: string;
+  image?: string;
+  readTime?: string;
+  featured?: boolean;
+  active?: boolean;
+  content?: AdminBlogContentBlock[];
+  tags?: string[];
+}
+
 /* ── Collections (merchandising) ────────────────────────────────────────── */
+
 
 
 
@@ -663,6 +703,11 @@ export interface AdminApi {
   updateProject(id: string, patch: Partial<NewProjectInput>): Promise<AdminProject | undefined>;
   setProjectActive(id: string, active: boolean): Promise<AdminProject | undefined>;
   deleteProject(id: string): Promise<boolean>;
+  listBlogPosts(): Promise<AdminBlogPost[]>;
+  createBlogPost(input: NewBlogPostInput): Promise<AdminBlogPost>;
+  updateBlogPost(id: string, patch: Partial<NewBlogPostInput>): Promise<AdminBlogPost | undefined>;
+  setBlogPostActive(id: string, active: boolean): Promise<AdminBlogPost | undefined>;
+  deleteBlogPost(id: string): Promise<boolean>;
 
   listCollections(): Promise<AdminCollection[]>;
   /** Resolves a collection's member products (rule resolved live for automatic collections). */

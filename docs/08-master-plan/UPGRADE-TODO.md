@@ -37,9 +37,13 @@ demo DB slice + admin page + storefront read with static-data fallback.
   visibility/sort), `/projects` and `/projects/:id` read live via `useProjects()` with static fallback. Rich
   case-study sections hide gracefully on admin-created entries. Live check 9/9 (list, filter, detail, create →
   storefront → detail → delete, 0 console errors) · e2e 33/33.
-- [ ] **P1.4** Blog / Journal — admin editor replacing the read-only panel: list/create/edit/delete, structured
-  content blocks (`{ heading?, body }[]`), tags, featured flag, publish date; storefront `/blog` + `/blog/:id` read
-  live; per-post JSON-LD (`articleJsonLd`) keeps working off the same source.
+- [x] **P1.4** Blog / Journal — `/admin/blog` full editor: search + category filter, create/edit dialog (article,
+  excerpt, image, tags, date picker, read time, featured/Editor's Pick, publish switch, ordered content-block editor
+  with heading + body, move/add/remove), star toggle for featured, delete confirm. Storefront `/blog` + `/blog/:id`
+  read live via `useBlogPosts()` (ready-gated — deep links to admin-created posts no longer bounce to /blog; fixed
+  during live verification). Category filter on `/blog` now actually works (was dead UI). Legacy date format
+  ("Feb 15, 2025") still renders; ISO everywhere new. Live check 9/9 · e2e 33/33 · 0 console errors. Sitemap is
+  build-time static — admin-created posts enter sitemap.xml on the next deploy (documented in the page footer).
 - [ ] **P1.5** Services — admin editor for the 7 service pages: core fields, process steps, benefits, inclusions,
   FAQs, case study, related slugs; storefront `/services` + `/services/:slug` read live.
 - [ ] **P1.6** Content hub refresh — `/admin/content` becomes a launchpad linking to the four new editors

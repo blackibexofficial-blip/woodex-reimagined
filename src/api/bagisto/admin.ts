@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -542,6 +542,26 @@ export const bagistoAdminApi: AdminApi = {
 
   async deleteProject(): Promise<boolean> {
     throw new BagistoApiError(501, "Project deletion is not wired for Bagisto yet.");
+  },
+
+  async listBlogPosts(): Promise<AdminBlogPost[]> {
+    throw new BagistoApiError(501, "Blog/Journal is demo-managed until the headless CMS panel (Bagisto/TailAdmin) is provisioned — see docs/07-admin-integration §8.");
+  },
+
+  async createBlogPost(): Promise<AdminBlogPost> {
+    throw new BagistoApiError(501, "Blog creation is not wired for Bagisto yet.");
+  },
+
+  async updateBlogPost(): Promise<AdminBlogPost | undefined> {
+    throw new BagistoApiError(501, "Blog editing is not wired for Bagisto yet.");
+  },
+
+  async setBlogPostActive(): Promise<AdminBlogPost | undefined> {
+    throw new BagistoApiError(501, "Blog toggling is not wired for Bagisto yet.");
+  },
+
+  async deleteBlogPost(): Promise<boolean> {
+    throw new BagistoApiError(501, "Blog deletion is not wired for Bagisto yet.");
   },
 
   async listCollections(): Promise<AdminCollection[]> {
