@@ -192,6 +192,8 @@ const Footer = () => {
               <Link to="/contact" className="hover:text-accent transition-colors">Privacy Policy</Link>
               <Link to="/contact" className="hover:text-accent transition-colors">Terms of Service</Link>
               <Link to="/contact" className="hover:text-accent transition-colors">Sitemap</Link>
+              {/* Staff entry — added for preview testing, remove once sign-off is done */}
+              <Link to="/admin" aria-label="Staff login" className="hover:text-accent transition-colors">Staff</Link>
             </div>
           </div>
         </div>
