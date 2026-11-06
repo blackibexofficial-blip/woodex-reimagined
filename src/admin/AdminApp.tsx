@@ -20,6 +20,7 @@ import AdminQuotes from "@/admin/pages/Quotes";
 import AdminSuppliers from "@/admin/pages/Suppliers";
 import AdminPurchaseOrders from "@/admin/pages/PurchaseOrders";
 import AdminTransfers from "@/admin/pages/Transfers";
+import AdminOptions from "@/admin/pages/Options";
 import AdminQuote from "@/admin/pages/Quote";
 import AdminReturns from "@/admin/pages/Returns";
 import AdminExchanges from "@/admin/pages/Exchanges";
@@ -68,6 +69,7 @@ export default function AdminApp() {
           <Route path="suppliers" element={<AdminSuppliers />} />
           <Route path="purchase-orders" element={<AdminPurchaseOrders />} />
           <Route path="transfers" element={<AdminTransfers />} />
+          <Route path="options" element={<AdminOptions />} />
           <Route path="returns" element={<AdminReturns />} />
           <Route path="exchanges" element={<AdminExchanges />} />
           <Route path="claims" element={<AdminClaims />} />

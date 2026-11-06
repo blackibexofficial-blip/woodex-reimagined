@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import {
+import { Check,
   Copy, Download, ChevronLeft, ChevronRight, Loader2, Package, PackageSearch, Pencil, Plus, Star, Trash2, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { AdminProduct, NewAdminProductInput, ProductImportRow, ProductImportResult } from "@/api/types";
+import type { AdminProduct, AdminOptionSet, NewAdminProductInput, ProductImportRow, ProductImportResult } from "@/api/types";
 import { categories } from "@/data/products";
 import { formatPKR, formatNumber, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 const PER_PAGE = 10;
 
@@ -227,6 +228,11 @@ export default function AdminProducts() {
     }
   }, [api, debounced, category, stockFilter, page, sortValue]);
 
+  const [optionSets, setOptionSets] = useState<AdminOptionSet[]>([]);
+  useEffect(() => {
+    api.listOptionSets().then(setOptionSets).catch(() => setOptionSets([]));
+  }, [api]);
+
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [debounced, category, stockFilter, sortValue]);
 
@@ -247,6 +253,7 @@ export default function AdminProducts() {
         stockStatus: editing.stockStatus,
         dimensions: editing.dimensions?.trim() || undefined,
         weightKg: editing.weightKg === undefined || Number.isNaN(editing.weightKg) ? undefined : editing.weightKg,
+        optionSetIds: editing.optionSetIds ?? [],
       });
       setEditing(null);
       toast.success("Product updated.");
@@ -594,6 +601,39 @@ export default function AdminProducts() {
                   <Input id="edit-weight" type="number" min={0} step="0.1" value={editing.weightKg ?? ""} onChange={(e) => setEditing({ ...editing, weightKg: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder="42" />
                 </div>
               </div>
+              {optionSets.length > 0 && (
+                <div>
+                  <span className="mb-1 block text-xs font-medium text-muted-foreground">Option sets</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {optionSets.map((set) => {
+                      const attached = (editing.optionSetIds ?? []).includes(set.id);
+                      return (
+                        <button
+                          key={set.id}
+                          type="button"
+                          aria-pressed={attached}
+                          onClick={() => setEditing({
+                            ...editing,
+                            optionSetIds: attached
+                              ? (editing.optionSetIds ?? []).filter((id) => id !== set.id)
+                              : [...(editing.optionSetIds ?? []), set.id],
+                          })}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                            attached
+                              ? "border-accent bg-accent text-accent-foreground"
+                              : "border-border bg-white text-muted-foreground hover:border-accent hover:text-foreground",
+                          )}
+                        >
+                          {attached && <Check className="h-3 w-3" />}
+                          {set.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Attached sets render as selectors on the PDP (see <Link to="/admin/options" className="underline underline-offset-2 hover:text-foreground">Options</Link> for deltas & suffixes).</p>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter className="justify-between sm:justify-between">

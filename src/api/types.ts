@@ -412,6 +412,37 @@ export interface TransferLocation {
   kind: "warehouse" | "showroom";
 }
 
+/* ── Product option sets (Finish / Fabric / Size — master data) ───────────── */
+export interface AdminOptionValue {
+  id: string;
+  label: string;
+  /** +/- PKR applied to the product base price when selected. */
+  priceDelta: number;
+  /** Appended to the SKU on variant selection (WDX-1001-NO-FI-C). */
+  skuSuffix?: string;
+}
+export interface AdminOptionSet {
+  id: string;                 // e.g. "opt-finish" (seeds) or "optset-…" (admin-created)
+  name: string;               // e.g. "Finish"
+  values: AdminOptionValue[];
+  createdAt: string;
+  updatedAt: string;
+}
+export interface AdminOptionValueInput {
+  id?: string;                // keep the id on edit; omit for new values
+  label: string;
+  priceDelta: number;
+  skuSuffix?: string;
+}
+export interface NewOptionSetInput {
+  name: string;
+  values: AdminOptionValueInput[];
+}
+export interface AdminOptionSetPatch {
+  name?: string;
+  values?: AdminOptionValueInput[];
+}
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -460,6 +491,8 @@ export interface AdminProduct {
   /** Optional physical attributes (admin display + CSV round-trip). */
   dimensions?: string;
   weightKg?: number;
+  /** Attached option set ids (Finish / Fabric / Size …) — order matters on PDP. */
+  optionSetIds?: string[];
 }
 
 /* ── B2B price lists ("catalogs" — negotiated trade pricing) ──────────────── */
@@ -1048,7 +1081,7 @@ export interface AdminApi {
   getRevenueSeries(days: number): Promise<RevenuePoint[]>;
 
   listProducts(params?: ListParams & { category?: string; inStock?: boolean }): Promise<Paginated<AdminProduct>>;
-  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus" | "category" | "dimensions" | "weightKg">>): Promise<AdminProduct | undefined>;
+  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus" | "category" | "dimensions" | "weightKg" | "optionSetIds">>): Promise<AdminProduct | undefined>;
   /** Applies one bulk patch to many products atomically-ish (single persisted pass). */
   bulkUpdateProducts(ids: string[], patch: BulkProductPatch): Promise<{ updated: number }>;
   /** Create a product (demo: local catalogue insert; bagisto: POST, unverified). SKU auto-assigned. */
@@ -1140,6 +1173,13 @@ export interface AdminApi {
   receiveStockTransfer(id: string, receipts: StockTransferReceipt[]): Promise<AdminStockTransfer | undefined>;
   /** Draft transfers only. */
   deleteStockTransfer(id: string): Promise<boolean>;
+  /** Option set master — Finish / Fabric / Size and the like. */
+  listOptionSets(): Promise<AdminOptionSet[]>;
+  createOptionSet(input: NewOptionSetInput): Promise<AdminOptionSet>;
+  /** Name and values replaced atomically on update. */
+  updateOptionSet(id: string, patch: AdminOptionSetPatch): Promise<AdminOptionSet | undefined>;
+  /** Refused while any product references the set. */
+  deleteOptionSet(id: string): Promise<boolean>;
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;

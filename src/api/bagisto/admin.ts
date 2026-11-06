@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -495,6 +495,22 @@ export const bagistoAdminApi: AdminApi = {
 
   async deleteStockTransfer(): Promise<boolean> {
     throw new BagistoApiError(501, "Stock transfer deletion is not wired for Bagisto yet.");
+  },
+
+  async listOptionSets(): Promise<AdminOptionSet[]> {
+    throw new BagistoApiError(501, "Option sets are not wired for Bagisto yet.");
+  },
+
+  async createOptionSet(): Promise<AdminOptionSet> {
+    throw new BagistoApiError(501, "Option set creation is not wired for Bagisto yet.");
+  },
+
+  async updateOptionSet(): Promise<AdminOptionSet | undefined> {
+    throw new BagistoApiError(501, "Option set update is not wired for Bagisto yet.");
+  },
+
+  async deleteOptionSet(): Promise<boolean> {
+    throw new BagistoApiError(501, "Option set deletion is not wired for Bagisto yet.");
   },
 
   async listCustomers(params) {

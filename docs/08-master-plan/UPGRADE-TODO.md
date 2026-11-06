@@ -123,8 +123,12 @@ slices instead of duplicating them.
 
 ## Phase 3 — Product depth (Medusa-style)
 
-- [ ] **P3.1** Product Options & Values — e.g. Finish (Natural Oak / Dark Walnut / …), Size, Fabric; option sets
-  reusable across products; values can adjust price (+/- PKR) and carry their own SKU suffix.
+- [x] **P3.1** Product Options & Values — `/admin/options` (Commerce nav): Finish / Fabric / Size master with
+  price-delta values (+/- PKR) and SKU suffixes; seeds clone the static storefront master (`src/data/options.ts`)
+  1:1 into the admin demo DB (editable independently); products attach sets (Products → edit → Option sets chips;
+  seeded deterministically by subcategory/category rule table); create/edit/delete sets with inline value rows;
+  delete refused while attached (usage counter shown). Attach consumed by PDP in P3.2. Live check 17/17 · e2e 33/33 ·
+  Bagisto stubbed 501.
 - [ ] **P3.2** Variant selection on PDP — customer picks options; price/SKU/stock update live; cart lines keyed
   by variant.
 - [ ] **P3.3** Spec table per product — dimensions (L×W×H), weight, materials, warranty; editable in admin;

@@ -7,6 +7,7 @@
  */
 import { idbDeleteMany, idbGetAll, idbPutMany } from "@/api/demo/mediaStore";
 import { products, categoryGroups } from "@/data/products";
+import { optionSetIdsFor, OPTION_SETS } from "@/data/options";
 import { materials as finishSeed } from "@/data/materials";
 import { pageSwatchSeed } from "@/data/materialsPage";
 import { projectsDisplay as projectSeed } from "@/data/projects";
@@ -99,6 +100,11 @@ import type {
   TransferStatus,
   TransferLocation,
   AdminTransferLine,
+  AdminOptionSet,
+  AdminOptionValue,
+  AdminOptionValueInput,
+  NewOptionSetInput,
+  AdminOptionSetPatch,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -137,6 +143,7 @@ interface DemoDb {
   suppliers: AdminSupplier[];
   purchaseOrders: AdminPurchaseOrder[];
   stockTransfers: AdminStockTransfer[];
+  optionSets: AdminOptionSet[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -991,6 +998,37 @@ function buildSeedTransfers(products: AdminProduct[]): AdminStockTransfer[] {
   ];
 }
 
+/** Seed option sets — clones the static storefront master so admin edits persist independently. */
+function buildSeedOptionSets(): AdminOptionSet[] {
+  const now = new Date().toISOString();
+  return OPTION_SETS.map((set) => ({
+    id: set.id,
+    name: set.name,
+    values: set.values.map((v) => ({ ...v })),
+    createdAt: now,
+    updatedAt: now,
+  }));
+}
+
+/** Sanitise option-set value rows — labels required; ids kept on edit, minted otherwise. */
+function sanitizeOptionValues(values: AdminOptionValueInput[], setId: string): AdminOptionValue[] {
+  const items: AdminOptionValue[] = [];
+  const seen = new Set<string>();
+  let seq = 1;
+  for (const v of values ?? []) {
+    const label = v.label?.trim();
+    if (!label) continue;
+    let id = v.id?.trim();
+    if (!id || seen.has(id)) id = `val-${setId.replace(/[^a-z0-9]/gi, "")}-${Date.now().toString(36)}-${seq}`;
+    seen.add(id);
+    const priceDelta = Math.trunc(Number(v.priceDelta) || 0);
+    const skuSuffix = v.skuSuffix?.trim().toUpperCase() || undefined;
+    items.push({ id, label, priceDelta, skuSuffix });
+    seq += 1;
+  }
+  return items;
+}
+
 const CLAIM_TRANSITIONS: Record<ClaimStatus, ClaimStatus[]> = {
   reported: ["assessing", "rejected"],
   assessing: ["approved", "rejected"],
@@ -1204,6 +1242,7 @@ function buildSeed(): DemoDb {
       reviews: p.reviews,
       // deterministic pseudo-fresh dates spread over the last 60 days
       createdAt: new Date(Date.now() - (hashString(p.id) % 60) * 86400000).toISOString(),
+      optionSetIds: optionSetIdsFor(p),
     };
   });
 
@@ -1309,7 +1348,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts) };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1349,6 +1388,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.suppliers)) db.suppliers = buildSeedSuppliers();
       if (!Array.isArray(db.purchaseOrders)) db.purchaseOrders = buildSeedPurchaseOrders(db.products);
       if (!Array.isArray(db.stockTransfers)) db.stockTransfers = buildSeedTransfers(db.products);
+      if (!Array.isArray(db.optionSets)) db.optionSets = buildSeedOptionSets();
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -1511,6 +1551,7 @@ export const demoAdminApi: AdminApi = {
         reviews: 0,
         dimensions: input.dimensions,
         weightKg: input.weightKg,
+        optionSetIds: optionSetIdsFor({ subcategory: input.subcategory, category: input.category }),
       };
       syncFulfilment(p);
       if (input.stockStatus === "made_to_order") p.stockStatus = "made_to_order";
@@ -3412,6 +3453,61 @@ export const demoAdminApi: AdminApi = {
       if (db.stockTransfers[idx].status !== "draft") return;
       db.stockTransfers.splice(idx, 1);
       ok = true;
+    });
+    return ok;
+  },
+
+  async listOptionSets() {
+    return [...(loadDb().optionSets ?? [])]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((set) => ({ ...set, values: set.values.map((v) => ({ ...v })) }));
+  },
+
+  async createOptionSet(input: NewOptionSetInput) {
+    let created: AdminOptionSet | undefined;
+    update((db) => {
+      const name = input.name?.trim();
+      if (!name) throw new Error("Name the option set — e.g. Finish or Size.");
+      const values = sanitizeOptionValues(input.values ?? [], "new");
+      if (values.length === 0) throw new Error("Add at least one value — e.g. Natural Oak.");
+      const now = new Date().toISOString();
+      const id = `optset-${Date.now().toString(36)}`;
+      created = { id, name, values, createdAt: now, updatedAt: now };
+      (db.optionSets ??= []).push(created);
+    });
+    if (!created) throw new Error("Failed to create the option set");
+    return created;
+  },
+
+  async updateOptionSet(id: string, patch: AdminOptionSetPatch) {
+    let updated: AdminOptionSet | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const set = (db.optionSets ??= []).find((x) => x.id === id);
+      if (!set) throw new Error("Option set not found.");
+      if (patch.name !== undefined) {
+        const name = patch.name.trim();
+        if (name) set.name = name;
+      }
+      if (patch.values !== undefined) {
+        const values = sanitizeOptionValues(patch.values, set.id);
+        if (values.length === 0) throw new Error("An option set needs at least one value.");
+        set.values = values;
+      }
+      set.updatedAt = now;
+      updated = { ...set, values: set.values.map((v) => ({ ...v })) };
+    });
+    return updated;
+  },
+
+  async deleteOptionSet(id: string) {
+    let ok = false;
+    update((db) => {
+      const attached = (db.products ?? []).some((p) => (p.optionSetIds ?? []).includes(id));
+      if (attached) return;                       // refuse while products reference the set
+      const before = (db.optionSets ?? []).length;
+      db.optionSets = (db.optionSets ?? []).filter((x) => x.id !== id);
+      ok = db.optionSets.length < before;
     });
     return ok;
   },
