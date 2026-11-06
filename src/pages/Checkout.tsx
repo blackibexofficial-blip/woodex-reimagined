@@ -9,13 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, Truck, CreditCard, Banknote, ChevronLeft, CheckCircle, MapPin } from "lucide-react";
+import { ShoppingCart, Truck, CreditCard, Banknote, ChevronLeft, CheckCircle, MapPin, MessageCircle } from "lucide-react";
 import Header from "@/components/Header";
 import TradeBanner from "@/components/TradeBanner";
 import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
 import { formatPKR } from "@/data/products";
-import { site } from "@/config/site";
+import { site, waLink } from "@/config/site";
 
 const cities = [
   "Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan",
@@ -27,7 +27,14 @@ const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [placing, setPlacing] = useState(false);
-  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
+  const [placedOrder, setPlacedOrder] = useState<{
+    id: string | null;
+    total: number;
+    count: number;
+    payment: string;
+    name: string;
+    phone: string;
+  } | null>(null);
   const [formData, setFormData] = useState({
     name: "", email: "", phone: "", address: "", city: "Lahore", notes: "",
   });
@@ -62,7 +69,14 @@ const Checkout = () => {
         shipping: deliveryFee,
         total: grandTotal,
       });
-      setPlacedOrderId(order.id);
+      setPlacedOrder({
+        id: order.id,
+        total: grandTotal,
+        count: totalItems,
+        payment: paymentMethod,
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+      });
       setOrderPlaced(true);
       clearCart();
       window.scrollTo(0, 0);
@@ -87,16 +101,37 @@ const Checkout = () => {
             <p className="text-muted-foreground mb-2">
               Thank you for your order. Our team will contact you within 24 hours to confirm delivery details.
             </p>
-            {placedOrderId && (
+            {placedOrder?.id && (
               <p className="text-sm font-semibold mb-2">
-                Order reference: <span className="font-mono text-accent">{placedOrderId}</span>
+                Order reference: <span className="font-mono text-accent">{placedOrder.id}</span>
               </p>
             )}
-            <p className="text-sm text-muted-foreground mb-8">
-              {paymentMethod === "cod"
-                ? "Payment will be collected on delivery."
-                : "Our team will share bank details for transfer."}
+            <p className="text-sm text-muted-foreground mb-6">
+              {placedOrder?.payment === "cod"
+                ? "Payment is collected on delivery. Our team verifies every order on WhatsApp before dispatch."
+                : "Our team will share bank transfer details on WhatsApp after your order."}
             </p>
+            {placedOrder && (
+              <div className="mb-6">
+                <Button
+                  className="bg-[#25D366] hover:bg-[#1fb855] text-[#053b1e] font-semibold h-12 px-6 text-base"
+                  asChild
+                >
+                  <a
+                    href={waLink(
+                      `Assalamualaikum WOODEX! Order ${placedOrder.id} placed — ${placedOrder.count} item(s), total ${formatPKR(placedOrder.total)} (${placedOrder.payment === "cod" ? "Cash on Delivery" : "Bank Transfer"}). Name: ${placedOrder.name}, phone: ${placedOrder.phone}. Please confirm availability & delivery schedule.`
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageCircle className="mr-2 h-5 w-5" /> Confirm my order on WhatsApp
+                  </a>
+                </Button>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Fastest confirmation — pre-filled with your order reference &amp; total. We reply within business hours.
+                </p>
+              </div>
+            )}
             <div className="flex flex-wrap gap-3 justify-center">
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
                 <Link to="/shop">Continue Shopping</Link>
