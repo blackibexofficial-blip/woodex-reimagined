@@ -56,11 +56,12 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const { data, error } = await supabase.auth.signInWithPassword({ email: trimmed, password });
       if (error) {
         const raw = error.message ?? "";
-        const msg = /invalid login/i.test(raw)
+        // Only credential rejections are user-fixable; anything else (network down,
+        // project misconfigured, logins disabled, DNS, TLS) maps to the same
+        // actionable hint: the demo gate. Never leak raw backend internals.
+        const msg = /invalid login|invalid email|invalid credentials/i.test(raw)
           ? "Invalid email or password for this Supabase project."
-          : /failed to fetch|network|unreachable|connection|load failed/i.test(raw)
-            ? "Supabase is unreachable from this network. Check the project URL / connection — or use the demo gate."
-            : raw;
+          : "Supabase is unreachable from this network. Check the project URL / connection — or use the demo gate.";
         return { ok: false, error: msg };
       }
       const next: AdminUser = {

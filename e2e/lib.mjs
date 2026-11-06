@@ -90,7 +90,15 @@ export async function withServer(fn) {
 export function watchErrors(page) {
   const logs = [];
   const noise = /favicon|net::|ERR_CONNECTION_CLOSED|fonts\.googleapis|fonts\.gstatic|Download the React DevTools/i;
-  page.on("console", (m) => { if (m.type() === "error" && !noise.test(m.text())) logs.push(`[console:error] ${m.text()}`); });
+  // The historical Supabase host is dead by design; its failed requests are expected,
+  // so filter resource errors whose URL belongs to it (precise, not a blanket 4xx filter).
+  const deadBackend = /lovable\.cloud/i;
+  page.on("console", (m) => {
+    if (m.type() !== "error") return;
+    const url = m.location()?.url ?? "";
+    if (noise.test(m.text()) || deadBackend.test(url)) return;
+    logs.push(`[console:error] ${m.text()} @ ${url}`);
+  });
   page.on("pageerror", (e) => logs.push(`[pageerror] ${e.message}`));
   return logs;
 }
