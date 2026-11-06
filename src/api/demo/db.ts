@@ -12,6 +12,8 @@ import type {
   AdminCategory,
   AdminCustomer,
   AdminLead,
+  AdminCollection,
+  AdminCollectionRule,
   AdminMediaAsset,
   AdminOrder,
   AdminOrderEvent,
@@ -23,6 +25,7 @@ import type {
   ProductImportResult,
   ProductImportRow,
   NewLeadInput,
+  NewAdminCollectionInput,
   NewOrderInput,
   OrderStatus,
   PaymentMethod,
@@ -42,6 +45,7 @@ interface DemoDb {
   movements: AdminStockMovement[];
   zones: AdminDeliveryZone[];
   orderEvents: AdminOrderEvent[];
+  collections: AdminCollection[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -256,6 +260,50 @@ async function ensureMediaSeeded() {
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "category";
 
+/** Resolves a collection's members — manual picks in curated order; rules evaluated live off the catalogue. */
+function resolveCollectionProducts(db: DemoDb, c: AdminCollection): AdminProduct[] {
+  if (c.kind === "manual") {
+    const out: AdminProduct[] = [];
+    for (const id of c.productIds) {
+      const item = db.products.find((x) => x.id === id);
+      if (item) out.push(item);
+    }
+    return out;
+  }
+  const all = db.products;
+  switch (c.rule) {
+    case "best_selling":
+      return [...all].filter((p) => p.isBestSeller).sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
+    case "price_asc":
+      return [...all].sort((a, b) => a.price - b.price);
+    case "price_desc":
+      return [...all].sort((a, b) => b.price - a.price);
+    case "on_sale":
+      return [...all]
+        .filter((p) => p.compareAtPrice !== undefined && p.compareAtPrice > p.price)
+        .sort((a, b) => (b.compareAtPrice! - b.price) - (a.compareAtPrice! - a.price));
+    case "newest":
+      // "New arrivals" is a shelf, not the whole catalogue — a fresh season's worth
+      return [...all].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")).slice(0, 24);
+    default:
+      return [];
+  }
+}
+
+/** Seeded merchandising collections — sf-style new/sale/best-seller mix. */
+function buildSeedCollections(prods: AdminProduct[]): AdminCollection[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  return [
+    { id: "col-new-arrivals", name: "New Arrivals", handle: "new-arrivals", description: "Fresh from the WOODEX workshops — latest additions this season.", kind: "automatic", rule: "newest", productIds: [], sortOrder: 0, createdAt: iso(120) },
+    { id: "col-on-sale", name: "On Sale", handle: "on-sale", description: "Discounted catalogue — while stocks last.", kind: "automatic", rule: "on_sale", productIds: [], sortOrder: 1, createdAt: iso(90) },
+    { id: "col-best-sellers", name: "Best Sellers", handle: "best-sellers", description: "Hand-picked customer favourites across office and home ranges.", kind: "manual", productIds: [...prods].filter((p) => p.isBestSeller).sort((a, b) => b.reviews - a.reviews).slice(0, 12).map((p) => p.id), sortOrder: 2, createdAt: iso(150) },
+  ];
+}
+
+const slugifyHandle = (s: string) =>
+  s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "collection";
+
 /** Deterministic lifecycle ledger for seeded orders (plausible history, clamped to now). */
 function buildSeedOrderEvents(orders: AdminOrder[]): AdminOrderEvent[] {
   const out: AdminOrderEvent[] = [];
@@ -351,6 +399,8 @@ function buildSeed(): DemoDb {
       isBestSeller: Boolean(p.isBestSeller),
       rating: p.rating,
       reviews: p.reviews,
+      // deterministic pseudo-fresh dates spread over the last 60 days
+      createdAt: new Date(Date.now() - (hashString(p.id) % 60) * 86400000).toISOString(),
     };
   });
 
@@ -455,7 +505,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders) };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts) };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -477,6 +527,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.movements)) db.movements = [];
       if (!Array.isArray(db.zones)) db.zones = buildSeedZones();
       if (!Array.isArray(db.orderEvents)) db.orderEvents = buildSeedOrderEvents(db.orders);
+      if (!Array.isArray(db.collections)) db.collections = buildSeedCollections(db.products);
       if (!db.inventoryMeta || typeof db.inventoryMeta !== "object" || Array.isArray(db.inventoryMeta)) db.inventoryMeta = buildInventoryMeta(db.products);
       db.products.forEach((p, i) => {
         if (!p.sku) p.sku = `WDX-${String(i + 1001).padStart(4, "0")}`;
@@ -899,6 +950,85 @@ export const demoAdminApi: AdminApi = {
   async saveSettings(settings) {
     update((db) => { db.settings = { ...settings }; });
     return { ...settings };
+  },
+
+  async listCollections() {
+    return [...(loadDb().collections ?? [])].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  },
+
+  async listCollectionProducts(id) {
+    const db = loadDb();
+    const c = (db.collections ?? []).find((x) => x.id === id);
+    if (!c) return [];
+    return resolveCollectionProducts(db, c);
+  },
+
+  async createCollection(input) {
+    let created: AdminCollection | undefined;
+    update((db) => {
+      const arr = (db.collections ??= []);
+      const name = input.name.trim();
+      if (!name) return;
+      const baseHandle = slugifyHandle(input.handle?.trim() || name);
+      let handle = baseHandle;
+      let n = 2;
+      while (arr.some((c) => c.handle === handle)) handle = `${baseHandle}-${n++}`;
+      const rule = input.kind === "automatic" ? input.rule ?? "best_selling" : undefined;
+      const productIds = input.kind === "manual" ? [...new Set(input.productIds ?? [])].filter((pid) => db.products.some((p) => p.id === pid)) : [];
+      created = {
+        id: `col-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+        name,
+        handle,
+        description: input.description?.trim() || undefined,
+        kind: input.kind,
+        rule,
+        productIds,
+        sortOrder: Math.max(-1, ...arr.map((c) => c.sortOrder)) + 1,
+        createdAt: new Date().toISOString(),
+      };
+      arr.push(created);
+    });
+    return created as AdminCollection;
+  },
+
+  async updateCollection(id, patch) {
+    let updated: AdminCollection | undefined;
+    update((db) => {
+      const arr = (db.collections ??= []);
+      const c = arr.find((x) => x.id === id);
+      if (!c) return;
+      if (patch.name !== undefined) { const name = patch.name.trim(); if (name) c.name = name; }
+      if (patch.handle !== undefined) {
+        const base = slugifyHandle(patch.handle);
+        let h = base, n = 2;
+        while (arr.some((x) => x !== c && x.handle === h)) h = `${base}-${n++}`;
+        c.handle = h;
+      }
+      if (patch.description !== undefined) c.description = patch.description.trim() || undefined;
+      if (patch.kind !== undefined && patch.kind !== c.kind) {
+        c.kind = patch.kind;
+        if (c.kind === "automatic") { c.rule = c.rule ?? "best_selling"; c.productIds = []; } else { c.rule = undefined; }
+      }
+      if (patch.rule !== undefined && c.kind === "automatic") c.rule = patch.rule;
+      if (patch.productIds !== undefined && c.kind === "manual") {
+        c.productIds = [...new Set(patch.productIds)].filter((pid) => db.products.some((p) => p.id === pid));
+      }
+      if (patch.sortOrder !== undefined) c.sortOrder = patch.sortOrder;
+      updated = { ...c, productIds: [...c.productIds] };
+    });
+    return updated;
+  },
+
+  async deleteCollection(id) {
+    let ok = false;
+    update((db) => {
+      const arr = (db.collections ??= []);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
   },
 
   async listCategories() {

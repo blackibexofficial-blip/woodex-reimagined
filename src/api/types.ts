@@ -95,9 +95,48 @@ export interface AdminProduct {
   isBestSeller: boolean;
   rating: number;
   reviews: number;
+  /** Deterministic seed date — drives automatic "newest" collections. */
+  createdAt?: string;
   /** Optional physical attributes (admin display + CSV round-trip). */
   dimensions?: string;
   weightKg?: number;
+}
+
+/* ── Collections (merchandising) ────────────────────────────────────────── */
+
+export type AdminCollectionKind = "manual" | "automatic";
+export type AdminCollectionRule = "best_selling" | "price_asc" | "price_desc" | "on_sale" | "newest";
+
+export const COLLECTION_RULE_LABELS: Record<AdminCollectionRule, string> = {
+  best_selling: "Best selling",
+  price_asc: "Price: low to high",
+  price_desc: "Price: high to low",
+  on_sale: "On sale",
+  newest: "Date: newest first",
+};
+
+export interface AdminCollection {
+  id: string;
+  name: string;
+  /** URL handle — unique, lowercase-hyphen. Consumed as /shop?collection=<handle>. */
+  handle: string;
+  description?: string;
+  kind: AdminCollectionKind;
+  /** Automatic rule; undefined for manual collections. */
+  rule?: AdminCollectionRule;
+  /** Hand-picked product ids; ignored for automatic rules. */
+  productIds: string[];
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface NewAdminCollectionInput {
+  name: string;
+  handle?: string;
+  description?: string;
+  kind: AdminCollectionKind;
+  rule?: AdminCollectionRule;
+  productIds?: string[];
 }
 
 /** Input for creating a product from the admin panel. SKU/id are generated. */
@@ -333,6 +372,13 @@ export interface AdminApi {
   saveSettings(settings: StoreSettings): Promise<StoreSettings>;
 
   /** Catalogue taxonomy managed in the admin (demo-backed). */
+  listCollections(): Promise<AdminCollection[]>;
+  /** Resolves a collection's member products (rule resolved live for automatic collections). */
+  listCollectionProducts(id: string): Promise<AdminProduct[]>;
+  createCollection(input: NewAdminCollectionInput): Promise<AdminCollection>;
+  updateCollection(id: string, patch: Partial<Pick<AdminCollection, "name" | "handle" | "description" | "kind" | "rule" | "productIds" | "sortOrder">>): Promise<AdminCollection | undefined>;
+  deleteCollection(id: string): Promise<boolean>;
+
   listCategories(): Promise<AdminCategory[]>;
   /** Creates a category; id is slugified from the name. */
   createCategory(input: { name: string; group: AdminCategory["group"]; parentId?: string }): Promise<AdminCategory>;

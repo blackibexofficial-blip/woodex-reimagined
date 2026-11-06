@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminCategory, AdminCustomer, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminCategory, AdminCollection, AdminCustomer, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -396,6 +396,27 @@ export const bagistoAdminApi: AdminApi = {
     // bagisto-api package; mapping is intentionally not guessed. Wire it when a staging
     // instance is available — see docs/07-admin-integration §8.
     throw new BagistoApiError(501, "Category management is not wired for Bagisto yet. Use VITE_API_MODE=demo for the preview, or implement mappers in src/api/bagisto/admin.ts.");
+  },
+
+  async listCollections(): Promise<AdminCollection[]> {
+    // Collections/price-merchandise grouping has no verified Bagisto mapping yet — demo-only.
+    throw new BagistoApiError(501, "Collections are not wired for Bagisto yet. Use VITE_API_MODE=demo — Bagisto category/rule merchandising lives in Bagisto admin → Catalog → Categories.");
+  },
+
+  async listCollectionProducts(): Promise<AdminProduct[]> {
+    throw new BagistoApiError(501, "Collections are demo-only for now — see docs/07-admin-integration §8.");
+  },
+
+  async createCollection(): Promise<AdminCollection> {
+    throw new BagistoApiError(501, "Collection creation is not wired for Bagisto yet.");
+  },
+
+  async updateCollection(): Promise<AdminCollection | undefined> {
+    throw new BagistoApiError(501, "Collection editing is not wired for Bagisto yet.");
+  },
+
+  async deleteCollection(): Promise<boolean> {
+    throw new BagistoApiError(501, "Collection deletion is not wired for Bagisto yet.");
   },
 
   async createCategory(): Promise<AdminCategory> {

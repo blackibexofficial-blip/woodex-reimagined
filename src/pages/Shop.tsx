@@ -6,8 +6,9 @@ import ProductCard from "@/components/shop/ProductCard";
 import ProductListItem from "@/components/shop/ProductListItem";
 import { products, getProductsByCategory, sortProducts, getCategoryImages } from "@/data/products";
 import { Input } from "@/components/ui/input";
+import { getAdminApi } from "@/api";
 import { Button } from "@/components/ui/button";
-import { Search, Grid3X3, LayoutList, SlidersHorizontal, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, Grid3X3, LayoutList, SlidersHorizontal, ChevronDown, ChevronRight, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SeoContentBlock from "@/components/SeoContentBlock";
 import { getCategorySeo } from "@/data/seoContent";
@@ -108,6 +109,36 @@ const Shop = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["office-tables", "bedroom"]);
 
+  // ?collection=<handle> — collection membership resolved against the admin adapter (demo DB)
+  const collectionHandle = searchParams.get("collection") ?? "";
+  const [collectionName, setCollectionName] = useState<string | null>(null);
+  const [collectionIds, setCollectionIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (!collectionHandle) { setCollectionIds(null); setCollectionName(null); return; }
+    let alive = true;
+    const api = getAdminApi();
+    (async () => {
+      try {
+        const list = await api.listCollections();
+        const c = list.find((x) => x.handle === collectionHandle);
+        if (!alive) return;
+        if (!c) { setCollectionName(collectionHandle); setCollectionIds(new Set()); return; }
+        setCollectionName(c.name);
+        const members = await api.listCollectionProducts(c.id);
+        if (alive) setCollectionIds(new Set(members.map((m) => m.id)));
+      } catch (e) {
+        console.warn("[woodex] collection filter unavailable", e);
+        if (alive) { setCollectionName(collectionHandle); setCollectionIds(new Set()); }
+      }
+    })();
+    return () => { alive = false; };
+  }, [collectionHandle]);
+  const clearCollection = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("collection");
+    setSearchParams(next, { replace: true });
+  };
+
   const seo = getCategorySeo(selectedCategory);
 
   useEffect(() => {
@@ -127,6 +158,7 @@ const Shop = () => {
 
   const filteredProducts = useMemo(() => {
     let result = getProductsByCategory(selectedCategory);
+    if (collectionIds) result = result.filter((p) => collectionIds.has(p.id));
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -137,7 +169,7 @@ const Shop = () => {
       );
     }
     return sortProducts(result, sortBy);
-  }, [selectedCategory, searchQuery, sortBy]);
+  }, [selectedCategory, searchQuery, sortBy, collectionIds]);
 
   const toggleExpand = (id: string) => {
     setExpandedCategories((prev) =>
@@ -279,6 +311,16 @@ const Shop = () => {
 
               {/* Products */}
               <div className="flex-1">
+                {collectionName !== null && (
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Collection</span>
+                    <button type="button" onClick={clearCollection} aria-label="Remove collection filter" className="inline-flex items-center gap-1.5 rounded-full border border-hon-green/40 bg-hon-green/10 px-3 py-1 text-xs font-semibold text-hon-green-dark transition hover:bg-hon-green/20">
+                      {collectionName}
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="text-xs text-muted-foreground">{collectionIds ? `${collectionIds.size} product${collectionIds.size === 1 ? "" : "s"}` : "…"}</span>
+                  </div>
+                )}
                 {/* Toolbar */}
                 <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-6 p-4 bg-section-light rounded-sm">
                   <div className="relative flex-1 max-w-sm w-full">
