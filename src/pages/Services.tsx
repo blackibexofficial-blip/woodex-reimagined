@@ -15,10 +15,10 @@ const serviceHighlights = [
     features: ["2D space plans", "3D visualisation", "Ergonomic review"],
   },
   {
-    title: "Custom Design Studio",
-    slug: "custom-design",
-    summary: "Furniture designed to fit your space, working style and brand identity.",
-    features: ["Made-to-measure designs", "Finish selection", "Approval before production"],
+    title: "Factory Direct",
+    slug: "custom-manufacturing",
+    summary: "Source furniture directly from WOODEX manufacturing, with quality control close to production.",
+    features: ["Direct manufacturer supply", "Factory quality checks", "Product warranty support"],
   },
   {
     title: "Delivery & Installation",
