@@ -135,7 +135,7 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
   pick), plus carousel ordering.
 
 ### B. Storefront surfaces with no admin editor yet
-- [x] **B1** Showrooms admin — `/admin/showrooms`: list/create/edit/delete showroom records (name, city, address,
+- [ ] **B1** Showrooms admin — `/admin/showrooms`: list/create/edit/delete showroom records (name, city, address,
   phone, hours, image, map link) feeding storefront `/showrooms` + left-rail "Visit our showrooms" — demo DB slice
   + types already exist (`showrooms`, `NewShowroomInput`); only the page + nav + route are missing.
 - [ ] **B2** Warranty page content — `/warranty` is hardcoded; add editable content entry (optional, low value).
