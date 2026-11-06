@@ -14,6 +14,7 @@ import { commonLayerFields, commonLayerDefaults, SectionShell, resolveLayerPermi
 import { elementComponents } from "./elements";
 import { catalogueA } from "./sections/catalogue-a";
 import { catalogueB } from "./sections/catalogue-b";
+import { homeBlocks } from "./sections/home-blocks";
 
 const ICONS = {
   shield: ShieldCheck,
@@ -137,6 +138,7 @@ export const woodexConfig: Config = {
     ...elementComponents,
     ...catalogueA,
     ...catalogueB,
+    ...homeBlocks,
   },
   categories: {
     basics: { title: "WOODEX basics", components: ["SectionHeading", "ImageBanner", "ButtonLink"] },
@@ -149,7 +151,7 @@ export const woodexConfig: Config = {
     cta: { title: "Call to action", components: ["CtaStrip", "CtaSplit", "CtaBanner"] },
     content: { title: "Content", components: ["RichText", "TwoColumnText", "FaqAccordion", "ServiceList"] },
     forms: { title: "Forms", components: ["EnquiryForm", "NewsletterSignup", "CallbackForm", "NewsletterCard"] },
-    components: { title: "Components", components: ["LogoStrip", "AwardsRow", "MapSection", "ContactCard", "HoursCard", "ShowroomTeaser"] },
+    components: { title: "Components", components: ["LogoStrip", "AwardsRow", "MapSection", "ContactCard", "HoursCard", "ShowroomTeaser", "CategoryCircles", "ProductRail"] },
     elements: { title: "Elements (BASIC + WIDGETS)", components: ["Heading", "SubHeading", "Paragraph", "SmallLabel", "Button", "TwoButtons", "Image", "VideoEmbed", "CheckList", "Quote", "Columns2", "Columns3", "CardBox", "Spacer", "DividerLine", "MapEmbed", "Icon"] },
   },
 };

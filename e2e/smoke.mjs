@@ -188,7 +188,7 @@ async function adminSuite(browser) {
   await waitText("Divider line", 10000);
   ok("UI kit tab lists elements", true);
   await page.goto(`${BASE}/lab/home`, { waitUntil: "networkidle2", timeout: 60000 });
-  await waitText("Furniture that outlasts the brief", 15000);
+  await waitText("Design For Your Workspace", 15000);
   ok("/lab/home renders the built page", true);
   ok("no console/page errors (admin flow)", logs.length === 0);
   await page.close();

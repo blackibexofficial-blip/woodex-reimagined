@@ -722,6 +722,17 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   full runtime harness re-run (scores unchanged: 60/45/28/50/60), and the bundle re-spliced from the fixed source
   (parses clean, mcp-js 3.0.4 pins preserved). Lesson recorded: with pkg.dev unreachable from the agent sandbox,
   "environment" was asserted before fixing the one visible type defect — owner log screenshots are authoritative.
+- **2026-11-07 (Builder Home = real storefront mirror)** — Owner directive: "replace demo to real home page — run-time live, drag & drop."
+  The Pages-builder Home document now mirrors the live storefront home instead of the placeholder starter ("Furniture that
+  outlasts the brief"): hero copy from slide 1, the tagline strip, the 5-service strip, the 8 circular category tiles
+  (new `CategoryCircles` block; images committed under `public/assets/home/` as stable paths), "Latest Collection" rendered
+  **live from the catalog** by the new `ProductRail` block (best sellers / new / all, `/product/<id>` links, real PKR prices),
+  Our Services checklist (services-office.webp), project bento, the 5 real Google reviews, 10 real client names, the 6 real
+  FAQs, and the WhatsApp-first CTA. Storefront `/` is untouched; `/lab/home` and the Pages editor render the document. Two new
+  builder blocks registered (`CategoryCircles`, `ProductRail` — 42 registered blocks total; the 40-catalogue count is unchanged).
+  Persisted browsers carrying the untouched starter doc are auto-upgraded by a one-time migration in `src/api/demo/db.ts`
+  (`woodex.pages.home-v2`, only when the stored Home still matches the pristine starter; user edits are preserved). e2e smoke
+  expectation updated to the new hero copy. WorkspacePlanning carousel deliberately not mirrored in the quick fix.
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
 - **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:
