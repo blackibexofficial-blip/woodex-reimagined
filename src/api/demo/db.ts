@@ -50,6 +50,8 @@ import type {
   AdminShowroom,
   AdminSeries,
   NewSeriesInput,
+  AdminBrand,
+  NewBrandInput,
   NewShowroomInput,
   AdminMaterial,
   NewMaterialInput,
@@ -134,6 +136,7 @@ interface DemoDb {
   salesChannels: AdminSalesChannel[];
   showrooms: AdminShowroom[];
   series: AdminSeries[];
+  brands: AdminBrand[];
   materials: AdminMaterial[];
   projects: AdminProject[];
   blogPosts: AdminBlogPost[];
@@ -578,6 +581,26 @@ const SERIES_SEED: Array<Omit<AdminSeries, "createdAt" | "updatedAt">> = [
     color: "#7a7a5a", active: true, sortOrder: 50,
   },
 ];
+
+/**
+ * Demo seed for the Brand master. Inlined for the same reason as SERIES_SEED
+ * (named imports from @/data/* mis-wire in the shared db chunk). The catalogue
+ * is Woodex today — seed a single house brand; the manager exists for the day
+ * partner brands ship. FK on products: brandId === "woodex".
+ */
+const BRAND_SEED: Array<Omit<AdminBrand, "createdAt" | "updatedAt">> = [
+  {
+    id: "woodex", name: "Woodex", tagline: "Pakistan's office furniture makers since the workshop years",
+    description: "WOODEX makes premium office furniture in Lahore — desks, workstations, conference tables, seating and storage — engineered wood, powder-coated steel frames, nationwide delivery with a warranty on every piece.",
+    logo: "/woodex-logo.png", website: "https://woodexfurniture.pk", active: true, sortOrder: 10,
+  },
+];
+
+function buildSeedBrands(): AdminBrand[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  return BRAND_SEED.map((b) => ({ ...b, createdAt: iso(200), updatedAt: iso(200) }));
+}
 
 function buildSeedSeries(): AdminSeries[] {
   const now = Date.now();
@@ -1308,6 +1331,7 @@ function buildSeed(): DemoDb {
       description: p.description,
       images: [...p.images],
       seriesId: p.series,
+      brandId: "woodex",
     };
   });
 
@@ -1413,7 +1437,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1442,6 +1466,8 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.salesChannels)) db.salesChannels = buildSeedSalesChannels();
       if (!Array.isArray(db.showrooms)) db.showrooms = buildSeedShowrooms();
       if (!Array.isArray(db.series)) db.series = buildSeedSeries();
+      if (!Array.isArray(db.brands)) db.brands = buildSeedBrands();
+      for (const p of db.products) if (p.brandId === undefined) p.brandId = "woodex";
       if (!Array.isArray(db.materials)) db.materials = buildSeedMaterials();
       if (!Array.isArray(db.projects)) db.projects = buildSeedProjects();
       if (!Array.isArray(db.blogPosts)) db.blogPosts = buildSeedBlogPosts();
@@ -1591,6 +1617,7 @@ export const demoAdminApi: AdminApi = {
     const db = loadDb();
     let items = [...db.products];
     if (params.category) items = items.filter((p) => p.category === params.category);
+    if (params.brandId) items = items.filter((p) => p.brandId === params.brandId);
     if (typeof params.inStock === "boolean") items = items.filter((p) => p.inStock === params.inStock);
     items = items.filter((p) => matchQuery(params.query, [p.name, p.category, p.id, p.sku]));
     if (!params.sort) items.sort((a, b) => b.reviews - a.reviews);
@@ -1605,6 +1632,7 @@ export const demoAdminApi: AdminApi = {
         name: input.name.trim(),
         category: input.category,
         subcategory: input.subcategory,
+        brandId: "woodex",
         sku: nextProductSku(db),
         price: input.price,
         compareAtPrice: input.compareAtPrice,
@@ -2007,6 +2035,13 @@ export const demoAdminApi: AdminApi = {
             p.isBestSeller = Boolean(patch.value);
             updated++;
             break;
+          case "brand": {
+            const brand = (db.brands ?? []).find((b) => b.id === patch.brandId);
+            if (!brand) break; // unknown brand — refuse silently rather than orphan FK
+            p.brandId = brand.id;
+            updated++;
+            break;
+          }
           case "stockDelta":
             p.stock = Math.max(0, p.stock + Math.trunc(patch.delta));
             touchProductMeta(db, p.id);
@@ -2254,6 +2289,82 @@ export const demoAdminApi: AdminApi = {
     let ok = false;
     update((db) => {
       const arr = (db.series ??= []);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
+  },
+
+  async listBrands() {
+    return [...(loadDb().brands ?? [])].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)).map((r) => ({ ...r }));
+  },
+
+  async createBrand(input: NewBrandInput) {
+    let created: AdminBrand | undefined;
+    update((db) => {
+      const arr = (db.brands ??= []);
+      const name = input.name.trim();
+      if (!name) return;
+      const base = (input.id?.trim() || name
+        .toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
+      if (!base || arr.some((x) => x.id === base)) return;
+      const now = new Date().toISOString();
+      const maxOrder = Math.max(0, ...arr.map((r) => r.sortOrder));
+      created = {
+        id: base,
+        name,
+        tagline: input.tagline.trim(),
+        description: input.description.trim(),
+        logo: input.logo?.trim() || undefined,
+        website: input.website?.trim() || undefined,
+        active: input.active ?? true,
+        sortOrder: typeof input.sortOrder === "number" ? input.sortOrder : maxOrder + 10,
+        createdAt: now,
+        updatedAt: now,
+      };
+      arr.push(created);
+    });
+    if (!created) throw new Error("A brand with that slug already exists, or the name is empty.");
+    return created;
+  },
+
+  async updateBrand(id: string, patch: Partial<NewBrandInput>) {
+    let updated: AdminBrand | undefined;
+    update((db) => {
+      const room = (db.brands ??= []).find((x) => x.id === id);
+      if (!room) return;
+      if (typeof patch.name === "string" && patch.name.trim()) room.name = patch.name.trim();
+      if (typeof patch.tagline === "string") room.tagline = patch.tagline.trim();
+      if (typeof patch.description === "string") room.description = patch.description.trim();
+      if (patch.logo !== undefined) room.logo = patch.logo?.trim() || undefined;
+      if (patch.website !== undefined) room.website = patch.website?.trim() || undefined;
+      if (patch.active !== undefined) room.active = Boolean(patch.active);
+      if (patch.sortOrder !== undefined && Number.isFinite(patch.sortOrder)) room.sortOrder = patch.sortOrder;
+      room.updatedAt = new Date().toISOString();
+      updated = { ...room };
+    });
+    return updated;
+  },
+
+  async setBrandActive(id: string, active: boolean) {
+    let updated: AdminBrand | undefined;
+    update((db) => {
+      const room = (db.brands ??= []).find((x) => x.id === id);
+      if (!room) return;
+      room.active = Boolean(active);
+      room.updatedAt = new Date().toISOString();
+      updated = { ...room };
+    });
+    return updated;
+  },
+
+  async deleteBrand(id: string) {
+    let ok = false;
+    update((db) => {
+      if ((db.products ?? []).some((p) => p.brandId === id)) return; // referenced by products — refuse
+      const arr = (db.brands ??= []);
       const i = arr.findIndex((x) => x.id === id);
       if (i === -1) return;
       arr.splice(i, 1);

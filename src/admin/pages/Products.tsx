@@ -181,6 +181,7 @@ export default function AdminProducts() {
   const [debounced, setDebounced] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [stockFilter, setStockFilter] = useState<string>("all");
+  const [brandFilter, setBrandFilter] = useState<string>("all");
   const [sortValue, setSortValue] = useState<SortValue>("reviews:desc");
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<AdminProduct[]>([]);
@@ -213,6 +214,7 @@ export default function AdminProducts() {
       const res = await api.listProducts({
         query: debounced || undefined,
         category: category === "all" ? undefined : category,
+        brandId: brandFilter === "all" ? undefined : brandFilter,
         inStock: stockFilter === "all" ? undefined : stockFilter === "in",
         page,
         perPage: PER_PAGE,
@@ -227,10 +229,11 @@ export default function AdminProducts() {
     } finally {
       setLoading(false);
     }
-  }, [api, debounced, category, stockFilter, page, sortValue]);
+  }, [api, debounced, category, brandFilter, stockFilter, page, sortValue]);
 
   const [optionSets, setOptionSets] = useState<AdminOptionSet[]>([]);
   const [seriesOptions, setSeriesOptions] = useState<Array<{ id: string; name: string; active: boolean }>>(seriesList.map(({ id, name }) => ({ id, name, active: true })));
+  const [brandOptions, setBrandOptions] = useState<Array<{ id: string; name: string; active: boolean }>>([{ id: "woodex", name: "Woodex", active: true }]);
   const [collections, setCollections] = useState<AdminCollection[]>([]);
   /* Manual-collection membership — null = derive from collections each render; set once the user toggles a chip. */
   const [membership, setMembership] = useState<Set<string> | null>(null);
@@ -238,10 +241,11 @@ export default function AdminProducts() {
     api.listOptionSets().then(setOptionSets).catch(() => setOptionSets([]));
     api.listCollections().then(setCollections).catch(() => setCollections([]));
     api.listSeries().then((rows) => setSeriesOptions(rows.map(({ id, name, active }) => ({ id, name, active })))).catch(() => { /* static seriesList fallback already in place */ });
+    api.listBrands().then((rows) => setBrandOptions(rows.map(({ id, name, active }) => ({ id, name, active })))).catch(() => { /* woodex fallback already in place */ });
   }, [api]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [debounced, category, stockFilter, sortValue]);
+  useEffect(() => { setPage(1); }, [debounced, category, brandFilter, stockFilter, sortValue]);
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const categoryOptions = useMemo(() => categories.filter((c: { id: string; name: string }) => c.id !== "all").map((c: { id: string; name: string }) => ({ value: c.id, label: c.name })), []);
@@ -267,6 +271,7 @@ export default function AdminProducts() {
         images: (editing.images ?? []).map((u) => u.trim()).filter(Boolean).slice(0, 12),
         image: (editing.images ?? []).map((u) => u.trim()).filter(Boolean)[0] ?? editing.image,
         seriesId: editing.seriesId,
+        brandId: editing.brandId,
       });
       /* sync manual-collection membership diffs */
       const manualCols = collections.filter((c) => c.kind === "manual");
@@ -391,6 +396,13 @@ export default function AdminProducts() {
             <SelectContent>
               <SelectItem value="all">All categories</SelectItem>
               {categoryOptions.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={brandFilter} onValueChange={setBrandFilter}>
+            <SelectTrigger className="w-full sm:w-40 bg-white" aria-label="Filter by brand"><SelectValue placeholder="All brands" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All brands</SelectItem>
+              {brandOptions.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={stockFilter} onValueChange={setStockFilter}>
@@ -739,6 +751,17 @@ export default function AdminProducts() {
                   </SelectContent>
                 </Select>
                 <p className="mt-1 text-[10px] text-muted-foreground">Matches the storefront /series/:seriesId page.</p>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-brand">Brand</label>
+                <Select value={editing.brandId ?? "__none__"} onValueChange={(v) => setEditing({ ...editing, brandId: v === "__none__" ? undefined : v })}>
+                  <SelectTrigger id="edit-brand" className="bg-white"><SelectValue placeholder="No brand" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— no brand —</SelectItem>
+                    {brandOptions.filter((b) => b.active).map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-muted-foreground">Seeded “Woodex” — assign partner brands when they ship.</p>
               </div>
               <div>
                 <div className="mb-1 flex items-center justify-between">

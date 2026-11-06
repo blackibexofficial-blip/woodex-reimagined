@@ -19,6 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
+  AdminBrand,
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
@@ -705,6 +706,21 @@ export const bagistoAdminApi: AdminApi = {
   },
   async deleteSeries(): Promise<boolean> {
     throw new BagistoApiError(501, "Series deletion is not wired for Bagisto yet.");
+  },
+  async listBrands(): Promise<AdminBrand[]> {
+    throw new BagistoApiError(501, "Brand master is demo-only until a brand backend exists — see docs/07-admin-integration §8.");
+  },
+  async createBrand(): Promise<AdminBrand> {
+    throw new BagistoApiError(501, "Brand creation is not wired for Bagisto yet.");
+  },
+  async updateBrand(): Promise<AdminBrand | undefined> {
+    throw new BagistoApiError(501, "Brand update is not wired for Bagisto yet.");
+  },
+  async setBrandActive(): Promise<AdminBrand | undefined> {
+    throw new BagistoApiError(501, "Brand status is not wired for Bagisto yet.");
+  },
+  async deleteBrand(): Promise<boolean> {
+    throw new BagistoApiError(501, "Brand deletion is not wired for Bagisto yet.");
   },
   async updateShowroom(): Promise<AdminShowroom | undefined> {
     throw new BagistoApiError(501, "Showroom editing is not wired for Bagisto yet.");

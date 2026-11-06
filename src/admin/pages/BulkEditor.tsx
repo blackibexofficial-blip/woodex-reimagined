@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check, ChevronDown, ListChecks, Loader2, Minus, Plus, Search, Star, Tag, Trash2, TrendingDown, X,
+  BadgeCheck, Check, ChevronDown, ListChecks, Loader2, Minus, Plus, Search, Star, Tag, Trash2, TrendingDown, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
@@ -22,7 +22,7 @@ const STATUS_LABEL: Record<StockStatus, string> = {
   out_of_stock: "Out of stock",
 };
 
-type ActionKind = "pricePct" | "stockStatus" | "markOnSale" | "clearSale" | "bestSeller" | "stockDelta" | null;
+type ActionKind = "pricePct" | "stockStatus" | "markOnSale" | "clearSale" | "bestSeller" | "stockDelta" | "brand" | null;
 
 export default function AdminBulkEditor() {
   const api = useMemo(() => getAdminApi(), []);
@@ -30,6 +30,8 @@ export default function AdminBulkEditor() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("all");
+  const [brandFilter, setBrandFilter] = useState<string>("all");
+  const [brands, setBrands] = useState<Array<{ id: string; name: string }>>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | StockStatus>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -39,6 +41,7 @@ export default function AdminBulkEditor() {
   const [statusValue, setStatusValue] = useState<StockStatus>("made_to_order");
   const [salePct, setSalePct] = useState(10);
   const [stockDelta, setStockDelta] = useState(10);
+  const [brandId, setBrandId] = useState("woodex");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -60,16 +63,25 @@ export default function AdminBulkEditor() {
   }, [api]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    api.listBrands().then((rows) => {
+      const active = rows.filter((b) => b.active).map(({ id, name }) => ({ id, name }));
+      setBrands(active);
+      if (active.length > 0 && !active.some((b) => b.id === brandId)) setBrandId(active[0].id);
+    }).catch(() => setBrands([{ id: "woodex", name: "Woodex" }]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api]);
 
   const categories = useMemo(() => [...new Set(rows.map((r) => r.category))].sort(), [rows]);
 
   const visible = useMemo(() => rows.filter((r) => {
     if (category !== "all" && r.category !== category) return false;
+    if (brandFilter !== "all" && r.brandId !== brandFilter) return false;
     if (statusFilter !== "all" && r.stockStatus !== statusFilter) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return [r.name, r.sku, r.category].join(" ").toLowerCase().includes(q);
-  }), [rows, query, category, statusFilter]);
+  }), [rows, query, category, brandFilter, statusFilter]);
 
   const visibleIds = useMemo(() => visible.map((r) => r.id), [visible]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
@@ -129,6 +141,10 @@ export default function AdminBulkEditor() {
           <select aria-label="Category" value={category} onChange={(e) => setCategory(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
             <option value="all">All categories ({categories.length})</option>
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select aria-label="Brand" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="all">All brands ({brands.length})</option>
+            {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
           <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | StockStatus)}>
             <TabsList>
@@ -199,6 +215,7 @@ export default function AdminBulkEditor() {
           <Button size="sm" variant="secondary" onClick={() => setAction("stockStatus")}><ChevronDown className="h-4 w-4 mr-1.5" /> Fulfilment</Button>
           <Button size="sm" variant="secondary" onClick={() => setAction("stockDelta")}><Plus className="h-4 w-4 mr-1.5" /> Stock ±N</Button>
           <Button size="sm" variant="secondary" onClick={() => setAction("bestSeller")}><Star className="h-4 w-4 mr-1.5" /> Best seller</Button>
+          <Button size="sm" variant="secondary" onClick={() => setAction("brand")}><BadgeCheck className="h-4 w-4 mr-1.5" /> Brand</Button>
           <Button size="sm" variant="ghost" aria-label="Clear selection" onClick={() => setSelected(new Set())}><X className="h-4 w-4" /></Button>
         </div>
       )}
@@ -275,6 +292,22 @@ export default function AdminBulkEditor() {
                 <Button onClick={() => void applyPatch({ kind: "bestSeller", value: true }, "Marked best seller")} disabled={busy} variant="secondary">{busy ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Star className="h-4 w-4 mr-1.5" />}Mark best seller</Button>
                 <Button onClick={() => void applyPatch({ kind: "bestSeller", value: false }, "Unmarked best seller")} disabled={busy} variant="outline">{busy ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <X className="h-4 w-4 mr-1.5" />}Unmark</Button>
               </div>
+            </>
+          )}
+          {action === "brand" && (
+            <>
+              <DialogHeader><DialogTitle>Assign brand — {selectedCount} product{selectedCount === 1 ? "" : "s"}</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <label htmlFor="be-brand" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Brand for all selected products</label>
+                <select id="be-brand" value={brandId} onChange={(e) => setBrandId(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                <p className="text-[11px] text-muted-foreground">Sets <code>brandId</code> on every selected product — undo by assigning another brand. The catalogue is Woodex today; partner brands appear here once added in <span className="font-semibold">Brands</span>.</p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAction(null)} disabled={busy}>Cancel</Button>
+                <Button onClick={() => void applyPatch({ kind: "brand", brandId }, `Brand → ${brands.find((b) => b.id === brandId)?.name ?? brandId}`)} disabled={busy || !brandId} className="bg-accent text-accent-foreground hover:bg-hon-green-dark">{busy ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <BadgeCheck className="h-4 w-4 mr-1.5" />}Apply</Button>
+              </DialogFooter>
             </>
           )}
           {action === "stockDelta" && (

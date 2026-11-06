@@ -505,6 +505,8 @@ export interface AdminProduct {
   images?: string[];
   /** FK to storefront /series/:seriesId (ek-series, infinity-series…). */
   seriesId?: string;
+  /** FK to the admin Brand master (seeded "woodex"); room for future partner brands. */
+  brandId?: string;
 }
 
 /* ── B2B price lists ("catalogs" — negotiated trade pricing) ──────────────── */
@@ -667,6 +669,30 @@ export interface NewSeriesInput {
   description: string;
   features: string[];
   color: string;
+  active?: boolean;
+  sortOrder?: number;
+}
+
+/* ── Product Brands (admin-managed since A3; catalogue is Woodex today) ── */
+export interface AdminBrand {
+  id: string;             // slug — products reference this via brandId
+  name: string;
+  tagline: string;
+  description: string;
+  logo?: string;          // URL or /public path; rendered with an onError fallback
+  website?: string;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface NewBrandInput {
+  id?: string;            // optional slug override on create; derived from name when omitted
+  name: string;
+  tagline: string;
+  description: string;
+  logo?: string;
+  website?: string;
   active?: boolean;
   sortOrder?: number;
 }
@@ -932,7 +958,8 @@ export type BulkProductPatch =
   | { kind: "markOnSale"; pct: number }
   | { kind: "clearSale" }
   | { kind: "bestSeller"; value: boolean }
-  | { kind: "stockDelta"; delta: number };
+  | { kind: "stockDelta"; delta: number }
+  | { kind: "brand"; brandId: string };
 
 export interface ProductImportRow {
   id?: string;
@@ -1120,8 +1147,8 @@ export interface AdminApi {
   getDashboardStats(): Promise<DashboardStats>;
   getRevenueSeries(days: number): Promise<RevenuePoint[]>;
 
-  listProducts(params?: ListParams & { category?: string; inStock?: boolean }): Promise<Paginated<AdminProduct>>;
-  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus" | "category" | "dimensions" | "weightKg" | "optionSetIds" | "specs" | "shortDescription" | "description" | "images" | "seriesId" | "image">>): Promise<AdminProduct | undefined>;
+  listProducts(params?: ListParams & { category?: string; inStock?: boolean; brandId?: string }): Promise<Paginated<AdminProduct>>;
+  updateProduct(id: string, patch: Partial<Pick<AdminProduct, "name" | "price" | "compareAtPrice" | "inStock" | "stock" | "isBestSeller" | "stockStatus" | "category" | "dimensions" | "weightKg" | "optionSetIds" | "specs" | "shortDescription" | "description" | "images" | "seriesId" | "image" | "brandId">>): Promise<AdminProduct | undefined>;
   /** Applies one bulk patch to many products atomically-ish (single persisted pass). */
   bulkUpdateProducts(ids: string[], patch: BulkProductPatch): Promise<{ updated: number }>;
   /** Create a product (demo: local catalogue insert; bagisto: POST, unverified). SKU auto-assigned. */
@@ -1262,6 +1289,12 @@ export interface AdminApi {
   updateSeries(id: string, patch: Partial<NewSeriesInput>): Promise<AdminSeries | undefined>;
   setSeriesActive(id: string, active: boolean): Promise<AdminSeries | undefined>;
   deleteSeries(id: string): Promise<boolean>;
+  /** Product brands — Woodex today; managed for future partner brands. */
+  listBrands(): Promise<AdminBrand[]>;
+  createBrand(input: NewBrandInput): Promise<AdminBrand>;
+  updateBrand(id: string, patch: Partial<NewBrandInput>): Promise<AdminBrand | undefined>;
+  setBrandActive(id: string, active: boolean): Promise<AdminBrand | undefined>;
+  deleteBrand(id: string): Promise<boolean>;
   listMaterials(): Promise<AdminMaterial[]>;
   createMaterial(input: NewMaterialInput): Promise<AdminMaterial>;
   updateMaterial(id: string, patch: Partial<NewMaterialInput>): Promise<AdminMaterial | undefined>;

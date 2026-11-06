@@ -202,8 +202,13 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
   toggle · create/delete of unreferenced Staff Series · delete-guard for Ek Series · edited tagline persisted ·
   A1 picker fed by master · 0 console errors) · e2e 33/33 · lint 0 errors. Data drift caveat: seed copy in
   `SERIES_SEED` (db.ts) vs `seriesList` (`src/data/products.ts`) — edit both until Bagisto owns it.
-- [ ] **A3** Product Brands — dedicated brand manager (legacy "Product Brands"): name, logo, slug; products reference
-  brand (Woodex today, room for others); filter in admin products + bulk editor.
+- [x] **A3** Product Brands — DONE: `AdminBrand` entity + `/admin/brands` (list/search/CRUD/Live-Hidden toggle,
+  website + logo, linked-product count, delete refused while products reference it; slug auto-derived & locked).
+  Catalogue seeded with house brand **Woodex** (`brandId: "woodex"` cloned onto all seeded products; new products
+  default to it). Products: **filter in /admin/products** (brand select) · **Brand picker** in the editor
+  (after Furniture Series) · **Bulk editor**: "Brand" action (set brandId on selected rows) + brand filter column —
+  bulk round-trip verified (assign → count 2 → reassign → count 0). Bagisto adapter = 501 stubs. Live check
+  35/35 · e2e 33/33 · lint 0 errors · clean rebuild verified. Storefront unchanged (catalogue is Woodex).
 - [ ] **A4** Product Attributes — option sets & values (Finish, Size, Fabric…), values can adjust price and carry
   SKU suffix. **Overlaps P3.1 — do not duplicate; treat P3.1 as the implementation task.**
 - [ ] **A5** Category editor upgrade — legacy fields: Hero Style, Homepage sections (Best Sellers / Home Carousel
