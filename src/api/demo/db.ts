@@ -72,6 +72,11 @@ import type {
   NewClaimInput,
   ClaimType,
   ClaimStatus,
+  AdminDraftOrder,
+  AdminDraftOrderPatch,
+  NewDraftOrderInput,
+  NewDraftOrderLineInput,
+  DraftOrderStatus,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -105,6 +110,7 @@ interface DemoDb {
   returns: AdminReturn[];
   exchanges: AdminExchange[];
   claims: AdminClaim[];
+  draftOrders: AdminDraftOrder[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -619,6 +625,95 @@ const EXCHANGE_TRANSITIONS: Record<ExchangeStatus, ExchangeStatus[]> = {
   rejected: [],
 };
 
+/** Materialise an order inside a db mutation — shared by createOrder and draft conversion. */
+function materializeOrder(db: DemoDb, input: NewOrderInput): AdminOrder {
+  const maxSeq = db.orders.reduce((max, o) => {
+    const n = Number(o.id.replace(/\D/g, ""));
+    return Number.isFinite(n) && n > max ? n : max;
+  }, 1000);
+  const order: AdminOrder = {
+    id: `WDX-${maxSeq + 1}`,
+    customerName: input.customerName,
+    customerEmail: input.customerEmail ?? "",
+    customerPhone: input.customerPhone,
+    address: input.address,
+    channelId: input.channelId ?? "ch-web",
+    city: input.city,
+    items: input.items,
+    subtotal: input.subtotal,
+    shipping: input.shipping,
+    total: input.total,
+    paymentMethod: input.paymentMethod,
+    status: "pending",
+    placedAt: new Date().toISOString(),
+    notes: input.notes,
+  };
+  db.orders.push(order);
+
+  // roll the purchase into the customer aggregate (match by phone, fallback email)
+  const digits = (s: string) => s.replace(/\D/g, "");
+  let customer = db.customers.find(
+    (c) => digits(c.phone) === digits(input.customerPhone) || (input.customerEmail && c.email.toLowerCase() === input.customerEmail.toLowerCase()),
+  );
+  if (!customer) {
+    customer = {
+      id: `cus-web-${Date.now().toString(36)}`,
+      name: input.customerName,
+      email: input.customerEmail ?? "",
+      phone: input.customerPhone,
+      city: input.city,
+      type: "retail",
+      ordersCount: 0,
+      totalSpent: 0,
+      joinedAt: new Date().toISOString(),
+    };
+    db.customers.push(customer);
+  }
+  customer.ordersCount += 1;
+  customer.totalSpent += input.total;
+  return { ...order };
+}
+
+/** Validate/normalise draft lines — catalogue lines keep productId, free lines get a synthetic id. */
+function sanitizeDraftLines(lines: NewDraftOrderLineInput[]): AdminOrderItem[] {
+  const items: AdminOrderItem[] = [];
+  let seq = 1;
+  for (const line of lines ?? []) {
+    const name = line.name?.trim();
+    const price = Number(line.price);
+    const qty = Math.max(1, Math.trunc(Number(line.quantity) || 1));
+    if (!name || !Number.isFinite(price) || price < 0) continue;
+    items.push({ id: line.productId?.trim() || `free-${Date.now().toString(36)}-${seq++}`, name, price: Math.round(price), quantity: qty, image: line.image });
+  }
+  return items;
+}
+
+/** Deterministic seed draft — B2B shortlist built from catalogue products. */
+function buildSeedDraftOrders(products: AdminProduct[]): AdminDraftOrder[] {
+  const picks = products.filter((p) => p.price > 0).slice(0, 3);
+  if (picks.length === 0) return [];
+  const qtys = [24, 12, 6];
+  const items = picks.map((p, i) => ({ id: p.id, name: p.name, image: p.image, price: p.price, quantity: qtys[i] ?? 1 }));
+  const subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0);
+  const t = new Date(Date.now() - 4 * 86400000).toISOString();
+  return [{
+    id: "DRF-1001",
+    customerName: "Indus Developers — Procurement",
+    customerPhone: "+92 345 1122334",
+    customerEmail: "projects@indusdevelopers.pk",
+    city: "Lahore",
+    items,
+    subtotal,
+    shipping: 0,
+    total: subtotal,
+    channelId: "ch-b2b",
+    notes: "B2B — Sana Malik, fit-out for 3 sales centres. Awaiting PO before dispatch.",
+    status: "draft",
+    createdAt: t,
+    updatedAt: t,
+  }];
+}
+
 const CLAIM_TRANSITIONS: Record<ClaimStatus, ClaimStatus[]> = {
   reported: ["assessing", "rejected"],
   assessing: ["approved", "rejected"],
@@ -937,7 +1032,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders) };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts) };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -972,6 +1067,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.returns)) db.returns = buildSeedReturns(db.orders);
       if (!Array.isArray(db.exchanges)) db.exchanges = buildSeedExchanges(db.orders, db.products);
       if (!Array.isArray(db.claims)) db.claims = buildSeedClaims(db.orders);
+      if (!Array.isArray(db.draftOrders)) db.draftOrders = buildSeedDraftOrders(db.products);
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -2372,6 +2468,137 @@ export const demoAdminApi: AdminApi = {
     return updated;
   },
 
+  /* ── Draft Orders ───────────────────────────────────────────── */
+  async listDraftOrders(params = {}) {
+    const db = loadDb();
+    let items = [...(db.draftOrders ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const status = params.status ?? "all";
+    if (status !== "all") items = items.filter((t) => t.status === status);
+    items = items.filter((t) => matchQuery(params.query, [t.id, t.customerName, t.customerPhone, t.customerEmail, t.city, t.notes, t.convertedOrderId]));
+    return paginate(items, params);
+  },
+
+  async getDraftOrder(id) {
+    return (loadDb().draftOrders ?? []).find((t) => t.id === id);
+  },
+
+  async createDraftOrder(input) {
+    let created: AdminDraftOrder | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const customerName = input.customerName?.trim();
+      const customerPhone = input.customerPhone?.trim();
+      if (!customerName) throw new Error("Customer name is required.");
+      if (!customerPhone) throw new Error("Customer phone is required.");
+      const items = sanitizeDraftLines(input.items ?? []);
+      if (items.length === 0) throw new Error("Add at least one line to the draft.");
+      const subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0);
+      const shipping = input.shipping !== undefined ? Math.max(0, Math.round(Number(input.shipping) || 0)) : subtotal >= 150000 ? 0 : 1500;
+      const maxSeq = (db.draftOrders ?? []).reduce((max, t) => Math.max(max, Number(t.id.replace(/\D/g, "")) || 0), 1000);
+      created = {
+        id: `DRF-${maxSeq + 1}`,
+        customerName,
+        customerPhone,
+        customerEmail: input.customerEmail?.trim() ?? "",
+        city: input.city?.trim() || undefined,
+        address: input.address?.trim() || undefined,
+        items,
+        subtotal,
+        shipping,
+        total: subtotal + shipping,
+        channelId: input.channelId?.trim() || "ch-manual",
+        notes: input.notes?.trim() || undefined,
+        status: "draft",
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.draftOrders ??= []).push(created);
+    });
+    if (!created) throw new Error("Failed to create draft order");
+    return created;
+  },
+
+  async updateDraftOrder(id, patch: AdminDraftOrderPatch) {
+    let updated: AdminDraftOrder | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.draftOrders ??= []).find((x) => x.id === id);
+      if (!t) return;
+      if (t.status === "converted") throw new Error(`Draft ${t.id} is already converted — it can no longer be edited.`);
+      if (patch.customerName !== undefined) {
+        const v = patch.customerName.trim();
+        if (!v) throw new Error("Customer name is required.");
+        t.customerName = v;
+      }
+      if (patch.customerPhone !== undefined) {
+        const v = patch.customerPhone.trim();
+        if (!v) throw new Error("Customer phone is required.");
+        t.customerPhone = v;
+      }
+      if (patch.customerEmail !== undefined) t.customerEmail = patch.customerEmail.trim();
+      if (patch.city !== undefined) t.city = patch.city.trim() || undefined;
+      if (patch.address !== undefined) t.address = patch.address.trim() || undefined;
+      if (patch.notes !== undefined) t.notes = patch.notes.trim() || undefined;
+      if (patch.channelId !== undefined) t.channelId = patch.channelId.trim() || undefined;
+      if (patch.items !== undefined) {
+        const items = sanitizeDraftLines(patch.items);
+        if (items.length === 0) throw new Error("A draft needs at least one line.");
+        t.items = items;
+        t.subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0);
+      }
+      if (patch.shipping !== undefined) t.shipping = Math.max(0, Math.round(Number(patch.shipping) || 0));
+      t.total = t.subtotal + t.shipping;
+      t.updatedAt = now;
+      updated = { ...t, items: [...t.items] };
+    });
+    return updated;
+  },
+
+  async deleteDraftOrder(id) {
+    let okFlag = false;
+    update((db) => {
+      const t = (db.draftOrders ?? []).find((x) => x.id === id);
+      if (!t || t.status === "converted") return;
+      db.draftOrders = db.draftOrders.filter((x) => x.id !== id);
+      okFlag = true;
+    });
+    return okFlag;
+  },
+
+  async convertDraftOrder(id, paymentMethod = "cod") {
+    let order: AdminOrder | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.draftOrders ??= []).find((x) => x.id === id);
+      if (!t || t.status === "converted") return;
+      if (t.items.length === 0) throw new Error(`Draft ${t.id} has no lines to convert.`);
+      order = materializeOrder(db, {
+        customerName: t.customerName,
+        customerEmail: t.customerEmail || undefined,
+        customerPhone: t.customerPhone,
+        address: t.address,
+        city: t.city ?? "",
+        items: t.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
+        subtotal: t.subtotal,
+        shipping: t.shipping,
+        total: t.total,
+        paymentMethod,
+        channelId: t.channelId ?? "ch-manual",
+        notes: t.notes,
+      });
+      t.status = "converted";
+      t.convertedOrderId = order.id;
+      t.updatedAt = now;
+      (db.orderEvents ??= []).push({
+        id: newEventId(),
+        orderId: order.id,
+        note: `Converted from draft ${t.id} — manual order`,
+        createdAt: now,
+      });
+    });
+    return order;
+  },
+
   async listBundles() {
     const db = loadDb();
     return [...(db.bundles ?? [])]
@@ -2789,51 +3016,7 @@ export const demoAdminApi: AdminApi = {
   async createOrder(input: NewOrderInput): Promise<AdminOrder> {
     let created: AdminOrder | undefined;
     update((db) => {
-      const maxSeq = db.orders.reduce((max, o) => {
-        const n = Number(o.id.replace(/\D/g, ""));
-        return Number.isFinite(n) && n > max ? n : max;
-      }, 1000);
-      const order: AdminOrder = {
-        id: `WDX-${maxSeq + 1}`,
-        customerName: input.customerName,
-        customerEmail: input.customerEmail ?? "",
-        customerPhone: input.customerPhone,
-        address: input.address,
-        channelId: input.channelId ?? "ch-web",
-        city: input.city,
-        items: input.items,
-        subtotal: input.subtotal,
-        shipping: input.shipping,
-        total: input.total,
-        paymentMethod: input.paymentMethod,
-        status: "pending",
-        placedAt: new Date().toISOString(),
-        notes: input.notes,
-      };
-      db.orders.push(order);
-
-      // roll the purchase into the customer aggregate (match by phone, fallback email)
-      const digits = (s: string) => s.replace(/\D/g, "");
-      let customer = db.customers.find(
-        (c) => digits(c.phone) === digits(input.customerPhone) || (input.customerEmail && c.email.toLowerCase() === input.customerEmail.toLowerCase()),
-      );
-      if (!customer) {
-        customer = {
-          id: `cus-web-${Date.now().toString(36)}`,
-          name: input.customerName,
-          email: input.customerEmail ?? "",
-          phone: input.customerPhone,
-          city: input.city,
-          type: "retail",
-          ordersCount: 0,
-          totalSpent: 0,
-          joinedAt: new Date().toISOString(),
-        };
-        db.customers.push(customer);
-      }
-      customer.ordersCount += 1;
-      customer.totalSpent += input.total;
-      created = { ...order };
+      created = materializeOrder(db, input);
     });
     if (!created) throw new Error("Failed to create order");
     return created;

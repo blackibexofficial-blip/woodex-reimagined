@@ -182,6 +182,49 @@ export interface NewClaimInput {
 }
 export type AdminClaimPatch = Partial<Pick<AdminClaim, "status" | "assessmentNote" | "resolutionNote" | "resolutionCost">>;
 
+/* ── Draft Orders ───────────────────────────────────────────────────────── */
+export type DraftOrderStatus = "draft" | "converted";
+export interface AdminDraftOrder {
+  id: string;            // e.g. "DRF-1001"
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  city?: string;
+  address?: string;
+  /** Line snapshot — catalogue lines carry productId; free lines don't. */
+  items: AdminOrderItem[];
+  subtotal: number;
+  shipping: number;
+  total: number;
+  channelId?: string;
+  /** Staff-only note — never shown storefront/customer-facing. */
+  notes?: string;
+  status: DraftOrderStatus;
+  /** Set on conversion — the WDX-… order this draft became. */
+  convertedOrderId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface NewDraftOrderLineInput {
+  productId?: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+}
+export interface NewDraftOrderInput {
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  city?: string;
+  address?: string;
+  items: NewDraftOrderLineInput[];
+  shipping?: number;
+  channelId?: string;
+  notes?: string;
+}
+export type AdminDraftOrderPatch = Partial<NewDraftOrderInput>;
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -860,6 +903,15 @@ export interface AdminApi {
   createClaim(input: NewClaimInput): Promise<AdminClaim | undefined>;
   /** Throws on illegal status transitions and edits to closed claims. */
   updateClaim(id: string, patch: AdminClaimPatch): Promise<AdminClaim | undefined>;
+  listDraftOrders(params?: ListParams & { status?: DraftOrderStatus | "all" }): Promise<Paginated<AdminDraftOrder>>;
+  getDraftOrder(id: string): Promise<AdminDraftOrder | undefined>;
+  createDraftOrder(input: NewDraftOrderInput): Promise<AdminDraftOrder>;
+  /** Throws when the draft is already converted. */
+  updateDraftOrder(id: string, patch: AdminDraftOrderPatch): Promise<AdminDraftOrder | undefined>;
+  /** False when the draft is missing or already converted. */
+  deleteDraftOrder(id: string): Promise<boolean>;
+  /** Same materialisation path as createOrder; sets the draft to converted with convertedOrderId. */
+  convertDraftOrder(id: string, paymentMethod?: PaymentMethod): Promise<AdminOrder | undefined>;
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;

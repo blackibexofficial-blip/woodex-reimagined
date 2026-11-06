@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -365,6 +365,31 @@ export const bagistoAdminApi: AdminApi = {
 
   async updateClaim(): Promise<AdminClaim | undefined> {
     throw new BagistoApiError(501, "Claim updates are not wired for Bagisto yet.");
+  },
+
+  async listDraftOrders(): Promise<Paginated<AdminDraftOrder>> {
+    // Bagisto has draft orders natively — wiring needs a verified sales/drafts mapper. See docs/07-admin-integration.
+    throw new BagistoApiError(501, "Draft orders are not wired for Bagisto yet (native in Bagisto, mapper unverified). Use VITE_API_MODE=demo.");
+  },
+
+  async getDraftOrder(): Promise<AdminDraftOrder | undefined> {
+    throw new BagistoApiError(501, "Draft orders are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
+  async createDraftOrder(): Promise<AdminDraftOrder> {
+    throw new BagistoApiError(501, "Draft order creation is not wired for Bagisto yet.");
+  },
+
+  async updateDraftOrder(): Promise<AdminDraftOrder | undefined> {
+    throw new BagistoApiError(501, "Draft order updates are not wired for Bagisto yet.");
+  },
+
+  async deleteDraftOrder(): Promise<boolean> {
+    throw new BagistoApiError(501, "Draft order deletion is not wired for Bagisto yet.");
+  },
+
+  async convertDraftOrder(): Promise<AdminOrder | undefined> {
+    throw new BagistoApiError(501, "Draft order conversion is not wired for Bagisto yet.");
   },
 
   async listCustomers(params) {

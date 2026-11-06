@@ -157,7 +157,7 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
 - [ ] **B4** Custom Design consultation blocks; Virtual Showroom (WDS) content — static; admin only if owner wants.
 
 ### C. Orders & purchasing (Spree parity) — Phase 2 remainders
-- [ ] **P2.4** Draft Orders — admin builds order manually; convert → pending order (source `manual`).
+- [x] **P2.4** Draft Orders — `/admin/drafts`; convert → pending order (source `manual`). DONE (see Phase 2 log).
 - [ ] **P2.5** Quotes — priced quotation from a lead (lines, discount %, validity); printable; convert → order.
 - [ ] **P2.6** Suppliers — master (name, contact, city, payment terms, notes); referenced by POs.
 - [ ] **P2.7** Purchase Orders — create PO (lines, expected date); receive full/partial (stock inbound).

@@ -15,6 +15,7 @@ import AdminSalesChannels from "@/admin/pages/SalesChannels";
 import AdminBulkEditor from "@/admin/pages/BulkEditor";
 import AdminInventory from "@/admin/pages/Inventory";
 import AdminOrders from "@/admin/pages/Orders";
+import AdminDrafts from "@/admin/pages/Drafts";
 import AdminReturns from "@/admin/pages/Returns";
 import AdminExchanges from "@/admin/pages/Exchanges";
 import AdminClaims from "@/admin/pages/Claims";
@@ -55,6 +56,7 @@ export default function AdminApp() {
           <Route path="bulk-editor" element={<AdminBulkEditor />} />
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="drafts" element={<AdminDrafts />} />
           <Route path="returns" element={<AdminReturns />} />
           <Route path="exchanges" element={<AdminExchanges />} />
           <Route path="claims" element={<AdminClaims />} />
