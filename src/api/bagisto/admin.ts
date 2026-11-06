@@ -346,6 +346,25 @@ export const bagistoAdminApi: AdminApi = {
     throw new BagistoApiError(501, "Media deletion on Bagisto is not wired yet.");
   },
 
+  // Media v2 (folders/alt/bulk) — same story: not wired against a live Bagisto server.
+  // To wire later: Bagisto Media Assets (spatie/laravel-medialibrary behind the hood),
+  // endpoints vary per install — UNVERIFIED until docs/07 provisioning happens.
+  async updateMediaAsset(): Promise<AdminMediaAsset | undefined> {
+    throw new BagistoApiError(501, "Media update on Bagisto is not wired yet (unverified against a live server).");
+  },
+
+  async bulkDeleteMediaAssets(): Promise<number> {
+    throw new BagistoApiError(501, "Bulk media deletion on Bagisto is not wired yet (unverified against a live server).");
+  },
+
+  async moveMediaAssets(): Promise<number> {
+    throw new BagistoApiError(501, "Moving assets between folders on Bagisto is not wired yet (unverified).");
+  },
+
+  async assignMediaToProduct(): Promise<boolean> {
+    throw new BagistoApiError(501, "Assigning a media asset to a product on Bagisto is not wired yet (unverified — would map to the product `images` relation once provisioned).");
+  },
+
   async listInventory() {
     // Sellable qty exists per product (mapped above). The WMS layer — per-location
     // stock, movement audit log, thresholds, zones — is not in Bagisto core; tracking

@@ -159,6 +159,10 @@ export interface AdminMediaAsset {
   mime: string;          // e.g. "image/jpeg"
   size: number;          // bytes (approximate for seeded catalogue imagery)
   createdAt: string;     // ISO
+  /** Logical folder (free-form, e.g. "Products", "Showroom"). Undefined = Unsorted. */
+  folder?: string;
+  /** Alt text for accessibility — used when this asset is shown on the storefront. */
+  alt?: string;
 }
 
 export interface StoreSettings {
@@ -271,10 +275,18 @@ export interface AdminApi {
   saveDeliveryZone(input: Omit<AdminDeliveryZone, "id" | "createdAt" | "updatedAt"> & { id?: string }): Promise<AdminDeliveryZone>;
   deleteDeliveryZone(id: string): Promise<boolean>;
 
-  /** Media library — demo-backed, persisted in localStorage as data URLs (keep files small). */
+  /** Media library — demo: IndexedDB (data URLs OK); bagisto: NOT wired (501) — use Bagisto Media Assets when provisioned. */
   listMediaAssets(): Promise<AdminMediaAsset[]>;
-  addMediaAsset(input: { name: string; url: string; mime: string; size: number }): Promise<AdminMediaAsset>;
+  addMediaAsset(input: { name: string; url: string; mime: string; size: number; folder?: string; alt?: string }): Promise<AdminMediaAsset>;
   deleteMediaAsset(id: string): Promise<boolean>;
+  /** Rename / change folder / alt text. Returns the updated asset. */
+  updateMediaAsset(id: string, patch: Partial<Pick<AdminMediaAsset, "name" | "folder" | "alt">>): Promise<AdminMediaAsset | undefined>;
+  /** Deletes many assets at once; returns the number actually removed. */
+  bulkDeleteMediaAssets(ids: string[]): Promise<number>;
+  /** Moves assets into a folder (undefined = Unsorted); returns the number moved. */
+  moveMediaAssets(ids: string[], folder: string | undefined): Promise<number>;
+  /** Points the product's image at this asset; returns false when either side is unknown. */
+  assignMediaToProduct(assetId: string, productId: string): Promise<boolean>;
 
   /** Storefront → admin capture: creates an order (status "pending"). */
   createOrder(input: NewOrderInput): Promise<AdminOrder>;

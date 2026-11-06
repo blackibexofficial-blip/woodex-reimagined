@@ -5,6 +5,7 @@
  * This is the `demo` adapter behind AdminApi. When VITE_API_MODE=bagisto the same
  * interface is served by src/api/bagisto/* instead — no UI changes required.
  */
+import { idbDeleteMany, idbGetAll, idbPutMany } from "@/api/demo/mediaStore";
 import { products, categoryGroups } from "@/data/products";
 import type {
   AdminApi,
@@ -224,6 +225,26 @@ function buildSeedMovements(adminProducts: AdminProduct[]): AdminStockMovement[]
     });
   }
   return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+const MEDIA_MIGRATED_KEY = "woodex.media.migrated.v1";
+
+/**
+ * One-time migration: catalogue seed assets + any legacy localStorage uploads
+ * are copied into IndexedDB. Runs lazily on first media access.
+ */
+async function ensureMediaSeeded() {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem(MEDIA_MIGRATED_KEY) === "1") return;
+    const db = loadDb();
+    const merged = new Map<string, AdminMediaAsset>();
+    for (const a of buildSeedMedia()) merged.set(a.id, a);          // catalogue imagery (static paths)
+    for (const a of db.media ?? []) merged.set(a.id, a);            // legacy uploads (data: URLs) — win on id collision
+    await idbPutMany([...merged.values()]);
+    if (typeof localStorage !== "undefined") localStorage.setItem(MEDIA_MIGRATED_KEY, "1");
+  } catch {
+    /* private mode / IDB unavailable — media simply stays empty but nothing crashes */
+  }
 }
 
 const slugify = (s: string) =>
@@ -718,27 +739,68 @@ export const demoAdminApi: AdminApi = {
   },
 
   async listMediaAssets() {
-    return [...loadDb().media].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    await ensureMediaSeeded();
+    return idbGetAll();
   },
 
   async addMediaAsset(input) {
-    if (input.size > 4 * 1024 * 1024) throw new Error("File exceeds the 4 MB demo-library limit");
-    let created: AdminMediaAsset | undefined;
-    update((db) => {
-      created = { id: `med-${Date.now().toString(36)}`, createdAt: new Date().toISOString(), ...input };
-      db.media.unshift(created);
-    });
-    return { ...created! };
+    await ensureMediaSeeded();
+    const created: AdminMediaAsset = {
+      id: `med-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+      createdAt: new Date().toISOString(),
+      ...input,
+    };
+    await idbPutMany([created]);
+    return created;
   },
 
   async deleteMediaAsset(id) {
-    let removed = false;
-    update((db) => {
-      const before = db.media.length;
-      db.media = db.media.filter((m) => m.id !== id);
-      removed = db.media.length < before;
+    return (await idbDeleteMany([id])) > 0;
+  },
+
+  async updateMediaAsset(id, patch) {
+    await ensureMediaSeeded();
+    const all = await idbGetAll();
+    const current = all.find((a) => a.id === id);
+    if (!current) return undefined;
+    const next: AdminMediaAsset = { ...current, ...patch };
+    if (next.folder !== undefined && !next.folder.trim()) delete next.folder;
+    await idbPutMany([next]);
+    return next;
+  },
+
+  async bulkDeleteMediaAssets(ids) {
+    return idbDeleteMany(ids);
+  },
+
+  async moveMediaAssets(ids, folder) {
+    await ensureMediaSeeded();
+    const all = await idbGetAll();
+    const sel = new Set(ids);
+    const trimmed = folder?.trim();
+    const moved = all.filter((a) => sel.has(a.id)).map((a) => {
+      const next = { ...a };
+      if (trimmed) next.folder = trimmed; else delete next.folder;
+      return next;
     });
-    return removed;
+    await idbPutMany(moved);
+    return moved.length;
+  },
+
+  async assignMediaToProduct(assetId, productId) {
+    await ensureMediaSeeded();
+    const all = await idbGetAll();
+    if (!all.some((a) => a.id === assetId)) return false;
+    let found = false;
+    update((db) => {
+      const p = db.products.find((x) => x.id === productId);
+      if (p) {
+        const asset = all.find((a) => a.id === assetId)!;
+        p.image = asset.url;
+        found = true;
+      }
+    });
+    return found;
   },
 
   async createOrder(input: NewOrderInput): Promise<AdminOrder> {
