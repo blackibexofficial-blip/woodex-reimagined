@@ -83,9 +83,38 @@ const SUBCATEGORY_SETS: Record<string, string[]> = {
 };
 
 const CATEGORY_SETS: Record<string, string[]> = {
+  /* office tables (flat catalogue categories — no subcategory on most rows) */
+  "office-tables": ["opt-finish", "opt-size"],
+  "executive-tables": ["opt-finish", "opt-size"],
+  "manager-tables": ["opt-finish", "opt-size"],
+  "staff-tables": ["opt-finish", "opt-size"],
+  "meeting-tables": ["opt-finish", "opt-size"],
+  "reception-tables": ["opt-finish", "opt-size"],
+  "workstations": ["opt-finish", "opt-size"],
+  "cubicle-workstations": ["opt-finish", "opt-size"],
+  "acoustic": ["opt-finish", "opt-size"],
+  "collaborative": ["opt-finish", "opt-size"],
+  "home-office": ["opt-finish", "opt-size"],
+  /* seating — finish + fabric */
+  "chairs": ["opt-finish", "opt-fabric"],
+  "office-chairs": ["opt-finish", "opt-fabric"],
+  "office-sofas": ["opt-fabric"],
+  "home-sofa": ["opt-fabric"],
+  "living": ["opt-finish", "opt-fabric"],
+  "cafe": ["opt-finish", "opt-fabric"],
+  "public": ["opt-finish", "opt-fabric"],
+  "dining-chairs": ["opt-finish", "opt-fabric"],
+  /* dining + bedroom tables */
+  "dining": ["opt-finish", "opt-size"],
+  "dining-sets": ["opt-finish", "opt-size"],
+  "dining-tables": ["opt-finish", "opt-size"],
+  "bed-sets": ["opt-finish"],
+  "bedroom": ["opt-finish"],
+  "dressing-tables": ["opt-finish"],
+  "storage": ["opt-finish"],
+  "tv-units": ["opt-finish"],
   office: ["opt-finish"],
   home: ["opt-finish"],
-  dining: ["opt-finish"],
 };
 
 /** Option set ids attached to a product (used by PDP + admin seed). */

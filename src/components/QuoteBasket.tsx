@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { X, Minus, Plus, FileText, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useQuote } from "@/contexts/QuoteContext";
+import { useQuote, quoteLineKey } from "@/contexts/QuoteContext";
 import { formatPKR } from "@/data/products";
 import { Link } from "react-router-dom";
 
@@ -63,7 +63,7 @@ const QuoteBasket = () => {
             </div>
           ) : (
             items.map((item) => (
-              <div key={item.id} className="flex gap-4 p-4 border border-border rounded-sm hover:border-accent transition-colors">
+              <div key={quoteLineKey(item)} className="flex gap-4 p-4 border border-border rounded-sm hover:border-accent transition-colors">
                 <div className="w-16 h-16 bg-section-light rounded-sm flex-shrink-0 overflow-hidden">
                   {item.image && <img src={item.image} alt={item.name} className="w-full h-full object-cover" />}
                   {!item.image && <div className="w-full h-full flex items-center justify-center text-accent font-bold text-xl">{item.name[0]}</div>}
@@ -72,6 +72,7 @@ const QuoteBasket = () => {
                   <Link to={`/shop/${item.id}`} onClick={() => setIsOpen(false)}>
                     <h4 className="font-semibold text-sm leading-tight mb-0.5 hover:text-accent transition-colors line-clamp-2">{item.name}</h4>
                   </Link>
+                  {item.variantLabel && <p className="text-xs font-medium text-foreground/80 mb-0.5">{item.variantLabel}</p>}
                   {item.color && <p className="text-xs text-muted-foreground mb-2">{item.color}</p>}
                   <p className="text-sm font-bold text-accent">{formatPKR(item.price)}</p>
                   <div className="flex items-center gap-2 mt-2">
@@ -79,7 +80,7 @@ const QuoteBasket = () => {
                       variant="outline"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      onClick={() => updateQuantity(quoteLineKey(item), item.quantity - 1)}
                       aria-label="Decrease quantity"
                     >
                       <Minus className="h-3 w-3" />
@@ -89,7 +90,7 @@ const QuoteBasket = () => {
                       variant="outline"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      onClick={() => updateQuantity(quoteLineKey(item), item.quantity + 1)}
                       aria-label="Increase quantity"
                     >
                       <Plus className="h-3 w-3" />
@@ -98,7 +99,7 @@ const QuoteBasket = () => {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 ml-auto text-muted-foreground hover:text-destructive"
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeItem(quoteLineKey(item))}
                       aria-label="Remove item"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

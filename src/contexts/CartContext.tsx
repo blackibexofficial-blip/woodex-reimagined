@@ -19,13 +19,23 @@ export interface CartItem {
   quantity: number;
   color?: string;
   image?: string;
+  /** Deterministic key of the chosen variant (product id + selected option value ids). */
+  variantKey?: string;
+  /** Human-readable selection, e.g. "Finish: Dark Walnut · Fabric: Sand Beige". */
+  variantLabel?: string;
+  /** SKU with option suffixes, e.g. "WDX-1001|DW-FI-S" — or the static product id for un-configured PDP. */
+  variantSku?: string;
 }
+
+/** Line-identity key — variant combination when present, else product + color. */
+export const cartLineKey = (i: Pick<CartItem, "id" | "color" | "variantKey">): string =>
+  i.variantKey ?? `${i.id}::${i.color ?? ""}`;
 
 interface CartContextType {
   items: CartItem[];
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  removeItem: (lineKey: string) => void;
+  updateQuantity: (lineKey: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
   /** Grand total the customer will pay — trade-aware when signed in. */
@@ -103,10 +113,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addItem = useCallback((item: Omit<CartItem, "quantity"> & { quantity?: number }) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.id === item.id && i.color === item.color);
+      const key = cartLineKey(item);
+      const existing = prev.find((i) => cartLineKey(i) === key);
       if (existing) {
         return prev.map((i) =>
-          i.id === item.id && i.color === item.color ? { ...i, quantity: i.quantity + (item.quantity || 1) } : i
+          cartLineKey(i) === key ? { ...i, quantity: i.quantity + (item.quantity || 1) } : i
         );
       }
       return [...prev, { ...item, quantity: item.quantity || 1 }];
@@ -114,16 +125,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsOpen(true);
   }, []);
 
-  const removeItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  const removeItem = useCallback((key: string) => {
+    setItems((prev) => prev.filter((i) => cartLineKey(i) !== key));
   }, []);
 
-  const updateQuantity = useCallback((id: string, quantity: number) => {
+  const updateQuantity = useCallback((key: string, quantity: number) => {
     if (quantity <= 0) {
-      setItems((prev) => prev.filter((i) => i.id !== id));
+      setItems((prev) => prev.filter((i) => cartLineKey(i) !== key));
     } else {
       setItems((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, quantity } : i))
+        prev.map((i) => (cartLineKey(i) === key ? { ...i, quantity } : i))
       );
     }
   }, []);

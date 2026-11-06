@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useQuote } from "@/contexts/QuoteContext";
+import { useQuote, quoteLineKey } from "@/contexts/QuoteContext";
 import { formatPKR, products } from "@/data/products";
 import { getAdminApi } from "@/api";
 import { useEffect } from "react";
@@ -259,24 +259,25 @@ const Quotation = () => {
                   <div className="col-span-1"></div>
                 </div>
                 {items.map((item) => (
-                  <div key={item.id} className="grid grid-cols-12 gap-4 px-5 py-4 items-center border-b border-border last:border-b-0">
+                  <div key={quoteLineKey(item)} className="grid grid-cols-12 gap-4 px-5 py-4 items-center border-b border-border last:border-b-0">
                     <div className="col-span-12 sm:col-span-5">
                       <Link to={`/shop/${item.id}`} className="font-semibold text-sm hover:text-accent transition-colors">{item.name}</Link>
                       <p className="text-xs text-muted-foreground">{item.category}</p>
+                      {item.variantLabel && <p className="text-xs font-medium text-foreground/80">{item.variantLabel}</p>}
                     </div>
                     <div className="col-span-4 sm:col-span-2 text-center text-sm text-muted-foreground">{item.color || "—"}</div>
                     <div className="col-span-4 sm:col-span-2 flex items-center justify-center gap-2">
-                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors" aria-label="Decrease quantity">
+                      <button onClick={() => updateQuantity(quoteLineKey(item), item.quantity - 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors" aria-label="Decrease quantity">
                         <Minus className="h-3 w-3" />
                       </button>
                       <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors" aria-label="Increase quantity">
+                      <button onClick={() => updateQuantity(quoteLineKey(item), item.quantity + 1)} className="w-7 h-7 border border-border rounded-sm flex items-center justify-center hover:border-accent transition-colors" aria-label="Increase quantity">
                         <Plus className="h-3 w-3" />
                       </button>
                     </div>
                     <div className="col-span-3 sm:col-span-2 text-right font-semibold text-sm">{formatPKR(item.price * item.quantity)}</div>
                     <div className="col-span-1 text-right">
-                      <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive transition-colors">
+                      <button onClick={() => removeItem(quoteLineKey(item))} className="text-muted-foreground hover:text-destructive transition-colors">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>

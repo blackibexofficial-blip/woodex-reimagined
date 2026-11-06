@@ -129,8 +129,11 @@ slices instead of duplicating them.
   seeded deterministically by subcategory/category rule table); create/edit/delete sets with inline value rows;
   delete refused while attached (usage counter shown). Attach consumed by PDP in P3.2. Live check 17/17 · e2e 33/33 ·
   Bagisto stubbed 501.
-- [ ] **P3.2** Variant selection on PDP — customer picks options; price/SKU/stock update live; cart lines keyed
-  by variant.
+- [x] **P3.2** Variant selection on PDP — `/shop/:id` selects each attached set (Finish/Fabric/Size chips with
+  +/- PKR deltas); price, SKU suffix (`<id>-DW-LE-C`) and JSON-LD sku update live; cart and quote lines are
+  keyed by variant (`variantKey` = product + value ids + colour) and carry `variantLabel` end-to-end (drawer,
+  checkout summary, quote basket, printable invoice, checkout order payload + order lines persist `sku`);
+  stock remains product-level (documented). Live check 22/22 · e2e 33/33.
 - [ ] **P3.3** Spec table per product — dimensions (L×W×H), weight, materials, warranty; editable in admin;
   rendered on PDP (ProductDetail.tsx) and used for the Product JSON-LD `additionalProperty`.
 - [ ] **P3.4** Advanced category control polish — evaluate per-category default option sets (avoid gold-plating;

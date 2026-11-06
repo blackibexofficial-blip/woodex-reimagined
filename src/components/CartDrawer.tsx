@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Minus, Plus, Trash2, X } from "lucide-react";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, cartLineKey } from "@/contexts/CartContext";
 import { formatPKR } from "@/data/products";
 
 const CartDrawer = () => {
@@ -47,7 +47,7 @@ const CartDrawer = () => {
           <>
             <div className="flex-1 overflow-y-auto space-y-3 py-4">
               {items.map((item) => (
-                <div key={`${item.id}-${item.color}`} className="flex gap-3 p-3 border border-border rounded-sm">
+                <div key={cartLineKey(item)} className="flex gap-3 p-3 border border-border rounded-sm">
                   {item.image && (
                     <div className="w-16 h-16 rounded-sm overflow-hidden flex-shrink-0 bg-muted">
                       <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -61,6 +61,7 @@ const CartDrawer = () => {
                     >
                       {item.name}
                     </Link>
+                    {item.variantLabel && <p className="text-xs font-medium text-foreground/80">{item.variantLabel}</p>}
                     {item.color && <p className="text-xs text-muted-foreground">{item.color}</p>}
                     {(() => {
                       const d = tradeDiscountFor(item);
@@ -78,7 +79,7 @@ const CartDrawer = () => {
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center border border-border rounded-sm">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(cartLineKey(item), item.quantity - 1)}
                           className="p-1 hover:bg-muted transition-colors"
                           aria-label="Decrease quantity"
                         >
@@ -86,14 +87,14 @@ const CartDrawer = () => {
                         </button>
                         <span className="w-8 text-center text-xs font-medium">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(cartLineKey(item), item.quantity + 1)}
                           className="p-1 hover:bg-muted transition-colors"
                           aria-label="Increase quantity"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>
-                      <button onClick={() => removeItem(item.id)} className="p-1 text-muted-foreground hover:text-destructive transition-colors" aria-label="Remove item">
+                      <button onClick={() => removeItem(cartLineKey(item))} className="p-1 text-muted-foreground hover:text-destructive transition-colors" aria-label="Remove item">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>

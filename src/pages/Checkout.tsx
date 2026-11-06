@@ -13,7 +13,7 @@ import { ShoppingCart, Truck, CreditCard, Banknote, ChevronLeft, CheckCircle, Ma
 import Header from "@/components/Header";
 import TradeBanner from "@/components/TradeBanner";
 import Footer from "@/components/Footer";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, cartLineKey } from "@/contexts/CartContext";
 import { formatPKR } from "@/data/products";
 import { site, waLink } from "@/config/site";
 
@@ -64,7 +64,7 @@ const Checkout = () => {
         city: formData.city,
         notes: formData.notes.trim() || undefined,
         paymentMethod: paymentMethod === "bank" ? "bank-transfer" : "cod",
-        items: items.map((i) => ({ id: i.id, name: i.name, price: effectiveUnitPrice(i), quantity: i.quantity, image: i.image })),
+        items: items.map((i) => ({ id: i.id, name: i.variantLabel ? `${i.name} — ${i.variantLabel}` : i.name, sku: i.variantSku, price: effectiveUnitPrice(i), quantity: i.quantity, image: i.image })),
         subtotal: totalPrice,
         shipping: deliveryFee,
         total: grandTotal,
@@ -274,7 +274,7 @@ const Checkout = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {items.map((item) => (
-                        <div key={`${item.id}-${item.color}`} className="flex gap-3">
+                        <div key={cartLineKey(item)} className="flex gap-3">
                           {item.image && (
                             <div className="w-12 h-12 rounded-sm overflow-hidden flex-shrink-0 bg-muted">
                               <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -282,6 +282,7 @@ const Checkout = () => {
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium line-clamp-1">{item.name}</p>
+                            {item.variantLabel && <p className="text-xs font-medium text-foreground/80 line-clamp-1">{item.variantLabel}</p>}
                             {item.color && <p className="text-xs text-muted-foreground">{item.color}</p>}
                             <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                           </div>

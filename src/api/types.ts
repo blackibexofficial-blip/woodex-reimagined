@@ -19,6 +19,8 @@ export interface AdminOrderItem {
   price: number;
   quantity: number;
   image?: string;
+  /** Variant SKU (product id + option suffixes) when bought as a configured variant. */
+  sku?: string;
 }
 
 export interface AdminOrder {
@@ -1035,6 +1037,8 @@ export interface NewOrderItem {
   price: number;
   quantity: number;
   image?: string;
+  /** Variant SKU (product id + option suffixes) when bought as a configured variant. */
+  sku?: string;
 }
 
 /** Payload from the storefront checkout → creates the order the admin sees. */
