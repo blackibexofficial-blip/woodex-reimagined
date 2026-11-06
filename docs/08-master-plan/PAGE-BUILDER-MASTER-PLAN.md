@@ -713,12 +713,14 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   had no node_modules, so the bundle was hand-spliced from source (strip/rename rules matched against the mcp-js output); handlers were executed
   against the live snapshot via a stubbed-tool harness (all page types, error paths, stuffing case — all pass) and the spliced bundle parses clean
   (`vm.SourceTextModule`). CI (bun + pkg.dev) is the canonical gate for this slice. MCP `version` → 0.2.0.
-  CI hygiene note (2026-11-07) — the first two pushes on this branch failed the Typecheck step in ~25s with no log
-  access from the build sandbox (log host blocked here). Local reproduction with the full npmjs dependency tree
-  (tsconfig.app.json verbatim, typescript 5.8.3, zod 3.25.76, mcp-js stubbed with pkg.dev unreachable) exits 0 for
-  the same source tree; main's CI stayed green. If CI keeps failing at Typecheck on unchanged source, it is an
-  infrastructure issue (e.g. pkg.dev serving a bad artifact or a runner resolution change), not a code defect. A
-  minimal docs-only probe commit was pushed to test exactly that hypothesis.
+  CI hygiene note (2026-11-07, updated) — every push on this branch (including a docs-only probe commit, 551f0db)
+  failed the CI Typecheck step in ~25s, with identical workflow-line annotations both times; main's rerun is refused
+  GitHub-side ("its workflow file may be broken"), and npm's public status page reports no incident for this window.
+  Local reproduction with the full npmjs dependency tree (tsconfig.app.json verbatim, typescript 5.8.3, zod 3.25.76,
+  mcp-js stubbed with pkg.dev unreachable) exits 0 for the same source tree. The failure therefore cannot be caused
+  by the source diff of this PR and is consistent with an infrastructure condition inside the WOODEX CI sandbox
+  (pkg.dev path or runner). Owner-visible runner logs (repo UI) would confirm definitively; until CI recovers, PR #5
+  stays unmerged regardless (merge is owner-gated and was never requested for it).
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
 - **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:
