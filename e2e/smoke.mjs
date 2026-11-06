@@ -114,15 +114,15 @@ async function adminSuite(browser) {
   ok("unused category deleted", rowGone);
 
   await page.goto(`${ADMIN}/media`, { waitUntil: "networkidle2", timeout: 60000 });
-  await waitText("stored locally", 20000);
+  await waitText("stored on-device", 20000);
   const cardCount = await page.evaluate(() => document.querySelectorAll("figure").length);
   ok(`media library seeded (${cardCount} asset cards)`, cardCount >= 5);
 
-  await page.type('input[placeholder="Search media…"]', "zzzz-nomatch", { delay: 5 });
-  await waitText("No assets match", 10000);
+  await page.type('input[placeholder="Search name, alt, folder…"]', "zzzz-nomatch", { delay: 5 });
+  await waitText("Nothing matches", 10000);
   ok("media search empty state works", true);
   await page.evaluate(() => {
-    const input = document.querySelector('input[placeholder="Search media…"]');
+    const input = document.querySelector('input[placeholder="Search name, alt, folder…"]');
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
     setter.call(input, "");
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -133,7 +133,7 @@ async function adminSuite(browser) {
   const fileInput = await page.$('input[type="file"]');
   await fileInput.uploadFile(pngPath);
   await waitText("e2e-pixel.png", 15000).catch(() => {});
-  await waitText("added to the library", 15000).catch(() => {});
+  await waitText("asset added", 15000).catch(() => {});
   const afterUpload = await bodyText();
   ok("media upload appears in the grid", afterUpload.includes("e2e-pixel.png"));
 
