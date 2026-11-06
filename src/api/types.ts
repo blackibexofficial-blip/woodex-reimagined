@@ -244,7 +244,59 @@ export interface NewShowroomInput {
   sortOrder?: number;
 }
 
+/* ── Materials & finishes (admin-managed since P1.2) ─────────────────────── */
+export type AdminMaterialCategory = "wood" | "laminate" | "metal" | "fabric";
+export type AdminMaterialBrightness = "light" | "medium" | "dark" | "all";
+export type AdminMaterialPart = "worktop" | "frame" | "seating" | "panel" | "storage";
+
+export interface AdminMaterial {
+  id: string;
+  name: string;
+  category: AdminMaterialCategory;
+  brightness: AdminMaterialBrightness;
+  /** Image URL (bundled asset path or data URL). Undefined for pure-color swatches. */
+  image?: string;
+  /** Hex value used by color swatches on /materials. Undefined for image finishes. */
+  hex?: string;
+  /** Optional blurb (shown on /materials cards and in the configurator). */
+  description?: string;
+  /** Configurator applicability. Empty array = finish hidden from the room configurator. */
+  applicableTo: AdminMaterialPart[];
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewMaterialInput {
+  name: string;
+  category: AdminMaterialCategory;
+  brightness?: AdminMaterialBrightness;
+  image?: string;
+  hex?: string;
+  description?: string;
+  applicableTo?: AdminMaterialPart[];
+  active?: boolean;
+  sortOrder?: number;
+}
+
+export const MATERIAL_CATEGORY_LABELS: Record<AdminMaterialCategory, string> = {
+  wood: "Wood Finishes",
+  laminate: "Solid & Laminate",
+  metal: "Metal Colors",
+  fabric: "Fabric & Leather",
+};
+
+export const MATERIAL_PART_LABELS: Record<AdminMaterialPart, string> = {
+  worktop: "Worktop",
+  frame: "Frame",
+  seating: "Seating",
+  panel: "Panel",
+  storage: "Storage",
+};
+
 /* ── Collections (merchandising) ────────────────────────────────────────── */
+
 
 export type AdminCollectionKind = "manual" | "automatic";
 export type AdminCollectionRule = "best_selling" | "price_asc" | "price_desc" | "on_sale" | "newest";
@@ -553,6 +605,11 @@ export interface AdminApi {
   updateShowroom(id: string, patch: Partial<NewShowroomInput>): Promise<AdminShowroom | undefined>;
   setShowroomActive(id: string, active: boolean): Promise<AdminShowroom | undefined>;
   deleteShowroom(id: string): Promise<boolean>;
+  listMaterials(): Promise<AdminMaterial[]>;
+  createMaterial(input: NewMaterialInput): Promise<AdminMaterial>;
+  updateMaterial(id: string, patch: Partial<NewMaterialInput>): Promise<AdminMaterial | undefined>;
+  setMaterialActive(id: string, active: boolean): Promise<AdminMaterial | undefined>;
+  deleteMaterial(id: string): Promise<boolean>;
 
   listCollections(): Promise<AdminCollection[]>;
   /** Resolves a collection's member products (rule resolved live for automatic collections). */

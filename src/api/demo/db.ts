@@ -7,6 +7,8 @@
  */
 import { idbDeleteMany, idbGetAll, idbPutMany } from "@/api/demo/mediaStore";
 import { products, categoryGroups } from "@/data/products";
+import { materials as finishSeed } from "@/data/materials";
+import { pageSwatchSeed } from "@/data/materialsPage";
 import type {
   AdminApi,
   AdminCategory,
@@ -43,6 +45,8 @@ import type {
   SalesChannelKind,
   AdminShowroom,
   NewShowroomInput,
+  AdminMaterial,
+  NewMaterialInput,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -69,6 +73,7 @@ interface DemoDb {
   bundles: AdminBundle[];
   salesChannels: AdminSalesChannel[];
   showrooms: AdminShowroom[];
+  materials: AdminMaterial[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -359,6 +364,38 @@ function buildSeedSalesChannels(): AdminSalesChannel[] {
     mk("ch-showroom", "Showroom Walk-in", "showroom", "Walk-in purchases at physical showrooms, entered by staff.", 50, 140),
     mk("ch-b2b", "B2B / Projects", "b2b", "Corporate and project contracts (fit-outs, CP&Q).", 60, 130),
   ];
+}
+
+function buildSeedMaterials(): AdminMaterial[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const finishes: AdminMaterial[] = finishSeed.map((m, i) => ({
+    id: m.id,
+    name: m.name,
+    category: m.category,
+    brightness: m.brightness,
+    image: m.image,
+    applicableTo: [...m.applicableTo],
+    active: true,
+    sortOrder: (i + 1) * 10,
+    createdAt: iso(220 - i * 5),
+    updatedAt: iso(220 - i * 5),
+  }));
+  const swatches: AdminMaterial[] = pageSwatchSeed.map((s, i) => ({
+    id: `swatch-${s.category}-${slug(s.name)}`,
+    name: s.name,
+    category: s.category,
+    brightness: "all" as const,
+    hex: s.hex,
+    description: s.description,
+    applicableTo: [],
+    active: true,
+    sortOrder: 1000 + (i + 1) * 10,
+    createdAt: iso(150 - i),
+    updatedAt: iso(150 - i),
+  }));
+  return [...finishes, ...swatches];
 }
 
 function buildSeedShowrooms(): AdminShowroom[] {
@@ -662,7 +699,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -690,6 +727,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.bundles)) db.bundles = buildSeedBundles();
       if (!Array.isArray(db.salesChannels)) db.salesChannels = buildSeedSalesChannels();
       if (!Array.isArray(db.showrooms)) db.showrooms = buildSeedShowrooms();
+      if (!Array.isArray(db.materials)) db.materials = buildSeedMaterials();
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -1409,6 +1447,89 @@ export const demoAdminApi: AdminApi = {
     let ok = false;
     update((db) => {
       const arr = (db.showrooms ??= []);
+      const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
+  },
+
+  async listMaterials() {
+    const db = loadDb();
+    return [...(db.materials ??= [])]
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
+      .map((r) => ({ ...r, applicableTo: [...r.applicableTo] }));
+  },
+
+  async createMaterial(input) {
+    let created: AdminMaterial | undefined;
+    update((db) => {
+      const name = input.name.trim();
+      const arr = (db.materials ??= []);
+      const base = `mat-${slugify(name) || "material"}`;
+      const ids = new Set(arr.map((m) => m.id));
+      let id = base;
+      let n = 1;
+      while (ids.has(id)) id = `${base}-${++n}`;
+      const maxOrder = Math.max(0, ...arr.map((r) => r.sortOrder));
+      const nowIso = new Date().toISOString();
+      created = {
+        id,
+        name,
+        category: input.category,
+        brightness: input.brightness ?? "all",
+        image: input.image?.trim() || undefined,
+        hex: input.hex?.trim() || undefined,
+        description: input.description?.trim() || undefined,
+        applicableTo: input.applicableTo ? [...input.applicableTo] : [],
+        active: input.active ?? true,
+        sortOrder: input.sortOrder ?? maxOrder + 10,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      arr.push(created);
+    });
+    if (!created) throw new Error("Failed to create material");
+    return created;
+  },
+
+  async updateMaterial(id, patch) {
+    let updated: AdminMaterial | undefined;
+    update((db) => {
+      const mat = (db.materials ??= []).find((x) => x.id === id);
+      if (!mat) return;
+      if (patch.name !== undefined) mat.name = patch.name.trim() || mat.name;
+      if (patch.category !== undefined) mat.category = patch.category;
+      if (patch.brightness !== undefined) mat.brightness = patch.brightness;
+      if (patch.image !== undefined) mat.image = patch.image.trim() || undefined;
+      if (patch.hex !== undefined) mat.hex = patch.hex.trim() || undefined;
+      if (patch.description !== undefined) mat.description = patch.description.trim() || undefined;
+      if (patch.applicableTo !== undefined) mat.applicableTo = [...patch.applicableTo];
+      if (patch.active !== undefined) mat.active = patch.active;
+      if (patch.sortOrder !== undefined) mat.sortOrder = patch.sortOrder;
+      mat.updatedAt = new Date().toISOString();
+      updated = { ...mat, applicableTo: [...mat.applicableTo] };
+    });
+    return updated;
+  },
+
+  async setMaterialActive(id, active: boolean) {
+    let updated: AdminMaterial | undefined;
+    update((db) => {
+      const mat = (db.materials ??= []).find((x) => x.id === id);
+      if (!mat) return;
+      mat.active = active;
+      mat.updatedAt = new Date().toISOString();
+      updated = { ...mat, applicableTo: [...mat.applicableTo] };
+    });
+    return updated;
+  },
+
+  async deleteMaterial(id) {
+    let ok = false;
+    update((db) => {
+      const arr = (db.materials ??= []);
       const i = arr.findIndex((x) => x.id === id);
       if (i === -1) return;
       arr.splice(i, 1);

@@ -26,8 +26,11 @@ demo DB slice + admin page + storefront read with static-data fallback.
   pre-filled confirmation (order ref, items, total, payment method, customer name/phone). Admin Orders already
   deep-links to the customer's WhatsApp (`src/admin/pages/Orders.tsx` — `MessageCircle` button + PK-format
   normaliser); verified consistent.
-- [ ] **P1.2** Materials & Colors — demo DB slice seeded from `src/data/materials.ts` (16 finishes), admin CRUD
-  (name, category, brightness, image path/upload, applicable parts), storefront `/materials` reads live.
+- [x] **P1.2** Materials & Colors — one demo-DB slice `materials` (39 seeded rows: 16 image finishes from
+  `src/data/materials.ts` + 23 hex swatches from `src/data/materialsPage.ts`), full admin CRUD at
+  `/admin/materials` (search, category tabs, image/hex, applicable parts, active toggle, sort order),
+  room configurator reads live via `useMaterials()` (static fallback), `/materials` renders hex swatches
+  live (static fallback). Live check 9/9 (create → visible on storefront → delete) · e2e 33/33 · 0 console errors.
 - [ ] **P1.3** Projects (case studies) — extract the inline `projects` array out of `src/pages/Projects.tsx` into
   `src/data/projects.ts`; demo DB slice + admin CRUD; `/projects` and `/projects/:id` read live.
 - [ ] **P1.4** Blog / Journal — admin editor replacing the read-only panel: list/create/edit/delete, structured

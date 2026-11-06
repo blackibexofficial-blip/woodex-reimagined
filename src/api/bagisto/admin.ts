@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminSalesChannel, AdminShowroom, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminSalesChannel, AdminShowroom, AdminMaterial, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -502,6 +502,26 @@ export const bagistoAdminApi: AdminApi = {
 
   async deleteShowroom(): Promise<boolean> {
     throw new BagistoApiError(501, "Showroom deletion is not wired for Bagisto yet.");
+  },
+
+  async listMaterials(): Promise<AdminMaterial[]> {
+    throw new BagistoApiError(501, "Materials & finishes are demo-managed until a Bagisto attribute/variant backend is provisioned — see docs/07-admin-integration §8.");
+  },
+
+  async createMaterial(): Promise<AdminMaterial> {
+    throw new BagistoApiError(501, "Material creation is not wired for Bagisto yet.");
+  },
+
+  async updateMaterial(): Promise<AdminMaterial | undefined> {
+    throw new BagistoApiError(501, "Material editing is not wired for Bagisto yet.");
+  },
+
+  async setMaterialActive(): Promise<AdminMaterial | undefined> {
+    throw new BagistoApiError(501, "Material toggling is not wired for Bagisto yet.");
+  },
+
+  async deleteMaterial(): Promise<boolean> {
+    throw new BagistoApiError(501, "Material deletion is not wired for Bagisto yet.");
   },
 
   async listCollections(): Promise<AdminCollection[]> {
