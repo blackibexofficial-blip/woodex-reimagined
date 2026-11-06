@@ -74,7 +74,15 @@ slices instead of duplicating them.
   orders (RMA-1001 requested / RMA-1002 inspected). Entry point from delivered orders ("Request return" button in
   the order dialog → deep link opens the create flow via ?new=1&order=). Live check 12/12 (seeds → create →
   full pipeline → timeline assertion) · e2e 33/33 · 0 console errors. Bagisto stubbed 501 (no RMA in Bagisto core).
-- [ ] **P2.2** Exchanges — replace item(s) on a delivered order; price difference (pay/refund) handling; links to return.
+- [x] **P2.2** Exchanges — `/admin/exchanges`: replace item(s) on a delivered order with catalogue picks. Incoming
+  lines snapshot order lines (qty capped), outgoing picked via debounced catalogue search; price difference
+  (outgoing − incoming) computed live in the form and shown in the table/dialog with pay/refund hints + a
+  manual "difference settled" toggle. Pipeline requested → approved → shipped → completed (+ rejected, requested-
+  stage only) with transition guards; dispatch posts `outbound` stock movements for replacements, completion restocks
+  incoming lines; every step noted on the order timeline. Optional link to a return of the same order (returnId).
+  Seeded EXC-1001 (approved, ↔ RMA-1001, deterministic from delivered orders). Entry point from delivered orders
+  ("Request exchange" button next to Request return). Live check 10/10 (seed → create → approve → dispatch →
+  complete → timeline assertion) · e2e 33/33 · 0 console errors. Bagisto stubbed 501 (no exchange in core).
 - [ ] **P2.3** Claims — warranty / damage claims pipeline (report → assess → approve/reject → resolve), tie-in with
   5-year warranty messaging; distinct from returns (not necessarily refund-oriented).
 - [ ] **P2.4** Draft Orders — admin builds an order manually (customer + lines from catalogue or free lines);

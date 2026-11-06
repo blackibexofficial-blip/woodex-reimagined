@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Download, Eye, History, Loader2, MessageCircle, Phone, Printer, Save, ShoppingCart, Undo2 } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, Eye, History, Loader2, MessageCircle, Phone, Printer, Save, ShoppingCart, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminOrder, AdminOrderEvent, OrderStatus } from "@/api/types";
@@ -348,11 +348,18 @@ export default function AdminOrders() {
           )}
           <DialogFooter>
             {selected?.status === "delivered" && (
-              <Button variant="outline" asChild className="border-amber-300 text-amber-900 hover:bg-amber-50">
-                <Link to={`/admin/returns?new=1&order=${selected.id}`} onClick={() => setSelected(null)}>
-                  <Undo2 className="mr-1.5 h-4 w-4" /> Request return
-                </Link>
-              </Button>
+              <>
+                <Button variant="outline" asChild className="border-amber-300 text-amber-900 hover:bg-amber-50">
+                  <Link to={`/admin/returns?new=1&order=${selected.id}`} onClick={() => setSelected(null)}>
+                    <Undo2 className="mr-1.5 h-4 w-4" /> Request return
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild className="border-sky-300 text-sky-900 hover:bg-sky-50">
+                  <Link to={`/admin/exchanges?new=1&order=${selected.id}`} onClick={() => setSelected(null)}>
+                    <ArrowLeftRight className="mr-1.5 h-4 w-4" /> Request exchange
+                  </Link>
+                </Button>
+              </>
             )}
             <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
           </DialogFooter>

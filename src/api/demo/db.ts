@@ -62,6 +62,11 @@ import type {
   NewReturnInput,
   ReturnReason,
   ReturnStatus,
+  AdminExchange,
+  AdminExchangeItem,
+  AdminExchangePatch,
+  NewExchangeInput,
+  ExchangeStatus,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -93,6 +98,7 @@ interface DemoDb {
   blogPosts: AdminBlogPost[];
   services: AdminService[];
   returns: AdminReturn[];
+  exchanges: AdminExchange[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -599,6 +605,45 @@ const RETURN_REASON_LABELS: Record<ReturnReason, string> = {
 
 const newEventId = () => `ev-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`;
 
+const EXCHANGE_TRANSITIONS: Record<ExchangeStatus, ExchangeStatus[]> = {
+  requested: ["approved", "rejected"],
+  approved: ["shipped"],
+  shipped: ["completed"],
+  completed: [],
+  rejected: [],
+};
+
+/** Deterministic seed exchange derived from the same delivered order as RMA-1001. */
+function buildSeedExchanges(orders: AdminOrder[], products: AdminProduct[]): AdminExchange[] {
+  const delivered = orders.filter((o) => o.status === "delivered").sort((a, b) => b.placedAt.localeCompare(a.placedAt));
+  const o = delivered[0];
+  if (!o || !o.items[0] || products.length < 2) return [];
+  const line = o.items[0];
+  const replacement = products.find((p) => p.id !== line.id && p.image) ?? products.find((p) => p.id !== line.id);
+  if (!replacement) return [];
+  const t = new Date(Date.now() - 1 * 86400000).toISOString();
+  const incoming = [{ id: line.id, name: line.name, image: line.image, quantity: 1, price: line.price }];
+  const outgoing = [{ id: replacement.id, name: replacement.name, image: replacement.image, quantity: 1, price: replacement.price }];
+  const diff = outgoing[0].price - incoming[0].price;
+  return [{
+    id: "EXC-1001",
+    orderId: o.id,
+    returnId: "RMA-1001",
+    customerName: o.customerName,
+    customerEmail: o.customerEmail,
+    customerPhone: o.customerPhone,
+    city: o.city,
+    incoming,
+    outgoing,
+    reason: "Defective unit — customer prefers the alternate model",
+    status: "approved",
+    priceDifference: diff,
+    differenceSettled: diff === 0,
+    createdAt: t,
+    updatedAt: t,
+  }];
+}
+
 /** Deterministic seed returns derived from delivered orders (pipeline spread). */
 function buildSeedReturns(orders: AdminOrder[]): AdminReturn[] {
   const delivered = orders.filter((o) => o.status === "delivered").sort((a, b) => b.placedAt.localeCompare(a.placedAt));
@@ -831,7 +876,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders) };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts) };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -864,6 +909,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.blogPosts)) db.blogPosts = buildSeedBlogPosts();
       if (!Array.isArray(db.services)) db.services = buildSeedServices();
       if (!Array.isArray(db.returns)) db.returns = buildSeedReturns(db.orders);
+      if (!Array.isArray(db.exchanges)) db.exchanges = buildSeedExchanges(db.orders, db.products);
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -2051,6 +2097,112 @@ export const demoAdminApi: AdminApi = {
       }
       r.updatedAt = now;
       updated = { ...r };
+    });
+    return updated;
+  },
+
+  /* ── Exchanges ─────────────────────────────────────────────── */
+  async listExchanges(params = {}) {
+    const db = loadDb();
+    let items = [...(db.exchanges ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const status = params.status ?? "all";
+    if (status !== "all") items = items.filter((e) => e.status === status);
+    items = items.filter((e) => matchQuery(params.query, [e.id, e.orderId, e.returnId, e.customerName, e.customerEmail, e.city, e.reason]));
+    return paginate(items, params);
+  },
+
+  async getExchange(id) {
+    return (loadDb().exchanges ?? []).find((e) => e.id === id);
+  },
+
+  async createExchange(input) {
+    let created: AdminExchange | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const order = db.orders.find((o) => o.id === input.orderId);
+      if (!order) return;
+      if (order.status !== "delivered") throw new Error("Only delivered orders can be exchanged.");
+      if (input.returnId && !(db.returns ?? []).some((r) => r.id === input.returnId?.trim())) {
+        throw new Error(`Linked return ${input.returnId} not found.`);
+      }
+      const wantedIn = new Map(input.incoming.map((l) => [l.productId, Math.max(0, Math.trunc(l.quantity) || 0)]));
+      const incoming: AdminExchangeItem[] = [];
+      for (const line of order.items) {
+        const qty = Math.min(wantedIn.get(line.id) ?? 0, line.quantity);
+        if (qty > 0) incoming.push({ id: line.id, name: line.name, image: line.image, quantity: qty, price: line.price });
+      }
+      if (incoming.length === 0) throw new Error("Select at least one item to take back.");
+      const outgoing: AdminExchangeItem[] = [];
+      for (const l of input.outgoing) {
+        const p = db.products.find((x) => x.id === l.productId);
+        const qty = Math.max(0, Math.trunc(l.quantity) || 0);
+        if (p && qty > 0) outgoing.push({ id: p.id, name: p.name, image: p.image, quantity: qty, price: p.price });
+      }
+      if (outgoing.length === 0) throw new Error("Add at least one replacement item.");
+      const inTotal = incoming.reduce((s, it) => s + it.price * it.quantity, 0);
+      const outTotal = outgoing.reduce((s, it) => s + it.price * it.quantity, 0);
+      const diff = outTotal - inTotal;
+      const seq = (db.exchanges ?? []).reduce((max, e) => Math.max(max, Number(e.id.replace(/\D/g, "")) || 0), 1000) + 1;
+      created = {
+        id: `EXC-${seq}`,
+        orderId: order.id,
+        returnId: input.returnId?.trim() || undefined,
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+        city: order.city,
+        incoming,
+        outgoing,
+        reason: input.reason?.trim() || undefined,
+        status: "requested",
+        priceDifference: diff,
+        differenceSettled: diff === 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+      (db.exchanges ??= []).push(created);
+      (db.orderEvents ??= []).push({
+        id: newEventId(),
+        orderId: order.id,
+        note: `Exchange ${created.id} opened${created.returnId ? ` — links ${created.returnId}` : ""}`,
+        createdAt: now,
+      });
+    });
+    return created;
+  },
+
+  async updateExchange(id, patch: AdminExchangePatch) {
+    let updated: AdminExchange | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const e = (db.exchanges ??= []).find((x) => x.id === id);
+      if (!e) return;
+      const terminal = e.status === "completed" || e.status === "rejected";
+      if (patch.differenceSettled !== undefined) {
+        if (terminal) throw new Error(`Exchange ${e.id} is closed — no further edits.`);
+        e.differenceSettled = patch.differenceSettled;
+      }
+      if (patch.status !== undefined && patch.status !== e.status) {
+        if (terminal) throw new Error(`Exchange ${e.id} is closed — no further edits.`);
+        const allowed = EXCHANGE_TRANSITIONS[e.status] ?? [];
+        if (!allowed.includes(patch.status)) {
+          throw new Error(`Exchange ${e.id} cannot move from ${e.status} to ${patch.status}.`);
+        }
+        e.status = patch.status;
+        if (patch.status === "shipped") {
+          for (const line of e.outgoing) adjustLineStock(db, e.orderId, line, "out", `Exchange ${e.id} dispatch —`, now);
+        } else if (patch.status === "completed") {
+          for (const line of e.incoming) adjustLineStock(db, e.orderId, line, "in", `Exchange ${e.id} restock —`, now);
+        }
+        const note =
+          patch.status === "approved" ? `Exchange ${e.id} approved`
+          : patch.status === "shipped" ? `Exchange ${e.id} — replacement dispatched`
+          : patch.status === "completed" ? `Exchange ${e.id} completed${e.priceDifference !== 0 && !e.differenceSettled ? " — price difference still pending" : ""}`
+          : `Exchange ${e.id} rejected`;
+        (db.orderEvents ??= []).push({ id: newEventId(), orderId: e.orderId, note, createdAt: now });
+      }
+      e.updatedAt = now;
+      updated = { ...e };
     });
     return updated;
   },

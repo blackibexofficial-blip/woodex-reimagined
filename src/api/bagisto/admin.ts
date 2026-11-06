@@ -19,7 +19,7 @@
  */
 import { config } from "@/config/env";
 import type {
-  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminApi, AdminBundle, AdminCategory, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminSalesChannel, AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -331,6 +331,23 @@ export const bagistoAdminApi: AdminApi = {
 
   async updateReturn(): Promise<AdminReturn | undefined> {
     throw new BagistoApiError(501, "Return updates are not wired for Bagisto yet.");
+  },
+
+  async listExchanges(): Promise<Paginated<AdminExchange>> {
+    // Exchanges ride on RMA in Bagisto — Marketplace add-on, unverified. See docs/07-admin-integration.
+    throw new BagistoApiError(501, "Exchanges are not wired for Bagisto yet (no RMA/Exchange in Bagisto core). Use VITE_API_MODE=demo.");
+  },
+
+  async getExchange(): Promise<AdminExchange | undefined> {
+    throw new BagistoApiError(501, "Exchanges are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
+  async createExchange(): Promise<AdminExchange | undefined> {
+    throw new BagistoApiError(501, "Exchange creation is not wired for Bagisto yet.");
+  },
+
+  async updateExchange(): Promise<AdminExchange | undefined> {
+    throw new BagistoApiError(501, "Exchange updates are not wired for Bagisto yet.");
   },
 
   async listCustomers(params) {

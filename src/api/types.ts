@@ -99,6 +99,50 @@ export interface NewReturnInput {
 }
 export type AdminReturnPatch = Partial<Pick<AdminReturn, "status" | "inspectionNote" | "restock" | "refundAmount">>;
 
+/* ── Exchanges ──────────────────────────────────────────────────────────── */
+export type ExchangeStatus = "requested" | "approved" | "shipped" | "completed" | "rejected";
+export interface AdminExchangeItem {
+  id: string;            // product id (incoming lines map onto order lines)
+  name: string;
+  image?: string;
+  quantity: number;
+  price: number;
+}
+export interface AdminExchange {
+  id: string;            // e.g. "EXC-1001"
+  orderId: string;       // e.g. "WDX-1042"
+  /** Linked RMA when the exchange originates from a return. */
+  returnId?: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  city: string;
+  /** Items coming back from the customer (snapshot from order lines). */
+  incoming: AdminExchangeItem[];
+  /** Replacement items to dispatch to the customer. */
+  outgoing: AdminExchangeItem[];
+  reason?: string;
+  status: ExchangeStatus;
+  /** outgoing total − incoming total. Positive = customer pays, negative = refund to customer. */
+  priceDifference: number;
+  /** True once the difference (collect or refund) has been settled. */
+  differenceSettled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface NewExchangeLineInput {
+  productId: string;
+  quantity: number;
+}
+export interface NewExchangeInput {
+  orderId: string;
+  returnId?: string;
+  incoming: NewExchangeLineInput[];
+  outgoing: NewExchangeLineInput[];
+  reason?: string;
+}
+export type AdminExchangePatch = Partial<Pick<AdminExchange, "status" | "differenceSettled">>;
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -766,6 +810,12 @@ export interface AdminApi {
   createReturn(input: NewReturnInput): Promise<AdminReturn | undefined>;
   /** Throws on illegal status transitions and edits to closed returns. */
   updateReturn(id: string, patch: AdminReturnPatch): Promise<AdminReturn | undefined>;
+  listExchanges(params?: ListParams & { status?: ExchangeStatus | "all" }): Promise<Paginated<AdminExchange>>;
+  getExchange(id: string): Promise<AdminExchange | undefined>;
+  /** Undefined when the order is missing; throws on non-delivered orders or empty line selection. */
+  createExchange(input: NewExchangeInput): Promise<AdminExchange | undefined>;
+  /** Throws on illegal status transitions and edits to closed exchanges. */
+  updateExchange(id: string, patch: AdminExchangePatch): Promise<AdminExchange | undefined>;
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;
