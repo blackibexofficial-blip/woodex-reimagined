@@ -11,6 +11,7 @@ import { materials as finishSeed } from "@/data/materials";
 import { pageSwatchSeed } from "@/data/materialsPage";
 import { projectsDisplay as projectSeed } from "@/data/projects";
 import { blogPosts as blogSeed } from "@/data/blogPosts";
+import { services as serviceSeed } from "@/data/services";
 import type {
   AdminApi,
   AdminCategory,
@@ -53,6 +54,8 @@ import type {
   NewProjectInput,
   AdminBlogPost,
   NewBlogPostInput,
+  AdminService,
+  NewServiceInput,
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
@@ -82,6 +85,7 @@ interface DemoDb {
   materials: AdminMaterial[];
   projects: AdminProject[];
   blogPosts: AdminBlogPost[];
+  services: AdminService[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -432,6 +436,22 @@ function buildSeedBlogPosts(): AdminBlogPost[] {
   }));
 }
 
+function cloneService<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v)) as T;
+}
+
+function buildSeedServices(): AdminService[] {
+  const now = Date.now();
+  const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  return serviceSeed.map((s, i) => ({
+    ...cloneService(s),
+    active: true,
+    sortOrder: (i + 1) * 10,
+    createdAt: iso(200 - i * 15),
+    updatedAt: iso(200 - i * 15),
+  }));
+}
+
 function buildSeedShowrooms(): AdminShowroom[] {
   const now = Date.now();
   const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
@@ -733,7 +753,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -764,6 +784,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.materials)) db.materials = buildSeedMaterials();
       if (!Array.isArray(db.projects)) db.projects = buildSeedProjects();
       if (!Array.isArray(db.blogPosts)) db.blogPosts = buildSeedBlogPosts();
+      if (!Array.isArray(db.services)) db.services = buildSeedServices();
       for (const o of db.orders) {
         if (!o.channelId) o.channelId = channelFor(o.customerEmail ?? "", o.subtotal ?? 0);
       }
@@ -1757,6 +1778,102 @@ export const demoAdminApi: AdminApi = {
     update((db) => {
       const arr = (db.blogPosts ??= []);
       const i = arr.findIndex((x) => x.id === id);
+      if (i === -1) return;
+      arr.splice(i, 1);
+      ok = true;
+    });
+    return ok;
+  },
+
+  async listServices() {
+    const db = loadDb();
+    return [...(db.services ??= [])]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((s) => cloneService(s));
+  },
+
+  async createService(input) {
+    let created: AdminService | undefined;
+    update((db) => {
+      const arr = (db.services ??= []);
+      const slug = (input.slug?.trim() || slugify(input.title.trim())) || "service";
+      if (arr.some((s) => s.slug === slug)) throw new Error(`A service with slug "${slug}" already exists`);
+      const maxOrder = Math.max(0, ...arr.map((s) => s.sortOrder));
+      const maxNumber = arr.reduce((max, s) => Math.max(max, parseInt(s.number, 10) || 0), 0);
+      const nowIso = new Date().toISOString();
+      created = {
+        slug,
+        number: input.number?.trim() || String(maxNumber + 1).padStart(2, "0"),
+        title: input.title.trim(),
+        shortTitle: input.shortTitle?.trim() || input.title.trim(),
+        tagline: input.tagline?.trim() || "",
+        hero: input.hero?.trim() || "",
+        intro: input.intro?.trim() || "",
+        metaTitle: input.metaTitle?.trim() || `${input.title.trim()} — WOODEX`,
+        metaDescription: input.metaDescription?.trim() || input.tagline?.trim() || "",
+        overview: input.overview ? cloneService(input.overview) : { heading: "", body: "" },
+        process: input.process ? cloneService(input.process) : [],
+        benefits: input.benefits ? cloneService(input.benefits) : [],
+        inclusions: input.inclusions ? [...input.inclusions] : [],
+        faqs: input.faqs ? cloneService(input.faqs) : [],
+        caseStudy: input.caseStudy ? cloneService(input.caseStudy) : { client: "", sector: "", result: "" },
+        related: input.related ? [...input.related] : [],
+        active: input.active ?? true,
+        sortOrder: input.sortOrder ?? maxOrder + 10,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      arr.push(created);
+    });
+    if (!created) throw new Error("Failed to create service");
+    return created;
+  },
+
+  async updateService(slug, patch) {
+    let updated: AdminService | undefined;
+    update((db) => {
+      const svc = (db.services ??= []).find((x) => x.slug === slug);
+      if (!svc) return;
+      if (patch.number !== undefined) svc.number = patch.number.trim();
+      if (patch.title !== undefined) svc.title = patch.title.trim() || svc.title;
+      if (patch.shortTitle !== undefined) svc.shortTitle = patch.shortTitle.trim();
+      if (patch.tagline !== undefined) svc.tagline = patch.tagline.trim();
+      if (patch.hero !== undefined) svc.hero = patch.hero.trim();
+      if (patch.intro !== undefined) svc.intro = patch.intro.trim();
+      if (patch.metaTitle !== undefined) svc.metaTitle = patch.metaTitle.trim();
+      if (patch.metaDescription !== undefined) svc.metaDescription = patch.metaDescription.trim();
+      if (patch.overview !== undefined) svc.overview = cloneService(patch.overview);
+      if (patch.process !== undefined) svc.process = cloneService(patch.process);
+      if (patch.benefits !== undefined) svc.benefits = cloneService(patch.benefits);
+      if (patch.inclusions !== undefined) svc.inclusions = [...patch.inclusions];
+      if (patch.faqs !== undefined) svc.faqs = cloneService(patch.faqs);
+      if (patch.caseStudy !== undefined) svc.caseStudy = cloneService(patch.caseStudy);
+      if (patch.related !== undefined) svc.related = [...patch.related];
+      if (patch.active !== undefined) svc.active = patch.active;
+      if (patch.sortOrder !== undefined) svc.sortOrder = patch.sortOrder;
+      svc.updatedAt = new Date().toISOString();
+      updated = cloneService(svc);
+    });
+    return updated;
+  },
+
+  async setServiceActive(slug, active: boolean) {
+    let updated: AdminService | undefined;
+    update((db) => {
+      const svc = (db.services ??= []).find((x) => x.slug === slug);
+      if (!svc) return;
+      svc.active = active;
+      svc.updatedAt = new Date().toISOString();
+      updated = cloneService(svc);
+    });
+    return updated;
+  },
+
+  async deleteService(slug) {
+    let ok = false;
+    update((db) => {
+      const arr = (db.services ??= []);
+      const i = arr.findIndex((x) => x.slug === slug);
       if (i === -1) return;
       arr.splice(i, 1);
       ok = true;

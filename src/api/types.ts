@@ -381,7 +381,67 @@ export interface NewBlogPostInput {
   tags?: string[];
 }
 
+/* ── Services (admin-managed since P1.5) ────────────────────────────────── */
+export interface AdminServiceProcessStep {
+  step: string;
+  title: string;
+  description: string;
+}
+export interface AdminServiceBenefit {
+  title: string;
+  description: string;
+}
+export interface AdminServiceFaq {
+  q: string;
+  a: string;
+}
+export interface AdminService {
+  slug: string;
+  number: string;
+  title: string;
+  shortTitle: string;
+  tagline: string;
+  hero: string;
+  intro: string;
+  metaTitle: string;
+  metaDescription: string;
+  overview: { heading: string; body: string };
+  process: AdminServiceProcessStep[];
+  benefits: AdminServiceBenefit[];
+  inclusions: string[];
+  faqs: AdminServiceFaq[];
+  caseStudy: { client: string; sector: string; result: string };
+  /** Slugs of related services */
+  related: string[];
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewServiceInput {
+  title: string;
+  slug?: string;
+  number?: string;
+  shortTitle?: string;
+  tagline?: string;
+  hero?: string;
+  intro?: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  overview?: { heading: string; body: string };
+  process?: AdminServiceProcessStep[];
+  benefits?: AdminServiceBenefit[];
+  inclusions?: string[];
+  faqs?: AdminServiceFaq[];
+  caseStudy?: { client: string; sector: string; result: string };
+  related?: string[];
+  active?: boolean;
+  sortOrder?: number;
+}
+
 /* ── Collections (merchandising) ────────────────────────────────────────── */
+
 
 
 
@@ -708,6 +768,11 @@ export interface AdminApi {
   updateBlogPost(id: string, patch: Partial<NewBlogPostInput>): Promise<AdminBlogPost | undefined>;
   setBlogPostActive(id: string, active: boolean): Promise<AdminBlogPost | undefined>;
   deleteBlogPost(id: string): Promise<boolean>;
+  listServices(): Promise<AdminService[]>;
+  createService(input: NewServiceInput): Promise<AdminService>;
+  updateService(slug: string, patch: Partial<NewServiceInput>): Promise<AdminService | undefined>;
+  setServiceActive(slug: string, active: boolean): Promise<AdminService | undefined>;
+  deleteService(slug: string): Promise<boolean>;
 
   listCollections(): Promise<AdminCollection[]>;
   /** Resolves a collection's member products (rule resolved live for automatic collections). */

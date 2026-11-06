@@ -4,7 +4,7 @@ import { ArrowRight, Star, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { services } from "@/data/services";
+import { useServices } from "@/lib/useServices";
 import heroImg from "@/assets/services-main-hero.webp";
 import { site } from "@/config/site";
 
@@ -26,6 +26,10 @@ const testimonials = [
 ];
 
 const Services = () => {
+  // Catalogue is admin-managed (/admin/services since P1.5); seeded fallback offline.
+  const { services } = useServices();
+  const activeServices = services.filter((s) => s.active);
+
   useEffect(() => {
     document.title = "Office Furniture Services Pakistan — Design, Manufacture, Install | WOODEX";
     const meta = document.querySelector('meta[name="description"]') || (() => {
@@ -118,7 +122,7 @@ const Services = () => {
               <p className="text-muted-foreground">Click any service to see process, pricing approach and recent case studies.</p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {services.map((s) => (
+              {activeServices.map((s) => (
                 <Link
                   key={s.slug}
                   to={`/services/${s.slug}`}

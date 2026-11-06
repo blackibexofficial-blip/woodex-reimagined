@@ -44,8 +44,15 @@ demo DB slice + admin page + storefront read with static-data fallback.
   during live verification). Category filter on `/blog` now actually works (was dead UI). Legacy date format
   ("Feb 15, 2025") still renders; ISO everywhere new. Live check 9/9 · e2e 33/33 · 0 console errors. Sitemap is
   build-time static — admin-created posts enter sitemap.xml on the next deploy (documented in the page footer).
-- [ ] **P1.5** Services — admin editor for the 7 service pages: core fields, process steps, benefits, inclusions,
-  FAQs, case study, related slugs; storefront `/services` + `/services/:slug` read live.
+- [x] **P1.5** Services — `/admin/services` full editor: search + table (number, title/slug, tagline, steps/FAQs
+  counts, active switch, edit/delete), tabbed dialog (Core / SEO / Overview / Process steps / Benefits / Inclusions
+  one-per-line / FAQs / Case study / related-service pills excluding self / Visibility + sortOrder); wholesale nested
+  replace on save; slug immutable on edit, auto-deduped on create; create auto-numbers `number` and bumps `sortOrder`.
+  Storefront `/services` grid filters live `active` (left-rail `spaceWorkItems` intentionally static); `/services/:slug`
+  ready-gated (same deep-link redirect class as P1.4 — fixed preemptively) and reads live related rail. Live check 8/8
+  (7 seeds → create→live grid + deep-linked detail → delete→7) · e2e 33/33 · 0 console errors. Inactive services
+  redirect to /services on direct URL. Sitemap stays build-time static — admin-created services enter on next deploy
+  (documented in the page footer). Bagisto backend stubbed 501 (CMS slice not provisioned).
 - [ ] **P1.6** Content hub refresh — `/admin/content` becomes a launchpad linking to the four new editors
   (retire the read-only placeholder copy).
 

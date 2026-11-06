@@ -4,13 +4,15 @@ import { ArrowRight, ChevronRight, CheckCircle2, MessageCircle, Plus, Minus, Quo
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { getService, getRelated, services } from "@/data/services";
+import { useServices } from "@/lib/useServices";
 import { site } from "@/config/site";
 
 
 const ServiceDetail = () => {
   const { slug } = useParams<{ slug: string }>();
-  const service = slug ? getService(slug) : undefined;
+  // Catalogue is admin-managed (/admin/services since P1.5); seeded fallback offline.
+  const { services: allServices, ready } = useServices();
+  const service = slug ? allServices.find((s) => s.slug === slug && s.active) : undefined;
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   useEffect(() => {
@@ -42,9 +44,24 @@ const ServiceDetail = () => {
     window.scrollTo(0, 0);
   }, [service]);
 
+  if (!ready) {
+    // Live query still settling — admin-created services are absent from the bundled fallback.
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-muted-foreground animate-pulse">Loading service…</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   if (!service) return <Navigate to="/services" replace />;
 
-  const related = getRelated(service.related);
+  const related = service.related
+    .map((r) => allServices.find((s) => s.slug === r && s.active))
+    .filter((s): s is NonNullable<typeof s> => Boolean(s));
   const waText = encodeURIComponent(`Hi WOODEX, I'm interested in your ${service.title} service.`);
 
   return (
