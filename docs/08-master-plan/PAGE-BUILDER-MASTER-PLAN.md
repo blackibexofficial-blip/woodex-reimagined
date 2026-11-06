@@ -1,4 +1,4 @@
-# WOODEX — Page-Builder Master Plan (drag-and-drop complete website)
+# WOODEX — Page-Builder Master Plan v2.0 (drag-and-drop complete website · legacy-parity upgrade)
 
 > **Purpose:** the complete plan — and shipped Wave 0 spike — for a drag-and-drop page builder
 > that lets WOODEX staff assemble the **entire website** (existing pages migrated + future pages)
@@ -6,6 +6,13 @@
 >
 > **Companion to:** `README.md` (older doc) and `UPGRADE-TODO.md` (execution checklist) in this folder.
 > Where those disagree with this file on the page builder, this one wins.
+>
+> **v2.0 (2026-11-06, same-day upgrade):** the owner shared screenshots of the **legacy Woodex Interior
+> website builder** — a complete visual website system (pages tree, 40-section UI-kit, elements palette,
+> theme/SEO/layers layers, Content/Style/Advanced inspector, linked styles, AI+MCP build path). This plan
+> is upgraded to map and reach that parity: full anatomy in **§0A**, requirements in §1.8–§1.10, block/element
+> catalogues in §5, re-phased waves in **§6 (Wave 7 = Bagisto)**, effort re-estimate in §3.2, AI+MCP scope in
+> §6 Wave 6, new risks §7 R13–R16, open questions regenerated in §11.
 >
 > **Last updated: 2026-11-06** — Wave 0 shipped; CI green; **PR #3 MERGED by owner authorisation
 > 2026-11-06 (merge commit `44ff091`, main `69985d3 → 44ff091`)**. Vercel production tracks `main`;
@@ -55,6 +62,96 @@ Since merged (2026-11-06), this state ships on production (see header note).
 
 ---
 
+## 0A. v2 — What the legacy Woodex Interior builder actually is (owner-shared anatomy, 2026-11-06)
+
+The five reference screenshots show a **complete, production visual website system** for `wooodex.com.pk`
+("Woodex Interior has worked from Lahore since 2016…") — 81 top-level pages, finishes consistent across
+every panel. This is the parity target WOODEX REIMAGINED's builder must match or consciously exceed.
+Everything below is observable fact from the screenshots (no guessing).
+
+### 0A.1 Left rail (activity bar) — 6 workspaces
+`Pages · Sections · Elements · Layers · Theme · SEO` (+ `+ New` page button in Pages).
+
+### 0A.2 Pages workspace
+"All website pages by folder. Click to open." Tree list with folders + `(top level) 81` — e.g. `/`,
+`/i-kanal-house-design/`, `/10-marla-house-design/`, `/12-kanal-house-design/`, `/3d-visualization/`,
+`/5-marla-house-design/`, `/about/`, `/apartment-interior-design/`, `/architecture/`, `/bahawalpur/`,
+`/bathroom-design/`, `/beauty-salon-design/`, `/book-a-visit/`, `/cafe-interior-design/`,
+`/commercial-fit-out/`, `/commercial-interior/`, `/commercial-renovation/`, `/complete-home-redesign/`,
+`/contact/`, `/coworking-space-design/`, `/dressing-room-design/`, `/educational-buildings-design/`,
+`/estimator/`, `/faisalabad/`, `/false-ceiling-design/`, `/farmhouse-design/` … — i.e. a programmatic,
+local-SEO-driven catalogue (city/niche design pages). Search-pages filter; page slug shown with trailing slash.
+
+### 0A.3 Sections workspace ("Add content")
+"Drag onto the page, or click to add after the selected section." Tabs: **Sections · UI kit · Templates · Images**
+(+ search "Search UI kit…"). Category chips: **All 40 · Hero · Features · Pricing · Stats & charts ·
+Testimonials · Team · Call to action · Content · Forms · Components**. Card grid with thumbnails, e.g.
+**HERO · 4**: Hero — centered with trust row · Hero — text + enquiry form · Hero — split with image and stats ·
+Hero — dark centered. **FEATURES · 5**: Features — icon grid (6) · Features — list + image · Features — bento
+gallery · Features — 4-step process. Each section carries a **Label shown in Layers** (e.g. "Services intro").
+
+### 0A.4 Elements workspace
+"Drag into any section, or click to add after the selected element." Search. **BASIC**: Heading · Sub-heading ·
+Paragraph · Small label · Button · Two buttons · Image · Video (YouTube) · Check list · Quote · 2 columns ·
+3 columns · Card box · Spacer · Divider line · Google map. **WIDGETS**: Icon · … (list truncated in shot).
+
+### 0A.5 Layers workspace
+Dedicated layers panel (icon between Elements and Theme) — z-order/visibility/lock of sections & elements
+(observed from rail; presumably the standard layer tree: select, reorder, hide, lock).
+
+### 0A.6 Theme workspace — "Theme (whole website)"
+- **COLOURS**: Brand navy (`#0C1628`-class dark navy) · Text (near-black) · Muted text (grey) · Page background
+  (bone/off-white) · Light surface (warm cream) · Beige.
+- **FONTS**: Body font `Plus Jakarta Sans` · Heading font `Plus Jakarta Sans` · helper: "Type to search 1,900
+  Google Fonts. Leave empty for DM Sans." · **Base text size** slider (16px).
+- **HEADING SIZES (DESKTOP)**: H1 72px · H2 48px · H3 22px — sliders + **"Use custom heading sizes"** toggle (ON).
+
+### 0A.7 SEO workspace
+- **Page title** with counter `(56/60)` · **Meta description** `(151/160)` · URL breadcrumb preview
+  (`wooodex.com.pk/`) + **live Google result preview** (blue title link, green-ish URL line, grey description).
+- **Focus keyphrase** ("e.g. office renovation Lahore") + **Analyse** button + **"Open in SEO manager ↗"** link.
+- **Score badges**: `SEO 60` (orange) · `Readability 86` (green).
+- **SEO analysis** checklist with coloured bullets, e.g. 🔴 "No focus keyphrase set. Add the main search phrase
+  for this page." · 🟢 "SEO title is 56 characters (good)." · 🟢 "Meta description is 151 characters (good)." ·
+  🟢 "The page has one H1." · 🟢 "The text has 1389 words. Good…".
+
+### 0A.8 Inspector (right panel) — three tabs **Content · Style · Advanced**
+**Content** (section selected): **Section skin** radio pills `Original · White · Cream · Navy` · **Animation on
+scroll**: Effect (`None`) · Delay (ms, 0) · Duration (ms, 700) · **▶ Preview** — "Plays once when the element
+scrolls into view. Turned off automatically for visitors who prefer reduced motion." · **Section** group: Label
+(shown in Layers) · Container width `Boxed | Full` · Container height `Auto | Full` · **Background**: `None ·
+Image · Video · YouTube` + toggle **"Parallax (image stays fixed while scrolling)"** · Colour preset (`Default`) ·
+Spacing preset (`Normal`) · **Overlay** (toggle + colour) · **Top separator** Show toggle ·
+**Bottom separator** Show toggle · Layout group. **General** group: Tag (`<section>`) · ID (`home-about`) ·
+Title (`home-about`) · Aria label (empty) · **Classes** chips (`hm-section` + `hm-about`) with "add class + E" input.
+**Image selected** adds: Set image / Upload buttons · URL (`/assets/img/img-dce06249b`) · Alt text · Width 1920 ·
+Height 1280 · Fit (`Default`) · **Link** group · General group · **Actions** group.
+
+**Style**: header row **Editing: `Desktop ▾` · State: `Normal ▾` · Reset** · yellow **Linked styles** callout:
+"This element shares its class with other elements. Apply styles to:" — **(•) This element only** /
+**( ) All .hm-section on this page (9)** · collapsible groups: **Display · Typography** (Font size 48px,
+Font weight, Font family "Default (Plus Jakarta Sans) - type to search", Text alignment, Line height `48.96`,
+Letter spacing `−1.44px`, Transform `aa/Aa/AA/aA`, Style `I/N`, Text decoration, Decoration colour `rgb(12,22,40)`
++ full slider) · **Size · Margin · Padding · Border · Border radius · Background image · Effects & transform**.
+**Heading selected** adds font-weight/family/line-height control + inline canvas toolbar (B I U S · link · color ·
+align · font · size · A/Aa).
+
+**Advanced**: Animation on scroll + General + **Responsive visibility** ("Hide on" — ☐ Desktop ☐ Tablet ☐ Mobile).
+
+### 0A.9 Canvas
+Blue floating **section toolbar** (move ⌘?, edit, duplicate-arrow-icons, comment?, copy, paste, trash) · element
+selection with 8 resize handles · inline rich-text toolbar (B/I/U/S, link, colour, alignment, font, A/Aa, size) ·
+"Heading 2" type chip · click "+" handle to add block after · **the header/nav (logo, Home · Woodex Studio ·
+Services · Projects · About · Insights · Contact · Get a quote) is canvas content**, styled like any section —
+site chrome is editable in the same engine.
+
+### 0A.10 Design tokens observed (legacy interior system)
+Navy-forward dark ink on warm bone; beige/light-surface support neutrals; Plus Jakarta Sans body+heading;
+16px base; 72/48/22 heading scale; section skins Original/White/Cream/Navy; class-prefixed utilities (`hm-*`).
+**Not adopted blindly** — see §11 Q1 (brand decision pending).
+
+---
+
 ## 1. Requirements (from the owner, 2026-11-06)
 
 1. Drag-and-drop **complete website** — existing pages converted to builder output, new pages creatable.
@@ -66,6 +163,17 @@ Since merged (2026-11-06), this state ships on production (see header note).
 6. Commerce correctness unaffected: cart/checkout/quotation stay code-built, unreachable from the canvas.
 7. SEO/a11y must not regress: noindex lab routes, per-page title/description/OG, alt-text validation,
    heading-order safety in blocks.
+8. **Legacy parity (owner directive 2026-11-06):** the builder targets everything in §0A — pages tree with
+   folders, 40-section catalogue + UI kit/Templates/Images tabs, elements palette, Layers panel, Theme tokens
+   panel, SEO panel (Yoast-style counters, Google preview, analysis checklist, SEO/Readability scores),
+   Content/Style/Advanced inspector, linked styles with page-scope class application, animation on scroll
+   (reduced-motion aware), responsive visibility, section skins, inline text toolbar, per-component
+   Tag/ID/Title/Aria/Classes.
+9. **AI + MCP build path:** coding agents (Claude Code / Codex / local) read, audit, draft and bulk-improve
+   builder pages through an MCP server bound to the same page store; every AI write is draft-first and passes
+   the validators; publish stays human-gated.
+10. **Design system:** Theme token layer is brand-agnostic; default preset = current WOODEX REIMAGINED tokens;
+    optional "Legacy Woodex Interior" preset (navy/beige/Jakarta) pending owner answer (§11 Q1).
 
 ---
 
@@ -111,13 +219,19 @@ hash-freeze and the upgrade procedure. `@puckeditor/core` peers: `react ^18 || ^
 | Wave | Deliverable | Est. dev-days |
 |---|---|---|
 | Wave 0 — Spike | package, 4 blocks, lab editor, `/lab/home`, gates, this doc | **[done]** (≈2 d elapsed) |
-| Wave 1 — Persistence & Site Chrome | demo-DB `pages` slice; admin pages list (create/edit/duplicate/delete/status); singleton **Site Chrome** editor (announcement/header/footer); media picker from admin Media library | 3–4 |
-| Wave 2 — Storefront migration | `PuckPage` render engine + published-page route; migrate home, warranty, services, materials, showrooms, custom-design, legal pages to builder content; static fallback kept; visual-parity gate per page | 5–7 |
-| Wave 3 — New pages & registry | create-from-scratch flow; slug registry (collision vs existing routes); draft/published + preview links; build-time sitemap inclusion; noindex switch | 4–6 |
-| Wave 4 — Quality gates | root-level SEO fields (title/description/OG/canonical) enforced at publish; alt-text validation; axe pass on lab; route-lazy loading; publish-time validation summary (heading order, missing alt, empty links) | 3–4 |
-| Wave 5 — Bagisto mapping | JSON page document persisted as Bagisto CMS custom attribute (or native blocks) behind `getAdminApi()` adapter; migration of demo-DB pages; dual-run period | 4–5 |
-| Buffer / owner UAT / parity polish | | 3–8 |
-| **Total (Waves 1–5)** | | **≈ 22–34 dev-days** |
+| Wave 1 — Foundation: pages slice, tree & draft/publish | demo-DB `pages` slice; admin **Pages** workspace (folder tree, §0A.2 model); create/edit/duplicate/delete/status; history + revert; slug registry vs `App.tsx` routes | 3–4 |
+| Wave 2 — Sections & Elements libraries | the §0A.3 40-section UI-kit catalogue (thumbnails, "Label in Layers") + tabs Sections/UI kit/Templates/Images + category chips; Elements palette (BASIC+WIDGETS, §0A.4); Layers panel (select/reorder/hide/lock) | 5–7 |
+| Wave 3 — Theme: whole-website tokens | §0A.6 panel — colours/fonts/base size/heading scale (+ custom toggle), CSS custom properties, section skins Original/White/Cream/Navy, versioned demo-DB `theme` singleton + snapshot/restore | 3–4 |
+| Wave 4 — Inspector parity + Linked styles | §0A.8 Content/Style/Advanced tabs; Desktop/Tablet/Mobile × Normal/Hover; **Linked styles** (element-only vs `All .hm-* on this page (N)`) as a managed page-scoped class-rule stylesheet; animation on scroll (reduced-motion aware); inline text toolbar; General Tag/ID/Title/Aria/Classes; responsive visibility | 6–9 |
+| Wave 5 — SEO layer | §0A.7 panel — title/meta counters (60/160), focus keyphrase, live Google preview, local Yoast-style **Analyse** (keyphrase, H1=1, title/meta length, word count, readability), SEO + Readability score badges, publish gate; sitemap + JSON-LD wiring | 3–5 |
+| Wave 6 — AI + MCP build path | local MCP server exposing `list_pages/get_page/create_page/upsert_section/set_theme_tokens/run_seo_audit/diff_page/draft_publish` to Claude Code / Codex / local agents; draft-first + validator; audit log; owner publishes | 5–7 |
+| Wave 7 — Bagisto mapping | JSON page document persisted as Bagisto CMS custom attribute (or native blocks) behind `getAdminApi()`; migration of demo-DB pages; dual-run period | 4–5 |
+| Buffer / owner UAT / parity polish | linked-styles Phase B slippage, screenshot sign-offs, migration of static pages | 8–12 |
+| **Total (Waves 1–7, v2)** | | **≈ 37–54 dev-days** |
+
+> **v2 honesty note:** parity with the legacy system (years of builder evolution) roughly doubles the W0-era
+> estimate (22–34 → 37–54 d). Ship incrementally behind owner gates per wave; Waves 1–3 alone (11–15 d)
+> deliver the pages tree, section catalogue and theme — already transformative — before the hardest wave (W4).
 
 Zero recurring fees, at every wave. If Bagisto is never provisioned, Waves 1–4 still ship value against
 the demo DB; Wave 5 becomes optional.
@@ -222,9 +336,37 @@ are excluded from sitemap; published pages opt **in** via Wave 3 sitemap build s
 Data blocks (ProductShelf…) render through existing live hooks (`useMaterials`, `useShowrooms`, …) with
 static fallback, preserving the offline demo guarantees.
 
+### 5.1 Elements library (legacy parity, §0A.4)
+BASIC rows ship as first-class Puck components nested inside sections:
+Heading · Sub-heading · Paragraph · Small label · Button · Two buttons · Image · Video (YouTube) ·
+Check list · Quote · 2 columns · 3 columns · Card box · Spacer · Divider line · Google map — plus
+WIDGETS (Icon · …). Each carries: content props, style props (via §6 W4 linked-styles classes),
+Advanced (Tag/ID/Title/Aria/Classes) and responsive visibility. Icons use lucide (self-hosted, MIT) —
+no icon-font dependency.
+
+### 5.2 Section catalogue — "All 40" (legacy parity, §0A.3)
+Category → planned WOODEX sections (variants in parentheses, mirroring legacy counts):
+
+| Category | Legacy variants (as seen) | WOODEX mapping |
+|---|---|---|
+| Hero · 4 | Hero — centered with trust row · Hero — text + enquiry form · Hero — split with image and stats · Hero — dark centered | `HeroCentered`, `HeroForm`, `HeroSplitStats`, `HeroDark` |
+| Features · 5 | icon grid (6) · list + image · bento gallery · 4-step process (+1 in "All 40") | `FeatureGrid` (done, +1 icon), `FeatureListImage`, `BentoGallery`, `StepsRow` |
+| Pricing | packages grid / table | `PricingTable` (exists in §5) |
+| Stats & charts | counters row / bar+line visual | `StatsRow`, optional `ChartBlock` (Recharts, admin already bundles it) |
+| Testimonials | grid / single row / big quote | `TestimonialRow`, `TestimonialWall` |
+| Team | portrait grid / role cards | `TeamGrid` |
+| Call to action | centered banner · strip · split | `CtaStrip`, `CtaSplit` |
+| Content | rich text + image · editorial · FAQ | `RichText`, `TwoColumnText`, `FaqAccordion` |
+| Forms | enquiry form · callback · newsletter | `EnquiryForm` (WhatsApp-first, demo-safe), `NewsletterSignup` |
+| Components | logo strip · map · awards · badges | `LogoStrip`, `MapEmbed`, `AwardsRow` |
+
+Plus the legacy **Card box · Check list · Quote · Two buttons · Google map** primitives float in Elements
+(§5.1). Every section exposes the Content controls of §0A.8 (skin, background, overlay, separators,
+container, Label, animation, classes) — skin/background/overlay are section-level, not duplicated per child.
+
 ---
 
-## 6. Wave plan (detailed)
+## 6. Wave plan (detailed, v2 re-phased)
 
 ### Wave 0 — Spike `[done]` (2026-11-06)
 **Scope:** install `@puckeditor/core@0.24.0`; WOODEX block registry (4 blocks, `src/pages-builder/blocks.tsx`);
@@ -232,63 +374,97 @@ starter document (`src/pages-builder/starter.ts`); localStorage persistence; adm
 `/admin/pages-lab` (nav: ENGAGE → Pages Lab; page title "Pages Lab (spike)"; lazy chunk, Puck CSS vendored
 + stripped of its remote Inter `@import` so the build stays self-contained); read-only storefront render at
 `/lab/:slug` (floating "Lab preview — spike, not published" badge, `noindex`, no Header/Footer); gates.
-**Verification:** typecheck 0 · lint 0 errors (19 pre-existing warnings) · clean rebuild (Puck splits into a
-~301 kB lazy chunk; storefront main bundle +1.4 kB) · e2e 33/33 · live check **12/12** (login → nav → editor
-mount → banner → canvas select via scale-corrected pointer events → field edit → Publish → `/lab/home` shows
-the edited eyebrow; 0 console errors).
-**CI note (same day):** first push failed `bun install --frozen-lockfile` on a duplicate `ws@8.22.1` key in the
-hand-merged bun.lock (JSON.parse silently tolerates duplicate keys — invalid per bun's parser). Fixed in `7d5dd66`;
-push run 42268579873 ✓ and PR re-run 42268591312 ✓ green. **Lesson for all future lockfile surgery: validate with
-bun's own parser, never JSON.parse.**
+**Verification:** typecheck 0 · lint 0 errors · clean rebuild (Puck ≈301 kB lazy chunk; storefront main bundle
++1.4 kB) · e2e 33/33 · live check **12/12**. CI lesson recorded in §12 and §14.
+**Known limitations:** per-browser localStorage; no media picker (image URL text field); scaled canvas;
+no multi-page list. All addressed in W1–W2.
 
-**Known limitations:** persistence is per-browser localStorage; no media picker (image URL by text field);
-canvas is scaled (selection UX papercuts for automation, fine for humans); no multi-page list; desktop-only panel.
+### Wave 1 — Foundation: pages slice, tree & draft/publish `[open]` (3–4 d)
+Demo-DB `pages` slice (same pattern as showrooms/warranty); admin **Pages** workspace per §0A.2: folder tree,
+search, `+ New`, top-level model with slugs, draft⇄published, per-page duplicate, history (cap 20) + one-click
+revert, slug-collision guard vs `src/App.tsx` routes (unit test). Pages list shows status, updatedAt, SEO score
+badge (once W5 lands; placeholder chip before). Publish persists the document only — no auto-deploy.
+**Gate:** CRUD round-trip live check; publish/unpublish flips storefront render; revert works; folders CRUD;
+e2e gains ≥2 page-store checks.
 
-### Wave 1 — Persistence & Site Chrome `[open]` (3–4 d)
-Demo-DB `pages` slice + admin "Pages" list (search, create/edit/duplicate/delete, draft⇄published toggle,
-auto `slug`, version history with revert); singleton **Site Chrome** editor — announcement bar, header nav,
-footer columns — edited once, applied to every builder-rendered page. This is the one deliberate deviation
-from `literal-all`: chrome is global; free per-page chrome editing would let one mis-drag unbrand the whole
-site. If the owner insists on per-page chrome, ship it behind a confirm-guard with a "affects all pages" banner.
-Media picker: reuse admin Media library (`media` slice) to assign `ImageBanner`/`Hero` sources.
-**Gate:** CRUD round-trip + publish → `/lab/<slug>` shows published doc only; history revert works; Chrome
-singleton renders on lab pages; e2e gains a pages-lab persistence check.
+### Wave 2 — Sections & Elements libraries `[open]` (5–7 d)
+Build the §5.1/§5.2 catalogues as Puck-registered components with WOODEX tokens: 40 sections across
+10 categories with thumbnail cards, "Label shown in Layers", tabs **Sections · UI kit · Templates · Images**,
+category chips (All 40 · Hero · Features · Pricing · Stats & charts · Testimonials · Team ·
+Call to action · Content · Forms · Components), **click to add after the selected section** + drag-drop,
+and the Elements palette (BASIC + WIDGETS). **Layers panel**: select/reorder/hide/lock sections & elements;
+label-driven layer names; lock prevents edit until unlocked.
+**Gate:** every catalogued section mounts with sane defaults; all elements placeable; hide/lock honored on
+storefront render; alt text required for Image; e2e +4.
 
-### Wave 2 — Storefront migration with visual parity `[open]` (5–7 d)
-`PuckPage` engine; migrate in order of risk (lowest first): **warranty → services → materials → showrooms →
-custom design → legal (new) → home**. Home last because it is the flagship. Per page: extract current static
-layout into the equivalent block sequence, seed the builder document, flip the route behind a data-present check,
-**side-by-side screenshot parity** (current static vs builder output at 3 breakpoints), owner sign-off per page.
-Static implementation stays in-repo, unused-but-fallbackable, until all migrated pages pass UAT — then it is
-removed in a dedicated cleanup commit (keep git history, not dead code).
-**Gate:** zero visual regression per page; e2e 33/33 + new builder assertions; Lighthouse within 5% of baseline.
+### Wave 3 — Theme: whole-website tokens `[open]` (3–4 d)
+§0A.6 panel exactly as observed: COLOURS (brand navy / text / muted text / page background / light surface /
+beige + add/remove/reorder slots), FONTS (body/heading; Google Fonts search **online only** — offline fallback
+bundles Inter + Plus Jakarta Sans subsets; empty field = DM Sans per legacy copy), **Base text size** 16px slider,
+**HEADING SIZES (DESKTOP)** H1/H2/H3 sliders + **"Use custom heading sizes"** toggle. Stored as CSS custom
+properties (`--woodex-*`) on `documentElement`; demo-DB `theme` singleton (versioned snapshots, one-click
+restore); export/import JSON for environment moves. Section skins **Original · White · Cream · Navy** per section
+instance (class + token swap, navy skin uses light ink at AA contrast).
+**Gate:** token edit → all lab pages restyle live; skins ×4 render; snapshot revert; no FOUC (tokens inlined
+before first paint via build-time defaults + `data-theme` attribute); e2e +2.
 
-### Wave 3 — New pages, registry & SEO `[open]` (4–6 d)
-Create-from-scratch (name, slug, template); route registry with collision detection against existing routes;
-draft preview links (`/lab/<slug>?v=draft`); **build-time sitemap.xml regeneration** from published builder
-pages (homepage/showrooms/materials… entries stay, new pages appended); noindex toggle per page; 404 fallback
-for unknown builder slugs. Legal pages (privacy, terms, returns) authored here — they never existed and become
-builder pages, satisfying the `literal-all` legal scope for the first time.
-**Gate:** publish → URL reachable + in sitemap + noindex off; unpublish → 404 + removed from next sitemap build;
-zero collisions with `src/App.tsx` routes (unit test against the route manifest).
+### Wave 4 — Inspector parity + Linked styles `[open]` (6–9 d)
+The §0A.8 right inspector, three tabs:
+**Content** — Section skin; **Background** `None · Image · Video · YouTube` + **Parallax** toggle ("image stays
+fixed…"); Colour preset; Spacing preset; **Overlay**; **Top/Bottom separator**; Container `Boxed|Full`,
+`Auto|Full`; **Label (shown in Layers)**; Layout group. **General** — Tag (`<section>`), ID, Title, Aria label,
+**Classes** chips (`hm-section`-style; auto `hm-section` on sections; free add/remove with duplicate guard).
+**Advanced** — **Animation on scroll**: Effect (None/Fade/Slide/Zoom/…), Delay (ms), Duration (ms, default 700),
+▶ **Preview** (plays once on entry; auto-disabled for `prefers-reduced-motion`); **Responsive visibility**
+(hide Desktop/Tablet/Mobile).
+**Style** — header: **Editing `Desktop ▾` · State `Normal ▾` · Reset**; **Linked styles** radio — **This element
+only** (Phase A: per-node CSS variables) vs **`All .hm-* on this page (N)`** (Phase B: managed page-scoped
+class rules in a sandboxed stylesheet, `@woodex-page-rules <slug>` layer — never inline styles, never global);
+groups: Display · **Typography** (size/weight/family (Jakarta/Inter + search)/align/line-height/letter-spacing/
+transform/style/decoration/colour slider) · Size · Margin · Padding · Border · Border radius · Background image ·
+**Effects & transform** (hover-achievable transforms behind State: Hover). Canvas gains the inline rich-text
+toolbar (B/I/U/S · link · colour · align · A/Aa · size) + "Heading 2" type chip + click-"+" insertion handle.
+**Gate:** class rule applies to all N matches and **does not leak cross-page** (unit test); Phase A ships usable
+even if Phase B slips; contrast AA on navy skin; keyboard focus visible; axe on lab pages; e2e +4.
 
-### Wave 4 — Quality gates & publish validation `[open]` (3–4 d)
-Publish-time validator: missing `alt`, empty hrefs, `javascript:` URLs, heading-order sanity (no h3 before h2),
-image file-size budget warning, at least one heading and one CTA; results shown as a blocking/non-blocking checklist
-(non-blocking by default; blocking for `alt` and unsafe URLs). Root SEO fields enforced (`title`, `description`,
-`ogImage`). axe run against `/lab/home` (0 critical). Route-level lazy chunks already split; verify initial-load
-budget unchanged (<250 kB gzip excluding admin).
-**Gate:** validator unit tests; axe clean; performance budget diff reported in the PR.
+### Wave 5 — SEO layer `[open]` (3–5 d)
+§0A.7 SEO workspace per page: **Page title** (≤60) + **Meta description** (≤160) live counters; **Focus keyphrase**;
+breadcrumb URL preview + **live Google result preview** (title/URL/description render as SERP); **Analyse** button
+runs a fully local Yoast-style ruleset (keyphrase present elsewhere?; keyphrase in title/meta/first paragraph/H2?;
+title ≤60 & ≥30; meta ≤160 & ≥120; exactly one H1; word count ≥ 300; readability Flesch ≥ 60) with red/amber/green
+bullets exactly as legacy; **SEO** + **Readability** score badges; "**Open in SEO manager ↗**" — wired to the W6
+MCP audit endpoint (or removed in builds without the MCP service). Publishing blocked (configurable) on:
+missing title/description, ≠1 H1, empty focus keyphrase, `noindex` left ON for a published page.
+Storefront integration: published builder pages enter **sitemap.xml at build time** (script aggregates demo-DB
+or Bagisto `pages`), canonical + og:title/description/image/article:published_time, JSON-LD (BreadcrumbList +
+FAQPage/Article per blocks used). robots.txt unchanged; `/lab/*` stays disallowed.
+**Gate:** analysis flags missing keyphrase (red) and blesses a golden page (all green + scores ≥ 80);
+sitemap includes a freshly published page after rebuild; Rich Results test passes for a FAQ-built page.
 
-### Wave 5 — Bagisto CMS mapping `[planned]` (4–5 d)
-Persist the page `Data` JSON as a Bagisto CMS page with a `puck_data` custom attribute (preferred) or native
-blocks; extend `src/api/bagisto/*` behind `getAdminApi()`; migration script reads demo-DB `pages` → writes Bagisto;
-dual-run: demo DB remains source of truth until flag `VITE_PAGES_SOURCE=bagisto` is set; rollback = env flag.
-**Gate:** read path parity (same `Data` round-trips), write path behind flag, rollback rehearsed.
+### Wave 6 — AI + MCP build path `[planned]` (5–7 d)
+Local **MCP server** (`woodex-builder-mcp`, stdio + optional HTTP) bound to the same pages store — zero cost
+(MCP is an open protocol); coding agents (Claude Code, Codex, local LLM agents) connect and get:
+`list_pages` · `get_page` · `create_page` · `upsert_section` · `set_theme_tokens` · `run_seo_audit`
+(byte-identical verdicts to the W5 panel) · `diff_page` · `draft_publish` — **there is deliberately no
+`publish_page` tool**; publish remains a human action in `/admin/pages-lab` after reviewing the diff.
+AI-authored documents are drafts with `source:"ai"`, full before/after diff attached to the draft, and validator
+output (W4/W5) inlined; **audit log** slice (`woodex.ai.audit.v1`): actor, tool, target, diff hash, timestamp.
+Owner picks depth (§11 Q4): (a) audit-only · (b) audit + drafts [recommended] · (c) full page generation incl.
+local-SEO catalogue fan-out (e.g. "create 20 city × service pages from the `HeroForm` template") — always drafts.
+**Gate:** tool contract test-suite; publish impossible via MCP; audit log records every write; SEO panel and
+MCP audit return identical results on the same document; W6 ships only after W4/W5 gates are green.
 
-### Wave 6 — Optional evolution `[planned]`
-tiptap rich-text block; multi-page "layout presets" (e.g. Warranty Landing, Seasonal Campaign); scheduled
-publish; localized pages (ur/en with hreflang — see `urdu-hreflang-spike.md`); template gallery per persona.
+### Wave 7 — Bagisto CMS mapping `[planned]` (4–5 d)
+(The previous "Wave 5" content, renumbered.) JSON page document persisted as Bagisto CMS page with `puck_data`
+custom attribute (preferred) or native blocks; extend `src/api/bagisto/*` behind `getAdminApi()`; migration
+script reads demo-DB `pages` → writes Bagisto; dual-run via flag `VITE_PAGES_SOURCE=demo|bagisto`; rollback =
+env flag. **Gate:** read-path parity; write behind flag; rollback rehearsed.
+
+### Wave 8 — Optional evolutions `[planned]`
+tiptap rich-text block; layout presets ("Warranty Landing", "Seasonal Campaign"); scheduled publish; ur/en
+hreflang (see `urdu-hreflang-spike.md`); **bulk local-SEO catalogue generation** (legacy's superpower:
+city × service matrices from templates, AI-assisted in W6, owner-reviewed); template gallery per persona;
+Wayback/diff viewer.
 
 ---
 
@@ -308,6 +484,10 @@ publish; localized pages (ur/en with hreflang — see `urdu-hreflang-spike.md`);
 | R10 | bun.lock hand-merged entries diverge from a fresh bun resolve | Medium | Validated: trailing-comma-strip strict parse (780 pkgs); CI `install --frozen-lockfile` on every push (watch next run); if CI fails, regenerate lock on a bun-enabled machine and land as dedicated PR |
 | R11 | Legal pages authored hastily create compliance exposure | Medium | Template with standard PK e-comm clauses; owner/legal review before publish (Wave 3 gate) |
 | R12 | Two sources of truth during migration (static vs builder) | Medium | Migration registry; per-route data-present check; delete static only post-UAT; e2e asserts both paths identical for shared pages |
+| R13 | **Linked styles** ("All .hm-section on this page (9)") implemented as inline styles → broken specificity + cross-page leakage | **High** | Phase A element-only (per-node CSS vars) ships first; Phase B = managed page-scoped class-rule stylesheet (`@woodex-page-rules <slug>` layer); unit tests assert zero cross-page leakage; page-scope enforced by the engine, not by authors |
+| R14 | **Theme (whole website)** edit reshapes every page at once (one bad token = site-wide breakage) | **High** | Versioned `theme` singleton snapshots + one-click restore; "Use custom heading sizes" behind explicit confirm; staged preview re-render checklist before save-propagate; a11y contrast check on skins at save time |
+| R15 | AI agents (W6) write content that reaches production unreviewed | Medium | No `publish_page` MCP tool exists; AI docs are drafts with `source:"ai"` + diff + validator report; human publishes in admin; audit log slice `woodex.ai.audit.v1` |
+| R16 | Parity scope creep (legacy is years of builder) → budget blowout | **High** | Parity acknowledged as ceiling, not MVP; per-wave owner gates; W4 hardest wave split into Phase A/B; if slipping, W6 shrinks to audit-only; W2 catalogue can phase (HERO+FEATURES first, Pricing/Team later) |
 
 **Flags requiring owner decision before Wave 1:** Chrome-singleton exception (R1, recommended yes);
 `/p/<slug>` vs top-level slugs (Wave 3); CustomEmbed HTML block (R-blocked, default off); whether builder
@@ -321,7 +501,9 @@ pages may shadow reserved routes (`/shop`, `/checkout`, …) — default: never.
 2. `bun run e2e` → 33/33 (grow with module coverage: pages CRUD ≥ +2 checks in Wave 1)
 3. Live scripted browser pass for every interactive surface (lab editor, Chrome singleton, publish/rollback)
 4. axe on `/lab/*` (Wave 4+) · screenshot parity sign-off for migrated pages (Wave 2)
-5. Commit → push `arena/cb0d09e3-woodex-reimagined` → PR #3 checks green (frozen lockfile)
+5. Linked-styles regression: page-scope rules never apply on other pages (unit test with two documents)
+6. a11y: visible focus, AA contrast on skins, `prefers-reduced-motion` honored by scroll animations
+7. Commit → push `arena/51eb86ae-woodex-reimagined` → PR checks green (frozen lockfile)
 
 ---
 
@@ -353,15 +535,34 @@ main bundle only grew ≈1.4 kB (route registration); rollback of the feature is
 
 ---
 
-## 11. Open questions for the owner (blocking Wave 1)
+## 11. Open questions for the owner (v2 — 2026-11-06)
 
-1. Site Chrome singleton exception (recommended) — approve?
-2. New-page URLs: top-level slugs (`/warranty-extended`) or `/p/…`? (collision rules apply either way)
-3. CustomEmbed (raw HTML) block — default off; enable?
-4. Publish permission: any admin, or restricted role when real auth lands (Bagisto RBAC)?
-5. Legal page copy — who drafts privacy/returns/terms (owner + counsel)? Deadline?
+Kickoff of Wave 1 needs Q1–Q3; Q4–Q6 shape W5–W7. (Delivered as the question form in chat — answer there
+and the plan is amended in the same commit.)
 
----
+1. **Brand system (§0A.10):** (a) keep current WOODEX REIMAGINED identity (hon-green/Inter) for builder output ·
+   (b) adopt legacy Interior tokens (navy `#0C1628`/beige/Plus Jakarta Sans) — builder looks like the old site ·
+   (c) **[recommended]** both: Theme presets per brand, default = current reimagined, optional "Legacy Interior"
+   preset · (d) the legacy site itself is the migration target (this builder rebuilds `wooodex.com.pk`).
+2. **Site Chrome editing model (§0A.9):** (a) singleton Chrome editor (W0-era recommendation) ·
+   (b) legacy parity — header/footer/announcement are in-canvas sections everywhere ·
+   (c) **[recommended]** linked master sections: chrome is a canvas section that is *externally linked* —
+   edit anywhere, propagates to every page; with per-page detach behind a confirm (literal-all preserved, R1 killed).
+3. **Wave gating & depth (§6):** (a) **[recommended]** strict per-wave owner sign-off, W1→W7 (errors caught
+   early; effort 37–54 d worst case) · (b) W1–W3 together then gate (11–15 d to pages+sections+theme) ·
+   (c) waves 1–7 mega-sprint, no intermediate gates (fast, highest risk) · (d) W1 only, reassess after demo.
+4. **AI + MCP depth (W6):** (a) audit-only tools first · (b) **[recommended]** audit + drafts (owner publishes) ·
+   (c) full generation incl. local-SEO catalogue fan-out · (d) defer AI entirely (W6 removed; −5–7 d).
+5. **Publish permission (W1+):** (a) any admin can publish (demo-gate status quo) ·
+   (b) **[recommended]** owner-only publish; admins + AI agents create drafts · (c) decide with Bagisto RBAC (W7).
+6. **Legacy 81-page catalogue (§0A.2):** (a) builder targets the WOODEX furniture site only (current repo) ·
+   (b) **[recommended if legacy stays live]** port the legacy Woodex Interior site into this builder too
+   (template fan-out, W8) and retire the legacy stack · (c) keep both products permanently separate; no port.
+
+### Decided (2026-11-06, this session)
+PR #3 merged (owner: "yes, merge") · zero-cost hard constraint · literal-all scope · `@puckeditor/core@0.24.0`
+(MIT) chosen · bun.lock CI proven green after `ws`-duplicate fix · PR #4 (docs) OPEN, unmerged by owner's
+"just the docs commit" instruction · master plan upgraded to v2.0 (this revision).
 
 ## 12. Dependency pin & maintenance notes
 
@@ -387,8 +588,8 @@ main bundle only grew ≈1.4 kB (route registration); rollback of the feature is
 ## 13. Execution checklist
 
 Tracked in `UPGRADE-TODO.md` (see the **Page builder (Puck)** section): Wave 0 items ticked; Waves 1–5
-queued with owners implied (agent) and gates from §8. This document is the strategy; the to-do file is
-the tracker — update both in the same commit per wave.
+queued as PB-1…PB-7 (v2 renumbering) with owners implied (agent) and gates from §8. This document is the
+strategy; the to-do file is the tracker — update both in the same commit per wave.
 
 ---
 
@@ -408,3 +609,15 @@ the tracker — update both in the same commit per wave.
   `/lab/home` is now reachable in production (unlisted, noindex, badged, read-only; removal available on request).
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
+- **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:
+  pages tree (`(top level) 81`), Sections/UI-kit/Templates/Images tabs (All 40, HERO·4, FEATURES·5…), Elements
+  palette, Layers rail, **Theme (whole website)** (colours incl. brand navy #0C1628, muted text, page background,
+  light surface, beige; Plus Jakarta Sans; 16px base; H1 72/H2 48/H3 22 + custom toggle), **SEO** panel
+  (title 56/60, meta 151/160, focus keyphrase, live Google preview, SEO 60 / Readability 86 badges, red/green
+  analysis), **Content/Style/Advanced** inspector (Section skin Original/White/Cream/Navy; animation on scroll
+  with delay/duration + Preview + reduced-motion note; General Tag/ID/Title/Aria/Classes chips; Responsive
+  visibility; Style tab with Desktop/Tablet/Mobile × Normal/Hover, **Linked styles** "this element only vs
+  All .hm-section on this page (9)"; Background Image/Video/YouTube + Parallax; separators; effects & transform;
+  inline text toolbar). This plan was upgraded to v2.0: anatomy §0A · requirements §1.8–1.10 · catalogues §5.1/§5.2 ·
+  waves re-phased **W1 foundation → W7 Bagisto** (W8 = evolutions) · effort re-estimated §3.2 (≈37–54 d, gated) ·
+  risks R13–R16 · open questions §11 regenerated. Screenshots were transcribed, not copied; assets stay with the owner.

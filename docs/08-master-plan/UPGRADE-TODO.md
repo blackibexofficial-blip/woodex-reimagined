@@ -269,6 +269,10 @@ Full strategy: `docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md`. Owner decision
 scope **literal-all** (header/footer/announcement/all marketing pages); **zero-cost hard constraint**
 (no paid SaaS); deliverable **plan + spike**. Recommendation: `@puckeditor/core@0.24.0` (MIT).
 
+**v2.0 (2026-11-06):** plan upgraded to legacy parity (pages tree/Sections/Elements/Layers/Theme/SEO/inspector/
+AI+MCP) — waves re-numbered **W1–W7** (Bagisto → W7), W8 optional/evolutions; effort ≈37–54 d, owner-gated per wave.
+See plan §0A (legacy anatomy), §6, §11. Wave list below refers to v2 numbering.
+
 - [x] **PB-0.1** Dependency integrated cleanly — `@puckeditor/core@0.24.0` in package.json; 63/45 overlay
   (repo majors kept); package-lock merged (64 entries, 0.24.0 on disk == lock); bun.lock hand-merged
   (64 entries, 780 pkgs strict-parse, `@puckeditor/core` added to workspace deps). `@measured/puck`
@@ -286,21 +290,29 @@ scope **literal-all** (header/footer/announcement/all marketing pages); **zero-c
   (editor mount → scale-corrected canvas select → field edit → Publish → /lab/home renders the edit;
   0 console errors) · e2e 33/33 · typecheck 0 · lint 0 errors · clean rebuild (Puck splits ~301 kB lazy
   chunk; storefront main bundle +1.4 kB).
-- [ ] **PB-1** Wave 1 — demo-DB `pages` slice + admin pages list (create/edit/duplicate/delete,
-  draft⇄published, history/revert) + **Site Chrome singleton** (announcement/header/footer — one deliberate
-  deviation from literal-all; needs owner sign-off) + media picker. Est. 3–4 d.
-- [ ] **PB-2** Wave 2 — `PuckPage` engine + storefront migration to builder content, lowest risk first
-  (warranty → services → materials → showrooms → custom design → legal → home); static fallback kept;
-  screenshot parity + owner sign-off per page. Est. 5–7 d.
-- [ ] **PB-3** Wave 3 — new-page registry (collision check vs App.tsx routes), draft preview links,
-  build-time sitemap from published pages, noindex switch; **author privacy/terms/returns as builder pages**
-  (legal never existed). Est. 4–6 d.
-- [ ] **PB-4** Wave 4 — publish validator (alt text, safe URLs, heading order), root SEO fields enforced,
-  axe clean on lab, perf budget verified (<250 kB gzip excluding admin). Est. 3–4 d.
-- [ ] **PB-5** Wave 5 — Bagisto CMS mapping (puck_data custom attribute behind `getAdminApi()`), demo-DB →
+- [ ] **PB-1** Wave 1 — Foundation: demo-DB `pages` slice + Pages workspace (folder tree per plan §0A.2,
+  CRUD, draft⇄published, history/revert, slug registry vs App.tsx routes). Est. 3–4 d.
+- [ ] **PB-2** Wave 2 — Sections & Elements libraries: 40-section UI-kit catalogue (thumbnails, label-in-Layers,
+  Sections/UI kit/Templates/Images tabs, category chips, click-to-add-after) + Elements palette (BASIC+WIDGETS)
+  + Layers panel (select/reorder/hide/lock). Est. 5–7 d.
+- [ ] **PB-3** Wave 3 — Theme: whole-website token panel (colours/fonts/base/heading scale), CSS custom
+  properties, section skins Original/White/Cream/Navy, versioned `theme` singleton snapshots/restore. Est. 3–4 d.
+- [ ] **PB-4** Wave 4 — Inspector parity: Content/Style/Advanced tabs; Desktop/Tablet/Mobile × Normal/Hover;
+  **Linked styles** (element-only → page-scope class rules, leak-tested); animation on scroll (reduced-motion aware);
+  General Tag/ID/Title/Aria/Classes chips; inline text toolbar; responsive visibility. Est. 6–9 d.
+- [ ] **PB-5** Wave 5 — SEO layer: page title/meta counters (60/160), focus keyphrase, live Google preview,
+  local Yoast-style Analyse (SEO + Readability score badges), publish gate, sitemap + JSON-LD. Est. 3–5 d.
+- [ ] **PB-6** Wave 6 — AI + MCP build path: local MCP server (`list_pages/get_page/create_page/upsert_section/
+  set_theme_tokens/run_seo_audit/diff_page/draft_publish` — deliberately no publish tool); draft-first AI docs with
+  diff + validator; audit log `woodex.ai.audit.v1`. Depth per owner Q4. Est. 5–7 d.
+- [ ] **PB-7** Wave 7 — Bagisto CMS mapping (`puck_data` custom attribute behind `getAdminApi()`), demo-DB →
   Bagisto migration, env-flag rollback. Est. 4–5 d.
-- [ ] **PB owner questions** — Chrome singleton exception; top-level vs `/p/<slug>` URLs; CustomEmbed HTML
-  block (default off); publish permission under real RBAC; legal copy drafter. See master plan §11.
+- [ ] **PB owner questions (v2)** — Q1 brand (current reimagined vs legacy navy/beige vs both-presets vs
+  rebuild legacy site) · Q2 chrome model (singleton vs in-canvas vs linked master) · Q3 wave gating (strict
+  W1→W7 sign-off vs batched W1–W3 vs mega-sprint vs W1-only) · Q4 AI depth (audit-only vs audit+drafts vs
+  full generation) · Q5 publish permission (any admin vs owner-only vs Bagisto RBAC later) · Q6 legacy
+  81-page catalogue (separate vs port into this builder vs retire legacy stack). Delivered as chat form
+  2026-11-06; see master plan §11.
 
 ## Cross-cutting / parked
 
@@ -321,8 +333,8 @@ Everything outstanding after the merge — owner to triage; agent holds code-siz
   Vercel deploys production from `main`; agent has no Vercel access. Owner confirms the deployment and
   that the storefront + admin are healthy. NOTE: `/lab/home` is now public (unlisted, `noindex`,
   badged, read-only) — if unwanted on production, say so and a one-commit removal follows.
-- [ ] **PB owner questions (master plan §11)** — Site Chrome singleton exception; top-level vs `/p/<slug>`
-  URLs; CustomEmbed HTML block (default off); publish permission under real RBAC; legal-page copy drafter (+ deadline).
+- [ ] **PB owner questions (v2 · master plan §11)** — Q1 brand · Q2 chrome model · Q3 wave gating · Q4 AI depth ·
+  Q5 publish permission · Q6 legacy 81-page catalogue. (Form delivered 2026-11-06.)
 - [ ] **PR #3 merged, no further merges pending authorisation** — next merges need the same explicit go-ahead.
 - [ ] **`Staff` footer link** — remove at owner's sign-off word (one-line change).
 - [ ] **Payment gateway** — parked (WhatsApp-first manual confirmation); revisit Easypaisa/JazzCash/card once merchant credentials exist.
