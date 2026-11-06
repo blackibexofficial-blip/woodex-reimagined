@@ -1056,6 +1056,17 @@ export interface AdminCategory {
   /** Display order among siblings; lower first. Absent = alphabetical fallback. */
   sortOrder?: number;
   visible: boolean;
+  /** Legacy storefront hero style (lbpanel parity). Omitted = "standard". */
+  heroStyle?: "standard" | "split" | "full-width" | "minimal";
+  /** Legacy homepage rails for this category (lbpanel parity). */
+  homepageBestSellers?: boolean;
+  homepageCarousel?: boolean;
+  /** Hero sub-copy / SEO-ish intro line (legacy Short Description). */
+  shortDescription?: string;
+  /** Hero background image URL or /public path (legacy Background Image). */
+  backgroundImage?: string;
+  /** Long-form body copy (legacy Long Description). */
+  longDescription?: string;
   /** Filled in by adapters that can compute it (demo). Omitted otherwise. */
   productCount?: number;
   createdAt: string;     // ISO
@@ -1328,7 +1339,10 @@ export interface AdminApi {
   createCategory(input: { name: string; group: AdminCategory["group"]; parentId?: string }): Promise<AdminCategory>;
   updateCategory(
     id: string,
-    patch: Partial<Pick<AdminCategory, "name" | "group" | "visible" | "parentId" | "sortOrder">>,
+    patch: Partial<Pick<AdminCategory,
+      | "name" | "group" | "visible" | "parentId" | "sortOrder"
+      | "heroStyle" | "homepageBestSellers" | "homepageCarousel"
+      | "shortDescription" | "backgroundImage" | "longDescription">>,
   ): Promise<AdminCategory | undefined>;
   /** Refuses (returns ok:false + reason) while products still reference the category. */
   deleteCategory(id: string): Promise<{ ok: boolean; error?: string }>;

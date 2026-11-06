@@ -7,6 +7,7 @@ import type { AdminCategory } from "@/api/types";
 import { formatNumber, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -21,6 +22,13 @@ const GROUP_STYLE: Record<Group, string> = {
   home: "bg-emerald-50 text-emerald-800 border-emerald-200",
   ungrouped: "bg-muted text-muted-foreground border-border",
 };
+const HERO_STYLES = [
+  { value: "standard", label: "Standard — headline + breadcrumb" },
+  { value: "split", label: "Split — copy left, image right" },
+  { value: "full-width", label: "Full-width — edge-to-edge image hero" },
+  { value: "minimal", label: "Minimal — title only" },
+] as const;
+type HeroStyle = (typeof HERO_STYLES)[number]["value"];
 const ROOT = "__root__";
 const GROUP_ORDER: { key: Group; label: string }[] = [
   { key: "office", label: "Office Furniture" },
@@ -41,6 +49,12 @@ export default function AdminCategories() {
   const [draftName, setDraftName] = useState("");
   const [draftGroup, setDraftGroup] = useState<Group>("office");
   const [draftParent, setDraftParent] = useState<string>(ROOT);
+  const [draftHeroStyle, setDraftHeroStyle] = useState<HeroStyle>("standard");
+  const [draftBestSellers, setDraftBestSellers] = useState(false);
+  const [draftCarousel, setDraftCarousel] = useState(false);
+  const [draftShortDesc, setDraftShortDesc] = useState("");
+  const [draftBgImage, setDraftBgImage] = useState("");
+  const [draftLongDesc, setDraftLongDesc] = useState("");
   const [saving, setSaving] = useState(false);
 
   const [pendingDelete, setPendingDelete] = useState<AdminCategory | null>(null);
@@ -115,11 +129,22 @@ export default function AdminCategories() {
     return out;
   }, [rows, dialog]);
 
-  const openCreate = () => { setDraftName(""); setDraftGroup("office"); setDraftParent(ROOT); setDialog({ mode: "create" }); };
+  const openCreate = () => {
+    setDraftName(""); setDraftGroup("office"); setDraftParent(ROOT);
+    setDraftHeroStyle("standard"); setDraftBestSellers(false); setDraftCarousel(false);
+    setDraftShortDesc(""); setDraftBgImage(""); setDraftLongDesc("");
+    setDialog({ mode: "create" });
+  };
   const openEdit = (category: AdminCategory) => {
     setDraftName(category.name);
     setDraftGroup(category.group);
     setDraftParent(category.parentId ?? ROOT);
+    setDraftHeroStyle(category.heroStyle ?? "standard");
+    setDraftBestSellers(Boolean(category.homepageBestSellers));
+    setDraftCarousel(Boolean(category.homepageCarousel));
+    setDraftShortDesc(category.shortDescription ?? "");
+    setDraftBgImage(category.backgroundImage ?? "");
+    setDraftLongDesc(category.longDescription ?? "");
     setDialog({ mode: "edit", category });
   };
 
@@ -154,13 +179,23 @@ export default function AdminCategories() {
   const saveDialog = async () => {
     const name = draftName.trim();
     if (!name) { toast.error("Give the category a name."); return; }
+    const legacyPatch: Parameters<typeof api.updateCategory>[1] = {
+      heroStyle: draftHeroStyle, // always stored ("standard" is a valid, explicit value; round-trips through openEdit)
+      homepageBestSellers: draftBestSellers,
+      homepageCarousel: draftCarousel,
+      shortDescription: draftShortDesc.trim(),
+      backgroundImage: draftBgImage.trim(),
+      longDescription: draftLongDesc.trim(),
+    };
     setSaving(true);
     try {
       if (dialog?.mode === "create") {
-        const created = await api.createCategory({ name, group: draftGroup, parentId: draftParent === ROOT ? undefined : draftParent });
+        const created = await api.createCategory({ name: name, group: draftGroup, parentId: draftParent === ROOT ? undefined : draftParent });
+        const hasLegacy = legacyPatch.homepageBestSellers || legacyPatch.homepageCarousel || legacyPatch.heroStyle || legacyPatch.shortDescription || legacyPatch.backgroundImage || legacyPatch.longDescription;
+        if (hasLegacy) await api.updateCategory(created.id, legacyPatch);
         toast.success(`Category “${created.name}” added.`);
       } else if (dialog?.mode === "edit") {
-        const patch: Parameters<typeof api.updateCategory>[1] = { name, group: draftGroup };
+        const patch: Parameters<typeof api.updateCategory>[1] = { name, group: draftGroup, ...legacyPatch };
         const cur = dialog.category.parentId ?? ROOT;
         if (draftParent !== cur) patch.parentId = draftParent === ROOT ? "" : draftParent; // "" re-roots
         await api.updateCategory(dialog.category.id, patch);
@@ -250,6 +285,12 @@ export default function AdminCategories() {
                     </p>
                   );
                 })()}
+                {(c.homepageBestSellers || c.homepageCarousel) && (
+                  <span className="mt-0.5 flex flex-wrap items-center gap-1">
+                    {c.homepageBestSellers && <span title="Products surface in the Best Sellers rail" className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">Best Sellers</span>}
+                    {c.homepageCarousel && <span title="Products surface in the Home Carousel" className="rounded border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-800">Home Carousel</span>}
+                  </span>
+                )}
                 {searching && c.parentId && (
                   <p className="text-[10px] italic text-muted-foreground">sub of {rows.find((r) => r.id === c.parentId)?.name ?? c.parentId}</p>
                 )}
@@ -398,6 +439,39 @@ export default function AdminCategories() {
               </Select>
               <p className="mt-1 text-[11px] text-muted-foreground">Re-parenting a category moves it (and its children) into the new scope.</p>
             </div>
+            <div className="border-t border-border pt-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Storefront &amp; homepage <span className="font-normal normal-case tracking-normal text-muted-foreground/80">(legacy lbpanel parity — storefront is static until Bagisto)</span></p>
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="category-hero">Hero Style</label>
+                  <Select value={draftHeroStyle} onValueChange={(v) => setDraftHeroStyle(v as HeroStyle)}>
+                    <SelectTrigger id="category-hero" className="bg-white"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {HERO_STYLES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-wrap items-center gap-6 rounded-lg border border-border bg-secondary/40 px-4 py-3">
+                  <label className="flex items-center gap-2 text-sm text-foreground" title="Surface this category's products in the Best Sellers rail on the homepage"><Switch checked={draftBestSellers} onCheckedChange={setDraftBestSellers} /> Best Sellers rail</label>
+                  <label className="flex items-center gap-2 text-sm text-foreground" title="Surface this category's products in the Home Carousel"><Switch checked={draftCarousel} onCheckedChange={setDraftCarousel} /> Home Carousel</label>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="category-short">Short Description <span className="font-normal">(hero sub-copy)</span></label>
+                  <Input id="category-short" value={draftShortDesc} onChange={(e) => setDraftShortDesc(e.target.value)} placeholder="Executive chairs that mean business." className="bg-white" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="category-bgimage">Background Image <span className="font-normal">(URL or /public path)</span></label>
+                  <Input id="category-bgimage" value={draftBgImage} onChange={(e) => setDraftBgImage(e.target.value)} placeholder="/categories/executive-tables-hero.webp" className="bg-white font-mono text-xs" />
+                  {draftBgImage.trim() && (
+                    <img src={draftBgImage.trim()} alt="" loading="lazy" className="mt-1.5 h-16 w-auto rounded border border-border object-cover" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="category-longdesc">Long Description</label>
+                  <Textarea id="category-longdesc" rows={3} value={draftLongDesc} onChange={(e) => setDraftLongDesc(e.target.value)} placeholder="The long-form story for this category — materials, who it is for, why it lasts." className="bg-white" />
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
@@ -428,3 +502,4 @@ export default function AdminCategories() {
     </div>
   );
 }
+

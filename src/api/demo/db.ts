@@ -3972,6 +3972,20 @@ export const demoAdminApi: AdminApi = {
       }
       if (patch.group !== undefined) c.group = patch.group;
       if (patch.visible !== undefined) c.visible = patch.visible;
+      if (patch.heroStyle !== undefined) {
+        const allowed = ["standard", "split", "full-width", "minimal"] as const;
+        const v = typeof patch.heroStyle === "string" ? patch.heroStyle.trim() : "";
+        if (v === "" ) delete c.heroStyle;
+        else if ((allowed as readonly string[]).includes(v)) c.heroStyle = v as typeof allowed[number];
+      }
+      if (patch.homepageBestSellers !== undefined) c.homepageBestSellers = Boolean(patch.homepageBestSellers);
+      if (patch.homepageCarousel !== undefined) c.homepageCarousel = Boolean(patch.homepageCarousel);
+      for (const key of ["shortDescription", "backgroundImage", "longDescription"] as const) {
+        const v = patch[key];
+        if (v === undefined) continue;
+        const t = v.trim();
+        if (t) c[key] = t; else delete c[key];
+      }
       if (patch.parentId !== undefined) {
         if (patch.parentId === "") {
           delete c.parentId;
