@@ -7,6 +7,12 @@
 > **Companion to:** `README.md` (older doc) and `UPGRADE-TODO.md` (execution checklist) in this folder.
 > Where those disagree with this file on the page builder, this one wins.
 >
+> **v2.1 (2026-11-06, owner Q&A round):** all §11 questions answered — Theme **presets for both brands** (§11-Q1),
+> chrome = **linked master sections** in-canvas (§11-Q2), **per-wave owner gating** W1→W7 (§11-Q3), W6 =
+> **full generation** of pages from templates incl. SEO catalogue fan-out, draft-first (§11-Q4), **owner-only
+> publish** (§11-Q5) + **Tailgrids (MIT) added as the elements-kit completion source for missing UI elements**
+> (§5.3), **furniture site only — legacy catalogue not ported** (§11-Q6). See §14 log.
+>
 > **v2.0 (2026-11-06, same-day upgrade):** the owner shared screenshots of the **legacy Woodex Interior
 > website builder** — a complete visual website system (pages tree, 40-section UI-kit, elements palette,
 > theme/SEO/layers layers, Content/Style/Advanced inspector, linked styles, AI+MCP build path). This plan
@@ -224,10 +230,10 @@ hash-freeze and the upgrade procedure. `@puckeditor/core` peers: `react ^18 || ^
 | Wave 3 — Theme: whole-website tokens | §0A.6 panel — colours/fonts/base size/heading scale (+ custom toggle), CSS custom properties, section skins Original/White/Cream/Navy, versioned demo-DB `theme` singleton + snapshot/restore | 3–4 |
 | Wave 4 — Inspector parity + Linked styles | §0A.8 Content/Style/Advanced tabs; Desktop/Tablet/Mobile × Normal/Hover; **Linked styles** (element-only vs `All .hm-* on this page (N)`) as a managed page-scoped class-rule stylesheet; animation on scroll (reduced-motion aware); inline text toolbar; General Tag/ID/Title/Aria/Classes; responsive visibility | 6–9 |
 | Wave 5 — SEO layer | §0A.7 panel — title/meta counters (60/160), focus keyphrase, live Google preview, local Yoast-style **Analyse** (keyphrase, H1=1, title/meta length, word count, readability), SEO + Readability score badges, publish gate; sitemap + JSON-LD wiring | 3–5 |
-| Wave 6 — AI + MCP build path | local MCP server exposing `list_pages/get_page/create_page/upsert_section/set_theme_tokens/run_seo_audit/diff_page/draft_publish` to Claude Code / Codex / local agents; draft-first + validator; audit log; owner publishes | 5–7 |
+| Wave 6 — AI + MCP build path | local MCP server (full-generation depth, owner §11-Q4): `create_page` / `upsert_section` / template fan-out for local-SEO catalogue; draft-first + validator; audit log; no publish tool | 5–8 |
 | Wave 7 — Bagisto mapping | JSON page document persisted as Bagisto CMS custom attribute (or native blocks) behind `getAdminApi()`; migration of demo-DB pages; dual-run period | 4–5 |
 | Buffer / owner UAT / parity polish | linked-styles Phase B slippage, screenshot sign-offs, migration of static pages | 8–12 |
-| **Total (Waves 1–7, v2)** | | **≈ 37–54 dev-days** |
+| **Total (Waves 1–7, v2.1)** | | **≈ 37–55 dev-days** |
 
 > **v2 honesty note:** parity with the legacy system (years of builder evolution) roughly doubles the W0-era
 > estimate (22–34 → 37–54 d). Ship incrementally behind owner gates per wave; Waves 1–3 alone (11–15 d)
@@ -363,6 +369,35 @@ Category → planned WOODEX sections (variants in parentheses, mirroring legacy 
 Plus the legacy **Card box · Check list · Quote · Two buttons · Google map** primitives float in Elements
 (§5.1). Every section exposes the Content controls of §0A.8 (skin, background, overlay, separators,
 container, Label, animation, classes) — skin/background/overlay are section-level, not duplicated per child.
+### 5.3 Elements kit completion — Tailgrids (MIT) adoption plan
+**Source:** github.com/TailGrids/tailgrids (React + TS + Tailwind; `npx @tailgrids/cli add <component>`; 100+ free
+components; **MIT** verified 2026-11-06; premium UI Blocks excluded permanently).
+**Why:** our house kit (shadcn/Radix + WOODEX tokens) covers app primitives; the builder's Elements palette
+needs more marketing/layout elements than we want to hand-build (§0A.4 promise). Tailgrids closes those gaps
+fast, free, and with a11y-minded markup — **after** token remapping, never as-installed.
+
+**Adoption rules (zero-cost + zero-drift):**
+1. **Copy-in, never depend.** Components are vendored to `src/components/tailgrids/*` (or inlined as block
+   render functions) — no `@tailgrids/*` package in dependencies; the CLI is a one-off scaffold tool, not a dep.
+2. **Token remap mandatory.** Replace Tailwind colour utilities with WOODEX CSS vars (`--woodex-page-background`,
+   `--woodex-text`, …) at vendor time; hex values from their palette are deleted. A grep gate in CI/build fails on
+   known Tailgrids palette hex codes and on `tailwind.config` extensions from their theme.
+3. **House-first rule.** If the house kit already ships the element (Button, Card, Badge, Input, Dialog…), we use
+   it — Tailgrids is only for gaps (examples below). No duplicate primitives.
+4. **Free components only.** Any import/reference to Tailgrids **Pro** (paid blocks, `tailgrids.com/figma|blocks|pro`)
+   = build failure; license banner kept in every vendored file (`@license MIT © Tailgrids — https://github.com/TailGrids/tailgrids`).
+5. **A11y parity.** Vendored component must pass our gates (axe: 0 critical; keyboard operability; visible focus);
+   if it fails, we fix or drop it — never ship a weaker a11y bar to fill a visual gap.
+
+**Gap-fill list (Wave 2 targets, matched to WOODEX elements):** `check list` (icon checkmarks) · `divider line`
+(with center icon/ornament variants) · `card box` variants (image+CTA, icon+stat, testimonial card) · `small label`
+(eyebrow chips) · `quote` (styled blockquote) · `logo cloud` row · `stats/counters` · `pricing card` pattern ·
+`tabs` (content tabs element) · `alert/callout` (policy notes e.g. warranty terms). Button/Accordion/Badge/
+Dialog/Toast etc. stay house-kit.
+**Do NOT vendor:** navigation headers/footers (our linked-master chrome is bespoke), data-table (admin already
+has), charts beyond Recharts usage (stats block uses Recharts already in repo).
+**Attribution:** `THIRD_PARTY_LICENSES.md` gets a Tailgrids MIT entry; README credits Tailgrids for vendored elements.
+
 
 ---
 
@@ -388,7 +423,7 @@ badge (once W5 lands; placeholder chip before). Publish persists the document on
 e2e gains ≥2 page-store checks.
 
 ### Wave 2 — Sections & Elements libraries `[open]` (5–7 d)
-Build the §5.1/§5.2 catalogues as Puck-registered components with WOODEX tokens: 40 sections across
+Build the §5.1/§5.2/**§5.3** catalogues (elements may be vendored from **free MIT Tailgrids** per §5.3 rules) as Puck-registered components with WOODEX tokens: 40 sections across
 10 categories with thumbnail cards, "Label shown in Layers", tabs **Sections · UI kit · Templates · Images**,
 category chips (All 40 · Hero · Features · Pricing · Stats & charts · Testimonials · Team ·
 Call to action · Content · Forms · Components), **click to add after the selected section** + drag-drop,
@@ -398,7 +433,7 @@ label-driven layer names; lock prevents edit until unlocked.
 storefront render; alt text required for Image; e2e +4.
 
 ### Wave 3 — Theme: whole-website tokens `[open]` (3–4 d)
-§0A.6 panel exactly as observed: COLOURS (brand navy / text / muted text / page background / light surface /
+§0A.6 panel exactly as observed, plus **two bundled presets** (owner §11-Q1): `woodex-reimagined` (default) and `woodex-legacy-interior` (brand navy #0C1628 · beige/light surface · Plus Jakarta Sans body+heading): COLOURS (brand navy / text / muted text / page background / light surface /
 beige + add/remove/reorder slots), FONTS (body/heading; Google Fonts search **online only** — offline fallback
 bundles Inter + Plus Jakarta Sans subsets; empty field = DM Sans per legacy copy), **Base text size** 16px slider,
 **HEADING SIZES (DESKTOP)** H1/H2/H3 sliders + **"Use custom heading sizes"** toggle. Stored as CSS custom
@@ -427,6 +462,11 @@ toolbar (B/I/U/S · link · colour · align · A/Aa · size) + "Heading 2" type 
 **Gate:** class rule applies to all N matches and **does not leak cross-page** (unit test); Phase A ships usable
 even if Phase B slips; contrast AA on navy skin; keyboard focus visible; axe on lab pages; e2e +4.
 
+**Chrome model (owner §11-Q2):** header/footer/announcement are **linked master sections** rendered in-canvas —
+one master per chrome part, instances on every builder page; editing any instance edits the master (propagates
+everywhere); per-page detach requires a confirm dialog naming the page and the propagation consequence; announcement
+additionally supports per-page show/hide. Masters live in the demo-DB `pages` slice as `kind: "chrome"` docs.
+
 ### Wave 5 — SEO layer `[open]` (3–5 d)
 §0A.7 SEO workspace per page: **Page title** (≤60) + **Meta description** (≤160) live counters; **Focus keyphrase**;
 breadcrumb URL preview + **live Google result preview** (title/URL/description render as SERP); **Analyse** button
@@ -449,8 +489,8 @@ Local **MCP server** (`woodex-builder-mcp`, stdio + optional HTTP) bound to the 
 `publish_page` tool**; publish remains a human action in `/admin/pages-lab` after reviewing the diff.
 AI-authored documents are drafts with `source:"ai"`, full before/after diff attached to the draft, and validator
 output (W4/W5) inlined; **audit log** slice (`woodex.ai.audit.v1`): actor, tool, target, diff hash, timestamp.
-Owner picks depth (§11 Q4): (a) audit-only · (b) audit + drafts [recommended] · (c) full page generation incl.
-local-SEO catalogue fan-out (e.g. "create 20 city × service pages from the `HeroForm` template") — always drafts.
+Owner decision (§11-Q4): **full generation** — agents may create whole pages from templates, including local-SEO
+catalogue fan-out, as drafts (`source:"ai"`) with diff + validator report; owner publishes manually. The MCP surface still contains **no publish tool** — generation ≠ publication.
 **Gate:** tool contract test-suite; publish impossible via MCP; audit log records every write; SEO panel and
 MCP audit return identical results on the same document; W6 ships only after W4/W5 gates are green.
 
@@ -535,29 +575,28 @@ main bundle only grew ≈1.4 kB (route registration); rollback of the feature is
 
 ---
 
-## 11. Open questions for the owner (v2 — 2026-11-06)
+## 11. Owner decisions (v2.1 — answered 2026-11-06)
 
-Kickoff of Wave 1 needs Q1–Q3; Q4–Q6 shape W5–W7. (Delivered as the question form in chat — answer there
-and the plan is amended in the same commit.)
-
-1. **Brand system (§0A.10):** (a) keep current WOODEX REIMAGINED identity (hon-green/Inter) for builder output ·
-   (b) adopt legacy Interior tokens (navy `#0C1628`/beige/Plus Jakarta Sans) — builder looks like the old site ·
-   (c) **[recommended]** both: Theme presets per brand, default = current reimagined, optional "Legacy Interior"
-   preset · (d) the legacy site itself is the migration target (this builder rebuilds `wooodex.com.pk`).
-2. **Site Chrome editing model (§0A.9):** (a) singleton Chrome editor (W0-era recommendation) ·
-   (b) legacy parity — header/footer/announcement are in-canvas sections everywhere ·
-   (c) **[recommended]** linked master sections: chrome is a canvas section that is *externally linked* —
-   edit anywhere, propagates to every page; with per-page detach behind a confirm (literal-all preserved, R1 killed).
-3. **Wave gating & depth (§6):** (a) **[recommended]** strict per-wave owner sign-off, W1→W7 (errors caught
-   early; effort 37–54 d worst case) · (b) W1–W3 together then gate (11–15 d to pages+sections+theme) ·
-   (c) waves 1–7 mega-sprint, no intermediate gates (fast, highest risk) · (d) W1 only, reassess after demo.
-4. **AI + MCP depth (W6):** (a) audit-only tools first · (b) **[recommended]** audit + drafts (owner publishes) ·
-   (c) full generation incl. local-SEO catalogue fan-out · (d) defer AI entirely (W6 removed; −5–7 d).
-5. **Publish permission (W1+):** (a) any admin can publish (demo-gate status quo) ·
-   (b) **[recommended]** owner-only publish; admins + AI agents create drafts · (c) decide with Bagisto RBAC (W7).
-6. **Legacy 81-page catalogue (§0A.2):** (a) builder targets the WOODEX furniture site only (current repo) ·
-   (b) **[recommended if legacy stays live]** port the legacy Woodex Interior site into this builder too
-   (template fan-out, W8) and retire the legacy stack · (c) keep both products permanently separate; no port.
+1. **Brand system → (c) Both.** Theme (W3) ships two presets: `woodex-reimagined` (default) and
+   `woodex-legacy-interior` (navy/beige/Plus Jakarta Sans). One engine, both brands.
+2. **Chrome editing → (c) Linked master sections.** Header/footer/announcement render on the canvas like any
+   section, but each instance is externally linked to a **master document**; editing any instance writes the master
+   and propagates to every page. Per-page detach behind explicit confirm (literal-all preserved; R1 closed).
+   AnnouncementBar additionally toggles per page (dismiss state is client-side anyway).
+3. **Gating → strict per-wave owner sign-off.** W1→W7 proceed one wave at a time; each wave ends with gates +
+   owner click-through before the next starts. No mega-sprint.
+4. **AI + MCP → full generation.** W6 agents may create whole pages from templates (e.g. local-SEO catalogue
+   fan-out) — always as drafts (`source:"ai"`) with diff + validator report; owner publishes each page manually.
+   No publish capability exists in the MCP surface, ever.
+5. **Publish permission → owner-only.** Admin staff and AI agents create/edit drafts; **only the owner publishes**.
+   Relaxes to roles when Bagisto RBAC lands (W7). Interim: Pages workspace shows Publish controls only for the
+   owner account (W1 implements via env/demo-config owner check).
+6. **Legacy 81-page catalogue → stay separate.** This builder targets the WOODEX Reimagined furniture site;
+   the legacy interior catalogue is never ported into this repo. (W8 bulk-template fan-out may still create
+   furniture-site local-SEO pages, subject to §11-Q4.)
+7. **NEW — Tailgrids elements kit (Q5 follow-up):** adopt **free MIT Tailgrids components** to complete the
+   Elements palette for UI elements we lack or rebuild worse (§5.3). Premium TailGrids blocks/templates are
+   out of scope permanently. License verified 2026-11-06 (LICENSE.md: MIT, © 2025 Tailgrids).
 
 ### Decided (2026-11-06, this session)
 PR #3 merged (owner: "yes, merge") · zero-cost hard constraint · literal-all scope · `@puckeditor/core@0.24.0`
@@ -621,3 +660,10 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   inline text toolbar). This plan was upgraded to v2.0: anatomy §0A · requirements §1.8–1.10 · catalogues §5.1/§5.2 ·
   waves re-phased **W1 foundation → W7 Bagisto** (W8 = evolutions) · effort re-estimated §3.2 (≈37–54 d, gated) ·
   risks R13–R16 · open questions §11 regenerated. Screenshots were transcribed, not copied; assets stay with the owner.
+- **2026-11-06 (late, v2.1)** — Owner Q&A round: **Q1 both brand presets** · **Q2 linked master chrome** (in-canvas,
+  propagate-to-all, detach behind confirm) · **Q3 strict per-wave gates** · **Q4 full generation, draft-first,
+  owner publishes** · **Q5 owner-only publish + Tailgrids (MIT) to complete the Elements kit for missing
+  elements** (adoption plan §5.3: copy-in vendored to `src/components/tailgrids/*`, mandatory WOODEX token
+  remap, house-first rule, free components only, attribution + grep gate on Tailgrids palette hex / Pro imports) ·
+  **Q6 furniture site only; legacy catalogue stays separate**. §11 rewritten as decisions; effort re-estimated
+  (W6 5–8 d; total ≈37–55 d). Tailgrids license verified directly against the repository LICENSE.md (MIT, © 2025).

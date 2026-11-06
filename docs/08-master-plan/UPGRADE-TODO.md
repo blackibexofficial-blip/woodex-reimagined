@@ -273,6 +273,11 @@ scope **literal-all** (header/footer/announcement/all marketing pages); **zero-c
 AI+MCP) — waves re-numbered **W1–W7** (Bagisto → W7), W8 optional/evolutions; effort ≈37–54 d, owner-gated per wave.
 See plan §0A (legacy anatomy), §6, §11. Wave list below refers to v2 numbering.
 
+**v2.1 (2026-11-06, owner Q&A):** brand = **both presets** (W3) · chrome = **linked master sections** (W4) ·
+**per-wave owner gating** (W1→W7) · W6 = **full generation** (draft-first, owner publishes) · publish = **owner-only** ·
+**Tailgrids (MIT) adopted for missing elements** (§5.3 — copy-in vendored, token-remapped, free components only) ·
+legacy 81-page catalogue **stays separate** (furniture site only). See plan §11/§14.
+
 - [x] **PB-0.1** Dependency integrated cleanly — `@puckeditor/core@0.24.0` in package.json; 63/45 overlay
   (repo majors kept); package-lock merged (64 entries, 0.24.0 on disk == lock); bun.lock hand-merged
   (64 entries, 780 pkgs strict-parse, `@puckeditor/core` added to workspace deps). `@measured/puck`
@@ -294,16 +299,19 @@ See plan §0A (legacy anatomy), §6, §11. Wave list below refers to v2 numberin
   CRUD, draft⇄published, history/revert, slug registry vs App.tsx routes). Est. 3–4 d.
 - [ ] **PB-2** Wave 2 — Sections & Elements libraries: 40-section UI-kit catalogue (thumbnails, label-in-Layers,
   Sections/UI kit/Templates/Images tabs, category chips, click-to-add-after) + Elements palette (BASIC+WIDGETS)
-  + Layers panel (select/reorder/hide/lock). Est. 5–7 d.
+  + Layers panel (select/reorder/hide/lock). **Elements kit completion via free MIT Tailgrids per plan §5.3**
+  (vendored `src/components/tailgrids/*`, token-remapped, house-first, attribution + hex/Pro grep gate). Est. 5–7 d.
 - [ ] **PB-3** Wave 3 — Theme: whole-website token panel (colours/fonts/base/heading scale), CSS custom
   properties, section skins Original/White/Cream/Navy, versioned `theme` singleton snapshots/restore. Est. 3–4 d.
 - [ ] **PB-4** Wave 4 — Inspector parity: Content/Style/Advanced tabs; Desktop/Tablet/Mobile × Normal/Hover;
-  **Linked styles** (element-only → page-scope class rules, leak-tested); animation on scroll (reduced-motion aware);
+  **Linked styles** (element-only → page-scope class rules, leak-tested); **chrome = linked master sections**
+  (header/footer/announcement canvas instances wired to chrome masters, detach behind confirm; plan §11-Q2); animation on scroll (reduced-motion aware);
   General Tag/ID/Title/Aria/Classes chips; inline text toolbar; responsive visibility. Est. 6–9 d.
 - [ ] **PB-5** Wave 5 — SEO layer: page title/meta counters (60/160), focus keyphrase, live Google preview,
   local Yoast-style Analyse (SEO + Readability score badges), publish gate, sitemap + JSON-LD. Est. 3–5 d.
 - [ ] **PB-6** Wave 6 — AI + MCP build path: local MCP server (`list_pages/get_page/create_page/upsert_section/
-  set_theme_tokens/run_seo_audit/diff_page/draft_publish` — deliberately no publish tool); draft-first AI docs with
+  set_theme_tokens/run_seo_audit/diff_page/create_page (template fan-out, e.g. local-SEO catalogue — owner §11-Q4
+  full-generation)/`draft_publish` — deliberately no publish tool); draft-first AI docs with
   diff + validator; audit log `woodex.ai.audit.v1`. Depth per owner Q4. Est. 5–7 d.
 - [ ] **PB-7** Wave 7 — Bagisto CMS mapping (`puck_data` custom attribute behind `getAdminApi()`), demo-DB →
   Bagisto migration, env-flag rollback. Est. 4–5 d.
