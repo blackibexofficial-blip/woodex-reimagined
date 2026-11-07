@@ -1837,6 +1837,11 @@ export type Database = {
         Args: { p_order_id: number; p_note: string; p_kind?: string }
         Returns: undefined
       }
+      // 2026-11-07 — Wave draft→order conversion (owner gate, full spec). Hand-added; regenerate after deploy.
+      convert_draft_order: {
+        Args: { p_draft_id: number; p_negotiated_lines?: Json; p_payment_method?: string }
+        Returns: Json
+      }
       order_stage: {
         Args: { p_order_id: number; p_stage: string; p_note?: string }
         Returns: Database['public']['Tables']['orders']['Row']
