@@ -264,6 +264,10 @@ Legend: ✅ port as-is · 🔧 port + rework · 🆕 new (Supabase-only) · 🗑
 - Preview rebuilt + verified (200s on `/`, `/contact`, LeadConsent chunk).
 - Still NOT verified against hosted Supabase; forms remain demo/localStorage until staging.
 
+**Slice 4 (022fc72) — fix pass:** banner + admin badge keyed on `isSupabaseConfigured` (was `isDemoMode` — would have kept the 'not connected' quarantine showing even after Supabase went live). EFs dropped `Buffer` for portable constant-time hex compares. tsc/eslint/preview re-verified.
+
+**Slice 5 (cdf6cea) — admin Leads surfaces consent & attribution:** per-lead consent chip (`consented · lead-privacy-v1` / amber `no consent record`), UTM trio + landing path when present. Demo seed enriched (0–3 day leads carry consent+UTM; older deliberately pre-consent) — cached demo DBs read truthfully. Preview rebuilt+verified.
+
 **Build note:** `npm run build` could not be used (`bun` absent); built with `npx vite build --mode production` (build green, AdminApp chunk contains the banner). `typecheck` was NOT run for this slice — verify before treating as release-grade. Preview server rebuilt and re-verified (HTTP 200, banner present). `supabase/functions/mcp/index.ts` auto-generated churn was reverted before commit.
 
 ---
