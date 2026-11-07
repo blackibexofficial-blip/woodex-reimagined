@@ -28,7 +28,7 @@ import type {
   AdminBrand,
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
-  AdminQuoteVersion, AdminQuoteTemplate,
+  AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -448,6 +448,21 @@ export const bagistoAdminApi: AdminApi = {
 
   async deleteQuoteTemplate(): Promise<boolean> {
     throw new BagistoApiError(501, "Quote template deletion is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async listInvoices(): Promise<Paginated<AdminInvoice>> {
+    throw new BagistoApiError(501, "Invoices are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async getInvoice(): Promise<AdminInvoice | undefined> {
+    throw new BagistoApiError(501, "Invoices are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async listInvoicePayments(): Promise<AdminInvoicePayment[]> {
+    throw new BagistoApiError(501, "Invoice payments are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async convertQuoteToInvoice(): Promise<AdminInvoice> {
+    throw new BagistoApiError(501, "Quote→invoice conversion is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async recordInvoicePayment(): Promise<AdminInvoice | undefined> {
+    throw new BagistoApiError(501, "Invoice payment recording is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
   },
 
   async listSuppliers(): Promise<AdminSupplier[]> {

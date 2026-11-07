@@ -62,7 +62,8 @@ import type {
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
   AdminPageContentItem, AdminPageDoc, AdminPageHistoryEntry, AdminPageSeo, AdminPriceList,
   AdminProduct, AdminProject, AdminPurchaseOrder, AdminPurchaseOrderPatch, AdminQuote,
-  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
+  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput,
+  AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
   AdminShowroom, AdminStockMovement, AdminStockTransfer, AdminStockTransferPatch, AdminSupplier,
   AdminSupplierPatch, AdminVirtualShowroomPage, AdminWarrantyPage,
   AdminClaim, AdminClaimPatch, AdminDraftOrder, AdminDraftOrderPatch, AdminExchange, AdminExchangePatch,
@@ -1527,6 +1528,119 @@ async function deleteQuoteTemplate(id: string): Promise<boolean> {
   const { count, error } = await supabase.from("quote_templates").delete({ count: "exact" }).eq("id", String(id));
   if (error) fail("deleteQuoteTemplate", error);
   return (count ?? 0) > 0;
+}
+
+/* ── invoices (0001: invoices + payments; RPC-only creation) ───────────────
+   quote→invoice rides quote_invoice_snapshot(p_quote_id) (cap quote.manage, idempotent).
+   payments ride invoice_apply_payment (cap finance.manage; atomically re-derives
+   paid + status Issued/Partially paid/Paid). There is NO direct INSERT policy on
+   either table — rows are created via the RPCs only. */
+const INVOICE_REF = (id: number) => `INV-${id}`;
+const parseInvoiceId = (s: string): number => {
+  const m = String(s).match(/^INV-(\d+)$/);
+  return m ? Number(m[1]) : Number(s);
+};
+const INVOICE_DB_STATUSES = new Set(["Issued", "Partially paid", "Paid", "Cancelled"]);
+const rowToAdminInvoice = (r: Row): AdminInvoice => {
+  const total = toNum(r.total);
+  const paid = toNum(r.paid);
+  const due = r.due ? String(r.due) : undefined;
+  const balance = Math.max(0, Math.round(total) - Math.round(paid));
+  const dbStatus = INVOICE_DB_STATUSES.has(String(r.status)) ? String(r.status) : "Issued";
+  const overdue = dbStatus !== "Paid" && dbStatus !== "Cancelled" && balance > 0 && !!due && Date.parse(due) < Date.now();
+  return {
+    id: INVOICE_REF(Number(r.id)),
+    ref: r.ref ? String(r.ref) : INVOICE_REF(Number(r.id)),
+    ...(r.quote_id ? { quoteId: QUOTE_REF(Number(r.quote_id)) } : {}),
+    ...(r.order_id ? { orderId: orderRef(Number(r.order_id)) } : {}),
+    customer: String(r.customer ?? ""),
+    items: (Array.isArray(r.items) ? r.items : []) as AdminInvoice["items"],
+    subtotal: toNum(r.subtotal),
+    discount: toNum(r.discount),
+    tax: toNum(r.tax),
+    shipping: toNum(r.shipping),
+    total,
+    paid,
+    balance,
+    status: (overdue ? "Overdue" : dbStatus) as InvoiceStatus,
+    ...(due ? { due } : {}),
+    ...(r.notes ? { notes: String(r.notes) } : {}),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+};
+
+async function listInvoices(params?: ListParams & { status?: InvoiceStatus | "all"; query?: string }): Promise<Paginated<AdminInvoice>> {
+  guard();
+  const page = Math.max(1, params?.page ?? 1);
+  const perPage = Math.max(1, Math.min(100, params?.perPage ?? 20));
+  const { data, error } = await supabase.from("invoices").select("*").order("created_at", { ascending: false });
+  if (error) fail("listInvoices", error);
+  let rows = (data ?? []) as Row[];
+  const q = params?.query?.trim().toLowerCase();
+  if (q) rows = rows.filter((r) => [r.customer, r.ref, INVOICE_REF(Number(r.id)), r.notes].some((v) => String(v ?? "").toLowerCase().includes(q)));
+  let items = rows.map(rowToAdminInvoice);
+  if (params?.status && params.status !== "all") items = items.filter((inv) => inv.status === params.status);
+  const total = items.length;
+  return pagenate(items.slice((page - 1) * perPage, page * perPage), total, page, perPage);
+}
+
+async function getInvoice(id: string): Promise<AdminInvoice | undefined> {
+  guard();
+  const num = parseInvoiceId(id);
+  const { data, error } = await supabase.from("invoices").select("*").eq("id", num).maybeSingle();
+  if (error) fail("getInvoice", error);
+  return data ? rowToAdminInvoice(data as Row) : undefined;
+}
+
+async function listInvoicePayments(invoiceId: string): Promise<AdminInvoicePayment[]> {
+  guard();
+  const num = parseInvoiceId(invoiceId);
+  const { data, error } = await supabase.from("payments").select("*").eq("invoice_id", num).order("created_at", { ascending: false });
+  if (error) {
+    // payments_read is finance.manage-only — other roles get an honest empty ledger, not an exception.
+    console.error("listInvoicePayments denied/failed:", error.message);
+    return [];
+  }
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: String(r.id),
+    invoiceId: INVOICE_REF(num),
+    amount: toNum(r.amount),
+    method: String(r.method ?? "Bank transfer"),
+    ...(r.reference ? { reference: String(r.reference) } : {}),
+    ...(r.note ? { note: String(r.note) } : {}),
+    createdAt: String(r.created_at),
+  }));
+}
+
+async function convertQuoteToInvoice(quoteId: string): Promise<AdminInvoice> {
+  guard();
+  const num = parseQuoteId(quoteId);
+  const { data, error } = await supabase.rpc("quote_invoice_snapshot", { p_quote_id: num });
+  if (error) fail("convertQuoteToInvoice", error);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error("quote_invoice_snapshot returned nothing.");
+  return rowToAdminInvoice(row as Row);
+}
+
+async function recordInvoicePayment(invoiceId: string, input: NewInvoicePaymentInput): Promise<AdminInvoice | undefined> {
+  guard();
+  const num = parseInvoiceId(invoiceId);
+  const amount = Math.round(Number(input.amount));
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Payment amount must be a positive number.");
+  const method = input.method?.trim() || "Bank transfer";
+  const { data, error } = await supabase.rpc("invoice_apply_payment", {
+    p_invoice_id: num,
+    p_amount: amount,
+    p_method: method,
+    p_reference: input.reference?.trim() || null,
+  });
+  if (error) {
+    if (String((error as { message?: string }).message ?? "").includes("not found")) return undefined;
+    fail("recordInvoicePayment", error);
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? rowToAdminInvoice(row as Row) : undefined;
 }
 
 async function deleteQuote(id: string): Promise<boolean> {
@@ -3333,6 +3447,11 @@ export const supabaseAdminApi: AdminApi = {
   saveQuoteTemplate,
   deleteQuoteTemplate,
   deleteQuote,
+  listInvoices,
+  getInvoice,
+  listInvoicePayments,
+  convertQuoteToInvoice,
+  recordInvoicePayment,
   convertQuote,
   listSuppliers,
   createSupplier,

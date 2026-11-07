@@ -126,6 +126,10 @@ import type {
   RevenuePoint,
   AdminQuoteVersion,
   AdminQuoteTemplate,
+  AdminInvoice,
+  AdminInvoicePayment,
+  InvoiceStatus,
+  NewInvoicePaymentInput,
   StoreSettings,
 } from "@/api/types";
 import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
@@ -169,6 +173,8 @@ interface DemoDb {
   quotes: AdminQuote[];
   quoteVersions: AdminQuoteVersion[];
   quoteTemplates: AdminQuoteTemplate[];
+  invoices: AdminInvoice[];
+  payments: AdminInvoicePayment[];
   suppliers: AdminSupplier[];
   purchaseOrders: AdminPurchaseOrder[];
   stockTransfers: AdminStockTransfer[];
@@ -1176,6 +1182,53 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
   ];
 }
 
+/** Balance + derived Overdue are computed at read time — storage keeps only paid/total/due/status. */
+const withInvoiceBalance = (inv: AdminInvoice): AdminInvoice => ({ ...inv, balance: Math.max(0, Math.round(inv.total) - Math.round(inv.paid)) });
+const invoiceIsOverdue = (inv: AdminInvoice): boolean =>
+  inv.status !== "Paid" && inv.status !== "Cancelled" && Math.round(inv.total) - Math.round(inv.paid) > 0 && !!inv.due && Date.parse(inv.due) < Date.now();
+const nextInvoiceId = (existing: AdminInvoice[]): string => {
+  const nums = existing.map((i) => Number(String(i.id).match(/^INV-(\d+)$/)?.[1] ?? 0)).filter((n) => Number.isFinite(n));
+  return `INV-${(nums.length ? Math.max(...nums) : 1000) + 1}`;
+};
+
+/** Deterministic seed invoices — one quote-converted (Issued), two standalone (one Partially paid). */
+function buildSeedInvoices(fromQuotes: AdminQuote[]): AdminInvoice[] {
+  const t = Date.now();
+  const iso = (h: number) => new Date(t - h * 3600000).toISOString();
+  const due = (d: number) => new Date(t + d * 86400000).toISOString();
+  const out: AdminInvoice[] = [];
+  const q = fromQuotes.find((x) => x.id === "QOT-1002");
+  if (q) {
+    out.push({
+      id: "INV-1001", quoteId: q.id, customer: q.customerName, company: q.company, city: q.city,
+      items: q.items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity, image: it.image })),
+      subtotal: q.subtotal, discount: q.discountAmount, tax: 0, shipping: q.shipping, total: q.total, paid: 0, balance: q.total,
+      status: "Issued", due: due(21), notes: "Converted from quote QOT-1002.", createdAt: iso(3), updatedAt: iso(3),
+    });
+  }
+  out.push(
+    {
+      id: "INV-1002", customer: "Clifton Villa 9", city: "Lahore",
+      items: [{ id: "line-inv-1002", name: "Executive desk + credenza set (custom)", price: 54600, quantity: 1 }],
+      subtotal: 54600, discount: 0, tax: 0, shipping: 0, total: 54600, paid: 0, balance: 54600,
+      status: "Issued", due: due(7), createdAt: iso(6), updatedAt: iso(6),
+    },
+    {
+      id: "INV-1003", customer: "Gulberg Residency", city: "Lahore",
+      items: [{ id: "line-inv-1003", name: "Full-home furniture package — phase 1", price: 136500, quantity: 1 }],
+      subtotal: 136500, discount: 0, tax: 0, shipping: 0, total: 136500, paid: 68250, balance: 68250,
+      status: "Partially paid", due: due(14), createdAt: iso(30), updatedAt: iso(3),
+    },
+  );
+  return out;
+}
+
+function buildSeedPayments(): AdminInvoicePayment[] {
+  return [
+    { id: "pay-1001", invoiceId: "INV-1003", amount: 68250, method: "Bank transfer", reference: "TXN-WOODEX-001", createdAt: new Date(Date.now() - 3 * 3600000).toISOString() },
+  ];
+}
+
 /** Shared creation path — used by createQuote and createQuoteFromLead. */
 function makeQuoteVersionSnap(q: AdminQuote, action: string, actor = "admin"): AdminQuoteVersion {
   return {
@@ -1754,7 +1807,10 @@ function buildSeed(): DemoDb {
     return { ...rest, consentAt, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
+  const seedQuotes = buildSeedQuotes(adminProducts);
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: seedQuotes,
+    invoices: buildSeedInvoices(seedQuotes),
+    payments: buildSeedPayments(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1778,6 +1834,8 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.orderEvents)) db.orderEvents = buildSeedOrderEvents(db.orders);
       if (!Array.isArray(db.quoteVersions)) db.quoteVersions = [];
       if (!Array.isArray(db.quoteTemplates)) db.quoteTemplates = [];
+      if (!Array.isArray(db.invoices)) db.invoices = [];
+      if (!Array.isArray(db.payments)) db.payments = [];
       if (!Array.isArray(db.collections)) db.collections = buildSeedCollections(db.products);
       if (!Array.isArray(db.companies)) db.companies = buildSeedCompanies();
       if (!Array.isArray(db.priceLists)) db.priceLists = buildSeedPriceLists();
@@ -3999,6 +4057,68 @@ export const demoAdminApi: AdminApi = {
       if (idx >= 0) list[idx] = saved; else list.push(saved);
     });
     return saved;
+  },
+
+  async listInvoices(params?: ListParams & { status?: InvoiceStatus | "all"; query?: string }) {
+    const now = Date.now();
+    void now;
+    let items = (loadDb().invoices ?? []).map(withInvoiceBalance).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const q = params?.query?.trim().toLowerCase();
+    if (q) items = items.filter((r) => [r.id, r.ref, r.customer, r.company, r.quoteId, r.orderId].some((v) => String(v ?? "").toLowerCase().includes(q)));
+    if (params?.status && params.status !== "all") {
+      items = params.status === "Overdue" ? items.filter(invoiceIsOverdue) : items.filter((r) => r.status === params.status);
+    }
+    return paginate(items, params);
+  },
+
+  async getInvoice(id: string) {
+    return (loadDb().invoices ?? []).map(withInvoiceBalance).find((i) => i.id === id || i.ref === id);
+  },
+
+  async listInvoicePayments(invoiceId: string) {
+    return (loadDb().payments ?? []).filter((p) => p.invoiceId === invoiceId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  async convertQuoteToInvoice(quoteId: string) {
+    let created: AdminInvoice | undefined;
+    update((db) => {
+      const q = (db.quotes ??= []).find((x) => x.id === quoteId);
+      if (!q) throw new Error(`Quote ${quoteId} not found.`);
+      const existing = (db.invoices ??= []).find((i) => i.quoteId === q.id);
+      if (existing) { created = withInvoiceBalance(existing); return; }   // idempotency — mirrors the RPC
+      const id = nextInvoiceId(db.invoices);
+      const now = new Date().toISOString();
+      created = {
+        id, quoteId: q.id, customer: q.customerName, company: q.company, city: q.city,
+        items: q.items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity, image: it.image })),
+        subtotal: q.subtotal, discount: q.discountAmount, tax: 0, shipping: q.shipping, total: q.total, paid: 0, balance: q.total,
+        status: "Issued", notes: `Converted from quote ${q.id}.`, createdAt: now, updatedAt: now,
+      };
+      db.invoices.push(created);
+      (db.quoteVersions ??= []).push(makeQuoteVersionSnap(q, "convert-to-invoice"));
+    });
+    return created!;
+  },
+
+  async recordInvoicePayment(invoiceId: string, input: NewInvoicePaymentInput) {
+    let updated: AdminInvoice | undefined;
+    update((db) => {
+      const list = (db.invoices ??= []);
+      const inv = list.find((i) => i.id === invoiceId);
+      if (!inv) return;
+      if (inv.status === "Cancelled") throw new Error(`Invoice ${inv.id} is cancelled and cannot receive payments.`);
+      const amount = Math.round(Number(input.amount));
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Payment amount must be a positive number.");
+      const method = (input.method?.trim() || "Bank transfer");
+      const now = new Date().toISOString();
+      (db.payments ??= []).push({ id: `pay-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, invoiceId: inv.id, amount, method, reference: input.reference?.trim() || undefined, note: input.note?.trim() || undefined, createdAt: now });
+      inv.paid = Math.round(inv.paid + amount);
+      inv.balance = Math.max(0, Math.round(inv.total) - inv.paid);
+      inv.status = inv.paid >= Math.round(inv.total) ? "Paid" : inv.paid > 0 ? "Partially paid" : "Issued";
+      inv.updatedAt = now;
+      updated = { ...inv };
+    });
+    return updated;
   },
 
   async deleteQuoteTemplate(id: string) {

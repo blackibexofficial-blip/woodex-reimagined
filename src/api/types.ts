@@ -322,6 +322,41 @@ export interface QuoteTemplateBlock {
   content: string;
   visible: boolean;
 }
+export type InvoiceStatus = "Issued" | "Partially paid" | "Paid" | "Overdue" | "Cancelled";
+export interface AdminInvoicePayment {
+  id: string;
+  invoiceId: string;
+  amount: number;
+  method: string;
+  reference?: string;
+  note?: string;
+  createdAt: string;
+}
+export interface AdminInvoice {
+  id: string;             // INV-#### (demo seeds from 1001; supabase rides bigint identity)
+  ref?: string;
+  quoteId?: string;       // QOT-#### — set when created via quote→invoice snapshot
+  orderId?: string;       // ORD-#### — set when issued against an order (order path is separate)
+  customer: string;
+  company?: string;
+  city?: string;
+  items: Array<{ id: string; name: string; price: number; quantity: number; image?: string }>;
+  subtotal: number;
+  discount: number;
+  tax: number;
+  shipping: number;
+  total: number;
+  paid: number;
+  /** total - paid, computed at read time (never trusted from storage). */
+  balance: number;
+  status: InvoiceStatus;
+  due?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export type NewInvoicePaymentInput = { amount: number; method?: string; reference?: string; note?: string };
+
 export interface AdminQuoteTemplate {
   id: string;
   name: string;
@@ -1478,6 +1513,15 @@ export interface AdminApi {
   updateQuote(id: string, patch: AdminQuotePatch): Promise<AdminQuote | undefined>;
   /** False when the quote is missing or already converted. */
   deleteQuote(id: string): Promise<boolean>;
+  /** Invoices are RPC-gated server-side (quote_invoice_snapshot, invoice_apply_payment). Creation and payment both carry caps; no direct-insert path exists by design. */
+  listInvoices(params?: ListParams & { status?: InvoiceStatus | "all"; query?: string }): Promise<Paginated<AdminInvoice>>;
+  getInvoice(id: string): Promise<AdminInvoice | undefined>;
+  /** Payments for one invoice — finance-only by policy (payments_read); other roles get an empty list. */
+  listInvoicePayments(invoiceId: string): Promise<AdminInvoicePayment[]>;
+  /** Idempotent: re-calling with the same quote returns the existing invoice (RPC contract). Cap: quote.manage. */
+  convertQuoteToInvoice(quoteId: string): Promise<AdminInvoice>;
+  /** Cap: finance.manage (RPC contract). Atomically appends the payment and recomputes Paid/Partially paid/Issued. */
+  recordInvoicePayment(invoiceId: string, input: NewInvoicePaymentInput): Promise<AdminInvoice | undefined>;
   /** Requires ≥1 line; same materialisation path as createOrder (channel `manual`); order carries the discount. */
   convertQuote(id: string, paymentMethod?: PaymentMethod): Promise<AdminOrder | undefined>;
   /** Newest first. Empty for quotes saved before the versioning port. */
