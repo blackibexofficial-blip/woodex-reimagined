@@ -29,24 +29,25 @@ owner-gated; migrations are immutable once committed; dual-source parity
 
 | Item | Evidence | Where |
 |---|---|---|
-| Migrations 0001 (agency_os_convergence), 0002 (page RPCs), 0003 (order_submit), 0004 (quote_convert), 0005 (shipping + order rate limit), 0006 (lead rate limit) — applied in order, immutable | rehearsal 36/36 | `supabase/migrations/` |
+| Migrations 0001 (agency_os_convergence) … 0006 (lead rate limit) — applied in order, immutable; **0007 (delivery_zones) added 2026-11-07 — additive ALTER, zero behavior change** | rehearsal 43/43 | `supabase/migrations/` |
 | Quote price authority = negotiated lines (documented in 0004 header; never re-list-price without owner sign-off) | slice 8 | `0004_quote_convert.sql` |
 | 0005 grant matrix: PUBLIC EXECUTE revoked where required; 0006 rebuilt with explicit revoke + defensive `create role service_role` | rehearsal 28/28 → 36/36 | `20261107000006_lead_rate_limit.sql` |
 | CI un-red: Lint (listCustomers/getCustomer types, `Record<string,never>` args) — **main green since #12 merge** | run 42390795619 | PR #12 |
 | Lead-capture abuse guard (EF: x-forwarded-for key, limiter RPC pre-insert, 429, fail-open logged) | slice 10 | `lead-capture/index.ts` |
 | Catalogue seed — 19 categories, 5 series, 148 products, 18 same-origin images; **placeholder stock kept as loud caveat**; idempotent ON CONFLICT | slice 11 (merged #12) | `supabase/seed.sql`, `public/images/seed/` |
 | Anti-abuse decision brief (WAF vs Upstash vs Turnstile vs monitoring) | PR #13 (open — see pending) | `docs/08-master-plan/ANTI-ABUSE-DECISION.md` |
-| Zone-rate shipping decision brief (recommendation: option B formula-first, seeded at current behaviour) | commit `799691b` | `docs/08-master-plan/ZONE-RATE-DECISION.md` |
+| Zone-rate shipping decision brief (recommendation: option B machinery-first, seeded at current behaviour) | commit `799691b` | `docs/08-master-plan/ZONE-RATE-DECISION.md` |
+| **Zone-rate machinery (migration 0007)**: additive ALTER of 0001's CMS `delivery_zones` (tier/fee/free_at_subtotal/active/updated_at — public SELECT kept); 13 seeds (12 dropdown cities, hub = lahore/karachi/islamabad/rawalpindi; else major) + `default`, ALL Rs 2,500 / FREE ≥ 50,000 — byte-identical behavior; `order_submit` normalized city lookup (case/space-insensitive), deterministic duplicate tie-break, `default` fallback then constants (2,500/50,000) fallback, per-zone `free_at_subtotal = NULL` = never FREE; quote path keeps quote shipping | slice 13 (this PR) | `20261107000007_delivery_zones.sql` |
 | Turnstile anti-bot gate — EFs verify pre-RPC; action-pinned; fail-open when unconfigured, **fail-closed 503 on transport error**; demo/preview builds render nothing; 8/8 `node --test` | slice 12 (PR #14 open — see pending) | `_shared/turnstile.mjs`, EFs, `src/lib/turnstile.ts` |
 | Aborts-on-misconfig posture for optional gates; consent contract (`lead-privacy-v1`) byte-locked across clients/EF | slices 3–12 | runbook + EFs |
-| Rehearsal harness rebuilt (`/tmp/pglite-hub/run-next.mjs`) — **36/36 PASS** (migrations + seed double-apply + seeded end-to-end order, Rs 52,000 → FREE delivery, stock 100→99). Figures 68/68 & 68/75 **permanently retired** | current | rehearsal harness |
+| Rehearsal harness rebuilt (`/tmp/pglite-hub/run-next.mjs`) — **43/43 PASS** (migrations 0001–0007 + seed double-apply + seeded end-to-end order, Rs 52,000 → FREE delivery, stock 100→99 + zone lookups, never-FREE NULL, default-constants fallback). Figures 68/68, 68/75 & 36/36 **permanently retired** | current | rehearsal harness |
 | E2E smoke **42/42 PASS** · eslint 0 errors (34 pre-existing warnings) · tsc rc=0 · build green | per push | CI / local |
 | Order intake dual guards: EF → RPC ordering (limiter/challenge before writes) | slices 9/10/12 | EFs |
 | `mcp/index.ts` bundler churn reverted before every commit; `sitemap.xml` churn reverted | practice | repo |
 
 **Do not reopen without fresh owner words:** quote pricing authority, dual-source
 shipping constants, consent version (`lead-privacy-v1`), seed placeholder-stock
-caveat, migration 0001–0006 contents, retired rehearsal figures.
+caveat, migration 0001–0007 contents, retired rehearsal figures.
 
 ### PENDING — merge / deploy / activate (owner actions, in order)
 
@@ -54,29 +55,28 @@ caveat, migration 0001–0006 contents, retired rehearsal figures.
 2. `OWNER` **Merge PR #14** (Turnstile slice 12 + zone-rate brief + this file if merged after this commit). CI green (run 42391538539).
 3. `OWNER` **Merge PR #11** (mcp bundler steady-state) if still wanted.
 4. `OWNER` **Apply the CI hunk** from `docs/08-master-plan/CI-TURNSTILE-STEP.md` (App lacks `workflows` scope) so CI runs the Turnstile verifier tests.
-5. `OWNER` **Hosted deploy** via `docs/08-master-plan/HOSTED-DEPLOY-RUNBOOK.md`: migrations 0001→0006 in order → **§1a seed** → deploy EFs → set env (`VITE_API_MODE=supabase`, `VITE_TURNSTILE_SITE_KEY`) → **physical stocktake before any real order** (placeholder `stock_qty` = 100/0 is fiction) → smoke §6 (incl. Turnstile path) → §8 sign-off.
+5. `OWNER` **Hosted deploy** via `docs/08-master-plan/HOSTED-DEPLOY-RUNBOOK.md`: migrations 0001→0007 in order → **§1a seed** → deploy EFs → set env (`VITE_API_MODE=supabase`, `VITE_TURNSTILE_SITE_KEY`) → **physical stocktake before any real order** (placeholder `stock_qty` = 100/0 is fiction) → smoke §6 (incl. Turnstile path) → §8 sign-off.
 6. `OWNER` **Turnstile activation**: create site/secret pair → `supabase secrets set TURNSTILE_SECRET=…` → `VITE_TURNSTILE_SITE_KEY=…` → redeploy EFs → rebuild web. Until both sides set, gate is inert (fail-open) — checkout unchanged.
 
 ### PENDING — decisions required (owner; I prepare, you call)
 
-7. `DECISION` **Zone-rate pricing** — pick A (keep flat) or B (city-tiered zones, machinery-first, all-2500 seed → owner flips rates when ops supplies the sheet; migration 0007). See `ZONE-RATE-DECISION.md` §5 questions (tier boundaries, free-threshold global vs per-tier, admin screen now/later, rate owner).
+7. `DECISION` **Zone-rate pricing** — machinery LANDED (migration 0007, dormant at flat behavior). Still need: rate sheet from ops, tier boundaries (or keep uniform), free-threshold global vs per-tier, admin screen now/later, rate owner. Flip is one UPDATE when the sheet lands. See `ZONE-RATE-DECISION.md` §5.
 8. `DECISION` **WAF / Upstash** — brief recommends Turnstile (done) + monitoring now; WAF proxy **held in reserve**; Upstash deferred behind explicit **fail-open vs fail-closed** call. Also name the **monitoring alert recipient** (unused so far).
 9. `DECISION` **Stocktake** — when and who counts the physical inventory before go-live (feeds `seed.sql` stock or a post-seed `UPDATE`).
 
 ### PENDING — engineering slices (agent-ready once authorised)
 
-10. `READY` **Zone-rate slice** (if B approved): migration `20261107000007_delivery_zones.sql` (table + all-2500 seed incl. `default` row), `order_submit` re-definition with city lookup (replay unchanged), `src/config/shipping.ts` re-seeded from same snapshot, rehearsal extended, runbook/plan updated.
-11. `READY` **Wave 2 — draft orders** (if authorised): `draft_orders` table + admin draft-orders screen + adapter wiring; rehearsal; **convertDraftOrder → server-side reprice boundary** stays design-faithful (no client prices trusted).
-12. `READY` **Wave 3 — singleton resets** (homepage/singleton content reset in supabase adapter) with rehearsal coverage.
-13. `BLOCKED` **Wave 2b — exchanges / claims backend** — tables do not exist yet; requires schema decision (partially blocked by Wave 2).
-14. `BLOCKED` **`convertDraftOrder` EF wiring** — conversion must reprice via order-submit path; blocked on 11.
+10. `READY` **Wave 2 — draft orders** (if authorised): `draft_orders` table + admin draft-orders screen + adapter wiring; rehearsal; **convertDraftOrder → server-side reprice boundary** stays design-faithful (no client prices trusted).
+11. `READY` **Wave 3 — singleton resets** (homepage/singleton content reset in supabase adapter) with rehearsal coverage.
+12. `BLOCKED` **Wave 2b — exchanges / claims backend** — tables do not exist yet; requires schema decision (partially blocked by Wave 2).
+13. `BLOCKED` **`convertDraftOrder` EF wiring** — conversion must reprice via order-submit path; blocked on 11.
 
 ### HOLD — deliberately parked
 
-15. `HOLD` **Zone-rate admin screen** — SQL edits acceptable at current volume; revisit when ops edits zones weekly.
-16. `HOLD` **True courier-API freight pricing** (PostEx/Leopards/TCS) — rejected at this stage (no contracts/SLA data; not verifiable in sandbox). Trigger: real freight invoices in hand.
-17. `HOLD` **Zone-rate for quote-converted orders** — intentionally quote-shipping; do not migrate.
-18. `HOLD` **"68/75" rehearsal figure / pre-reset harness** — retired; never cite.
+14. `HOLD` **Zone-rate admin screen** — SQL edits acceptable at current volume; revisit when ops edits zones weekly.
+15. `HOLD` **True courier-API freight pricing** (PostEx/Leopards/TCS) — rejected at this stage (no contracts/SLA data; not verifiable in sandbox). Trigger: real freight invoices in hand.
+16. `HOLD` **Zone-rate for quote-converted orders** — intentionally quote-shipping; do not migrate.
+17. `HOLD` **"68/75" rehearsal figure / pre-reset harness** — retired; never cite.
 
 ---
 

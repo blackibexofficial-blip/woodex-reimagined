@@ -19,8 +19,9 @@ Project ref (from `supabase/config.toml`): `ewbflgbshdstfxqretay`
 4. `supabase/migrations/20261107000004_quote_convert.sql`
 5. `supabase/migrations/20261107000005_shipping_and_rate_limit.sql`
 6. `supabase/migrations/20261107000006_lead_rate_limit.sql`
+7. `supabase/migrations/20261107000007_delivery_zones.sql`
 
-All six are written to be safe on a fresh/converged project. Verify after applying:
+All seven are written to be safe on a fresh/converged project. Verify after applying:
 
 ```sql
 -- objects exist
@@ -58,6 +59,8 @@ deliberate data migration, not an ad-hoc edit.
 ⚠ Images are referenced same-origin under `/images/seed/*.webp`; those files ship in
 this repo (`public/images/seed/`) and must be deployed with the app or every product
 photo 404s.
+
+Note: 0007 is an additive ALTER of the delivery_zones table created in 0001 (zone machinery for option B of the zone-rate brief). Seeded rows clone CURRENT behavior exactly (Rs 2,500 / FREE at Rs 50,000) — applying it changes nothing until you UPDATE rates.
 
 ## 2. Deploy edge functions
 The two public intake functions import the shared Turnstile verifier
@@ -128,11 +131,12 @@ later retry. Rollback does NOT require dropping any migration.
 
 ## 8. Known limits / honest gaps after this deploy
 - Delivery fee is the **flat rule mirrored from checkout** (Rs 2,500 flat; FREE at ≥ Rs
-  50,000 cart subtotal) — enforced server-side in `order_submit` (migration 0005) and mirrored
-  in `src/config/shipping.ts`. Quote-converted orders carry the quote's own shipping instead.
-  True zone-rate pricing is a future ops/product decision, NOT yet implemented —
-  see `docs/08-master-plan/ZONE-RATE-DECISION.md` (options A–E; recommendation: city-tiered
-  zones seeded at current behavior, machinery-first under migration 0007).
+  50,000 cart subtotal) — enforced server-side, now **looked up from `delivery_zones`
+  (migration 0007, seeded byte-identical to the flat rule; Rs 2,500 / FREE at Rs 50,000 everywhere)**
+  and mirrored in `src/config/shipping.ts`. Quote-converted orders carry the quote's own shipping instead.
+  Zone machinery is live server-side but DORMANT — rates are owner data, not code. Flip them
+  with an UPDATE when ops supplies the rate sheet (see `docs/08-master-plan/ZONE-RATE-DECISION.md`;
+  recommendation: stay seeded-uniform until then).
 - Customer notes live in `order_events` (staff timeline) — they are **not** visible to the
   storefront and were never intended to be.
 - `order-submit` now carries a **fixed-window guard inside the RPC**: 20 submissions
