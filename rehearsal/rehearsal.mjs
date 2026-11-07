@@ -357,6 +357,24 @@ const asRole = async (db, roleName, uid) => { await db.exec(`set role ${roleName
   await db.exec('reset role');
   ok('tasks: editor may NOT create a task (lacks crm.manage)', editorTask === false);
 
+  // ── admin_overview (0001 RPC; open-quote casing fixed by 0012) ─────────
+  await asRole(db, 'authenticated', S);
+  const ovBefore = (await db.query(`select (public.admin_overview()->>'open_quotes')::int as openq, (public.admin_overview()->>'pipeline_value')::numeric as pv`)).rows[0];
+  await db.query(`insert into public.quotes (customer, items, total, status) values
+    ('Overview Rehearsal A', '[]'::jsonb, 10000, 'draft'),
+    ('Overview Rehearsal B', '[]'::jsonb, 20000, 'review'),
+    ('Overview Rehearsal C', '[]'::jsonb, 40000, 'sent'),
+    ('Overview Rehearsal D', '[]'::jsonb, 80000, 'converted')`);
+  const ovAfter = (await db.query(`select (public.admin_overview()->>'open_quotes')::int as openq, (public.admin_overview()->>'pipeline_value')::numeric as pv`)).rows[0];
+  await db.exec('reset role');
+  ok('overview: open_quotes counts app-written lowercase statuses (draft/review/sent; converted excluded)', ovAfter.openq - ovBefore.openq === 3);
+  ok('overview: pipeline_value moves by the same open set (10000+20000+40000)', Number(ovAfter.pv) - Number(ovBefore.pv) === 70000);
+
+  let viewerOverview = false;
+  try { await asRole(db, 'authenticated', V); await db.query(`select public.admin_overview()`); viewerOverview = true; } catch { /* denied */ }
+  await db.exec('reset role');
+  ok('overview: viewer (no cap) is denied (42501)', viewerOverview === false);
+
   const pass = results.filter(r => r[1]).length, fail = results.length - pass;
   console.log(`\nFRESH REHEARSAL (test:rehearsal): ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

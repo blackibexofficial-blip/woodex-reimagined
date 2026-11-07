@@ -74,7 +74,7 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 - **PRs closed unmerged (owner decision, refs retained):** #1 (raw IBPanel handoff archive) and #11 (lint-red `@lovable.dev/mcp-js` bundler re-commit; underlying money-path landed via #10). Repo temporarily has **no open PRs**; this sweep's docs ride PR #15 once opened.
 - **Port candidates skipped by owner:** 139 legacy product photos (17.3 MB, fork `arena/0378ff53-woodex-reimagined`), fork audit docs (`docs/07-woodex-os/`), PagesLab spike (2 files in merged `cb0d09e3`). Fork and refs retained.
 - **Kept deliberately:** `v1.0.0` tag + all 9 merged remote branches (deletion needs explicit owner word).
-- Rehearsal is now **reproducible in-repo** (`npm run test:rehearsal`, pglite, offline): **59/59** today (migrations 0001–0011 + quotation RLS appendix + invoice ledger suite + tasks RLS suite). The historical 66/66 was the pre-merge /tmp harness; treat `test:rehearsal` as the going-forward gate. Real typecheck = `tsc --noEmit -p tsconfig.app.json`, green. CI green on merge SHAs.
+- Rehearsal is now **reproducible in-repo** (`npm run test:rehearsal`, pglite, offline): **62/62** today (migrations 0001–0012 + quotation RLS appendix + invoice ledger suite + tasks RLS suite + admin_overview casing suite). The historical 66/66 was the pre-merge /tmp harness; treat `test:rehearsal` as the going-forward gate. Real typecheck = `tsc --noEmit -p tsconfig.app.json`, green. CI green on merge SHAs.
 - **Owner-held still:** hosted deploy (0001–0010) + seed + physical stocktake; Turnstile keys; zone-rate sheet. `convertDraftOrder` — DONE 2026-11-07 (owner-approved full spec, migration 0010).
 
 ### PENDING — engineering slices (agent-ready once authorised)
@@ -117,6 +117,12 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 - **Zero new RPCs / zero migration** — supabase mode reads the same `admin_overview` RPC payload the KPI strip already uses (`pending_invoices`, `open_quotes`, `pipeline_value`, `overdue_returns`, `published_pages` — passed through verbatim). Demo mode computes the identical signals from the seeded store; Bagisto baseline returns zeros + comment (not derivable from `/sales/*`; Bagisto invoices are 501 stubs — zeros, never invented numbers).
 - **e2e +4 asserts** (card renders · outstanding-invoices tile · open-pipeline tile · pipeline-value sub-line) — first run failed on CSS upper-cased tile labels vs case-sensitive includes; asserts made case-insensitive; **46/46**. tsc clean · lint rc=0 · build ✓ · rehearsal unchanged **59/59**.
 - **Honest flag for hosted verification (not fixed here)** — 0001 `admin_overview` counts open quotes with `status in ('Draft','Sent','Review')` (Title Case) while this codebase's quote statuses are lowercase (`draft/sent/review`) — hosted `open_quotes` may under-count until casing is reconciled (candidate: 0012 RPC replace or quote-status audit). Nothing silently changed.
+
+### DONE 2026-11-08 — Migration 0012: admin_overview open-quote casing fix (branch `arena/2b15db15-woodex-reimagined`; this PR)
+
+- **Closes the last defect flagged on this PR** — 0001 counted open quotes with Title Case `('Draft','Sent','Review')` while the app writes lowercase lifecycle statuses (`draft/review/approval/sent/revised`); hosted `open_quotes`/`pipeline_value` would have read 0. `0012_admin_overview_quote_status_case.sql` = identical function, identical cap-guard, identical payload keys; only the two open-quote predicates change. Column default retained (insert path passes status explicitly).
+- **Rehearsed offline (pglite) +3 asserts** — lowercase `draft/review/sent` quoted rows counted (`converted` excluded) ✓ · `pipeline_value` delta = 70,000 ✓ · viewer denied (42501) ✓. Suite **62/62** (migrations 0001–0012). Nothing touched hosted — apply stays owner-gated.
+- **Verification** — returns/stock_transfers/invoices all confirmed casing-consistent (Title Case writers, Title Case readers; returns `state='Requested'` is the column the RPC reads); `published_pages` is snapshot-count (case-free). Only the quotes predicates needed the fix.
 
 ### HOLD — deliberately parked
 
