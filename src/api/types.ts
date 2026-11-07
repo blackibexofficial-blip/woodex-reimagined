@@ -322,6 +322,23 @@ export interface QuoteTemplateBlock {
   content: string;
   visible: boolean;
 }
+export interface AdminTask {
+  id: string;              // TSK-#### (demo seeds from 1001; supabase rides bigint identity)
+  title: string;
+  /** Free-text client/deal label captured at creation (e.g. lead name) — not an FK for humans to read. */
+  client?: string;
+  leadId?: string;
+  quoteId?: string;
+  orderId?: string;
+  due?: string;
+  owner: string;
+  priority: string;        // low | normal | high — free-form per 0001 (default 'normal')
+  done: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export type NewTaskInput = { title: string; dueAt?: string; priority?: string; owner?: string; client?: string };
+
 export type InvoiceStatus = "Issued" | "Partially paid" | "Paid" | "Overdue" | "Cancelled";
 export interface AdminInvoicePayment {
   id: string;
@@ -1519,6 +1536,11 @@ export interface AdminApi {
   /** Payments for one invoice — finance-only by policy (payments_read); other roles get an empty list. */
   listInvoicePayments(invoiceId: string): Promise<AdminInvoicePayment[]>;
   /** Idempotent: re-calling with the same quote returns the existing invoice (RPC contract). Cap: quote.manage. */
+  listTasks(params?: ListParams & { status?: "all" | "open" | "done" }): Promise<Paginated<AdminTask>>;
+  createTask(input: NewTaskInput): Promise<AdminTask>;
+  /** Cap: crm.manage (RLS). No delete path — tasks are worked, not removed. */
+  setTaskDone(id: string, done: boolean): Promise<AdminTask | undefined>;
+
   convertQuoteToInvoice(quoteId: string): Promise<AdminInvoice>;
   /** Cap: finance.manage (RPC contract). Atomically appends the payment and recomputes Paid/Partially paid/Issued. */
   recordInvoicePayment(invoiceId: string, input: NewInvoicePaymentInput): Promise<AdminInvoice | undefined>;

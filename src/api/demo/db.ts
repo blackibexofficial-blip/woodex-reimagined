@@ -130,6 +130,8 @@ import type {
   AdminInvoicePayment,
   InvoiceStatus,
   NewInvoicePaymentInput,
+  AdminTask,
+  NewTaskInput,
   StoreSettings,
 } from "@/api/types";
 import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
@@ -175,6 +177,7 @@ interface DemoDb {
   quoteTemplates: AdminQuoteTemplate[];
   invoices: AdminInvoice[];
   payments: AdminInvoicePayment[];
+  tasks: AdminTask[];
   suppliers: AdminSupplier[];
   purchaseOrders: AdminPurchaseOrder[];
   stockTransfers: AdminStockTransfer[];
@@ -1191,6 +1194,22 @@ const nextInvoiceId = (existing: AdminInvoice[]): string => {
   return `INV-${(nums.length ? Math.max(...nums) : 1000) + 1}`;
 };
 
+/** Next TSK-#### id for the demo store. */
+const nextTaskId = (tasks: AdminTask[]): string => {
+  const nums = (tasks ?? []).map((t) => Number(String(t.id).match(/^TSK-(\d+)$/)?.[1] ?? 0)).filter((n) => Number.isFinite(n) && n > 0);
+  return `TSK-${(nums.length ? Math.max(...nums) : 1000) + 1}`;
+};
+
+/** Deterministic seed tasks — overdue + due-today, the exact demo workflows from the screenshot audit. */
+function buildSeedTasks(): AdminTask[] {
+  const t = Date.now();
+  const day = (n: number) => new Date(t + n * 86400000).toISOString();
+  return [
+    { id: "TSK-1001", title: "Send installment-2 reminder", client: "Clifton Villa 9", quoteId: "QOT-1001", due: day(-2), owner: "You", priority: "normal", done: false, createdAt: day(-9), updatedAt: day(-9) },
+    { id: "TSK-1002", title: "Confirm teak veneer swatch before production", client: "Gulberg Residency", quoteId: "QOT-1002", due: day(0), owner: "You", priority: "high", done: false, createdAt: day(-4), updatedAt: day(-4) },
+  ];
+}
+
 /** Deterministic seed invoices — one quote-converted (Issued), two standalone (one Partially paid). */
 function buildSeedInvoices(fromQuotes: AdminQuote[]): AdminInvoice[] {
   const t = Date.now();
@@ -1810,7 +1829,8 @@ function buildSeed(): DemoDb {
   const seedQuotes = buildSeedQuotes(adminProducts);
   return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: seedQuotes,
     invoices: buildSeedInvoices(seedQuotes),
-    payments: buildSeedPayments(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
+    payments: buildSeedPayments(),
+    tasks: buildSeedTasks(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1836,6 +1856,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.quoteTemplates)) db.quoteTemplates = [];
       if (!Array.isArray(db.invoices)) db.invoices = [];
       if (!Array.isArray(db.payments)) db.payments = [];
+      if (!Array.isArray(db.tasks)) db.tasks = [];
       if (!Array.isArray(db.collections)) db.collections = buildSeedCollections(db.products);
       if (!Array.isArray(db.companies)) db.companies = buildSeedCompanies();
       if (!Array.isArray(db.priceLists)) db.priceLists = buildSeedPriceLists();
@@ -4057,6 +4078,50 @@ export const demoAdminApi: AdminApi = {
       if (idx >= 0) list[idx] = saved; else list.push(saved);
     });
     return saved;
+  },
+
+  async listTasks(params?: ListParams & { status?: "all" | "open" | "done" }) {
+    let items = (loadDb().tasks ?? []).slice().sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;                     // open before done
+      return String(a.due ?? "9999-12-31").localeCompare(String(b.due ?? "9999-12-31"));
+    });
+    if (params?.status === "open") items = items.filter((t) => !t.done);
+    else if (params?.status === "done") items = items.filter((t) => t.done);
+    const q = params?.query?.trim().toLowerCase();
+    if (q) items = items.filter((t) => [t.id, t.title, t.client, t.owner, t.priority].some((v) => String(v ?? "").toLowerCase().includes(q)));
+    return paginate(items, params);
+  },
+
+  async createTask(input: NewTaskInput) {
+    let created: AdminTask | undefined;
+    update((db) => {
+      const title = input.title?.trim();
+      if (!title) throw new Error("Task title is required.");
+      const now = new Date().toISOString();
+      const id = nextTaskId(db.tasks ?? []);
+      created = {
+        id, title,
+        client: input.client?.trim() || undefined,
+        due: input.dueAt || undefined,
+        owner: input.owner?.trim() || "You",
+        priority: input.priority?.trim() || "normal",
+        done: false, createdAt: now, updatedAt: now,
+      };
+      (db.tasks ??= []).push(created);
+    });
+    return created!;
+  },
+
+  async setTaskDone(id: string, done: boolean) {
+    let updated: AdminTask | undefined;
+    update((db) => {
+      const t = (db.tasks ??= []).find((x) => x.id === id);
+      if (!t) return;
+      t.done = !!done;
+      t.updatedAt = new Date().toISOString();
+      updated = { ...t };
+    });
+    return updated;
   },
 
   async listInvoices(params?: ListParams & { status?: InvoiceStatus | "all"; query?: string }) {

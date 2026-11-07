@@ -54,7 +54,7 @@
  *   invoice operations (no AdminApi methods — invoices are EF-first by design).
  */
 import { supabase } from "@/integrations/supabase/client";
-import type { Database, Json, TablesUpdate } from "@/integrations/supabase/types";
+import type { Database, Json, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AdminApi,
   AdminBlogPost, AdminBrand, AdminBundle, AdminCategory, AdminCollection, AdminCollectionKind,
@@ -62,7 +62,7 @@ import type {
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
   AdminPageContentItem, AdminPageDoc, AdminPageHistoryEntry, AdminPageSeo, AdminPriceList,
   AdminProduct, AdminProject, AdminPurchaseOrder, AdminPurchaseOrderPatch, AdminQuote,
-  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput,
+  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput, AdminTask, NewTaskInput,
   AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
   AdminShowroom, AdminStockMovement, AdminStockTransfer, AdminStockTransferPatch, AdminSupplier,
   AdminSupplierPatch, AdminVirtualShowroomPage, AdminWarrantyPage,
@@ -1528,6 +1528,69 @@ async function deleteQuoteTemplate(id: string): Promise<boolean> {
   const { count, error } = await supabase.from("quote_templates").delete({ count: "exact" }).eq("id", String(id));
   if (error) fail("deleteQuoteTemplate", error);
   return (count ?? 0) > 0;
+}
+
+/* ── tasks (0001 public.tasks; cap crm.manage; no delete path) ──────────────
+   NOTE: the table has no client-label column — the legacy screen's free-text
+   "client" line rode client_id there. In supabase mode the context rides
+   lead/quote/order refs. Demo mode keeps the human label. */
+const TASK_REF = (id: number) => `TSK-${id}`;
+const parseTaskId = (s: string): number => {
+  const m = String(s).match(/^TSK-(\d+)$/);
+  return m ? Number(m[1]) : Number(s);
+};
+const rowToAdminTask = (r: Row): AdminTask => ({
+  id: TASK_REF(Number(r.id)),
+  title: String(r.title ?? ""),
+  ...(r.lead_id ? { leadId: String(r.lead_id) } : {}),
+  ...(r.quote_id ? { quoteId: QUOTE_REF(Number(r.quote_id)) } : {}),
+  ...(r.order_id ? { orderId: orderRef(Number(r.order_id)) } : {}),
+  ...(r.due ? { due: String(r.due) } : {}),
+  owner: String(r.owner ?? "You"),
+  priority: String(r.priority ?? "normal"),
+  done: Boolean(r.done),
+  createdAt: String(r.created_at),
+  updatedAt: String(r.updated_at),
+});
+
+async function listTasks(params?: ListParams & { status?: "all" | "open" | "done" }): Promise<Paginated<AdminTask>> {
+  guard();
+  const page = Math.max(1, params?.page ?? 1);
+  const perPage = Math.max(1, Math.min(100, params?.perPage ?? 20));
+  const { data, error } = await supabase.from("tasks").select("*").order("due", { ascending: true, nullsFirst: false }).order("done", { ascending: true });
+  if (error) fail("listTasks", error);
+  let rows = (data ?? []) as Row[];
+  const q = params?.query?.trim().toLowerCase();
+  if (q) rows = rows.filter((r) => [r.title, r.owner, r.priority, TASK_REF(Number(r.id))].some((v) => String(v ?? "").toLowerCase().includes(q)));
+  let items = rows.map(rowToAdminTask);
+  if (params?.status === "open") items = items.filter((t) => !t.done);
+  else if (params?.status === "done") items = items.filter((t) => t.done);
+  const total = items.length;
+  return pagenate(items.slice((page - 1) * perPage, page * perPage), total, page, perPage);
+}
+
+async function createTask(input: NewTaskInput): Promise<AdminTask> {
+  guard();
+  const title = input.title?.trim();
+  if (!title) throw new Error("Task title is required.");
+  const row: TablesInsert<"tasks"> = {
+    title,
+    due: input.dueAt ?? null,
+    priority: (input.priority?.trim() || "normal").toLowerCase(),
+    owner: input.owner?.trim() || "You",
+    done: false,
+  };
+  const { data, error } = await supabase.from("tasks").insert(row).select("*").single();
+  if (error) fail("createTask", error);
+  return rowToAdminTask(data as Row);
+}
+
+async function setTaskDone(id: string, done: boolean): Promise<AdminTask | undefined> {
+  guard();
+  const num = parseTaskId(id);
+  const { data, error } = await supabase.from("tasks").update({ done: !!done, updated_at: new Date().toISOString() }).eq("id", num).select("*").maybeSingle();
+  if (error) fail("setTaskDone", error);
+  return data ? rowToAdminTask(data as Row) : undefined;
 }
 
 /* ── invoices (0001: invoices + payments; RPC-only creation) ───────────────
@@ -3452,6 +3515,9 @@ export const supabaseAdminApi: AdminApi = {
   listInvoicePayments,
   convertQuoteToInvoice,
   recordInvoicePayment,
+  listTasks,
+  createTask,
+  setTaskDone,
   convertQuote,
   listSuppliers,
   createSupplier,

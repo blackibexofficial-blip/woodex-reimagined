@@ -28,7 +28,7 @@ import type {
   AdminBrand,
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
-  AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment,
+  AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, AdminTask,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -463,6 +463,15 @@ export const bagistoAdminApi: AdminApi = {
   },
   async recordInvoicePayment(): Promise<AdminInvoice | undefined> {
     throw new BagistoApiError(501, "Invoice payment recording is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async listTasks(): Promise<Paginated<AdminTask>> {
+    throw new BagistoApiError(501, "Tasks are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async createTask(): Promise<AdminTask> {
+    throw new BagistoApiError(501, "Task creation is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async setTaskDone(): Promise<AdminTask | undefined> {
+    throw new BagistoApiError(501, "Task updates are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
   },
 
   async listSuppliers(): Promise<AdminSupplier[]> {
