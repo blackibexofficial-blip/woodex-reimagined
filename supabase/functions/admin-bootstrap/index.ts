@@ -12,7 +12,7 @@
 // NOT verified against a hosted project from the authoring environment (no Supabase
 // network egress, no CLI). Treat as untested until applied on staging.
 import { createClient } from "npm:@supabase/supabase-js@^2.57.4";
-import { timingSafeEqual } from "node:crypto";
+
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -33,9 +33,12 @@ Deno.serve(async (req) => {
     return json({ error: "ADMIN_BOOTSTRAP_SECRET is not configured (needs >= 16 characters)" }, 500);
   }
 
-  const provided = Buffer.from(req.headers.get("x-bootstrap-secret") ?? "");
-  const expected = Buffer.from(BOOTSTRAP_SECRET);
-  const ok = provided.length === expected.length && timingSafeEqual(provided, expected);
+  const provided = req.headers.get("x-bootstrap-secret") ?? "";
+  const ok = provided.length === BOOTSTRAP_SECRET.length && (() => {
+    let d = 0;
+    for (let i = 0; i < provided.length; i += 1) d |= provided.charCodeAt(i) ^ BOOTSTRAP_SECRET.charCodeAt(i);
+    return d === 0;
+  })();
   if (!ok) return json({ error: "unauthorized" }, 401);
 
   let body: { email?: string; password?: string; name?: string } = {};

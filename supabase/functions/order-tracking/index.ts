@@ -11,7 +11,7 @@
 // NOT verified against a hosted project (no Supabase egress in the authoring
 // environment). Logic mirrors src/lib/tracking.ts (unit-tested there, 6/6).
 import { createClient } from "npm:@supabase/supabase-js@^2.57.4";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash } from "node:crypto";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -44,11 +44,11 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (error || !data?.tracking_token_hash) return json({ ...NOT_FOUND }, 404);
 
-  const provided = Buffer.from(createHash("sha256").update(token).digest("hex"), "hex");
-  const expected = Buffer.from(String(data.tracking_token_hash), "hex");
-  if (expected.length !== 32 || provided.length !== expected.length || !timingSafeEqual(expected, provided)) {
-    return json({ ...NOT_FOUND }, 404);
-  }
+  const provided = createHash("sha256").update(token).digest("hex");
+  const expected = String(data.tracking_token_hash).trim().toLowerCase();
+  let diff = expected.length === 64 ? 0 : 1;
+  for (let i = 0; i < 64; i += 1) diff |= provided.charCodeAt(i) ^ expected.charCodeAt(i);
+  if (diff !== 0) return json({ ...NOT_FOUND }, 404);
 
   return json({ ref: data.ref, status: data.status, stage: data.stage, placedAt: data.created_at });
 });

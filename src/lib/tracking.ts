@@ -12,7 +12,6 @@
  * Pure + isomorphic (browser / node / edge) — no secrets here; hashing only.
  */
 
-const B64URL_43 = /^[A-Za-z0-9_-]{43}$/;
 const HEX64 = /^[0-9a-f]{64}$/i;
 
 /** 256-bit random token, base64url (43 chars, unpadded). */

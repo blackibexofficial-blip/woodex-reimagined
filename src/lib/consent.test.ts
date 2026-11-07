@@ -19,7 +19,7 @@ test("collectAttribution tolerates hostile/empty input", () => {
   const a = collectAttribution("???", null, null);
   assert.deepEqual(Object.values(a), [null, null, null, null, null]);
   const b = collectAttribution("?utm_source=%", "  ", "  ");
-  assert.equal(b.utmSource, "%"); // harmless 2-char leftover, clipped & trimmed semantics)
+  assert.equal(b.utmSource, "%"); // harmless 2-char leftover, (clipped)
   assert.equal(b.landingPath, null);
 });
 

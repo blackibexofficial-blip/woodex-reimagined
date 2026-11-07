@@ -5,7 +5,7 @@ import {
   Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, SlidersHorizontal, Layers, BadgeCheck, LayoutTemplate, PenTool, Monitor,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
-import { isDemoMode } from "@/config/env";
+import { isDemoMode, isSupabaseConfigured } from "@/config/env";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -191,11 +191,13 @@ export default function AdminLayout() {
             <span
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
-                isDemoMode ? "border-border bg-secondary text-muted-foreground" : "border-hon-green-pale bg-hon-green-pale text-hon-green-dark",
+                isSupabaseConfigured
+                  ? "border-hon-green-pale bg-hon-green-pale text-hon-green-dark"
+                  : "border-border bg-secondary text-muted-foreground",
               )}
             >
-              <span className={cn("h-1.5 w-1.5 rounded-full", isDemoMode ? "bg-muted-foreground" : "bg-hon-green")} />
-              {isDemoMode ? "Demo data" : "Bagisto live"}
+              <span className={cn("h-1.5 w-1.5 rounded-full", isSupabaseConfigured ? "bg-hon-green" : "bg-muted-foreground")} />
+              {isSupabaseConfigured ? "Supabase" : isDemoMode ? "Demo data" : "Bagisto live"}
             </span>
             <Link
               to="/"
@@ -208,7 +210,7 @@ export default function AdminLayout() {
         </header>
 
         <main className="p-4 sm:p-6">
-          {isDemoMode && (
+          {!isSupabaseConfigured && (
             <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs leading-relaxed text-amber-900">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>
