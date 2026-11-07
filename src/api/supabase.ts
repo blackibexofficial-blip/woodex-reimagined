@@ -516,6 +516,7 @@ async function createOrder(input: NewOrderInput): Promise<AdminOrder> {
   });
   const body = (await resp.json().catch(() => ({}))) as { ok?: boolean; order?: Record<string, unknown>; error?: string; detail?: string };
   if (!resp.ok) {
+    if (resp.status === 429) throw new Error("Supabase: too many orders on this connection — please wait a few minutes and try again.");
     if (resp.status === 409) {
       throw new Error(`Supabase: order rejected — ${body.detail ?? "insufficient stock for one of the lines"}`);
     }

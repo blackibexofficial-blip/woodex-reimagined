@@ -17,6 +17,7 @@ Project ref (from `supabase/config.toml`): `ewbflgbshdstfxqretay`
 2. `supabase/migrations/20261107000002_page_rpcs.sql`
 3. `supabase/migrations/20261107000003_order_submit.sql`
 4. `supabase/migrations/20261107000004_quote_convert.sql`
+5. `supabase/migrations/20261107000005_shipping_and_rate_limit.sql`
 
 All four are written to be safe on a fresh/converged project. Verify after applying:
 
@@ -78,8 +79,9 @@ rebuilt with these at build time — `import.meta.env` is baked in.
 3. **Tracking**: `/order-tracking` with a bogus ref returns "not found" — no data leak.
 4. **Order E2E**: place a real (test product, tiny total) order via storefront checkout
    (or `curl order-submit`). Verify: `201 ok:true` → admin Orders shows `WDX-####` with
-   **server-recomputed totals**; product `stock_qty` decremented; a `stock_movements`
-   `sale` row; `order_events` stage:intake; the quote page shows nothing leaked to anon.
+   **server-recomputed totals** and **shipping = Rs 2,500 flat (Rs 0 when subtotal ≥ Rs 50,000)**;
+   product `stock_qty` decremented; a `stock_movements` `sale` row; `order_events` stage:intake.
+   Twenty rapid repeated submissions from one connection return `429` with a clean error body.
 5. **Replay**: repeat the same checkout request (same `clientRef`) → same `WDX-` ref, no double stock decrement (orders count unchanged).
 6. **Quote convert**: admin → accepted quote → Convert to order → quoted lines + negotiated
    total; quote flips to `converted`; re-click Convert returns nothing/converted without a new order.
@@ -92,12 +94,17 @@ rebuild, redeploy. The database keeps everything; orders/quotes remain in Supaba
 later retry. Rollback does NOT require dropping any migration.
 
 ## 8. Known limits / honest gaps after this deploy
-- `shipping` is stored as **0** until a zone-rate EF exists; ops treats orders as
-  "shipping resolved at dispatch" responsibility. Do not quote delivery fees from totals.
+- Delivery fee is the **flat rule mirrored from checkout** (Rs 2,500 flat; FREE at ≥ Rs
+  50,000 cart subtotal) — enforced server-side in `order_submit` (migration 0005) and mirrored
+  in `src/config/shipping.ts`. Quote-converted orders carry the quote's own shipping instead.
+  True zone-rate pricing is a future ops/product decision, NOT yet implemented.
 - Customer notes live in `order_events` (staff timeline) — they are **not** visible to the
   storefront and were never intended to be.
-- No rate limiting on `order-submit` / `lead-capture` yet — add per-IP counters
-  (e.g. Upstash) or a WAF rule before real traffic; monitor both functions meanwhile.
+- `order-submit` now carries a **fixed-window guard inside the RPC**: 20 submissions
+  per 10 minutes per caller key (edge `x-forwarded-for`, stamped server-side inside the EF —
+  client-sent keys are discarded). It is a spoofable FIRST line, not a sovereign wall, by
+  design (the EF must stay lean). PRODUCT DECISION STILL OPEN: WAF rule or an
+  Upstash-backed global counter before real traffic — the limiter exists to protect stock counts, not as a complete anti-abuse system. `lead-capture` still has no limiter.
 - `convertDraftOrder` and `exchanges/claims` remain unwired by design (Wave 2: tables missing).
 - The conversion price authority model (negotiated quote lines) is intentional and documented
   in migration `0004`'s header — do not "fix" it to re-list-price without owner sign-off.

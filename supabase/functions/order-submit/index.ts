@@ -4,7 +4,7 @@
 //   POST { items: [{ productId, quantity }], name, email?, phone, address?, city,
 //          notes?, paymentMethod, channelId?, clientRef? } ->
 //   200 { ok: true, order: <AdminOrder-shaped JSON> }
-//   400 on validation failure; 409 on insufficient stock; 500 otherwise.
+//   400 on validation failure; 409 on insufficient stock; 429 rate-limit; 500 otherwise.
 //
 // Prices and totals are computed INSIDE Postgres by public.order_submit
 // (catalog re-read, SELECT ... FOR UPDATE stock atomicity, client_ref replay
@@ -29,6 +29,8 @@ const json = (body: Record<string, unknown>, status: number) =>
 
 const PAYMENT_METHODS = new Set(["cod", "bank-transfer", "easypaisa", "jazzcash", "card"]);
 const clip = (v: unknown, n = 400) => (v == null ? null : String(v).trim().slice(0, n));
+const headerRateKey = (req: Request): string | null =>
+  (req.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim().slice(0, 64) || null;
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -77,6 +79,8 @@ Deno.serve(async (req) => {
       address,
       notes,
       paymentMethod,
+      // server-stamped abuse key — any client-sent value is discarded
+      rateKey: headerRateKey(req),
     },
     p_channel_id: channelId,
     p_client_ref: clientRef,
@@ -84,6 +88,7 @@ Deno.serve(async (req) => {
 
   if (error) {
     const msg = String(error.message ?? "");
+    if (/rate limit/i.test(msg)) return json({ error: "too many orders — please try again in a few minutes" }, 429);
     if (/out of stock/i.test(msg)) return json({ error: "insufficient stock", detail: msg }, 409);
     if (/not found/i.test(msg) || /unknown payment/i.test(msg) || /quantity/i.test(msg)) {
       return json({ error: msg }, 400);

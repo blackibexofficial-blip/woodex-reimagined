@@ -17,6 +17,7 @@ import { useCart, cartLineKey } from "@/contexts/CartContext";
 import { formatPKR } from "@/data/products";
 import { site, waLink } from "@/config/site";
 import { config } from "@/config/env";
+import { deliveryFeeFor } from "@/config/shipping";
 
 const cities = [
   "Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan",
@@ -44,7 +45,7 @@ const Checkout = () => {
     document.title = "Checkout — WOODEX Pakistan";
   }, []);
 
-  const deliveryFee = totalPrice >= 50000 ? 0 : 2500;
+  const deliveryFee = deliveryFeeFor(totalPrice);
   const grandTotal = totalPrice + deliveryFee;
 
   const handleChange = (field: string, value: string) => {
