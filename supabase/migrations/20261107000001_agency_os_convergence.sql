@@ -122,7 +122,8 @@ create table if not exists public.inventory_meta (
 create table if not exists public.stock_transfers (
   id text primary key, from_zone text not null default 'main', to_zone text not null,
   status text not null default 'Requested' check (status in ('Requested','In transit','Received','Cancelled')),
-  items jsonb not null default '[]'::jsonb, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+  items jsonb not null default '[]'::jsonb, notes text, received_at timestamptz,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 create table if not exists public.suppliers (
   id text primary key, name text not null, contact_name text, email text, phone text,
@@ -132,7 +133,8 @@ create table if not exists public.purchase_orders (
   id text primary key, supplier_id text not null references public.suppliers(id),
   status text not null default 'Draft' check (status in ('Draft','Sent','Partial','Received','Cancelled')),
   items jsonb not null default '[]'::jsonb, total numeric(12,2) not null default 0,
-  expected_at timestamptz, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+  expected_at timestamptz, received_at timestamptz, notes text,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 create table if not exists public.delivery_zones (
   id text primary key, name text not null, city text not null,

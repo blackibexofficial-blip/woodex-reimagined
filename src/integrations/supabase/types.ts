@@ -951,6 +951,8 @@ export type Database = {
           items: Json
           total: number
           expected_at: string | null
+          received_at: string | null
+          notes: string | null
           created_at: string
           updated_at: string
         }
@@ -961,6 +963,8 @@ export type Database = {
           items?: Json
           total?: number
           expected_at?: string | null
+          received_at?: string | null
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -971,6 +975,8 @@ export type Database = {
           items?: Json
           total?: number
           expected_at?: string | null
+          received_at?: string | null
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1364,6 +1370,8 @@ export type Database = {
           to_zone: string
           status: string
           items: Json
+          notes: string | null
+          received_at: string | null
           created_at: string
           updated_at: string
         }
@@ -1373,6 +1381,8 @@ export type Database = {
           to_zone: string
           status?: string
           items?: Json
+          notes?: string | null
+          received_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1382,6 +1392,8 @@ export type Database = {
           to_zone?: string
           status?: string
           items?: Json
+          notes?: string | null
+          received_at?: string | null
           created_at?: string
           updated_at?: string
         }
