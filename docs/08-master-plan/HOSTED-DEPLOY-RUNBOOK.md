@@ -20,8 +20,10 @@ Project ref (from `supabase/config.toml`): `ewbflgbshdstfxqretay`
 5. `supabase/migrations/20261107000005_shipping_and_rate_limit.sql`
 6. `supabase/migrations/20261107000006_lead_rate_limit.sql`
 7. `supabase/migrations/20261107000007_delivery_zones.sql`
+8. `supabase/migrations/20261107000008_draft_orders.sql`
+9. `supabase/migrations/20261107000009_exchanges_claims.sql`
 
-All seven are written to be safe on a fresh/converged project. Verify after applying:
+All nine are written to be safe on a fresh/converged project. Verify after applying:
 
 ```sql
 -- objects exist
@@ -61,6 +63,8 @@ this repo (`public/images/seed/`) and must be deployed with the app or every pro
 photo 404s.
 
 Note: 0007 is an additive ALTER of the delivery_zones table created in 0001 (zone machinery for option B of the zone-rate brief). Seeded rows clone CURRENT behavior exactly (Rs 2,500 / FREE at Rs 50,000) — applying it changes nothing until you UPDATE rates.
+
+Note: 0008 (draft orders) and 0009 (exchanges + claims, incl. the record_order_event RPC) add new staff-only surfaces — no storefront behavior change. Identity sequences start at 1001 so draft refs read DRF-1001+.
 
 ## 2. Deploy edge functions
 The two public intake functions import the shared Turnstile verifier

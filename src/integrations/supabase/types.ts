@@ -2,7 +2,9 @@
 // GENERATED TYPES — hand-applied via catalog introspection of
 // supabase/migrations/20261107000001_agency_os_convergence.sql (pglite), 2026-11-07.
 // Replace with: supabase gen types typescript --local > src/integrations/supabase/types.ts
-// once the Supabase CLI / staging project is available. Do not edit by hand.
+// once the Supabase CLI / staging project is available. Until then, blocks for
+// draft_orders (0008), exchanges and claims (0009) were written by hand from their
+// migrations on 2026-11-07 under the same no-egress constraint — regenerate to reconcile.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type Json =
@@ -133,6 +135,66 @@ export type Database = {
           visible?: boolean
           payload?: Json
           created_at?: string
+        }
+        Relationships: []
+      }
+      claims: {
+        Row: {
+          id: number
+          ref: string | null
+          order_id: number | null
+          customer: string
+          customer_email: string | null
+          customer_phone: string | null
+          city: string | null
+          product_name: string
+          product_id: string | null
+          type: string
+          issue: string
+          status: string
+          assessment_note: string | null
+          resolution_note: string | null
+          resolution_cost: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          ref?: string | null
+          order_id?: number | null
+          customer: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          city?: string | null
+          product_name: string
+          product_id?: string | null
+          type: string
+          issue: string
+          status?: string
+          assessment_note?: string | null
+          resolution_note?: string | null
+          resolution_cost?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          ref?: string | null
+          order_id?: number | null
+          customer?: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          city?: string | null
+          product_name?: string
+          product_id?: string | null
+          type?: string
+          issue?: string
+          status?: string
+          assessment_note?: string | null
+          resolution_note?: string | null
+          resolution_cost?: number | null
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -307,6 +369,123 @@ export type Database = {
           postal_codes?: string[]
           eta_days?: number
           created_at?: string
+        }
+        Relationships: []
+      }
+      draft_orders: {
+        Row: {
+          id: number
+          ref: string | null
+          customer: string
+          customer_phone: string | null
+          customer_email: string | null
+          city: string | null
+          address: string | null
+          items: Json
+          subtotal: number
+          shipping: number
+          total: number
+          channel_id: string | null
+          note: string | null
+          status: string
+          converted_order_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          ref?: string | null
+          customer: string
+          customer_phone?: string | null
+          customer_email?: string | null
+          city?: string | null
+          address?: string | null
+          items?: Json
+          subtotal?: number
+          shipping?: number
+          total?: number
+          channel_id?: string | null
+          note?: string | null
+          status?: string
+          converted_order_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          ref?: string | null
+          customer?: string
+          customer_phone?: string | null
+          customer_email?: string | null
+          city?: string | null
+          address?: string | null
+          items?: Json
+          subtotal?: number
+          shipping?: number
+          total?: number
+          channel_id?: string | null
+          note?: string | null
+          status?: string
+          converted_order_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      exchanges: {
+        Row: {
+          id: number
+          ref: string | null
+          order_id: number | null
+          return_id: number | null
+          customer: string
+          customer_email: string | null
+          customer_phone: string | null
+          city: string | null
+          incoming: Json
+          outgoing: Json
+          reason: string | null
+          status: string
+          price_difference: number
+          difference_settled: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          ref?: string | null
+          order_id?: number | null
+          return_id?: number | null
+          customer: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          city?: string | null
+          incoming?: Json
+          outgoing?: Json
+          reason?: string | null
+          status?: string
+          price_difference?: number
+          difference_settled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          ref?: string | null
+          order_id?: number | null
+          return_id?: number | null
+          customer?: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          city?: string | null
+          incoming?: Json
+          outgoing?: Json
+          reason?: string | null
+          status?: string
+          price_difference?: number
+          difference_settled?: boolean
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
