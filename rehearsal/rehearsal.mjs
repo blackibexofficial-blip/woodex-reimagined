@@ -14,7 +14,29 @@
  * No Supabase egress is needed or used. The JWT stub is deliberately tiny
  * (`app.test_uid` GUC) and is only used here, never by the app.
  */
-import { PGlite } from '@electric-sql/pglite';
+/**
+ * @electric-sql/pglite is deliberately NOT a repo dependency: the project keeps
+ * two lockfiles (bun.lock for CI installs + package-lock.json for npm tooling)
+ * and the bun lock cannot be regenerated in this sandboxed authoring
+ * environment. Instead the script bootstraps pglite on first run
+ * (`npm install --no-save`) and reuses node_modules afterwards. CI never runs
+ * this — it's a local gate (`npm run test:rehearsal`).
+ */
+async function loadPGlite() {
+  try {
+    return await import('@electric-sql/pglite');
+  } catch { /* fall through to bootstrap */ }
+  console.log('[rehearsal] @electric-sql/pglite missing — bootstrapping (npm --no-save)…');
+  const { spawnSync } = await import('node:child_process');
+  const r = spawnSync('npm', ['install', '--no-save', '--no-audit', '--no-fund', '@electric-sql/pglite@^0.5.15'], { stdio: 'inherit' });
+  if (r.status !== 0) {
+    console.error('[rehearsal] bootstrap install failed — check npm registry reachability');
+    process.exit(2);
+  }
+  return import('@electric-sql/pglite');
+}
+const { PGlite } = await loadPGlite();
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
