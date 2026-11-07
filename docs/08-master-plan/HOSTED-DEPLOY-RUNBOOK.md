@@ -130,7 +130,9 @@ later retry. Rollback does NOT require dropping any migration.
 - Delivery fee is the **flat rule mirrored from checkout** (Rs 2,500 flat; FREE at ≥ Rs
   50,000 cart subtotal) — enforced server-side in `order_submit` (migration 0005) and mirrored
   in `src/config/shipping.ts`. Quote-converted orders carry the quote's own shipping instead.
-  True zone-rate pricing is a future ops/product decision, NOT yet implemented.
+  True zone-rate pricing is a future ops/product decision, NOT yet implemented —
+  see `docs/08-master-plan/ZONE-RATE-DECISION.md` (options A–E; recommendation: city-tiered
+  zones seeded at current behavior, machinery-first under migration 0007).
 - Customer notes live in `order_events` (staff timeline) — they are **not** visible to the
   storefront and were never intended to be.
 - `order-submit` now carries a **fixed-window guard inside the RPC**: 20 submissions
