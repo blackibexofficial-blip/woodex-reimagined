@@ -8,7 +8,7 @@
  *               Product/Article/Breadcrumb per page; zero lovable.app references (13 checks)
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
  *
- * Total: 48 checks (24 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
+ * Total: 52 checks (28 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -172,6 +172,24 @@ async function adminSuite(browser) {
   const campBody = (await bodyText()).toLowerCase();
   ok("campaigns page renders funnel with seeded campaigns (boardroom-nov, hq-fit-out-q4) + win rate", campBody.includes("boardroom-nov") && campBody.includes("hq-fit-out-q4") && campBody.includes("win rate"));
   ok("campaigns page shows the first-party honesty banner (no pixels)", campBody.includes("first-party attribution only"));
+
+  // click-through coverage: campaigns -> leads -> board -> visits dialog
+  await clickByText("a", "Open leads");
+  await page.waitForFunction(() => location.pathname.endsWith("/admin/leads"), { timeout: 10000 }).catch(() => {});
+  ok("campaigns 'Open leads' link routes to /admin/leads", await page.evaluate(() => location.pathname.endsWith("/admin/leads")));
+  await page.waitForSelector('input[placeholder*="Search name"]', { timeout: 15000 });
+  await clickByText("button", "Board");
+  await page.waitForFunction(() => document.querySelectorAll('[aria-label^="Column "]').length === 5, { timeout: 15000 }).catch(() => {});
+  ok("leads board renders the five stage columns via UI click-through", await page.evaluate(() => document.querySelectorAll('[aria-label^="Column "]').length === 5));
+  await clickByText("button", "Table");
+  await typeInto('input[placeholder*="Search name"]', "Bilal Ahmed");
+  await waitText("Bilal Ahmed", 10000);
+  await page.evaluate(() => { const b = [...document.querySelectorAll('[aria-label^="Site visits for "]')][0]; b?.click(); });
+  await page.waitForSelector("#visit-at", { timeout: 10000 }).catch(() => {});
+  ok("visit dialog opens from a table row click-through", await page.evaluate(() => !!document.querySelector("#visit-at")));
+  await clickByText('[role="dialog"] button', "Close");
+  await page.waitForFunction(() => !document.querySelector("#visit-at"), { timeout: 8000 }).catch(() => {});
+  ok("visit dialog closes cleanly", await page.evaluate(() => !document.querySelector("#visit-at")));
 
   // --- Wave 2: Library rail + Layers outline + lab render ---
   const clickRail = (text) =>
