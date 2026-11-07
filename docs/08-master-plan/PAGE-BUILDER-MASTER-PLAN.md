@@ -1,5 +1,8 @@
 # WOODEX — Page-Builder Master Plan v2.0 (drag-and-drop complete website · legacy-parity upgrade)
 
+> **See also:** [`UPGRADE-MASTER-PLAN-V3.md`](UPGRADE-MASTER-PLAN-V3.md) — the full-stack Agency OS convergence plan for the whole admin/storefront (2026-11-07, owner decisions pending at each phase gate).
+
+
 > **Purpose:** the complete plan — and shipped Wave 0 spike — for a drag-and-drop page builder
 > that lets WOODEX staff assemble the **entire website** (existing pages migrated + future pages)
 > from the WOODEX UI kit/theme, inside the existing admin SPA.

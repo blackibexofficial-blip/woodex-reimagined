@@ -12,6 +12,10 @@
  *   static  → storefront seed data, read-only (used implicitly by the storefront).
  *   bagisto → admin panel + storefront talk to a Bagisto instance over its REST API
  *             (requires VITE_BAGISTO_API_URL + keys — see docs/07-admin-integration).
+ *   supabase→ admin panel talks to the converged Supabase backend via the
+ *             hardened RPC surface (requires VITE_SUPABASE_URL +
+ *             VITE_SUPABASE_PUBLISHABLE_KEY; see docs/08-master-plan §8.1).
+ *             Never auto-flipped: the preview and the default build stay demo.
  */
 
 const raw = import.meta.env;
@@ -20,7 +24,7 @@ function str(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
 }
 
-export type ApiMode = "demo" | "static" | "bagisto";
+export type ApiMode = "demo" | "static" | "bagisto" | "supabase";
 
 const apiMode = str(raw.VITE_API_MODE, "demo") as ApiMode;
 
@@ -28,7 +32,7 @@ export const config = {
   appName: "WOODEX",
 
   /** Which backend adapter the app uses. */
-  apiMode: (["demo", "static", "bagisto"] as const).includes(apiMode) ? apiMode : "demo",
+  apiMode: (["demo", "static", "bagisto", "supabase"] as const).includes(apiMode) ? apiMode : "demo",
 
   supabase: {
     url: str(raw.VITE_SUPABASE_URL),
@@ -77,4 +81,6 @@ export const isBagistoAdminConfigured =
   config.apiMode === "bagisto" && Boolean(config.bagisto.baseUrl && config.bagisto.adminToken);
 
 /** True when the SPA is serving demo (localStorage) data rather than a live Bagisto backend. */
-export const isDemoMode = config.apiMode !== "bagisto";
+/** True only for the local demo/static experiences; supabase mode is NOT demo. */
+export const isDemoMode = config.apiMode === "demo" || config.apiMode === "static";
+export const isSupabaseMode = config.apiMode === "supabase";

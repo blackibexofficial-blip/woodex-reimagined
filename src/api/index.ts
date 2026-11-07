@@ -10,10 +10,13 @@
 import { config } from "@/config/env";
 import { demoAdminApi } from "@/api/demo/db";
 import { bagistoAdminApi } from "@/api/bagisto/admin";
+import { supabaseAdminApi } from "@/api/supabase";
 import type { AdminApi } from "@/api/types";
 
 export function getAdminApi(): AdminApi {
-  return config.apiMode === "bagisto" ? bagistoAdminApi : demoAdminApi;
+  if (config.apiMode === "bagisto") return bagistoAdminApi;
+  if (config.apiMode === "supabase") return supabaseAdminApi;
+  return demoAdminApi; // demo + static both fall back to the offline demo DB
 }
 
 export * from "@/api/types";
