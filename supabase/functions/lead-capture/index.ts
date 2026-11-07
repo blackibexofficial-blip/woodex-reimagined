@@ -5,13 +5,18 @@
 //          utm_source?, utm_medium?, utm_campaign?,
 //          consent: true, consent_version: string } ->
 //   202 { ok: true, id: number | null }
-//   400 on validation failure; 410 when the client's consent_version is stale
+//   400 on validation failure; 410 when the client's consent_version is stale;
+//   429 when the fixed-window limiter trips (20 / 10 min per edge caller key)
 //
 // Writes ONLY via service-role (never the bundle). Anon has no direct INSERT on
 // `leads` BY DESIGN (migration 20261107000001) — this function is the sole
 // public intake path.
-// Rate-limiting deferred: needs per-IP counter infra (e.g., Upstash); until
-// wired, ops should monitor lead rate. No other abuse mitigation exists here.
+// Fixed-window caller-key limiter (migration 20261107000006): the EF stamps
+// the key from the edge x-forwarded-for and calls service-role RPC
+// lead_rate_limit_hit BEFORE the insert. Spoofable first line, not a sovereign
+// wall — WAF/Upstash global counters remain the owner's production decision.
+// On RPC failure the EF fails OPEN (logs) so a missing migration degrades to
+// pre-limiter behavior instead of silently dropping leads.
 //
 // NOT verified against a hosted project (no Supabase egress in the authoring
 // environment). Validation rules mirror the reimagined storefront's contact
@@ -25,6 +30,10 @@ const json = (body: Record<string, unknown>, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 const CONSENT_VERSION = "lead-privacy-v1";
+
+const clipKey = (v: unknown, n = 64) => String(v ?? "").trim().slice(0, n);
+const headerRateKey = (req: Request): string =>
+  clipKey((req.headers.get("x-forwarded-for") ?? "").split(",")[0]) || "unknown";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -52,6 +61,13 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+  const key = headerRateKey(req);
+  const { data: hits, error: rlError } = await admin.rpc("lead_rate_limit_hit", { p_key: key, p_limit: 20, p_window_minutes: 10 });
+  if (rlError) {
+    console.error("lead-capture: limiter rpc failed (failing open)", rlError.message);
+  } else if (typeof hits === "number" && hits > 20) {
+    return json({ error: "too many enquiries - please try again in a few minutes" }, 429);
+  }
   const clip = (v: unknown, n = 200) => (v == null ? null : String(v).trim().slice(0, n));
   const { data, error } = await admin.from("leads").insert({
     name, email, phone, interest, source,

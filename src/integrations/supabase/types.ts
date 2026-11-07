@@ -1618,15 +1618,15 @@ export type Database = {
     }
     Functions: {
       admin_overview: {
-        Args: {}
+        Args: Record<string, never>
         Returns: Json
       }
       catalog_overrides: {
-        Args: {}
+        Args: Record<string, never>
         Returns: { id: string; price: number; stock_qty: number; in_stock: boolean }[]
       }
       my_role: {
-        Args: {}
+        Args: Record<string, never>
         Returns: string
       }
       has_role: {
@@ -1634,7 +1634,7 @@ export type Database = {
         Returns: boolean
       }
       my_caps: {
-        Args: {}
+        Args: Record<string, never>
         Returns: string[]
       }
       has_cap: {
@@ -1696,6 +1696,10 @@ export type Database = {
       quote_convert: {
         Args: { p_quote_ref: string; p_payment_method?: string | null }
         Returns: Json
+      }
+      lead_rate_limit_hit: {
+        Args: { p_key: string; p_limit?: number | null; p_window_minutes?: number | null }
+        Returns: number
       }
       bootstrap_owner: {
         Args: { p_user: string; p_name?: string }

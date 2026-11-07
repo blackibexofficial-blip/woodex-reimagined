@@ -51,7 +51,7 @@ import type { Database, Json, TablesUpdate } from "@/integrations/supabase/types
 import type {
   AdminApi,
   AdminBlogPost, AdminBrand, AdminBundle, AdminCategory, AdminCollection, AdminCollectionKind,
-  AdminCustomDesignPage, AdminDeliveryZone, AdminHomepageSections, AdminInventoryItem, AdminLead,
+  AdminCustomDesignPage, AdminCustomer, AdminDeliveryZone, AdminHomepageSections, AdminInventoryItem, AdminLead,
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
   AdminPageContentItem, AdminPageDoc, AdminPageHistoryEntry, AdminPageSeo, AdminPriceList,
   AdminProduct, AdminProject, AdminPurchaseOrder, AdminPurchaseOrderPatch, AdminQuote,
@@ -85,8 +85,9 @@ const toNum = (v: unknown, fallback = 0): number => {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
   return Number.isFinite(n) ? n : fallback;
 };
-const asObj = (v: Json | null | undefined): Record<string, unknown> =>
+const asObj = (v: unknown): Record<string, unknown> =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+const asOptStr = (v: unknown): string | undefined => (v == null ? undefined : String(v));
 const pad4 = (n: number) => String(n).padStart(4, "0");
 const todayStartIso = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); };
 const monthStartIso = () => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d.toISOString(); };
@@ -99,6 +100,8 @@ export class SupabaseUnsupportedError extends Error {
   constructor(message: string) { super(message); this.name = "SupabaseUnsupportedError"; }
 }
 
+// PostgREST rows are dynamically shaped by the converged schema; every consumer coerces at the boundary (toNum/asStr/String/Boolean, an optional spread with truthy guards). Keep the alias to one seam and lint-clean it there instead of widening 70+ Money-path expressions to unknown in one commit — review coercion diff-by-diff.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 type TableName = keyof Database["public"]["Tables"] & string;
 type PayloadTable =
@@ -946,7 +949,7 @@ async function convertQuote(id: string, paymentMethod?: string): Promise<AdminOr
 }
 
 /* ── customers (clients) ─────────────────────────────────────────────────── */
-async function listCustomers(params?: ListParams & { type?: "retail" | "business" }): Promise<Paginated<any>> {
+async function listCustomers(params?: ListParams & { type?: "retail" | "business" }): Promise<Paginated<AdminCustomer>> {
   guard();
   const page = Math.max(1, params?.page ?? 1);
   const perPage = Math.max(1, Math.min(100, params?.perPage ?? 20));
@@ -969,35 +972,44 @@ async function listCustomers(params?: ListParams & { type?: "retail" | "business
     cur.n += 1; cur.total += toNum(r.total);
     sums.set(key, cur);
   }
-  const items = ((data ?? []) as Row[]).map((r) => {
-    const aggRow = sums.get(String(r.name).toLowerCase());
-    return {
-      id: `cust-${r.id}`,
-      name: r.name,
-      ...(r.company ? { company: r.company } : {}),
-      email: r.email ?? "",
-      phone: r.phone ?? "",
-      city: r.city ?? "",
-      type: (r.kind ?? "retail") as "retail" | "business",
-      ordersCount: aggRow?.n ?? 0,
-      totalSpent: aggRow?.total ?? 0,
-      createdAt: r.created_at,
-      tags: r.tags ?? [],
-      notes: r.notes ?? undefined,
-    };
+  const toCustomer = (r: Row, aggRow?: { n: number; total: number }): AdminCustomer => ({
+    id: `cust-${r.id}`,
+    name: String(r.name ?? ""),
+    ...(r.company ? { company: String(r.company) } : {}),
+    email: String(r.email ?? ""),
+    phone: String(r.phone ?? ""),
+    city: String(r.city ?? ""),
+    type: (String(r.kind ?? "retail") === "business" ? "business" : "retail") as "retail" | "business",
+    ordersCount: aggRow?.n ?? 0,
+    totalSpent: aggRow?.total ?? 0,
+    joinedAt: String(r.created_at ?? new Date().toISOString()),
   });
+  const items = ((data ?? []) as Row[]).map((r) => toCustomer(r, sums.get(String(r.name).toLowerCase())));
   return pagenate(items, count ?? items.length, page, perPage);
 }
-async function getCustomer(id: string): Promise<any | undefined> {
+async function getCustomer(id: string): Promise<AdminCustomer | undefined> {
   guard();
   const num = Number(String(id).replace(/^cust-/, ""));
   if (!Number.isFinite(num)) return undefined;
   const { data, error } = await supabase.from("clients").select("*").eq("id", num).maybeSingle();
   if (error) fail("getCustomer", error);
   if (!data) return undefined;
-  return (await listCustomers({ query: (data as Row).name, perPage: 1 })).items.find((c: any) => String((c as any).id) === `cust-${num}`)
-    ?? { id: `cust-${num}`, name: (data as Row).name, email: (data as Row).email ?? "", phone: (data as Row).phone ?? "", city: (data as Row).city ?? "", type: (data as Row).kind ?? "retail", ordersCount: 0, totalSpent: 0, createdAt: (data as Row).created_at, tags: [], notes: undefined };
+  const row = data as Row;
+  const found = (await listCustomers({ query: String(row.name ?? ""), perPage: 1 })).items.find((c) => c.id === `cust-${num}`);
+  if (found) return found;
+  return toCustomerRef(row);
 }
+const toCustomerRef = (row: Row): AdminCustomer => ({
+  id: `cust-${row.id}`,
+  name: String(row.name ?? ""),
+  email: String(row.email ?? ""),
+  phone: String(row.phone ?? ""),
+  city: String(row.city ?? ""),
+  type: (String(row.kind ?? "retail") === "business" ? "business" : "retail") as "retail" | "business",
+  ordersCount: 0,
+  totalSpent: 0,
+  joinedAt: String(row.created_at ?? new Date().toISOString()),
+});
 
 /* leads: capture must go through the lead-capture EF (anon cannot insert by
  * design); the admin lead pipeline reads/updates go through the clients/leads
@@ -2165,7 +2177,7 @@ async function listCategories(): Promise<AdminCategory[]> {
 function slugify(name: string) { return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "category"; }
 async function createCategory(input: { name: string; group: AdminCategory["group"]; parentId?: string }): Promise<AdminCategory> {
   guard();
-  let base = slugify(input.name);
+  const base = slugify(input.name);
   const { data: existing } = await supabase.from("categories").select("id");
   const ids = new Set(((existing ?? []) as { id: string }[]).map((r) => r.id));
   let id = base, n = 2;
