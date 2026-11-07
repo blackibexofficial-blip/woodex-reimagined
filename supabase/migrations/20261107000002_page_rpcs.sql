@@ -9,7 +9,8 @@ create or replace function public.page_snapshot(p_id bigint)
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
     'id', p.id, 'slug', p.slug, 'title', p.title,
-    'seo_title', p.seo_title, 'seo_desc', p.seo_desc, 'theme', p.theme,
+    'seo_title', p.seo_title, 'seo_desc', p.seo_desc, 'theme', p.theme, 'seo', p.seo,
+    'published_at', p.published_at,
     'blocks', coalesce((
       select jsonb_agg(jsonb_build_object('type', b.type, 'props', b.props) order by b.sort)
       from public.page_blocks b where b.page_id = p.id
@@ -23,7 +24,8 @@ create or replace function public.page_save(
   p_seo_title text default null,
   p_seo_desc text default null,
   p_theme jsonb default null,
-  p_blocks jsonb default '[]'::jsonb
+  p_blocks jsonb default '[]'::jsonb,
+  p_seo jsonb default '{}'::jsonb
 ) returns public.pages language plpgsql security definer set search_path = public as $$
 declare pg public.pages; snap jsonb;
 begin
@@ -38,7 +40,7 @@ begin
   select p_id, b->>'type', coalesce(b->'props', '{}'::jsonb), ord - 1
   from jsonb_array_elements(p_blocks) with ordinality as t(b, ord);
   update public.pages
-     set title = p_title, seo_title = p_seo_title, seo_desc = p_seo_desc, theme = p_theme, updated_at = now()
+     set title = p_title, seo_title = p_seo_title, seo_desc = p_seo_desc, theme = p_theme, seo = p_seo, updated_at = now()
    where id = p_id returning * into pg;
   return pg;
 end $$;
@@ -53,6 +55,7 @@ begin
   snap := snap || jsonb_build_object('published_at', now());
   update public.pages
      set published_snapshot = case when p_publish then snap else null end,
+         published_at = case when p_publish then now() else null end,
          status = case when p_publish then 'Published' else 'Draft' end,
          updated_at = now()
    where id = p_id returning * into pg;
@@ -76,7 +79,8 @@ begin
   from jsonb_array_elements(coalesce(snap->'blocks', '[]'::jsonb)) with ordinality as t(b, ord);
   update public.pages
      set title = coalesce(snap->>'title', title),
-         seo_title = snap->>'seo_title', seo_desc = snap->>'seo_desc', theme = snap->'theme',
+         seo_title = snap->>'seo_title', seo_desc = snap->>'seo_desc',
+         theme = snap->'theme', seo = coalesce(snap->'seo', seo),
          updated_at = now()
    where id = p_id returning * into pg;
   insert into public.page_versions(page_id, version, snapshot, who, action)

@@ -294,6 +294,8 @@ create table if not exists public.pages (
   id bigint generated always as identity primary key, slug text unique not null,
   title text not null, status text not null default 'Draft',
   seo_title text, seo_desc text, theme jsonb,
+  seo jsonb not null default '{}'::jsonb,
+  published_at timestamptz,
   published_snapshot jsonb,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
@@ -321,6 +323,7 @@ create table if not exists public.saved_sections (
 create table if not exists public.media_assets (
   id text primary key, name text not null, url text not null,
   alt text, width int, height int, size_bytes bigint, mime text,
+  folder text,
   created_at timestamptz not null default now()
 );
 create table if not exists public.track_events (
@@ -522,6 +525,8 @@ end $$;
 revoke all on function public.bootstrap_owner(uuid, text) from public, anon, authenticated;
 
 -- ═══════════════════════════════════════════════════════════════════════════
+grant update (courier_name, tracking_number, internal_notes) on public.orders to authenticated;
+
 -- Grants + RLS. Default for business tables is DENY; every allowance below is
 -- intentional and capability-scoped. Inserts that must remain service-role
 -- only simply get no INSERT policy.
