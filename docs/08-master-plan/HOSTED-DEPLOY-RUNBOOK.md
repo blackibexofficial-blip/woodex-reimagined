@@ -18,6 +18,7 @@ Project ref (from `supabase/config.toml`): `ewbflgbshdstfxqretay`
 3. `supabase/migrations/20261107000003_order_submit.sql`
 4. `supabase/migrations/20261107000004_quote_convert.sql`
 5. `supabase/migrations/20261107000005_shipping_and_rate_limit.sql`
+6. `supabase/migrations/20261107000006_lead_rate_limit.sql`
 
 All four are written to be safe on a fresh/converged project. Verify after applying:
 
@@ -103,8 +104,14 @@ later retry. Rollback does NOT require dropping any migration.
 - `order-submit` now carries a **fixed-window guard inside the RPC**: 20 submissions
   per 10 minutes per caller key (edge `x-forwarded-for`, stamped server-side inside the EF —
   client-sent keys are discarded). It is a spoofable FIRST line, not a sovereign wall, by
-  design (the EF must stay lean). PRODUCT DECISION STILL OPEN: WAF rule or an
-  Upstash-backed global counter before real traffic — the limiter exists to protect stock counts, not as a complete anti-abuse system. `lead-capture` still has no limiter.
+  design (the EF must stay lean).
+- `lead-capture` now calls service-role RPC `lead_rate_limit_hit` (migration 0006) BEFORE the
+  insert: same fixed window — 20 / 10 min per edge caller key; `PUBLIC` execute is revoked,
+  only `service_role` may invoke it. On limiter-RPC failure the EF **fails OPEN** (logs) so a
+  missing migration degrades to pre-limiter behavior instead of silently dropping leads.
+- PRODUCT DECISION STILL OPEN for both: WAF rule or an Upstash-backed global counter before
+  real traffic — these guards protect stock counts and lead spam, they are not complete
+  anti-abuse systems.
 - `convertDraftOrder` and `exchanges/claims` remain unwired by design (Wave 2: tables missing).
 - The conversion price authority model (negotiated quote lines) is intentional and documented
   in migration `0004`'s header — do not "fix" it to re-list-price without owner sign-off.

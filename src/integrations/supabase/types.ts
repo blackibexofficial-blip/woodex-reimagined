@@ -1697,6 +1697,10 @@ export type Database = {
         Args: { p_quote_ref: string; p_payment_method?: string | null }
         Returns: Json
       }
+      lead_rate_limit_hit: {
+        Args: { p_key: string; p_limit?: number | null; p_window_minutes?: number | null }
+        Returns: number
+      }
       bootstrap_owner: {
         Args: { p_user: string; p_name?: string }
         Returns: undefined
