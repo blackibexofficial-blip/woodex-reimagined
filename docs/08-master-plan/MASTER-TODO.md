@@ -44,7 +44,7 @@ owner-gated; migrations are immutable once committed; dual-source parity
 | Turnstile anti-bot gate — EFs verify pre-RPC; action-pinned; fail-open when unconfigured, **fail-closed 503 on transport error**; demo/preview builds render nothing; 8/8 `node --test` | slice 12 (PR #14 open — see pending) | `_shared/turnstile.mjs`, EFs, `src/lib/turnstile.ts` |
 | Aborts-on-misconfig posture for optional gates; consent contract (`lead-privacy-v1`) byte-locked across clients/EF | slices 3–12 | runbook + EFs |
 | Rehearsal harness rebuilt (`/tmp/pglite-hub/run-next.mjs`) — **66/66 PASS** (0001–0009 + seed double-apply + seeded end-to-end + zone lookups + draft/exchange/claim cap matrices + CHECK constraints + `record_order_event` grants + singleton roundtrip). Figures 68/68, 68/75, 36/36 & 43/43 **permanently retired** | current | rehearsal harness |
-| E2E smoke **42/42 PASS** · eslint 0 errors (34 pre-existing warnings) · tsc rc=0 · build green | per push | CI / local |
+| E2E smoke **46/46 PASS** · eslint 0 errors (34 pre-existing warnings) · tsc rc=0 · build green | per push | CI / local |
 | Order intake dual guards: EF → RPC ordering (limiter/challenge before writes) | slices 9/10/12 | EFs |
 | `mcp/index.ts` bundler churn reverted before every commit; `sitemap.xml` churn reverted | practice | repo |
 
@@ -96,7 +96,7 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 
 ### DONE 2026-11-08 — Invoice ledger + Agency OS parity review (branch `arena/2b15db15-woodex-reimagined`; PR #18)
 
-- **Parity review delivered** — `docs/08-master-plan/AGENCY-OS-PARITY-2026-11-08.md`: every one of the 24 legacy dashboard screens audited (woodex-2030 `arena/01a10a97-woodex-2030`), verdict per screen, prioritised backlog (tasks shipped 2026-11-08; interior-projects depth largest; marketing attribution; leads kanban; control-center card; inbox poll-based parked; realtime/POS/theme-studio all deliberately not built).
+- **Parity review delivered** — `docs/08-master-plan/AGENCY-OS-PARITY-2026-11-08.md`: every one of the 24 legacy dashboard screens audited (woodex-2030 `arena/01a10a97-woodex-2030`), verdict per screen, prioritised backlog (tasks shipped 2026-11-08; interior-projects depth largest; marketing attribution; leads kanban; inbox poll-based parked; realtime/POS/theme-studio all deliberately not built).
 - **Invoice ledger shipped in-repo** — `/admin/invoices` (KPIs collected/outstanding/count; chips All/Issued/Partially paid/Paid/Overdue/Cancelled — Overdue derived; search; per-row print at `/admin/invoice-document/:id` + finance-only payment dialog); “Invoice from quote” dialog issues via 0001 RPC `quote_invoice_snapshot` (cap quote.manage, **idempotent** — replay returns the existing invoice).
 - **Finance-only posture** — payments post via `invoice_apply_payment` (cap finance.manage): auto-flips Issued → Partially paid → Paid; viewer sees zero rows; sales may snapshot + read, never post. **No deletes** on ledger documents.
 - **NO new migration** — 0001 already carried `invoices`/`payments` + both RPCs + RLS (verified by read + rehearsal). Adapters: demo (in-memory + seeded: INV-1001 quote-converted Issued, INV-1002 standalone Issued, INV-1003 Partially paid with logged payment), Supabase (list/CRUD-read over table; writes RPC-only), Bagisto (501 stubs). Print route decorates with locked payment-terms line.
@@ -110,6 +110,13 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 - **Demo labels vs hosted truth** — free-text client label exists only in demo; hosted Supabase mode stores `client_id` (FK) and has no label column, so `supabase.ts` surfaces related refs and drops unknown free text (documented in code comments). Bagisto = 501 stubs. **No new migration** — nothing applied hosted-side.
 - **Nav/route** — Engage group, directly under Leads; `/admin/tasks`; icon `ClipboardCheck`; layout title “Tasks & Follow-ups”.
 - Gates: tsc clean · eslint clean (repo config; 34 pre-existing warnings unchanged) · vite build ✓ · e2e **42/42** · rehearsal **59/59** (3 new: sales create+read ✓ viewer denied ✓ editor denied ✓). Hosted activation unchanged — owner-gated.
+
+### DONE 2026-11-08 — Dashboard "Pipeline control center" card (branch `arena/2b15db15-woodex-reimagined`; this PR)
+
+- **Control-center / ecommerce-overview parity (backlog #2) shipped in-repo** — new SectionCard on `/admin/dashboard`: four linked tiles — **Open pipeline** (count + PKR pipeline value → `/admin/quotes`), **Outstanding invoices** (Issued+Partially paid count → `/admin/invoices`), **Needs attention** (returns awaiting handling + new leads → `/admin/returns`), **Storefront pages live** (published count → `/admin/pages`).
+- **Zero new RPCs / zero migration** — supabase mode reads the same `admin_overview` RPC payload the KPI strip already uses (`pending_invoices`, `open_quotes`, `pipeline_value`, `overdue_returns`, `published_pages` — passed through verbatim). Demo mode computes the identical signals from the seeded store; Bagisto baseline returns zeros + comment (not derivable from `/sales/*`; Bagisto invoices are 501 stubs — zeros, never invented numbers).
+- **e2e +4 asserts** (card renders · outstanding-invoices tile · open-pipeline tile · pipeline-value sub-line) — first run failed on CSS upper-cased tile labels vs case-sensitive includes; asserts made case-insensitive; **46/46**. tsc clean · lint rc=0 · build ✓ · rehearsal unchanged **59/59**.
+- **Honest flag for hosted verification (not fixed here)** — 0001 `admin_overview` counts open quotes with `status in ('Draft','Sent','Review')` (Title Case) while this codebase's quote statuses are lowercase (`draft/sent/review`) — hosted `open_quotes` may under-count until casing is reconciled (candidate: 0012 RPC replace or quote-status audit). Nothing silently changed.
 
 ### HOLD — deliberately parked
 

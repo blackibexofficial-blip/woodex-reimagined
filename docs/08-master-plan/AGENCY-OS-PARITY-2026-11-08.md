@@ -14,7 +14,7 @@ Screenshots supplied by the owner (2026-11-07/08) were cross-checked against bot
 | 3 | Marketing (first-party pixel, referrers, privacy notice) | — | ❌ Backlog #1 — first-party pixel is *storefront* scope, not dashboard |
 | 4 | Website Studio (page list + section library) | `/admin/pages` + `/admin/page-editor` (Puck) | ✅ Functionally covered (Puck > their block builder) |
 | 5 | Theme Studio | — | ❌ Deliberately skipped — no redesign request; brand tokens are code |
-| 6 | Ecommerce overview (control center: products / active / needs attention / outstanding invoices) | `/admin/dashboard` partial | 🟡 Backlog #2 — wants the outstanding-invoice KPI; now trivial (admin_overview already reports it) |
+| 6 | Ecommerce overview (control center: products / active / needs attention / outstanding invoices) | `/admin/dashboard` → **Pipeline control center** | ✅ **Parity closed (2026-11-08)** — four linked tiles (open pipeline + PKR value → quotes · outstanding invoices → invoices · returns awaiting handling + new leads → returns · published pages → pages); rides `admin_overview` in hosted mode (no new RPC, no migration), demo computes identical signals; e2e +4 asserts (46/46) |
 | 7 | Orders | `/admin/orders` | ✅ Live |
 | 8 | Order Detail | `/admin/orders` (inline) | ✅ Parity (their dedicated route not needed) |
 | 9 | Furniture Catalog (grid + in-stock filters) | `/admin/products`, `/admin/bulk-editor` (CSV round-trip added 2026-11-07) | ✅ Covered |
@@ -29,7 +29,7 @@ Screenshots supplied by the owner (2026-11-07/08) were cross-checked against bot
 | 18 | Returns | `/admin/returns` | ✅ Live |
 | 19 | Settings | `/admin/settings` | ✅ Live |
 | 20 | Login | `/admin/login` | ✅ Live |
-| 21 | Ecommerce "needs attention" panel | — | 🟡 Backlog #2 |
+| 21 | Ecommerce "needs attention" panel | `/admin/dashboard` → control-center “Needs attention” tile | ✅ Shipped with the control center (2026-11-08) |
 | 22 | Quotations quote→invoice (invoice ledger entries from quoting screen) | `/admin/invoices` + from-quote dialog | ✅ closed (same slice as #11) |
 | 23 | Campaign analytics ties to CRM win rate | — | ❌ Backlog #1 |
 | 24 | Suppliers / POs / transfers | `/admin/suppliers`, `/admin/purchase-orders`, `/admin/transfers` | ✅ Beyond-legacy (already there; demo seeds exist) |
@@ -37,7 +37,7 @@ Screenshots supplied by the owner (2026-11-07/08) were cross-checked against bot
 ## Prioritised backlog (not started, none of it silently dropped)
 
 1. **Marketing attribution surface** — leads already capture utm/landing/referrer; build the campaign-analytics view (spend/Cpl/roas optional; first-party only, NO pixels until owner decides). Est. 1–2 d. No schema changes.
-2. **Ecommerce control-center card** on Dashboard (products / active orders / needs-attention / **outstanding invoices**) — reads `admin_overview` (already includes `pending_invoices`) in supabase mode; demo falls back to `listInvoices` KPIs. Est. ½ d.
+2. ~~**Ecommerce control-center card**~~ **SHIPPED 2026-11-08** — `Pipeline control center` card on `/admin/dashboard`: open pipeline + value, outstanding invoices, returns awaiting handling + new leads, published pages; rides `admin_overview` (supabase) / seeded store (demo); no migration; e2e 46/46.
 3. **Clients CRM depth** — merge-review queue (`client_links`, `client_merge` RPC exists) + source attribution + score surfaced on customer detail. Est. 1–2 d. NO auto-merges.
 4. **Lead pipeline UX** — drag-drop kanban over the existing Leads adapter + site-visit tab (`site_visits` table + RLS ready in 0001). Est. 1 d. UX sign-off wanted.
 5. **Shared inbox v1 (poll-based)** — inbox/threads tables exist; v1 = read + reply log, NO realtime (post-activation). Low value pre-hosting; park until a channel EF exists. Est. 2–3 d. DO NOT build realtime now.
@@ -49,6 +49,7 @@ Screenshots supplied by the owner (2026-11-07/08) were cross-checked against bot
 - **No POS.** The 2026-11-07 skip stands — the Ecommerce screen in Agency OS is a catalog/orders control center, not a register; the register is still out of scope.
 - **No new migration for invoices.** 0001 already ships `invoices`/`payments` + `quote_invoice_snapshot` (idempotent, cap quote.manage) + `invoice_apply_payment` (cap finance.manage, auto status flip) and the payments policies are **finance-only reads**. The invoice surface here is adapter+UI; nothing was created hosted-side.
 - **The 0001 snapshot RPC IS lossy** (invoice lands with subtotal=total=quote.total; discount/shipping breakdown not carried). Deliberate this round: fix requires a CREATE OR REPLACE of the RPC (would be migration 0012) — owner hasn't signed that off; labeled in code comments as "Phase-2 candidate".
+- **Control-center card adds zero RPCs.** `admin_overview` already emits `pending_invoices`/`open_quotes`/`pipeline_value`/`overdue_returns`/`published_pages` — the card passes it through. Demo store computes the same signals seeded (QOT-1001 sent → open). Bagisto baseline: zeros + comment (never invented). **Flagged, not fixed:** 0001's open-quotes count compares Title Case (`'Draft','Sent','Review'`) while quote statuses in-code are lowercase — hosted `open_quotes` may under-count until casing is reconciled (candidate for 0012 or a quote-status audit; needs hosted verification, owner-gated).
 - **Tasks ride plain RLS, not RPCs.** 0001 `tasks_read`/`insert`/`update` = `has_cap('crm.manage')` (sales holds it); **no `tasks_delete` policy exists** — worked, never deleted, matching ledger posture. Free-text client labels are deliberately demo-only: hosted mode has `client_id` (FK) and no label column, so the Supabase adapter surfaces related refs (quote/order/lead/site-visit) instead of inventing one; code comments say so. Demo seeds: TSK-1001 (Clifton Villa 9, overdue, normal), TSK-1002 (Gulberg Residency, due today, high).
 - **Invoice numbering:** legacy INV-26-#### with year prefix dropped — uses identity (INV-1001+) matching REF discipline elsewhere.
 - **No deletes on ledger documents.** Legacy's red-bin delete is not ported.

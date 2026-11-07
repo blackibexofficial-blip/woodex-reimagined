@@ -451,3 +451,10 @@ Legacy screen #16 is delivered in-repo, following the same template as the invoi
 | Rehearsal count | 59/59 (pglite, migrations 0001–0011 + quotation + invoice + tasks suites) |
 
 **Honesty note:** "parity" here means functional parity of the follow-ups surface (the visible funnel), not byte-copy of legacy internals; nothing in this addendum implies hosted readiness, and hosted activation remains owner-gated per §12.
+
+
+## 17. Addendum — Dashboard control center (2026-11-08, this branch)
+
+Legacy screens #6 and #21 delivered as one card: **Pipeline control center** on `/admin/dashboard` — open quotes + pipeline value (PKR), outstanding invoices (Issued + Partially paid), returns awaiting handling + new leads, published pages; each tile links to its admin surface. Supabase mode consumes `admin_overview` verbatim (no new RPC, no migration); demo computes identical signals from the seeded store; Bagisto baseline returns zeros + comment. e2e **46/46** (+4 tile asserts; case-insensitive after a CSS text-transform false-negative).
+
+**Review note for hosted verification:** 0001's `open_quotes` JSON compares Title Case statuses vs this codebase's lowercase quote statuses — hosted open-quotes may under-count until casing is reconciled (candidate: 0012 / status audit). Flagged honestly; nothing silently changed. Hosted activation remains owner-gated; this addendum implies no hosted readiness.
