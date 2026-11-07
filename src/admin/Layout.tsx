@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
 import { isDemoMode } from "@/config/env";
+import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_GROUPS: Array<{
@@ -207,6 +208,16 @@ export default function AdminLayout() {
         </header>
 
         <main className="p-4 sm:p-6">
+          {isDemoMode && (
+            <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs leading-relaxed text-amber-900">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>
+                <strong>Demo mode — not connected to Supabase.</strong> Everything below runs on bundled sample
+                data; changes stay in this browser session and are <em>not</em> the live WOODEX store. Staging
+                Supabase + capability-checked RPCs land next; until then nothing here is production.
+              </span>
+            </div>
+          )}
           <Outlet />
         </main>
       </div>
