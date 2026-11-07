@@ -141,8 +141,9 @@ create table if not exists public.delivery_zones (
 );
 create table if not exists public.price_lists (
   id text primary key, name text not null, channel text, currency text not null default 'PKR',
-  status text not null default 'active' check (status in ('draft','active','scheduled','expired')),
-  items jsonb not null default '[]'::jsonb, created_at timestamptz not null default now()
+  status text not null default 'active' check (status in ('draft','active','archived')),
+  items jsonb not null default '[]'::jsonb, payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 create table if not exists public.bundles (
   id text primary key, name text not null,

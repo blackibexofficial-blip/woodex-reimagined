@@ -88,3 +88,27 @@ begin
           to_jsonb(pg), coalesce(auth.uid()::text, 'rpc'), 'revert:' || p_version);
   return pg;
 end $$;
+
+-- product_update_payload: catalog-metadata write for the admin product editor.
+-- Money/stock stay on product_update (RPC-only); this merges the REST of the
+-- product document (specs, images, option sets, best-seller flag, …) into
+-- products.payload atomically. Rejects money keys outright.
+create or replace function public.product_update_payload(p_id text, p_patch jsonb)
+returns public.products language plpgsql security definer set search_path = public as $$
+declare p_row public.products;
+begin
+  perform public.require_cap('catalog.manage');
+  if p_patch is null then p_patch := '{}'::jsonb; end if;
+  if p_patch ? 'price' or p_patch ? 'compareAtPrice' or p_patch ? 'stock'
+     or p_patch ? 'inStock' or p_patch ? 'sku' then
+    raise exception 'price/inStock/sku changes must go through product_update';
+  end if;
+  update public.products
+     set payload = coalesce(payload, '{}'::jsonb) || p_patch,
+         series_id = case when p_patch ? 'seriesId' then nullif(p_patch->>'seriesId','') else series_id end,
+         category_id = case when p_patch ? 'category' then nullif(p_patch->>'category','') else category_id end,
+         updated_at = now()
+   where id = p_id returning * into p_row;
+  if not found then raise exception 'product % not found', p_id; end if;
+  return p_row;
+end $$;

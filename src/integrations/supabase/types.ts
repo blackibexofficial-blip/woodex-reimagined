@@ -852,7 +852,9 @@ export type Database = {
           currency: string
           items: Json
           status: string
+          payload: Json
           created_at: string
+          updated_at: string
         }
         Insert: {
           id: string
@@ -861,7 +863,9 @@ export type Database = {
           currency?: string
           items?: Json
           status?: string
+          payload?: Json
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
@@ -870,7 +874,9 @@ export type Database = {
           currency?: string
           items?: Json
           status?: string
+          payload?: Json
           created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1644,6 +1650,10 @@ export type Database = {
       client_merge: {
         Args: { p_into: number; p_from: number }
         Returns: Database['public']['Tables']['clients']['Row']
+      }
+      product_update_payload: {
+        Args: { p_id: string; p_patch: Json }
+        Returns: Database['public']['Tables']['products']['Row']
       }
       page_snapshot: {
         Args: { p_id: number }

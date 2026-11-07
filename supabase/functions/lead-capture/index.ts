@@ -4,7 +4,7 @@
 //   POST { name, email?, phone?, interest?, source?, landing_path?, referrer?,
 //          utm_source?, utm_medium?, utm_campaign?,
 //          consent: true, consent_version: string } ->
-//   202 { ok: true }
+//   202 { ok: true, id: number | null }
 //   400 on validation failure; 410 when the client's consent_version is stale
 //
 // Writes ONLY via service-role (never the bundle). Anon has no direct INSERT on
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const clip = (v: unknown, n = 200) => (v == null ? null : String(v).trim().slice(0, n));
-  const { error } = await admin.from("leads").insert({
+  const { data, error } = await admin.from("leads").insert({
     name, email, phone, interest, source,
     contact: email ?? phone,
     preferred_channel: email ? "email" : "phone",
@@ -65,10 +65,10 @@ Deno.serve(async (req) => {
     contact_consent: 1,
     consent_at: new Date().toISOString(),
     consent_version: CONSENT_VERSION,
-  });
+  }).select("id").single();
   if (error) {
     console.error("lead-capture insert failed", error.message);
     return json({ error: "could not record lead" }, 500);
   }
-  return json({ ok: true }, 202);
+  return json({ ok: true, id: data?.id ?? null }, 202);
 });
