@@ -1,3 +1,6 @@
 project_id = "ewbflgbshdstfxqretay"
 [functions.admin-bootstrap]
 verify_jwt = false
+
+[functions.order-tracking]
+verify_jwt = false
