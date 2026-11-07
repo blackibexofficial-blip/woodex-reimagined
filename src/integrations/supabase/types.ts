@@ -110,6 +110,8 @@ export type Database = {
           group_: string
           parent_id: string | null
           sort: number
+          visible: boolean
+          payload: Json
           created_at: string
         }
         Insert: {
@@ -118,6 +120,8 @@ export type Database = {
           group_?: string
           parent_id?: string | null
           sort?: number
+          visible?: boolean
+          payload?: Json
           created_at?: string
         }
         Update: {
@@ -126,6 +130,8 @@ export type Database = {
           group_?: string
           parent_id?: string | null
           sort?: number
+          visible?: boolean
+          payload?: Json
           created_at?: string
         }
         Relationships: []
@@ -162,6 +168,7 @@ export type Database = {
           notes: string | null
           source: string | null
           merged_into: number | null
+          kind: string
           created_at: string
           updated_at: string
         }
@@ -178,6 +185,7 @@ export type Database = {
           notes?: string | null
           source?: string | null
           merged_into?: number | null
+          kind?: string
           created_at?: string
           updated_at?: string
         }
@@ -194,6 +202,7 @@ export type Database = {
           notes?: string | null
           source?: string | null
           merged_into?: number | null
+          kind?: string
           created_at?: string
           updated_at?: string
         }
@@ -512,6 +521,7 @@ export type Database = {
           height: number | null
           size_bytes: number | null
           mime: string | null
+          folder: string | null
           created_at: string
         }
         Insert: {
@@ -523,6 +533,7 @@ export type Database = {
           height?: number | null
           size_bytes?: number | null
           mime?: string | null
+          folder?: string | null
           created_at?: string
         }
         Update: {
@@ -534,6 +545,7 @@ export type Database = {
           height?: number | null
           size_bytes?: number | null
           mime?: string | null
+          folder?: string | null
           created_at?: string
         }
         Relationships: []
@@ -631,6 +643,18 @@ export type Database = {
           owner: string
           due: string | null
           tracking_token_hash: string | null
+          subtotal: number
+          shipping: number
+          payment_method: string
+          customer_email: string | null
+          customer_phone: string | null
+          address: string | null
+          city: string | null
+          courier_name: string | null
+          tracking_number: string | null
+          internal_notes: string | null
+          discount_pct: number
+          discount_amount: number
           created_at: string
           updated_at: string
         }
@@ -645,6 +669,18 @@ export type Database = {
           owner?: string
           due?: string | null
           tracking_token_hash?: string | null
+          subtotal?: number
+          shipping?: number
+          payment_method?: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          address?: string | null
+          city?: string | null
+          courier_name?: string | null
+          tracking_number?: string | null
+          internal_notes?: string | null
+          discount_pct?: number
+          discount_amount?: number
           created_at?: string
           updated_at?: string
         }
@@ -659,6 +695,18 @@ export type Database = {
           owner?: string
           due?: string | null
           tracking_token_hash?: string | null
+          subtotal?: number
+          shipping?: number
+          payment_method?: string
+          customer_email?: string | null
+          customer_phone?: string | null
+          address?: string | null
+          city?: string | null
+          courier_name?: string | null
+          tracking_number?: string | null
+          internal_notes?: string | null
+          discount_pct?: number
+          discount_amount?: number
           created_at?: string
           updated_at?: string
         }
@@ -692,25 +740,31 @@ export type Database = {
         Row: {
           id: number
           page_id: number
+          version: number
           snapshot: Json
           note: string | null
           who: string
+          action: string
           created_at: string
         }
         Insert: {
           id?: number
           page_id: number
+          version?: number
           snapshot: Json
           note?: string | null
           who?: string
+          action?: string
           created_at?: string
         }
         Update: {
           id?: number
           page_id?: number
+          version?: number
           snapshot?: Json
           note?: string | null
           who?: string
+          action?: string
           created_at?: string
         }
         Relationships: []
@@ -724,6 +778,8 @@ export type Database = {
           seo_title: string | null
           seo_desc: string | null
           theme: Json | null
+          seo: Json
+          published_at: string | null
           published_snapshot: Json | null
           created_at: string
           updated_at: string
@@ -736,6 +792,8 @@ export type Database = {
           seo_title?: string | null
           seo_desc?: string | null
           theme?: Json | null
+          seo?: Json
+          published_at?: string | null
           published_snapshot?: Json | null
           created_at?: string
           updated_at?: string
@@ -748,6 +806,8 @@ export type Database = {
           seo_title?: string | null
           seo_desc?: string | null
           theme?: Json | null
+          seo?: Json
+          published_at?: string | null
           published_snapshot?: Json | null
           created_at?: string
           updated_at?: string
@@ -791,6 +851,7 @@ export type Database = {
           channel: string | null
           currency: string
           items: Json
+          status: string
           created_at: string
         }
         Insert: {
@@ -799,6 +860,7 @@ export type Database = {
           channel?: string | null
           currency?: string
           items?: Json
+          status?: string
           created_at?: string
         }
         Update: {
@@ -807,6 +869,7 @@ export type Database = {
           channel?: string | null
           currency?: string
           items?: Json
+          status?: string
           created_at?: string
         }
         Relationships: []
@@ -816,6 +879,7 @@ export type Database = {
           id: string
           payload: Json
           name: string | null
+          sku: string | null
           series_id: string | null
           category_id: string | null
           price: number
@@ -827,6 +891,7 @@ export type Database = {
           id: string
           payload: Json
           name?: string | null
+          sku?: string | null
           series_id?: string | null
           category_id?: string | null
           price?: number
@@ -838,6 +903,7 @@ export type Database = {
           id?: string
           payload?: Json
           name?: string | null
+          sku?: string | null
           series_id?: string | null
           category_id?: string | null
           price?: number
@@ -964,6 +1030,11 @@ export type Database = {
           ref: string | null
           customer: string
           contact: string | null
+          company: string | null
+          city: string | null
+          address: string | null
+          customer_email: string | null
+          customer_phone: string | null
           lead_id: number | null
           items: Json
           total: number
@@ -981,6 +1052,11 @@ export type Database = {
           ref?: string | null
           customer: string
           contact?: string | null
+          company?: string | null
+          city?: string | null
+          address?: string | null
+          customer_email?: string | null
+          customer_phone?: string | null
           lead_id?: number | null
           items: Json
           total?: number
@@ -998,6 +1074,11 @@ export type Database = {
           ref?: string | null
           customer?: string
           contact?: string | null
+          company?: string | null
+          city?: string | null
+          address?: string | null
+          customer_email?: string | null
+          customer_phone?: string | null
           lead_id?: number | null
           items?: Json
           total?: number
@@ -1018,7 +1099,10 @@ export type Database = {
           ref: string | null
           order_id: number | null
           customer: string | null
-          item: string | null
+          items: Json
+          customer_email: string | null
+          customer_phone: string | null
+          city: string | null
           reason: string | null
           state: string
           refund_amount: number
@@ -1033,7 +1117,10 @@ export type Database = {
           ref?: string | null
           order_id?: number | null
           customer?: string | null
-          item?: string | null
+          items?: Json
+          customer_email?: string | null
+          customer_phone?: string | null
+          city?: string | null
           reason?: string | null
           state?: string
           refund_amount?: number
@@ -1048,7 +1135,10 @@ export type Database = {
           ref?: string | null
           order_id?: number | null
           customer?: string | null
-          item?: string | null
+          items?: Json
+          customer_email?: string | null
+          customer_phone?: string | null
+          city?: string | null
           reason?: string | null
           state?: string
           refund_amount?: number
@@ -1554,6 +1644,22 @@ export type Database = {
       client_merge: {
         Args: { p_into: number; p_from: number }
         Returns: Database['public']['Tables']['clients']['Row']
+      }
+      page_snapshot: {
+        Args: { p_id: number }
+        Returns: Json
+      }
+      page_save: {
+        Args: { p_id: number; p_title: string; p_seo_title?: string | null; p_seo_desc?: string | null; p_theme?: Json; p_blocks?: Json; p_seo?: Json }
+        Returns: Database['public']['Tables']['pages']['Row']
+      }
+      page_publish: {
+        Args: { p_id: number; p_publish?: boolean }
+        Returns: Database['public']['Tables']['pages']['Row']
+      }
+      page_revert: {
+        Args: { p_id: number; p_version: number }
+        Returns: Database['public']['Tables']['pages']['Row']
       }
       bootstrap_owner: {
         Args: { p_user: string; p_name?: string }
