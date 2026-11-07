@@ -194,6 +194,12 @@ export const bagistoAdminApi: AdminApi = {
       pendingOrders: orders.filter((o) => o.status === "pending" || o.status === "processing").length,
       newLeads: 0, // B2B/quote leads live in the storefront DB — see docs (custom endpoint recommended)
       lowStockProducts: 0,
+      // Control-center — not derivable from /sales/*; Bagisto invoicing is stubbed 501 here. Zeros, not invented numbers.
+      outstandingInvoices: 0,
+      openQuotes: 0,
+      pipelineValue: 0,
+      overdueReturns: 0,
+      publishedPages: 0,
     };
   },
 

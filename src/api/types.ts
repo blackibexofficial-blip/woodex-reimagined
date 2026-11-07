@@ -1259,6 +1259,18 @@ export interface DashboardStats {
   pendingOrders: number;
   newLeads: number;
   lowStockProducts: number;
+  /** Control-center signals — populated from the same source as the KPI strip
+   *  (admin_overview in supabase mode; demo computes equivalents from the store). */
+  /** Invoices in Issued + Partially paid — the finance-live ledger backlog. */
+  outstandingInvoices: number;
+  /** Open quotation workload (draft/review/approval/sent/revised). */
+  openQuotes: number;
+  /** Sum of open-quote totals — pipeline value. */
+  pipelineValue: number;
+  /** Returns requested but not yet handled. */
+  overdueReturns: number;
+  /** Pages with a published snapshot on the storefront. */
+  publishedPages: number;
 }
 
 export interface RevenuePoint {

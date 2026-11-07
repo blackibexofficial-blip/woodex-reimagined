@@ -225,6 +225,12 @@ async function getDashboardStats(): Promise<DashboardStats> {
     pendingOrders: open.count ?? 0,
     newLeads: toNum(o.new_leads_7d),      // overview window is trailing-7d by design
     lowStockProducts: toNum(o.low_stock),
+    // Control-center — verbatim from admin_overview (RPC is the source of truth)
+    outstandingInvoices: toNum(o.pending_invoices),
+    openQuotes: toNum(o.open_quotes),
+    pipelineValue: toNum(o.pipeline_value),
+    overdueReturns: toNum(o.overdue_returns),
+    publishedPages: toNum(o.published_pages),
   };
 }
 async function getRevenueSeries(days: number): Promise<RevenuePoint[]> {

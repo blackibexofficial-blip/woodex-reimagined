@@ -2007,6 +2007,9 @@ export const demoAdminApi: AdminApi = {
     const today = live.filter((o) => new Date(o.placedAt).getTime() >= startOfDay);
     const mtd = live.filter((o) => new Date(o.placedAt).getTime() >= startOfMonth);
     const revenueMtd = mtd.reduce((s, o) => s + o.total, 0);
+    // Control-center signals (mirror of admin_overview semantics; demo store computes them directly)
+    const OPEN_QUOTES: Array<AdminQuote["status"]> = ["draft", "review", "approval", "sent", "revised"];
+    const openQuoteRows = db.quotes.filter((q) => OPEN_QUOTES.includes(q.status));
     return {
       revenueToday: PKR(today.reduce((s, o) => s + o.total, 0)),
       revenueMtd: PKR(revenueMtd),
@@ -2016,6 +2019,11 @@ export const demoAdminApi: AdminApi = {
       pendingOrders: db.orders.filter((o) => o.status === "pending" || o.status === "processing").length,
       newLeads: db.leads.filter((l) => l.status === "new").length,
       lowStockProducts: db.products.filter((p) => p.inStock && p.stock < 10).length,
+      outstandingInvoices: (db.invoices ?? []).filter((i) => i.status === "Issued" || i.status === "Partially paid").length,
+      openQuotes: openQuoteRows.length,
+      pipelineValue: openQuoteRows.reduce((sum, q) => sum + q.total, 0),
+      overdueReturns: db.returns.filter((r) => r.status === "requested").length,
+      publishedPages: db.pages.filter((p) => p.status === "published").length,
     };
   },
 
