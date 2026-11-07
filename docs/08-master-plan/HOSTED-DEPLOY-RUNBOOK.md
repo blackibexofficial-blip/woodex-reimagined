@@ -2,14 +2,14 @@
 
 Audience: the owner / release operator. The agent environment that produced this code
 has **no egress to Supabase** (HTTP 000) — nothing here has ever run against a hosted
-project. Rehearsal evidence (`pglite`, 68/68) proves the DDL and RPC behavior locally
-only. Every step below is mandatory before the storefront is allowed to charge anyone real money.
+project. Rehearsal evidence (`pglite`, 36/36, migrations 0001–0006 + catalogue seed,
+including idempotent double-apply) proves the DDL and RPC behavior locally only. Every step below is mandatory before the storefront is allowed to charge anyone real money.
 
 Project ref (from `supabase/config.toml`): `ewbflgbshdstfxqretay`
 
 ## 0. Sanity gates before you start
-- You are on branch `arena/bb519cda-woodex-reimagined` and PR #10 is merged into `main`
-  (or you are intentionally deploying from this branch).
+- You are deploying from the exact commit the owner approved (this runbook currently
+  ships from `arena/68ecf14d-woodex-reimagined` — PRs #11/#12).
 - Local preview runs in **demo** mode — it does not prove anything about Supabase.
 
 ## 1. Apply migrations IN ORDER (SQL Editor or `supabase db push`)
@@ -20,7 +20,7 @@ Project ref (from `supabase/config.toml`): `ewbflgbshdstfxqretay`
 5. `supabase/migrations/20261107000005_shipping_and_rate_limit.sql`
 6. `supabase/migrations/20261107000006_lead_rate_limit.sql`
 
-All four are written to be safe on a fresh/converged project. Verify after applying:
+All six are written to be safe on a fresh/converged project. Verify after applying:
 
 ```sql
 -- objects exist
@@ -31,9 +31,33 @@ select to_regprocedure('public.order_submit(jsonb,jsonb,text,text)'),
 select column_name from information_schema.columns
  where table_schema='public' and table_name='orders' and column_name in ('client_ref','sales_channel_id');
 -- seed integrity: orders WDX refs unique-ish, products seeded
-select count(*) from public.products;   -- expect the seed catalogue
-select count(*) from public.categories;
+select count(*) from public.products;   -- expect 148 after §1a seed
+select count(*) from public.categories; -- expect 19
+select count(*) from public.series;      -- expect 5
 ```
+
+## 1a. Apply the catalogue seed (ONCE, after migrations)
+The repository carries a generated catalogue at `supabase/seed.sql` (~148 products,
+19 categories, 5 series, `ON CONFLICT DO NOTHING`, single transaction). Without it the
+products table is EMPTY and every storefront order fails with "product not found".
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/seed.sql
+# or paste the file into the SQL Editor in one go
+```
+
+⚠ **stock_qty IS A PLACEHOLDER (100 for in-stock rows, 0 otherwise).** The catalogue
+has no real inventory. Before this storefront charges anyone, run a physical stocktake
+and reconcile `stock_qty` per SKU — otherwise checkout will happily sell up to 100
+units of everything ever listed. The same warning is repeated in the seed header.
+
+⚠ **SKUs are synthetic** (`WK-<UPPERCASE-PRODUCT-ID>`) — the source catalogue carries
+no SKU field. Renaming them later is data-safe (SKU is opaque downstream) but must be a
+deliberate data migration, not an ad-hoc edit.
+
+⚠ Images are referenced same-origin under `/images/seed/*.webp`; those files ship in
+this repo (`public/images/seed/`) and must be deployed with the app or every product
+photo 404s.
 
 ## 2. Deploy edge functions
 ```
@@ -115,5 +139,7 @@ later retry. Rollback does NOT require dropping any migration.
 - `convertDraftOrder` and `exchanges/claims` remain unwired by design (Wave 2: tables missing).
 - The conversion price authority model (negotiated quote lines) is intentional and documented
   in migration `0004`'s header — do not "fix" it to re-list-price without owner sign-off.
-- Local evidence only (68/68 rehearsal). A fresh pair of eyes on this runbook before a
-  real-money deploy is strongly advised.
+- Seed stock is synthetic (see §1a). Until a stocktake is done, treat every seeded
+  `stock_qty` as a lie and every seeded SKU as temporary.
+- Local evidence only (36/36 rehearsal, seed included). A fresh pair of eyes on this
+  runbook before a real-money deploy is strongly advised.
