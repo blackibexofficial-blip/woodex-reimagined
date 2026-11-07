@@ -6,6 +6,7 @@ import type { ComponentConfig } from "@puckeditor/core";
 import { Button } from "@/components/ui/button";
 import { Star, PhoneCall, MessageCircle, MapPin, Clock, Mail, Award, Send } from "lucide-react";
 import { commonLayerFields, commonLayerDefaults, SectionShell, resolveLayerPermissions } from "../shell";
+import { richTextField, RichHtml } from "../richtext";
 import TailgridsCallout from "@/components/tailgrids/callout";
 
 type P = Record<string, unknown>;
@@ -31,7 +32,7 @@ const sec = (
   defaultProps: { ...commonLayerDefaults, ...defaults },
   resolvePermissions: resolveLayerPermissions,
   render: (props) => (
-    <SectionShell hidden={str(props, "hidden")} locked={str(props, "locked")} label={label} className={shellClass}>
+    <SectionShell hidden={str(props, "hidden")} locked={str(props, "locked")} label={label} className={shellClass} inspector={props._inspector}>
       <div className="container mx-auto px-4 py-14">{render(props)}</div>
     </SectionShell>
   ),
@@ -148,12 +149,12 @@ export const catalogueB: Record<string, ComponentConfig<P>> = {
 
   /* ---------------- CONTENT (4) ---------------- */
   RichText: sec("Rich text section", {
-    eyebrow: text("Eyebrow", ""), title: text("Title", "The story behind the workshop"), body: area("Body", "Write the long-form copy here."),
+    eyebrow: text("Eyebrow", ""), title: text("Title", "The story behind the workshop"), body: richTextField("Body", "Write the long-form copy here."),
   }, { eyebrow: "THE WOODEX WAY", title: "The story behind the workshop", body: "Three generations of woodworking, one obsessive standard: furniture that survives trend cycles, moves and families. Every order leaves our Lahore workshop after a 41-point inspection — or it doesn't leave at all." }, (p) => (
     <div className="mx-auto max-w-3xl">
       {str(p, "eyebrow") ? <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-accent">{str(p, "eyebrow")}</p> : null}
       <h2 className="mb-4 text-3xl font-bold">{str(p, "title")}</h2>
-      {str(p, "body").split("\n").filter(Boolean).map((para, i) => <p key={i} className="mb-4 leading-relaxed text-foreground/90">{para}</p>)}
+      <RichHtml as="div" className="mb-4 leading-relaxed text-foreground/90 [&_p]:mb-4" html={p.body} />
     </div>
   )),
   TwoColumnText: sec("Two-column text", {

@@ -1,0 +1,118 @@
+/* WOODEX builder — Wave 4 static classes.
+ * Written by the inspector (Desktop classes = base; Tablet/Mobile classes = media
+ * overrides placed AFTER the base rules so they win at equal specificity).
+ * Imported by the editor (admin) and the LAB preview — both render the same wrappers.
+ */
+
+/* ── Padding ─────────────────────────────────────────────── */
+.bx-none-d { padding-block: 0; }
+.bx-sm-d  { padding-block: 0.5rem; }
+.bx-md-d  { padding-block: 1.25rem; }
+.bx-lg-d  { padding-block: 2.5rem; }
+.bx-xl-d  { padding-block: 4rem; }
+
+@media (min-width: 640px) and (max-width: 1023.5px) {
+  .bx-none-t { padding-block: 0; }
+  .bx-sm-t   { padding-block: 0.5rem; }
+  .bx-md-t   { padding-block: 1.25rem; }
+  .bx-lg-t   { padding-block: 2.5rem; }
+  .bx-xl-t   { padding-block: 4rem; }
+}
+@media (max-width: 639.5px) {
+  .bx-none-m { padding-block: 0; }
+  .bx-sm-m   { padding-block: 0.5rem; }
+  .bx-md-m   { padding-block: 1.25rem; }
+  .bx-lg-m   { padding-block: 2.5rem; }
+  .bx-xl-m   { padding-block: 4rem; }
+}
+
+/* NB: tablet/mobile overrides only apply inside their media query; when no mobile
+ * class is set, mobile inherits the base (most recent applicable) value. */
+
+/* ── Radius ──────────────────────────────────────────────── */
+.bx-radius-none-d { border-radius: 0; }
+.bx-radius-sm-d   { border-radius: 0.25rem; }
+.bx-radius-md-d   { border-radius: 0.5rem; }
+.bx-radius-xl-d   { border-radius: 1.25rem; }
+.bx-radius-full-d { border-radius: 9999px; }
+
+@media (min-width: 640px) and (max-width: 1023.5px) {
+  .bx-radius-none-t { border-radius: 0; }
+  .bx-radius-sm-t   { border-radius: 0.25rem; }
+  .bx-radius-md-t   { border-radius: 0.5rem; }
+  .bx-radius-xl-t   { border-radius: 1.25rem; }
+  .bx-radius-full-t { border-radius: 9999px; }
+}
+@media (max-width: 639.5px) {
+  .bx-radius-none-m { border-radius: 0; }
+  .bx-radius-sm-m   { border-radius: 0.25rem; }
+  .bx-radius-md-m   { border-radius: 0.5rem; }
+  .bx-radius-xl-m   { border-radius: 1.25rem; }
+  .bx-radius-full-m { border-radius: 9999px; }
+}
+
+/* ── Border ──────────────────────────────────────────────── */
+.bx-border-none-d  { border: 0; }
+.bx-border-thin-d  { border: 1px solid hsl(var(--border, 214 32% 91%)); }
+.bx-border-thick-d { border: 2px solid hsl(var(--border, 214 32% 91%)); }
+
+@media (min-width: 640px) and (max-width: 1023.5px) {
+  .bx-border-none-t  { border: 0; }
+  .bx-border-thin-t  { border: 1px solid hsl(var(--border, 214 32% 91%)); }
+  .bx-border-thick-t { border: 2px solid hsl(var(--border, 214 32% 91%)); }
+}
+@media (max-width: 639.5px) {
+  .bx-border-none-m  { border: 0; }
+  .bx-border-thin-m  { border: 1px solid hsl(var(--border, 214 32% 91%)); }
+  .bx-border-thick-m { border: 2px solid hsl(var(--border, 214 32% 91%)); }
+}
+
+/* ── Text align ──────────────────────────────────────────── */
+.bx-align-left-d   { text-align: left; }
+.bx-align-center-d { text-align: center; }
+.bx-align-right-d  { text-align: right; }
+
+@media (min-width: 640px) and (max-width: 1023.5px) {
+  .bx-align-left-t   { text-align: left; }
+  .bx-align-center-t { text-align: center; }
+  .bx-align-right-t  { text-align: right; }
+}
+@media (max-width: 639.5px) {
+  .bx-align-left-m   { text-align: left; }
+  .bx-align-center-m { text-align: center; }
+  .bx-align-right-m  { text-align: right; }
+}
+
+/* ── Responsive visibility ───────────────────────────────── */
+@media (min-width: 1024px) { .bx-hide-d { display: none !important; } }
+@media (min-width: 640px) and (max-width: 1023.5px) { .bx-hide-t { display: none !important; } }
+@media (max-width: 639.5px) { .bx-hide-m { display: none !important; } }
+
+/* ── Hover + heading colour CSS vars (inline style carries the var) ─────
+   Cascade islands: one un-layered var rule per slot; inline background must
+   yield on :hover, hence !important on the single hover override. */
+.bx-has-bg-hover:hover { background: var(--bx-bg-hover) !important; }
+.bx-has-color-hover:hover { color: var(--bx-color-hover) !important; }
+.bx-has-heading-color h1, .bx-has-heading-color h2, .bx-has-heading-color h3,
+.bx-has-heading-color h4, .bx-has-heading-color h5, .bx-has-heading-color h6 {
+  color: var(--bx-heading-color);
+}
+.bx-has-heading-hover:hover h1, .bx-has-heading-hover:hover h2, .bx-has-heading-hover:hover h3,
+.bx-has-heading-hover:hover h4, .bx-has-heading-hover:hover h5, .bx-has-heading-hover:hover h6 {
+  color: var(--bx-heading-hover) !important;
+}
+
+/* ── Animation on scroll (mount trigger; respects reduced-motion) ─────── */
+@keyframes bx-fade-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bx-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bx-slide-left { from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes bx-zoom-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+
+[data-animate="fade-up"]    { animation: bx-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+[data-animate="fade-in"]    { animation: bx-fade-in 0.6s ease both; }
+[data-animate="slide-left"] { animation: bx-slide-left 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+[data-animate="zoom-in"]    { animation: bx-zoom-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-animate] { animation: none !important; }
+}

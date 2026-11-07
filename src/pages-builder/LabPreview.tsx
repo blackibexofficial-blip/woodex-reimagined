@@ -4,6 +4,9 @@ import { Render } from "@puckeditor/core";
 import type { Data } from "@puckeditor/core";
 import { FileQuestion, Pencil } from "lucide-react";
 import { woodexConfig } from "./blocks";
+import "./builder.css";
+import { BuilderDocProvider } from "./BuilderDocContext";
+import { normalizeLinkedStyles, scanHmTokens } from "./inspector";
 import { usePagePreview } from "@/lib/usePages";
 import type { AdminPageDoc } from "@/api/types";
 
@@ -117,6 +120,10 @@ const LabPreview = () => {
   }, [page]);
 
   const published = page?.status === "published";
+  const linkedStyles = normalizeLinkedStyles(
+    (page?.doc as { root?: { props?: Record<string, unknown> } } | undefined)?.root?.props?._linkedStyles,
+  );
+  const hmCounts = scanHmTokens((page?.doc as { content?: unknown[] } | undefined)?.content);
 
   return (
     <div className="min-h-screen bg-background">
@@ -136,7 +143,9 @@ const LabPreview = () => {
       {!ready ? (
         <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">Loading page…</div>
       ) : page ? (
-        <Render config={woodexConfig} data={toPuckData(page.doc)} />
+        <BuilderDocProvider linkedStyles={linkedStyles} counts={hmCounts}>
+          <Render config={woodexConfig} data={toPuckData(page.doc)} />
+        </BuilderDocProvider>
       ) : (
         <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-6 text-center">
           <FileQuestion className="h-10 w-10 text-muted-foreground" />

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import TailgridsDivider from "@/components/tailgrids/divider";
 import { commonLayerFields, commonLayerDefaults, ElementShell, resolveLayerPermissions } from "./shell";
+import { richTextField, RichHtml } from "./richtext";
 import * as icons from "lucide-react";
 
 const text = (label?: string, fallback = "") => ({ type: "text" as const, label, placeholder: fallback });
@@ -35,7 +36,7 @@ type ELProps = Record<string, unknown>;
 const str = (props: ELProps, key: string, fallback = "") => String(props[key] ?? fallback);
 
 const wrap = (el: string | null, props: ELProps, children: React.ReactNode) => (
-  <ElementShell hidden={str(props, "hidden")} locked={str(props, "locked")} label={el ? String(el) : "Element"}>
+  <ElementShell hidden={str(props, "hidden")} locked={str(props, "locked")} label={el ? String(el) : "Element"} inspector={props._inspector}>
     {children}
   </ElementShell>
 );
@@ -43,7 +44,7 @@ const wrap = (el: string | null, props: ELProps, children: React.ReactNode) => (
 export const elementComponents = {
   Heading: {
     label: "Heading",
-    fields: { ...ELEMENT_FIELDS, eyebrow: text("Eyebrow", "WOODEX"), title: text("Heading", "A heading worth reading"), level: radio("Level", [{ label: "H1", value: "h1" }, { label: "H2", value: "h2" }, { label: "H3", value: "h3" }, { label: "H4", value: "h4" }]), align: radio("Align", [{ label: "Left", value: "left" }, { label: "Center", value: "center" }]) },
+    fields: { ...ELEMENT_FIELDS, eyebrow: text("Eyebrow", "WOODEX"), title: richTextField("Heading", "A heading worth reading"), level: radio("Level", [{ label: "H1", value: "h1" }, { label: "H2", value: "h2" }, { label: "H3", value: "h3" }, { label: "H4", value: "h4" }]), align: radio("Align", [{ label: "Left", value: "left" }, { label: "Center", value: "center" }]) },
     defaultProps: { ...ELEMENT_DEFAULTS, eyebrow: "", title: "Heading", level: "h2", align: "left" },
     resolvePermissions: resolveLayerPermissions,
     render: (props) => {
@@ -52,39 +53,39 @@ export const elementComponents = {
       return wrap("Heading", props, (
         <div className={cn("mx-auto w-full max-w-4xl px-4 py-6", centered && "text-center")}>
           {str(props, "eyebrow") ? <p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-accent">{str(props, "eyebrow")}</p> : null}
-          <Tag className="text-2xl font-bold leading-snug sm:text-3xl">{str(props, "title", "Heading")}</Tag>
+          <RichHtml as={Tag} className="text-2xl font-bold leading-snug sm:text-3xl" html={props.title} />
         </div>
       ));
     },
   },
   SubHeading: {
     label: "Sub-heading",
-    fields: { ...ELEMENT_FIELDS, text: area("Sub-heading", "One or two supporting sentences."), align: radio("Align", [{ label: "Left", value: "left" }, { label: "Center", value: "center" }]) },
+    fields: { ...ELEMENT_FIELDS, text: richTextField("Sub-heading", "One or two supporting sentences."), align: radio("Align", [{ label: "Left", value: "left" }, { label: "Center", value: "center" }]) },
     defaultProps: { ...ELEMENT_DEFAULTS, text: "A supporting sub-heading that sets the scene.", align: "left" },
     resolvePermissions: resolveLayerPermissions,
     render: (props) => wrap("Sub-heading", props, (
       <div className={cn("mx-auto w-full max-w-3xl px-4 pb-4", str(props, "align") === "center" && "text-center")}>
-        <p className="text-lg leading-relaxed text-muted-foreground">{str(props, "text")}</p>
+        <RichHtml as="p" className="text-lg leading-relaxed text-muted-foreground" html={props.text} />
       </div>
     )),
   },
   Paragraph: {
     label: "Paragraph",
-    fields: { ...ELEMENT_FIELDS, text: area("Copy", "Write the paragraph…") },
+    fields: { ...ELEMENT_FIELDS, text: richTextField("Copy", "Write the paragraph…") },
     defaultProps: { ...ELEMENT_DEFAULTS, text: "Paragraph copy. Keep it short, concrete and useful." },
     resolvePermissions: resolveLayerPermissions,
     render: (props) => wrap("Paragraph", props, (
-      <div className="mx-auto w-full max-w-3xl px-4 pb-4"><p className="leading-relaxed">{str(props, "text")}</p></div>
+      <div className="mx-auto w-full max-w-3xl px-4 pb-4"><RichHtml as="p" className="leading-relaxed" html={props.text} /></div>
     )),
   },
   SmallLabel: {
     label: "Small label",
-    fields: { ...ELEMENT_FIELDS, text: text("Label", "SINCE 1987"), tone: radio("Tone", [{ label: "Accent", value: "accent" }, { label: "Muted", value: "muted" }]) },
+    fields: { ...ELEMENT_FIELDS, text: richTextField("Label", "SINCE 1987"), tone: radio("Tone", [{ label: "Accent", value: "accent" }, { label: "Muted", value: "muted" }]) },
     defaultProps: { ...ELEMENT_DEFAULTS, text: "SINCE 1987", tone: "accent" },
     resolvePermissions: resolveLayerPermissions,
     render: (props) => wrap("Small label", props, (
       <div className="mx-auto w-full max-w-3xl px-4 pb-3">
-        <span className={cn("text-[10px] font-bold uppercase tracking-[0.22em]", str(props, "tone") === "accent" ? "text-accent" : "text-muted-foreground")}>{str(props, "text")}</span>
+        <RichHtml as="span" className={cn("text-[10px] font-bold uppercase tracking-[0.22em]", str(props, "tone") === "accent" ? "text-accent" : "text-muted-foreground")} html={props.text} />
       </div>
     )),
   },
@@ -177,25 +178,25 @@ export const elementComponents = {
   },
   Quote: {
     label: "Quote",
-    fields: { ...ELEMENT_FIELDS, quote: area("Quote", "The sofa survived twins, a relocation and five years of nightly use."), cite: text("Attribution", "— DHA Phase 6 couple") },
+    fields: { ...ELEMENT_FIELDS, quote: richTextField("Quote", "The sofa survived twins, a relocation and five years of nightly use."), cite: text("Attribution", "— DHA Phase 6 couple") },
     defaultProps: { ...ELEMENT_DEFAULTS, quote: "The sofa survived twins, a relocation and five years of nightly use.", cite: "— DHA Phase 6 couple" },
     resolvePermissions: resolveLayerPermissions,
     render: (props) => wrap("Quote", props, (
       <figure className="mx-auto w-full max-w-3xl border-l-4 border-accent bg-hon-green-pale/40 px-6 py-5">
-        <blockquote className="text-lg italic leading-relaxed">“{str(props, "quote")}”</blockquote>
+        <blockquote className="text-lg italic leading-relaxed">“<RichHtml as="span" html={props.quote} />”</blockquote>
         {str(props, "cite") ? <figcaption className="mt-2 text-xs font-medium text-muted-foreground">{str(props, "cite")}</figcaption> : null}
       </figure>
     )),
   },
   Columns2: {
     label: "2 columns",
-    fields: { ...ELEMENT_FIELDS, left: area("Left column", "Left column copy."), right: area("Right column", "Right column copy.") },
+    fields: { ...ELEMENT_FIELDS, left: richTextField("Left column", "Left column copy."), right: richTextField("Right column", "Right column copy.") },
     defaultProps: { ...ELEMENT_DEFAULTS, left: "Left column copy.", right: "Right column copy." },
     resolvePermissions: resolveLayerPermissions,
     render: (props) => wrap("2 columns", props, (
       <div className="mx-auto grid w-full max-w-4xl gap-6 px-4 pb-4 sm:grid-cols-2">
-        <p className="leading-relaxed">{str(props, "left")}</p>
-        <p className="leading-relaxed">{str(props, "right")}</p>
+        <RichHtml as="p" className="leading-relaxed" html={props.left} />
+        <RichHtml as="p" className="leading-relaxed" html={props.right} />
       </div>
     )),
   },
