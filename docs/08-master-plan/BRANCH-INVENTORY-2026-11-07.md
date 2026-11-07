@@ -48,8 +48,7 @@ Merging any two is a different-project 3-way fight by construction — avoid; pi
 | `arena/0378ff53-woodex-reimagined` | **no PR** (190 commits) | The Hostinger/MySQL PHP-Laravel **re-implementation** of the IBPanel migration. Notably: `platform/` (≈1,935 files incl. `app/Support/Install/MysqlProbe.php`, `database/data/catalog.json`), `deploy/` (Hostinger kit, ED25519), `downloads/woodex-staging-master.zip` (**69.4 MB**), `docs/07-woodex-os/` (12 docs: audits, parity matrix, server capacity, plans — F1–F9), `PROJECT-REPORT.md`, `supabase/` reproducible catalogue + CMS, **`legacy-photos/` = 139 real photos, 17.3 MB** | the entire fork | **Never bulk-merge.** Two bits may be portable (see below); decision PARKED with owner |
 | `v1.0.0` (tag) | release line of the fork | 2026-11-04, Arena Agent, "reproducible release packaging for the deployable bundle" | none (older snapshot of the fork lineage) | PARKED — superseded; keep-or-delete per owner |
 
-**Merge-order status after this inventory:** #13 ✅ → #14 ✅. #1 and #11 remain open (owner decisions). #11 is
-red on **Lint** only; the rest of its pipeline passes.
+**Merge-order status after this inventory:** #13 ✅ → #14 ✅; #1 and #11 **closed unmerged 2026-11-07** by owner instruction. No PRs open. Merged branches and `v1.0.0` deliberately kept.
 
 ---
 
@@ -88,12 +87,14 @@ only defect is a Lint failure.
 
 ## Sweep checklist once the owner decides
 
-- [ ] Decide Candidate A (photos), B (fork docs), C (PagesLab): wire / archive / skip.
-- [ ] PR #1 — close (no portable code) or keep parked as reference.
-- [ ] PR #11 — repair (regenerate bundle + lint green) or close; then #10's branch can go.
-- [ ] `v1.0.0` tag — delete or keep as the fork's last tag.
-- [ ] Remote branches fully merged into `main` (`ee488920`, `68ecf14d`, `d1d750ce`, `8ca24d1c`,
-      `c8245185`, `87cc179f`, `1a55fd1f`, `4431a319`, `51eb86ae`) — deletable at sweep.
+- [x] PR #1 — **CLOSED unmerged 2026-11-07** by owner instruction ('As you recommend'). Raw handoff archive; nothing mergeable; refs retained.
+- [x] PR #11 — **CLOSED unmerged 2026-11-07** by owner instruction. Lint-red bundler artifact; money-path work already in main via #10; refs retained; regenerable from a fresh branch if needed.
+- [x] Candidate A (139 photos, 17.3 MB) — **SKIPPED** by owner instruction. Unwired binary doesn't belong in `main`; origin: `refs/remotes/origin/arena/0378ff53-woodex-reimagined:platform/database/data/legacy-photos/` (fork parked, not deleted). Catalogue data already ported (148/148 slugs).
+- [x] Candidate B (fork audit docs) — **NOT PORTED** by owner instruction. Fork remains the archive of the rejected deployment path.
+- [x] Candidate C (PagesLab spike) — **NOT RESTORED** by owner instruction. Superseded by the pages-builder workspace.
+- [ ] Candidate D — n/a (nothing left).
+- [ ] `v1.0.0` tag — kept (deletion declined at the 2026-11-07 sweep; explicit owner word required to remove).
+- [ ] Remote branches fully merged into `main` — kept (deletion declined 2026-11-07; explicit owner word required).
 - [ ] Unshallow this clone (`git fetch --unshallow`) if any future `git log` work is planned here.
 - [ ] Owner-held, outside this document: hosted deploy (0001–0009) + seed + physical stocktake,
       Turnstile keys, zone-rate sheet, `convertDraftOrder` sign-off.
