@@ -1,10 +1,8 @@
-# Convert draft → order — design (owner sign-off REQUIRED; not implemented)
+# Convert draft → order — design + as-built (owner gate: PASSED 2026-11-07, full spec)
 
-*Purpose: make the owner gate concrete. Nothing in this document is wired; the adapter still
-rejects `convertDraftOrder` with a deterministic `SupabaseUnsupportedError`. This doc exists so the
-sign-off decision is informed, and so implementation (when approved) starts from a spec, not a blank
-page. Written 2026-11-07 against `main` = `474787c` (0001–0009 merged; hosted project has NOT executed
-0001–0009 anywhere — no Supabase egress in this environment).*
+*Status: **implemented and verified** by the same wave that received the approval. Migration `0010 convert_draft_order` (NOT yet in a hosted DB — the hosted project has executed none of 0001–0010), adapter `convertDraftOrder` wired, admin **Drafts → Convert** dialog is now a reprice preview with per-line negotiated-price overrides (audited server-side), demo adapter reprice parity. Rehearsed offline via `npm run test:rehearsal` (41/41 — abort/rollback paths, stock shortfall, finance deny, idempotent replay, zone shipping, override audit). The spec is kept verbatim below for the record. Written 2026-11-07 against `main` = `474787c`.*
+
+*The implementation deliberately mirrors the spec line-for-line: client prices never trusted; line reprice from catalogue inside one transaction; `has_cap('order.manage')` gate; negotiated lines audited in `order_events`; freehand lines require an explicit negotiated price; zone shipping from `delivery_zones` (0007); idempotent flip to converted + `converted_order_id`.*
 
 ## Goal
 

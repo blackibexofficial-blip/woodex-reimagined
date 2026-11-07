@@ -64,6 +64,10 @@ export default function AdminDrafts() {
   const [convertTarget, setConvertTarget] = useState<AdminDraftOrder | null>(null);
   const [convertMethod, setConvertMethod] = useState<PaymentMethod>("cod");
   const [converting, setConverting] = useState(false);
+  /* reprice preview state (convert dialog) */
+  const [previewPrices, setPreviewPrices] = useState<Map<string, number>>(new Map());
+  const [overrideInputs, setOverrideInputs] = useState<Record<number, string>>({});
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   /* delete confirm */
   const [deleteTarget, setDeleteTarget] = useState<AdminDraftOrder | null>(null);
@@ -102,6 +106,33 @@ export default function AdminDrafts() {
   const linesTotal = useMemo(() => lines.reduce((s, l) => s + l.price * l.quantity, 0), [lines]);
   const shippingNum = Math.max(0, Math.round(Number(shipping) || 0));
   const grandTotal = linesTotal + shippingNum;
+
+  /* convert-dialog preview: effective prices = override ?? catalogue ?? draft (freehand needs override) */
+  const overrideByLine = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const [idx, raw] of Object.entries(overrideInputs)) {
+      const rawT = raw.trim();
+      if (rawT === "") continue;
+      const price = Math.round(Number(rawT));
+      if (Number.isFinite(price) && price >= 0) m.set(Number(idx), price);
+    }
+    return m;
+  }, [overrideInputs]);
+  const preview = useMemo(() => {
+    if (!convertTarget) return null;
+    let subtotal = 0;
+    let needsPricing = false;
+    const finalPrices: number[] = [];
+    convertTarget.items.forEach((line, idx) => {
+      const cat = previewPrices.get(line.id);
+      const override = overrideByLine.get(idx);
+      const price = override ?? cat ?? line.price;
+      if (cat === undefined && override === undefined) needsPricing = true;
+      finalPrices.push(price);
+      subtotal += price * line.quantity;
+    });
+    return { finalPrices, subtotal, needsPricing };
+  }, [convertTarget, previewPrices, overrideByLine]);
 
   const openCreate = () => {
     setEditTarget(null);
@@ -176,13 +207,35 @@ export default function AdminDrafts() {
     }
   };
 
+  const openConvert = (t: AdminDraftOrder) => {
+    if (t.status === "converted") return;
+    setConvertMethod("cod");
+    setOverrideInputs({});
+    setPreviewPrices(new Map());
+    setPreviewLoading(true);
+    setConvertTarget(t);
+    api.listProducts({ perPage: 300 })
+      .then((res) => setPreviewPrices(new Map(res.items.map((p) => [p.id, p.price]))))
+      .catch(() => setPreviewPrices(new Map()))
+      .finally(() => setPreviewLoading(false));
+  };
+
   const doConvert = async () => {
-    if (!convertTarget) return;
+    if (!convertTarget || !preview) return;
+    if (preview.needsPricing) {
+      toast.error("Freehand (non-catalogue) lines need a negotiated price you set first.");
+      return;
+    }
+    const overrides = Object.entries(overrideInputs)
+      .filter(([, raw]) => raw.trim() !== "")
+      .map(([idx, raw]) => ({ line: Number(idx), price: Math.round(Number(raw)) }))
+      .filter((o) => Number.isFinite(o.price) && o.price >= 0);
     setConverting(true);
     try {
-      const order = await api.convertDraftOrder(convertTarget.id, convertMethod);
+      const order = await api.convertDraftOrder(convertTarget.id, convertMethod, overrides.length ? overrides : undefined);
       if (order) {
         toast.success(`${convertTarget.id} converted → ${order.id} (${paymentLabel(order.paymentMethod)}). Stock deducts on dispatch as usual.`);
+        setOverrideInputs({});
         setConvertTarget(null);
         await load();
       } else {
@@ -292,7 +345,7 @@ export default function AdminDrafts() {
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)} disabled={t.status === "converted"} aria-label={`Edit ${t.id}`} title={t.status === "converted" ? "Converted — locked" : "Edit draft"}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setConvertMethod("cod"); setConvertTarget(t); }} disabled={t.status === "converted"} aria-label={`Convert ${t.id} to order`} title="Convert to order">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openConvert(t)} disabled={t.status === "converted"} aria-label={`Convert ${t.id} to order`} title="Convert to order">
                           <PackageCheck className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(t)} disabled={t.status === "converted"} aria-label={`Delete ${t.id}`} title="Delete draft">
@@ -440,21 +493,83 @@ export default function AdminDrafts() {
         </DialogContent>
       </Dialog>
 
-      {/* ── convert confirm ─────────────────────────────────────────── */}
+      {/* ── convert confirm + reprice preview ─────────────────────── */}
       <Dialog open={convertTarget !== null} onOpenChange={(open) => !open && setConvertTarget(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Convert {convertTarget?.id} into an order?</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-1 text-sm">
             <p className="text-xs leading-5 text-muted-foreground">
-              A <span className="font-semibold text-foreground">pending order</span> will be created via the normal order path
-              (channel: manual) — it appears in Orders immediately, flows through the usual lifecycle, and stock deducts on
-              dispatch. The draft will be locked as converted.
+              Prices recompute from the <span className="font-semibold text-foreground">current catalogue</span> at confirm
+              (server-authoritative — draft totals are never trusted). Edit a line's price to negotiate it — overrides are
+              audited and need order.manage on the server. Freehand lines must be priced explicitly. Shipping applies the
+              zone rate for “{convertTarget?.city ?? "—"}” on confirm (dispatch-confirmed).
             </p>
+            {previewLoading ? (
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-border py-6 text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading catalogue prices…
+              </div>
+            ) : preview && convertTarget ? (
+              <div className="max-h-[46vh] overflow-y-auto rounded-lg border border-border">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-secondary text-left">
+                    <tr>
+                      <th className="px-2 py-1.5 font-medium">Line</th>
+                      <th className="px-2 py-1.5 text-right font-medium">Catalogue</th>
+                      <th className="px-2 py-1.5 text-right font-medium">Your price</th>
+                      <th className="px-2 py-1.5 text-right font-medium">Qty</th>
+                      <th className="px-2 py-1.5 text-right font-medium">Line</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {convertTarget.items.map((line, idx) => {
+                      const cat = previewPrices.get(line.id);
+                      const raw = overrideInputs[idx] ?? "";
+                      const eff = preview.finalPrices[idx];
+                      const unpriced = cat === undefined && overrideByLine.get(idx) === undefined;
+                      return (
+                        <tr key={idx} className={unpriced ? "bg-amber-50" : undefined}>
+                          <td className="px-2 py-1.5">
+                            <span className="font-medium">{line.name}</span>
+                            {unpriced && <span className="ml-1 text-[10px] font-semibold text-amber-800">needs a price</span>}
+                          </td>
+                          <td className="px-2 py-1.5 text-right">{cat !== undefined ? formatPKR(cat) : "—"}</td>
+                          <td className="px-2 py-1.5 text-right">
+                            <Input
+                              className="ml-auto h-7 w-24 text-right"
+                              inputMode="numeric"
+                              aria-label={`Line ${idx + 1} price`}
+                              placeholder={String(cat ?? line.price)}
+                              value={raw}
+                              onChange={(e) => setOverrideInputs((m) => ({ ...m, [idx]: e.target.value }))}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 text-right">{line.quantity}</td>
+                          <td className="px-2 py-1.5 text-right">{formatPKR(eff * line.quantity)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
             <div className="rounded-lg bg-secondary p-3 text-xs">
-              <p className="font-semibold">{convertTarget?.customerName} · {convertTarget?.items.length} line(s) · {formatPKR(convertTarget?.total ?? 0)}</p>
-              <p className="mt-0.5 text-muted-foreground">{convertTarget?.items.map((i) => `${i.name} ×${i.quantity}`).join(", ").slice(0, 140)}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Draft total (display cache — ignored)</span>
+                <span className="line-through">{formatPKR(convertTarget?.total ?? 0)}</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <span className="text-muted-foreground">Recomputed subtotal (indicative)</span>
+                <span className="font-semibold">{preview ? formatPKR(preview.subtotal) : "—"}</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <span className="text-muted-foreground">Zone shipping on confirm</span>
+                <span>Dispatch-confirmed</span>
+              </div>
+              <p className="mt-2 text-[10px] leading-4 text-muted-foreground">
+                {convertTarget?.customerName} · {convertTarget?.items.length} line(s). Stock is checked and deducted inside one transaction at confirm; any shortfall rolls everything back.
+              </p>
             </div>
             <div>
               <Label htmlFor="convert-method" className="mb-1.5 block text-xs font-medium text-muted-foreground">Payment method</Label>
@@ -468,7 +583,7 @@ export default function AdminDrafts() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConvertTarget(null)}>Keep draft</Button>
-            <Button onClick={doConvert} disabled={converting}>
+            <Button onClick={doConvert} disabled={converting || previewLoading || !preview || preview.needsPricing}>
               {converting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <PackageCheck className="mr-1.5 h-4 w-4" />}
               {converting ? "Converting…" : "Convert to order"}
             </Button>

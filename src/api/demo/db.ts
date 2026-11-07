@@ -3763,23 +3763,38 @@ export const demoAdminApi: AdminApi = {
     return okFlag;
   },
 
-  async convertDraftOrder(id, paymentMethod = "cod") {
+  async convertDraftOrder(id, paymentMethod = "cod", overrides?: Array<{ line: number; price: number }>) {
     let order: AdminOrder | undefined;
     const now = new Date().toISOString();
     update((db) => {
       const t = (db.draftOrders ??= []).find((x) => x.id === id);
       if (!t || t.status === "converted") return;
       if (t.items.length === 0) throw new Error(`Draft ${t.id} has no lines to convert.`);
+      // Catalogue reprice by default; explicit overrides are the audited negotiation path; ad-hoc
+      // (freehand) lines REQUIRE one — mirrors the Supabase convert_draft_order RPC (migration 0010).
+      const resolved = t.items.map((i, idx) => {
+        const ov = overrides?.find((o) => o.line === idx);
+        if (ov !== undefined && (!Number.isFinite(ov.price) || ov.price < 0)) {
+          throw new Error(`Draft ${t.id}: override for line ${idx + 1} must be a non-negative number.`);
+        }
+        const cat = i.id ? (db.products ?? []).find((p) => p.id === i.id) : undefined;
+        if (cat) return { ...i, price: ov?.price ?? cat.price };
+        if (ov !== undefined) return { ...i, price: ov.price };
+        throw new Error(`Draft ${t.id}: line ${idx + 1} ("${i.name}") is not a catalogue product — set a negotiated price to include it.`);
+      });
+      const subtotal = resolved.reduce((sum, i) => sum + i.price * i.quantity, 0);
+      // demo has no zone lookup — draft-sheet shipping is used as-is (supabase path recomputes from delivery_zones)
+      const shipping = Math.max(0, Number(t.shipping) || 0);
       order = materializeOrder(db, {
         customerName: t.customerName,
         customerEmail: t.customerEmail || undefined,
         customerPhone: t.customerPhone,
         address: t.address,
         city: t.city ?? "",
-        items: t.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
-        subtotal: t.subtotal,
-        shipping: t.shipping,
-        total: t.total,
+        items: resolved.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
+        subtotal,
+        shipping,
+        total: subtotal + shipping,
         paymentMethod,
         channelId: t.channelId ?? "ch-manual",
         notes: t.notes,
@@ -3790,7 +3805,7 @@ export const demoAdminApi: AdminApi = {
       (db.orderEvents ??= []).push({
         id: newEventId(),
         orderId: order.id,
-        note: `Converted from draft ${t.id} — manual order`,
+        note: `Converted from draft ${t.id}${overrides?.length ? ` — negotiated: ${overrides.map((o) => `#${o.line + 1}=Rs ${o.price}`).join(", ")}` : ""}`,
         createdAt: now,
       });
     });

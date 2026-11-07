@@ -1384,8 +1384,13 @@ export interface AdminApi {
   updateDraftOrder(id: string, patch: AdminDraftOrderPatch): Promise<AdminDraftOrder | undefined>;
   /** False when the draft is missing or already converted. */
   deleteDraftOrder(id: string): Promise<boolean>;
-  /** Same materialisation path as createOrder; sets the draft to converted with convertedOrderId. */
-  convertDraftOrder(id: string, paymentMethod?: PaymentMethod): Promise<AdminOrder | undefined>;
+  /**
+   * Converts a staff draft into an order via the server-authoritative path: current catalogue
+   * reprice by default, zone shipping, single-transaction stock with rollback, idempotent flip
+   * (converted + convertedOrderId set atomically). Per-line negotiated prices require an
+   * order.manage actor and ride in as explicit `overrides` (audited in order_events).
+   */
+  convertDraftOrder(id: string, paymentMethod?: PaymentMethod, overrides?: Array<{ line: number; price: number }>): Promise<AdminOrder | undefined>;
   listQuotes(params?: ListParams & { status?: QuoteStatus | "all" }): Promise<Paginated<AdminQuote>>;
   getQuote(id: string): Promise<AdminQuote | undefined>;
   /** Empty-quote drafts are allowed (fill lines later); convert enforces ≥1 line + total > 0. */

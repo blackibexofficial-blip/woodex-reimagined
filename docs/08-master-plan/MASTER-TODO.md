@@ -74,15 +74,15 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 - **PRs closed unmerged (owner decision, refs retained):** #1 (raw IBPanel handoff archive) and #11 (lint-red `@lovable.dev/mcp-js` bundler re-commit; underlying money-path landed via #10). Repo temporarily has **no open PRs**; this sweep's docs ride PR #15 once opened.
 - **Port candidates skipped by owner:** 139 legacy product photos (17.3 MB, fork `arena/0378ff53-woodex-reimagined`), fork audit docs (`docs/07-woodex-os/`), PagesLab spike (2 files in merged `cb0d09e3`). Fork and refs retained.
 - **Kept deliberately:** `v1.0.0` tag + all 9 merged remote branches (deletion needs explicit owner word).
-- Rehearsal remains **66/66** (harness rebuilds 0001–0009; file counts in this doc). Real typecheck gate = `tsc --noEmit -p tsconfig.app.json`, green. CI green on both merge SHAs.
-- **Owner-held still:** hosted deploy (0001–0009) + seed + physical stocktake; Turnstile keys; zone-rate sheet; `convertDraftOrder` sign-off.
+- Rehearsal is now **reproducible in-repo** (`npm run test:rehearsal`, pglite, offline): **41/41** today (migrations 0001–0010 + seed + cap matrix + conversion suite). The historical 66/66 was the pre-merge /tmp harness; treat `test:rehearsal` as the going-forward gate. Real typecheck = `tsc --noEmit -p tsconfig.app.json`, green. CI green on merge SHAs.
+- **Owner-held still:** hosted deploy (0001–0010) + seed + physical stocktake; Turnstile keys; zone-rate sheet. `convertDraftOrder` — DONE 2026-11-07 (owner-approved full spec, migration 0010).
 
 ### PENDING — engineering slices (agent-ready once authorised)
 
 10. `DONE 2026-11-07` **Wave 2 — draft orders** — migration 0008 + adapter CRUD (list/get/create/update/delete); finance read-only; viewer nothing; identity 1001. Conversion stays a separate item (13).
 11. `DONE 2026-11-07` **Wave 3 — singleton resets** — `src/api/singleton-defaults.ts` is the single source (@/data seeds); supabase `resetWarrantyPage/CustomDesign/VirtualShowroom` wired; demo adapter deduped onto it.
 12. `DONE 2026-11-07` **Wave 2b — exchanges / claims backend** — migration 0009 (tables + `record_order_event` RPC, order.manage-only) + adapter lifecycles + `inventory_apply` stock effects (catalog.manage) + transition guards + timeline notes.
-13. `OWNER GATE` **`convertDraftOrder` wiring** — no longer technically blocked. Conversion must reprice via the order-submit path (negotiated lines authoritative; stock FOR UPDATE; replay short-circuit; order.manage cap). Needs your go-ahead.
+13. `DONE 2026-11-07` **`convertDraftOrder` wired (migration 0010, full spec)** — catalogue reprice + order.manage-audited negotiated overrides + zone shipping + single-txn stock rollback + idempotent flip; admin reprice preview modal; rehearsed 41/41 (`npm run test:rehearsal`); hosted deploy pending owner.
 
 ### HOLD — deliberately parked
 

@@ -34,8 +34,10 @@
  *     stamps convertedOrderId + audit atomically). Hosted deployment of
  *     migration 0004 is pending owner action.
  *   draft orders (0008) — staff CRUD (read: order.manage or finance.manage;
- *     write: order.manage); conversion is NOT wired (owner 2026-11-07: it must
- *     reprice via the order-submit path). Exchanges + claims (0009) — full
+ *     write: order.manage) and draft → order via convert_draft_order RPC
+ *     (0010, 2026-11-07 owner gate, full spec): catalogue reprice per line
+ *     (stock FOR UPDATE + rollback), order.manage-audited negotiated
+ *     overrides, zone shipping, idempotent flip to converted. Exchanges + claims (0009) — full
  *     lifecycle; line validation, transition guards and timeline notes via
  *     record_order_event; stock effects via inventory_apply (catalog.manage).
  *     Singleton resets (Wave 3) — restore the bundle's default copy from
@@ -43,8 +45,6 @@
  *
  * What is deliberately NOT wired — it throws SupabaseUnsupportedError naming
  * the cause instead of returning fabricated data:
- *   convertDraftOrder (deliberately unwired — owner 2026-11-07: conversion must
- *   reprice via the order-submit path before drafts can become orders),
  *   companies (admin B2B master — Wave 2+ scope), page folders (no table),
  *   delivery zones (schema reshaped by 0007; ETA/COD zone config is an owner call),
  *   assignMediaToProduct (needs a media RPC), createProduct/duplicateProduct/
@@ -66,7 +66,7 @@ import type {
   AdminShowroom, AdminStockMovement, AdminStockTransfer, AdminStockTransferPatch, AdminSupplier,
   AdminSupplierPatch, AdminVirtualShowroomPage, AdminWarrantyPage,
   AdminClaim, AdminClaimPatch, AdminDraftOrder, AdminDraftOrderPatch, AdminExchange, AdminExchangePatch,
-  BulkProductPatch, BundleStatus, DashboardStats, ListParams, NewAdminBundleInput,
+  BulkProductPatch, BundleStatus, DashboardStats, ListParams, PaymentMethod, NewAdminBundleInput,
   NewAdminCollectionInput, NewAdminPriceListInput, NewBlogPostInput, NewBrandInput, NewLeadInput,
   NewMaterialInput, NewOrderInput, NewOptionSetInput, NewProjectInput, NewPurchaseOrderInput,
   NewPurchaseOrderLineInput, NewQuoteInput, NewReturnInput, NewSalesChannelInput, NewServiceInput,
@@ -1039,7 +1039,7 @@ async function updateClaim(id: string, patch: AdminClaimPatch): Promise<AdminCla
   return getClaim(id);
 }
 
-/* ── draft orders (Wave 2 — migration 0008; conversion NOT wired by owner decision 2026-11-07) ── */
+/* ── draft orders (Wave 2 — migrations 0008 + 0010 draft→order conversion) ── */
 const DRAFT_REF = (id: number) => `DRF-${id}`;
 const parseDraftId = (s: string): number => {
   const m = String(s).match(/^DRF-(\d+)$/);
@@ -1184,8 +1184,36 @@ async function deleteDraftOrder(id: string): Promise<boolean> {
   if (error) fail("deleteDraftOrder", error);
   return true;
 }
-function convertDraftOrder(_id: string): Promise<AdminOrder> {
-  return Promise.reject(new SupabaseUnsupportedError("convertDraftOrder — not wired (owner decision 2026-11-07): conversion must reprice via the order-submit path (server-authoritative prices, stock-checked, replay-safe). Drafts stay pre-sales shortlists until that slice is approved."));
+/**
+ * Draft → order, server-authoritative (owner-approved 2026-11-07, full spec —
+ * migration 0010 `convert_draft_order`): catalogue reprice per line, stock
+ * FOR UPDATE with full rollback on any shortfall, zone shipping, idempotent
+ * flip (converted + converted_order_id) in one transaction. Negotiated line
+ * prices require order.manage and arrive as explicit
+ * `overrides: [{ line, price }]` — audited in order_events server-side.
+ */
+async function convertDraftOrder(id: string, paymentMethod: PaymentMethod = "cod", overrides?: Array<{ line: number; price: number }>): Promise<AdminOrder | undefined> {
+  guard();
+  const draftId = parseDraftId(id);
+  if (!Number.isFinite(draftId)) throw new Error(`Supabase: draft id "${id}" is not a DRF-<n> reference`);
+  const { data, error } = await supabase.rpc("convert_draft_order", {
+    p_draft_id: draftId,
+    p_negotiated_lines: (overrides ?? []) as unknown as Json,
+    p_payment_method: paymentMethod,
+  });
+  if (error) fail("convert_draft_order", error);
+  const res = data as { ok?: boolean; reason?: string; orderRef?: string; id?: string; ref?: string } | null;
+  if (!res?.ok) {
+    if (res?.reason === "not-found") return undefined;
+    if (res?.reason === "already-converted") {
+      throw new Error(`Draft ${id} is already converted to ${res.orderRef ?? "unknown order"}.`);
+    }
+    throw new Error(`Supabase convert_draft_order failed: ${res?.reason ?? "unknown error"}`);
+  }
+  const ref = String(res.ref ?? res.id);
+  const order = await getOrder(ref);
+  if (!order) throw new Error(`Supabase convert_draft_order failed: order ${ref} not readable after conversion.`);
+  return order;
 }
 
 /* ── quotes ─────────────────────────────────────────────────────────────── */
