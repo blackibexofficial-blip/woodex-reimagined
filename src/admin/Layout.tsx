@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
-  Armchair, Receipt, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, FileText,
+  Armchair, Receipt, ClipboardCheck, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, FileText,
   Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, SlidersHorizontal, Layers, BadgeCheck, LayoutTemplate, PenTool, Monitor,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
@@ -60,6 +60,7 @@ const NAV_GROUPS: Array<{
     label: "Engage",
     items: [
       { to: "/admin/leads", label: "Leads", icon: ClipboardList },
+      { to: "/admin/tasks", label: "Tasks", icon: ClipboardCheck },
       { to: "/admin/blog", label: "Blog", icon: Newspaper },
       { to: "/admin/services", label: "Services", icon: Wrench },
       { to: "/admin/content", label: "Content", icon: FileText },
@@ -78,6 +79,7 @@ function pageTitle(pathname: string) {
   const map: Record<string, string> = {
     dashboard: "Dashboard", analytics: "Analytics", products: "Products", categories: "Categories",
     invoices: "Invoices & Payments",
+    tasks: "Tasks & Follow-ups",
     orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", transfers: "Transfers", options: "Product Options", content: "Content", warranty: "Warranty Content", pages: "Pages", showrooms: "Showrooms", "custom-design": "Custom Design Content", "virtual-showroom": "Virtual Showroom Content",
     media: "Media Library", settings: "Settings", inventory: "Inventory & Delivery Zones", series: "Furniture Series", brands: "Product Brands", homepage: "Homepage Sections",
   };

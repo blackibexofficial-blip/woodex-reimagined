@@ -32,6 +32,7 @@ import AdminExchanges from "@/admin/pages/Exchanges";
 import AdminClaims from "@/admin/pages/Claims";
 import AdminInvoice from "@/admin/pages/Invoice";
 import AdminInvoices from "@/admin/pages/Invoices";
+import AdminTasks from "@/admin/pages/Tasks";
 import AdminInvoiceDocument from "@/admin/pages/InvoiceDocument";
 import AdminCustomers from "@/admin/pages/Customers";
 import AdminLeads from "@/admin/pages/Leads";
@@ -82,6 +83,7 @@ export default function AdminApp() {
           <Route path="drafts" element={<AdminDrafts />} />
           <Route path="quotes" element={<AdminQuotes />} />
           <Route path="invoices" element={<AdminInvoices />} />
+          <Route path="tasks" element={<AdminTasks />} />
           <Route path="suppliers" element={<AdminSuppliers />} />
           <Route path="showrooms" element={<AdminShowrooms />} />
           <Route path="series" element={<AdminSeries />} />
