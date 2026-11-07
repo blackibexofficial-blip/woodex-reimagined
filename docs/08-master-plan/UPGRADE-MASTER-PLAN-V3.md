@@ -431,7 +431,7 @@ The plan's Slice-16-class parity target for the quotation designer is **delivere
 | Per-line engineering spec | ✅ in-repo — dims/unit, material, finish, series, category, custom notes |
 | QuoteTemplateDesigner port | ✅ in-repo — builtin "Woodex classic" (code-owned) + custom templates via `quote_templates`; required payment-terms wording locked |
 | Print/preview page upgrade | ✅ in-repo — template blocks render above/below the items table; spec line per item |
-| Invoice ledger (“quote_invoice_snapshot → invoice_apply_payment”) | ❌ not built this slice (the Agency OS invoice ledger stays pre-planned port; quoting stays order-path-driven via `quote.convert` — see 0004) |
+| Invoice ledger (“quote_invoice_snapshot → invoice_apply_payment”) | ✅ **in-repo (PR #18)** — `/admin/invoices` + print document + finance-only payment posting via 0001 RPCs; quote status untouched (invoice ≠ order conversion); snapshot remains lossy Phase-2 candidate (0012 = CREATE OR REPLACE + owner sign-off) |
 | Realtime multi-user collaboration | ❌ deliberately not built (post-activation, after hosted sign-off) |
 | Hosted activation | ❌ owner-gated — migrations 0001–0011 unapplied; nothing verified against live Supabase — rehearsal 50/50 (pglite) is the evidence class, per §12 |
 

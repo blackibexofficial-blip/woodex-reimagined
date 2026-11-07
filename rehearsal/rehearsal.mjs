@@ -302,6 +302,44 @@ const asRole = async (db, roleName, uid) => { await db.exec(`set role ${roleName
   const verSales = await db.query(`select count(*)::int as c from public.quote_versions where quote_id = $1`, [qId]);
   ok('quotation: sales may record a version snapshot', first(verSales) === 1);
 
+  // ── invoice ledger (0001 invoices/payments + RPCs) ─────────────────────
+  const qInvIns = await db.query(`insert into public.quotes (customer, items, total) values ('Invoice Rehearsal', '[]'::jsonb, 50000) returning id`);
+  const qInvId = first(qInvIns);
+  await asRole(db, 'authenticated', S);
+  await db.query(`select public.quote_invoice_snapshot($1::bigint)`, [qInvId]);
+  await db.exec('reset role');
+  const invLookup = await db.query(`select id, status, paid::int as paid from public.invoices where quote_id = $1`, [qInvId]);
+  ok('invoice: sales may snapshot a quote to an Issued invoice', invLookup.rows.length === 1 && invLookup.rows[0]?.status === 'Issued');
+  const invPk = invLookup.rows[0]?.id;
+
+  await asRole(db, 'authenticated', S);
+  await db.query(`select public.quote_invoice_snapshot($1::bigint)`, [qInvId]);
+  await db.exec('reset role');
+  const invReplay = await db.query(`select count(*)::int as c from public.invoices where quote_id = $1`, [qInvId]);
+  ok('invoice: snapshot is idempotent (replay keeps one invoice)', first(invReplay) === 1);
+
+  let salesPay = false;
+  try { await asRole(db, 'authenticated', S); await db.query(`select public.invoice_apply_payment($1::bigint, 50000, 'Bank transfer', 'TX-R1')`, [invPk]); salesPay = true; } catch { /* denied */ }
+  await db.exec('reset role');
+  ok('invoice: sales may NOT post a payment (finance.manage required)', salesPay === false);
+
+  await asRole(db, 'authenticated', F);
+  await db.query(`select public.invoice_apply_payment($1::bigint, 20000, 'Bank transfer', 'TX-R2')`, [invPk]);
+  await db.exec('reset role');
+  const invPart = await db.query(`select status, paid::int as paid from public.invoices where quote_id = $1`, [qInvId]);
+  ok('invoice: partial payment flips Issued → Partially paid', invPart.rows[0]?.status === 'Partially paid' && Number(invPart.rows[0]?.paid) === 20000);
+
+  await asRole(db, 'authenticated', F);
+  await db.query(`select public.invoice_apply_payment($1::bigint, 30000, 'Bank transfer', 'TX-R3')`, [invPk]);
+  await db.exec('reset role');
+  const invPaid = await db.query(`select status from public.invoices where quote_id = $1`, [qInvId]);
+  ok('invoice: full payment flips Partially paid → Paid', invPaid.rows[0]?.status === 'Paid');
+
+  await asRole(db, 'authenticated', V);
+  const invViewer = await db.query(`select count(*)::int as c from public.invoices where quote_id = $1`, [qInvId]);
+  await db.exec('reset role');
+  ok('invoice: viewer sees 0 invoice rows (quote.manage/finance.manage required)', first(invViewer) === 0);
+
   const pass = results.filter(r => r[1]).length, fail = results.length - pass;
   console.log(`\nFRESH REHEARSAL (test:rehearsal): ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
