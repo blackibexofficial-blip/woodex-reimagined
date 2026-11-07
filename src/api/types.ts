@@ -613,6 +613,36 @@ export interface MergeCandidate {
   clients: AdminClient[];
 }
 
+/* ── Site visits (0001 public.site_visits — plain RLS, crm.manage; no reminder-task RPC yet) ── */
+export type SiteVisitStatus = "Scheduled" | "Completed" | "No-show" | "Cancelled";
+export interface AdminSiteVisit {
+  id: string;              // "SV-<n>"
+  leadId: string;          // "lead-<n>"
+  clientId: string;        // "CLI-<n>" — mandatory in 0001 (client identity is the CRM master)
+  scheduledAt: string;     // ISO
+  address: string;
+  owner: string;
+  status: SiteVisitStatus;
+  outcome?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface NewSiteVisitInput {
+  leadId: string;
+  scheduledAt: string;
+  address: string;
+  owner?: string;
+  notes?: string;
+  /** Optional explicit client — hosted resolves/creates the client for the lead when omitted. */
+  clientId?: string;
+}
+export interface SiteVisitPatch {
+  status?: SiteVisitStatus;
+  outcome?: string;
+  notes?: string;
+}
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -1655,6 +1685,11 @@ export interface AdminApi {
   listClients(params?: { includeMerged?: boolean }): Promise<AdminClient[]>;
   listMergeCandidates(): Promise<MergeCandidate[]>;
   mergeClients(intoId: string, fromId: string): Promise<AdminClient>;
+
+  /** CRM site visits — scheduling + outcome tracking against leads (0001 site_visits). */
+  listSiteVisits(leadId?: string): Promise<AdminSiteVisit[]>;
+  createSiteVisit(input: NewSiteVisitInput): Promise<AdminSiteVisit>;
+  updateSiteVisitStatus(id: string, patch: SiteVisitPatch): Promise<AdminSiteVisit | undefined>;
 
   listLeads(params?: ListParams & { type?: LeadType | "all"; status?: LeadStatus | "all" }): Promise<Paginated<AdminLead>>;
   updateLeadStatus(id: string, status: LeadStatus): Promise<AdminLead | undefined>;

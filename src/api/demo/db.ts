@@ -37,6 +37,9 @@ import type {
   AdminClient,
   AdminClientLink,
   MergeCandidate,
+  AdminSiteVisit,
+  NewSiteVisitInput,
+  SiteVisitPatch,
   ListParams,
   NewAdminProductInput,
   ProductImportResult,
@@ -183,6 +186,7 @@ interface DemoDb {
   tasks: AdminTask[];
   clients: AdminClient[];
   clientLinks: AdminClientLink[];
+  siteVisits: AdminSiteVisit[];
   suppliers: AdminSupplier[];
   purchaseOrders: AdminPurchaseOrder[];
   stockTransfers: AdminStockTransfer[];
@@ -1185,7 +1189,7 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
   return [
     mk("QOT-1001", "lead-1005", "Bilal Ahmed", "+92 315 8899007", "bilal.a@example.com", undefined, "Islamabad",
        [[meeting, 1], [chair, 12]], 5, 14, "sent", 3),
-    mk("QOT-1002", "lead-1008", "Kashif Mirza", "+92 300 9988776", "ops@raviagrofoods.pk", "Ravi Agro Foods", "Multan",
+    mk("QOT-1002", "lead-1007", "Kashif Mirza", "+92 300 9988776", "ops@raviagrofoods.pk", "Ravi Agro Foods", "Multan",
        [[staff, 25], [chair, 50]], 8, 21, "accepted", 5),
   ];
 }
@@ -1222,7 +1226,7 @@ function buildSeedClientLinks(): AdminClientLink[] {
   return [
     { clientId: "CLI-1001", entity: "lead", entityId: "lead-1005" },
     { clientId: "CLI-1001", entity: "quote", entityId: "QOT-1001" },
-    { clientId: "CLI-1002", entity: "lead", entityId: "lead-1008" },
+    { clientId: "CLI-1002", entity: "lead", entityId: "lead-1007" },
     { clientId: "CLI-1002", entity: "quote", entityId: "QOT-1002" },
   ];
 }
@@ -1234,6 +1238,26 @@ export const customerScore = (o: { ordersCount: number; totalSpent: number; type
 };
 const withScore = <C extends { ordersCount: number; totalSpent: number; type: "retail" | "business" }>(c: C): C & { score: number } =>
   ({ ...c, score: customerScore(c) });
+
+const nextClientId = (clients: AdminClient[]): string => {
+  const nums = clients.map((c) => Number(String(c.id).match(/^CLI-(\d+)$/)?.[1] ?? 0)).filter((n) => Number.isFinite(n));
+  return `CLI-${(nums.length ? Math.max(...nums) : 1000) + 1}`;
+};
+
+const nextSiteVisitId = (visits: AdminSiteVisit[]): string => {
+  const nums = visits.map((v) => Number(String(v.id).match(/^SV-(\d+)$/)?.[1] ?? 0)).filter((n) => Number.isFinite(n));
+  return `SV-${(nums.length ? Math.max(...nums) : 1000) + 1}`;
+};
+
+/** Deterministic site-visit seeds: one completed measure-up, one upcoming warehouse visit. */
+function buildSeedSiteVisits(): AdminSiteVisit[] {
+  const t = Date.now();
+  const day = (n: number, h = 10) => { const d = new Date(t + n * DAY_MS); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+  return [
+    { id: "SV-1001", leadId: "lead-1005", clientId: "CLI-1001", scheduledAt: day(-6, 11), address: "House 22, Street 5, F-7/2, Islamabad", owner: "You", status: "Completed", outcome: "Measured lounge + dining wall — 3rd revision drawings shared with the client", notes: "Site access via watchman; pets on ground floor", createdAt: day(-13, 9), updatedAt: day(-6, 12) },
+    { id: "SV-1002", leadId: "lead-1007", clientId: "CLI-1002", scheduledAt: day(3, 9), address: "Ravi Agro Foods warehouse, Lahore Road, Multan", owner: "You", status: "Scheduled", notes: "Bring loading dock dims template + safety vest", createdAt: day(-2, 9), updatedAt: day(-2, 9) },
+  ];
+}
 
 /** Next TSK-#### id for the demo store. */
 const nextTaskId = (tasks: AdminTask[]): string => {
@@ -1872,7 +1896,7 @@ function buildSeed(): DemoDb {
   return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: seedQuotes,
     invoices: buildSeedInvoices(seedQuotes),
     payments: buildSeedPayments(),
-    tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
+    tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), siteVisits: buildSeedSiteVisits(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1901,6 +1925,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.tasks)) db.tasks = [];
       if (!Array.isArray(db.clients)) db.clients = buildSeedClients();
       if (!Array.isArray(db.clientLinks)) db.clientLinks = buildSeedClientLinks();
+      if (!Array.isArray(db.siteVisits)) db.siteVisits = buildSeedSiteVisits();
       if (!Array.isArray(db.collections)) db.collections = buildSeedCollections(db.products);
       if (!Array.isArray(db.companies)) db.companies = buildSeedCompanies();
       if (!Array.isArray(db.priceLists)) db.priceLists = buildSeedPriceLists();
@@ -2407,6 +2432,69 @@ export const demoAdminApi: AdminApi = {
       merged = { ...into };
     });
     return merged as AdminClient;
+  },
+
+  async listSiteVisits(leadId?: string) {
+    return [...loadDb().siteVisits]
+      .filter((v) => !leadId || v.leadId === leadId)
+      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  },
+
+  async createSiteVisit(input: NewSiteVisitInput): Promise<AdminSiteVisit> {
+    if (!input?.leadId) throw new Error("Lead is required.");
+    if (!input?.scheduledAt) throw new Error("Pick a date and time.");
+    if (!input?.address?.trim()) throw new Error("Address is required.");
+    let created: AdminSiteVisit | undefined;
+    update((db) => {
+      // resolve identity: explicit client → link lookup → create client from the lead (0001: client_id NOT NULL)
+      let clientId = input.clientId?.trim() || undefined;
+      if (clientId) {
+        const c = db.clients.find((x) => x.id === clientId);
+        if (!c) throw new Error(`Client ${clientId} not found.`);
+      } else {
+        const link = db.clientLinks.find((l) => l.entity === "lead" && l.entityId === input.leadId);
+        if (link) {
+          clientId = link.clientId;
+        } else {
+          const lead = db.leads.find((l) => l.id === input.leadId);
+          if (!lead) throw new Error(`Lead ${input.leadId} not found.`);
+          clientId = nextClientId(db.clients);
+          const now = new Date().toISOString();
+          db.clients.push({ id: clientId, name: lead.name, company: lead.company, email: lead.email, emailNorm: emailNorm(lead.email), phone: lead.phone, phoneNorm: phoneNorm(lead.phone), city: lead.city, kind: lead.type === "b2b" ? "business" : "retail", source: lead.utmSource ?? "lead", tags: lead.utmCampaign ? [lead.utmCampaign] : [], createdAt: now, updatedAt: now });
+          db.clientLinks.push({ clientId, entity: "lead", entityId: input.leadId });
+        }
+      }
+      const now = new Date().toISOString();
+      const v: AdminSiteVisit = {
+        id: nextSiteVisitId(db.siteVisits),
+        leadId: input.leadId,
+        clientId: clientId as string,
+        scheduledAt: new Date(input.scheduledAt).toISOString(),
+        address: input.address.trim(),
+        owner: input.owner?.trim() || "You",
+        status: "Scheduled",
+        ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
+        createdAt: now,
+        updatedAt: now,
+      };
+      db.siteVisits.push(v);
+      created = { ...v };
+    });
+    return created as AdminSiteVisit;
+  },
+
+  async updateSiteVisitStatus(id: string, patch: SiteVisitPatch): Promise<AdminSiteVisit | undefined> {
+    let updated: AdminSiteVisit | undefined;
+    update((db) => {
+      const v = db.siteVisits.find((x) => x.id === id);
+      if (!v) return;
+      if (patch.status) v.status = patch.status;
+      if (patch.outcome !== undefined) v.outcome = patch.outcome.trim() || undefined;
+      if (patch.notes !== undefined) v.notes = patch.notes.trim() || undefined;
+      v.updatedAt = new Date().toISOString();
+      updated = { ...v };
+    });
+    return updated;
   },
 
   async listLeads(params = {}) {

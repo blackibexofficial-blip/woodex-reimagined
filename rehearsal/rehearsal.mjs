@@ -396,6 +396,29 @@ const asRole = async (db, roleName, uid) => { await db.exec(`set role ${roleName
   await db.exec('reset role');
   ok('merge: viewer sees 0 client rows (crm.manage required)', first(viewerClients) === 0);
 
+  // ── site_visits (0001 site_visits table; crm.manage read/insert/update only; NO delete) ──
+  const svInsLead = await db.query(`insert into public.leads (name) values ('Visit Rehearsal') returning id`);
+  const svLeadId = first(svInsLead);
+  const svInsClient = await db.query(`insert into public.clients (name, email_norm, kind, source) values ('Visit Rehearsal Client', 'visit-rehearsal@example.com', 'business', 'site-visit') returning id`);
+  const svClientId = first(svInsClient);
+  const svRef = `SV-REH-${Date.now()}`;
+  await asRole(db, 'authenticated', S);
+  await db.query(`insert into public.site_visits (ref, lead_id, client_id, scheduled_at, address, owner, status) values ($1, $2::bigint, $3::bigint, now() + interval '2 days', 'Rehearsal Site 9, Lahore', 'You', 'Scheduled')`, [svRef, svLeadId, svClientId]);
+  await db.exec('reset role');
+  const svSales = await db.query(`select count(*)::int as c from public.site_visits where ref = $1`, [svRef]);
+  ok('site visits: sales may schedule a visit (plain RLS — no reminder RPC yet)', first(svSales) === 1);
+
+  await asRole(db, 'authenticated', V);
+  const svViewer = await db.query(`select count(*)::int as c from public.site_visits where ref = $1`, [svRef]);
+  await db.exec('reset role');
+  ok('site visits: viewer sees 0 visit rows (crm.manage required)', first(svViewer) === 0);
+
+  await asRole(db, 'authenticated', S);
+  await db.query(`update public.site_visits set status = 'Completed', outcome = 'Measured — booked for fit-out', updated_at = now() where ref = $1`, [svRef]);
+  await db.exec('reset role');
+  const svOutcome = await db.query(`select status, outcome from public.site_visits where ref = $1`, [svRef]);
+  ok('site visits: sales may record the visit outcome (status → Completed)', svOutcome.rows[0]?.status === 'Completed' && String(svOutcome.rows[0]?.outcome ?? '').startsWith('Measured'));
+
   const pass = results.filter(r => r[1]).length, fail = results.length - pass;
   console.log(`\nFRESH REHEARSAL (test:rehearsal): ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

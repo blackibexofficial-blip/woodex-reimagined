@@ -62,7 +62,7 @@ import type {
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
   AdminPageContentItem, AdminPageDoc, AdminPageHistoryEntry, AdminPageSeo, AdminPriceList,
   AdminProduct, AdminProject, AdminPurchaseOrder, AdminPurchaseOrderPatch, AdminQuote,
-  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput, AdminTask, NewTaskInput, AdminClient, MergeCandidate,
+  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput, AdminTask, NewTaskInput, AdminClient, MergeCandidate, AdminSiteVisit, NewSiteVisitInput, SiteVisitPatch, SiteVisitStatus,
   AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
   AdminShowroom, AdminStockMovement, AdminStockTransfer, AdminStockTransferPatch, AdminSupplier,
   AdminSupplierPatch, AdminVirtualShowroomPage, AdminWarrantyPage,
@@ -1605,6 +1605,123 @@ async function mergeClients(intoId: string, fromId: string): Promise<AdminClient
   const { data, error } = await supabase.rpc("client_merge", { p_into: parseClientId(intoId), p_from: parseClientId(fromId) });
   if (error) fail("client_merge", error);
   return rowToAdminClient(data as unknown as Row);
+}
+
+/* ── site visits (0001 public.site_visits — plain RLS, crm.manage; no reminder RPC yet) ──
+   client_id is NOT NULL in 0001 — the CRM identity is the master. Creation resolves
+   it three ways: explicit client ref → existing lead link → create an identity client
+   from the lead (first-class evidence; NOT an auto-merge — review still owns merges).
+   A `site_visit_schedule` RPC enforcing reminder-task linkage is a future 0013
+   candidate — deliberately not invented here. */
+const SV_REF = (id: number) => `SV-${id}`;
+const parseSvId = (s: string): number => {
+  const m = String(s).match(/^SV-(\d+)$/);
+  return m ? Number(m[1]) : Number(s);
+};
+const leadNumOf = (leadId: string): number => {
+  const m = String(leadId).match(/(\d+)/);
+  return m ? Number(m[1]) : NaN;
+};
+const rowToAdminSiteVisit = (r: Row): AdminSiteVisit => ({
+  id: SV_REF(Number(r.id)),
+  leadId: `lead-${Number(r.lead_id)}`,
+  clientId: `CLI-${Number(r.client_id)}`,
+  scheduledAt: String(r.scheduled_at),
+  address: String(r.address ?? ""),
+  owner: String(r.owner ?? "You"),
+  status: String(r.status ?? "Scheduled") as SiteVisitStatus,
+  ...(r.outcome ? { outcome: String(r.outcome) } : {}),
+  ...(r.notes ? { notes: String(r.notes) } : {}),
+  createdAt: String(r.created_at),
+  updatedAt: String(r.updated_at),
+});
+
+async function listSiteVisits(leadId?: string): Promise<AdminSiteVisit[]> {
+  guard();
+  let q = supabase.from("site_visits").select("*").order("scheduled_at", { ascending: true }).limit(500);
+  if (leadId) {
+    const num = leadNumOf(leadId);
+    if (!Number.isFinite(num)) return [];
+    q = q.eq("lead_id", num);
+  }
+  const { data, error } = await q;
+  if (error) fail("listSiteVisits", error);
+  return (data ?? []).map(rowToAdminSiteVisit);
+}
+
+async function createSiteVisit(input: NewSiteVisitInput): Promise<AdminSiteVisit> {
+  guard();
+  const leadNum = leadNumOf(String(input?.leadId ?? ""));
+  if (!Number.isFinite(leadNum)) throw new Error("createSiteVisit: lead id carries no numeric id");
+  if (!input.scheduledAt) throw new Error("Pick a date and time.");
+  if (!input.address?.trim()) throw new Error("Address is required.");
+
+  // resolve client: explicit ref → lead link → create identity client from the lead
+  let clientNum: number | null = null;
+  if (input.clientId) {
+    const m = String(input.clientId).match(/(\d+)/);
+    clientNum = m ? Number(m[1]) : null;
+    if (!clientNum) throw new Error(`createSiteVisit: client id "${input.clientId}" carries no numeric id`);
+  } else {
+    const link = await supabase.from("client_links").select("client_id").eq("entity", "lead").eq("entity_id", leadNum).maybeSingle();
+    if (link.error) fail("client_links read", link.error);
+    if (link.data) {
+      clientNum = Number((link.data as Row).client_id);
+    } else {
+      const { data: lead, error } = await supabase.from("leads").select("*").eq("id", leadNum).maybeSingle();
+      if (error) fail("getLead", error);
+      if (!lead) throw new Error(`Lead ${input.leadId} not found.`);
+      const l = lead as Row;
+      const insertRow: TablesInsert<"clients"> = {
+        name: String(l.name ?? "Lead"),
+        ...(l.company ? { company: String(l.company) } : {}),
+        ...(l.email ? { email: String(l.email), email_norm: String(l.email).trim().toLowerCase() } : {}),
+        ...(l.phone ? { phone: String(l.phone), phone_norm: String(l.phone).replace(/\D/g, "") } : {}),
+        ...(l.city ? { city: String(l.city) } : {}),
+        kind: l.company ? "business" : "retail",
+        source: "lead",
+      };
+      const ins = await supabase.from("clients").insert(insertRow).select("*").single();
+      if (ins.error) fail("createClientFromLead", ins.error);
+      clientNum = Number((ins.data as Row).id);
+      const linkIns = await supabase.from("client_links").insert({ client_id: clientNum, entity: "lead", entity_id: leadNum });
+      if (linkIns.error) console.warn(`Supabase: identity client CLI-${clientNum} created but the lead link failed (${linkIns.error.message}) — visiting anyway`);
+    }
+  }
+
+  // ref is NOT NULL in 0001 — placeholder on insert, stable SV-<id> ref afterwards (exchange pattern)
+  const insertVisit: TablesInsert<"site_visits"> = {
+    lead_id: leadNum,
+    client_id: clientNum,
+    scheduled_at: new Date(input.scheduledAt).toISOString(),
+    address: input.address.trim(),
+    owner: input.owner?.trim() || "You",
+    status: "Scheduled",
+    ref: `SV-TMP-${Date.now()}`,
+    ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
+  };
+  const { data, error } = await supabase.from("site_visits").insert(insertVisit).select("*").single();
+  if (error) fail("createSiteVisit", error);
+  const created = data as Row;
+  const svNum = Number(created.id);
+  const ref = SV_REF(svNum);
+  const upd = await supabase.from("site_visits").update({ ref }).eq("id", svNum);
+  if (upd.error) console.warn(`Supabase: site visit ${svNum} created but ref stamp failed (${upd.error.message})`);
+  return rowToAdminSiteVisit({ ...created, ref });
+}
+
+async function updateSiteVisitStatus(id: string, patch: SiteVisitPatch): Promise<AdminSiteVisit | undefined> {
+  guard();
+  const num = parseSvId(id);
+  if (!Number.isFinite(num)) throw new Error(`updateSiteVisitStatus: id "${id}" carries no numeric id`);
+  const row: TablesUpdate<"site_visits"> = { updated_at: new Date().toISOString() };
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.outcome !== undefined) row.outcome = patch.outcome?.trim() ? patch.outcome.trim() : null;
+  if (patch.notes !== undefined) row.notes = patch.notes?.trim() ? patch.notes.trim() : null;
+  const { data, error } = await supabase.from("site_visits").update(row).eq("id", num).select("*").maybeSingle();
+  if (error) fail("updateSiteVisit", error);
+  if (!data) return undefined;
+  return rowToAdminSiteVisit(data as Row);
 }
 
 /* ── tasks (0001 public.tasks; cap crm.manage; no delete path) ──────────────/* ── tasks (0001 public.tasks; cap crm.manage; no delete path) ──────────────
@@ -3598,6 +3715,9 @@ export const supabaseAdminApi: AdminApi = {
   listClients,
   listMergeCandidates,
   mergeClients,
+  listSiteVisits,
+  createSiteVisit,
+  updateSiteVisitStatus,
   convertQuote,
   listSuppliers,
   createSupplier,
