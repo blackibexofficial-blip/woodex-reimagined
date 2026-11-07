@@ -34,6 +34,9 @@ import type {
   AdminPriceList,
   AdminProduct,
   DashboardStats,
+  AdminClient,
+  AdminClientLink,
+  MergeCandidate,
   ListParams,
   NewAdminProductInput,
   ProductImportResult,
@@ -126,6 +129,12 @@ import type {
   RevenuePoint,
   AdminQuoteVersion,
   AdminQuoteTemplate,
+  AdminInvoice,
+  AdminInvoicePayment,
+  InvoiceStatus,
+  NewInvoicePaymentInput,
+  AdminTask,
+  NewTaskInput,
   StoreSettings,
 } from "@/api/types";
 import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
@@ -169,6 +178,11 @@ interface DemoDb {
   quotes: AdminQuote[];
   quoteVersions: AdminQuoteVersion[];
   quoteTemplates: AdminQuoteTemplate[];
+  invoices: AdminInvoice[];
+  payments: AdminInvoicePayment[];
+  tasks: AdminTask[];
+  clients: AdminClient[];
+  clientLinks: AdminClientLink[];
   suppliers: AdminSupplier[];
   purchaseOrders: AdminPurchaseOrder[];
   stockTransfers: AdminStockTransfer[];
@@ -1176,6 +1190,105 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
   ];
 }
 
+/** Balance + derived Overdue are computed at read time — storage keeps only paid/total/due/status. */
+const withInvoiceBalance = (inv: AdminInvoice): AdminInvoice => ({ ...inv, balance: Math.max(0, Math.round(inv.total) - Math.round(inv.paid)) });
+const invoiceIsOverdue = (inv: AdminInvoice): boolean =>
+  inv.status !== "Paid" && inv.status !== "Cancelled" && Math.round(inv.total) - Math.round(inv.paid) > 0 && !!inv.due && Date.parse(inv.due) < Date.now();
+const nextInvoiceId = (existing: AdminInvoice[]): string => {
+  const nums = existing.map((i) => Number(String(i.id).match(/^INV-(\d+)$/)?.[1] ?? 0)).filter((n) => Number.isFinite(n));
+  return `INV-${(nums.length ? Math.max(...nums) : 1000) + 1}`;
+};
+
+const emailNorm = (v?: string) => (v ?? "").trim().toLowerCase();
+const phoneNorm = (v?: string) => (v ?? "").replace(/\D/g, "");
+const DAY_MS = 86400000;
+
+/** Deterministic identity-review seeds — one email-collision pair, one phone-collision pair, one merged audit trail. */
+function buildSeedClients(): AdminClient[] {
+  const t = Date.now();
+  const at = (n: number) => new Date(t - n * DAY_MS).toISOString();
+  return [
+    { id: "CLI-1001", name: "Bilal Ahmed", company: "Ahmed Interiors", email: "bilal.a@example.com", emailNorm: "bilal.a@example.com", phone: "+92 315 8899007", phoneNorm: "923158899007", city: "Islamabad", kind: "business", source: "site-visit", tags: ["b2b", "interior"], notes: undefined, createdAt: at(90), updatedAt: at(30) },
+    { id: "CLI-1002", name: "Kashif Mirza", company: "Ravi Agro Foods", email: "ops@raviagrofoods.pk", emailNorm: "ops@raviagrofoods.pk", phone: "+92 300 9988776", phoneNorm: "923009988776", city: "Multan", kind: "business", source: "lead", tags: ["b2b", "agri"], notes: undefined, createdAt: at(75), updatedAt: at(5) },
+    { id: "CLI-1003", name: "Rabia Iqbal", email: "rabia@example.com", emailNorm: "rabia@example.com", phone: "+92 322 4567890", phoneNorm: "923224567890", city: "Karachi", kind: "retail", source: "site-visit", tags: ["retail"], notes: undefined, createdAt: at(60), updatedAt: at(12) },
+    { id: "CLI-1004", name: "B Ahmed", email: "BILAL.A@example.com", emailNorm: "bilal.a@example.com", phone: "+92 301 2223344", phoneNorm: "923012223344", city: "Rawalpindi", kind: "retail", source: "referral", tags: ["retail"], notes: "Walked in, asked for a teak sofa set — no reference to his earlier quote.", createdAt: at(21), updatedAt: at(21) },
+    { id: "CLI-1005", name: "Rabia I", email: "r.iqbal@example.co.uk", emailNorm: "r.iqbal@example.co.uk", phone: "+92 322 4567890", phoneNorm: "923224567890", city: "Karachi", kind: "retail", source: "storefront", tags: [], notes: "Signed up with work email; same mobile as the Karachi sofa enquiry.", createdAt: at(9), updatedAt: at(9) },
+    { id: "CLI-1006", name: "Ayesha Khan", email: "ayesha.k@example.com", emailNorm: "ayesha.k@example.com", phone: "+92 333 7778899", phoneNorm: "923337778899", city: "Lahore", kind: "retail", source: "referral", tags: ["retail"], notes: undefined, createdAt: at(40), updatedAt: at(40) },
+    { id: "CLI-1007", name: "B. Ahmed", email: "bilal.a@example.com", emailNorm: "bilal.a@example.com", phone: "+92 315 8899007", phoneNorm: "923158899007", city: "Islamabad", kind: "business", source: "site-visit", tags: ["b2b"], notes: "Retired during 2026-10-14 review — duplicate of CLI-1001.", mergedInto: "CLI-1001", createdAt: at(120), updatedAt: at(28) },
+  ];
+}
+
+function buildSeedClientLinks(): AdminClientLink[] {
+  return [
+    { clientId: "CLI-1001", entity: "lead", entityId: "lead-1005" },
+    { clientId: "CLI-1001", entity: "quote", entityId: "QOT-1001" },
+    { clientId: "CLI-1002", entity: "lead", entityId: "lead-1008" },
+    { clientId: "CLI-1002", entity: "quote", entityId: "QOT-1002" },
+  ];
+}
+
+/** Deterministic 1–99 profile score — derived, never stored, never hand-entered. */
+export const customerScore = (o: { ordersCount: number; totalSpent: number; type: "retail" | "business" }): number => {
+  const base = o.ordersCount * 4 + Math.min(40, Math.floor(o.totalSpent / 250000)) + (o.type === "business" ? 18 : 0);
+  return Math.max(1, Math.min(99, base));
+};
+const withScore = <C extends { ordersCount: number; totalSpent: number; type: "retail" | "business" }>(c: C): C & { score: number } =>
+  ({ ...c, score: customerScore(c) });
+
+/** Next TSK-#### id for the demo store. */
+const nextTaskId = (tasks: AdminTask[]): string => {
+  const nums = (tasks ?? []).map((t) => Number(String(t.id).match(/^TSK-(\d+)$/)?.[1] ?? 0)).filter((n) => Number.isFinite(n) && n > 0);
+  return `TSK-${(nums.length ? Math.max(...nums) : 1000) + 1}`;
+};
+
+/** Deterministic seed tasks — overdue + due-today, the exact demo workflows from the screenshot audit. */
+function buildSeedTasks(): AdminTask[] {
+  const t = Date.now();
+  const day = (n: number) => new Date(t + n * 86400000).toISOString();
+  return [
+    { id: "TSK-1001", title: "Send installment-2 reminder", client: "Clifton Villa 9", quoteId: "QOT-1001", due: day(-2), owner: "You", priority: "normal", done: false, createdAt: day(-9), updatedAt: day(-9) },
+    { id: "TSK-1002", title: "Confirm teak veneer swatch before production", client: "Gulberg Residency", quoteId: "QOT-1002", due: day(0), owner: "You", priority: "high", done: false, createdAt: day(-4), updatedAt: day(-4) },
+  ];
+}
+
+/** Deterministic seed invoices — one quote-converted (Issued), two standalone (one Partially paid). */
+function buildSeedInvoices(fromQuotes: AdminQuote[]): AdminInvoice[] {
+  const t = Date.now();
+  const iso = (h: number) => new Date(t - h * 3600000).toISOString();
+  const due = (d: number) => new Date(t + d * 86400000).toISOString();
+  const out: AdminInvoice[] = [];
+  const q = fromQuotes.find((x) => x.id === "QOT-1002");
+  if (q) {
+    out.push({
+      id: "INV-1001", quoteId: q.id, customer: q.customerName, company: q.company, city: q.city,
+      items: q.items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity, image: it.image })),
+      subtotal: q.subtotal, discount: q.discountAmount, tax: 0, shipping: q.shipping, total: q.total, paid: 0, balance: q.total,
+      status: "Issued", due: due(21), notes: "Converted from quote QOT-1002.", createdAt: iso(3), updatedAt: iso(3),
+    });
+  }
+  out.push(
+    {
+      id: "INV-1002", customer: "Clifton Villa 9", city: "Lahore",
+      items: [{ id: "line-inv-1002", name: "Executive desk + credenza set (custom)", price: 54600, quantity: 1 }],
+      subtotal: 54600, discount: 0, tax: 0, shipping: 0, total: 54600, paid: 0, balance: 54600,
+      status: "Issued", due: due(7), createdAt: iso(6), updatedAt: iso(6),
+    },
+    {
+      id: "INV-1003", customer: "Gulberg Residency", city: "Lahore",
+      items: [{ id: "line-inv-1003", name: "Full-home furniture package — phase 1", price: 136500, quantity: 1 }],
+      subtotal: 136500, discount: 0, tax: 0, shipping: 0, total: 136500, paid: 68250, balance: 68250,
+      status: "Partially paid", due: due(14), createdAt: iso(30), updatedAt: iso(3),
+    },
+  );
+  return out;
+}
+
+function buildSeedPayments(): AdminInvoicePayment[] {
+  return [
+    { id: "pay-1001", invoiceId: "INV-1003", amount: 68250, method: "Bank transfer", reference: "TXN-WOODEX-001", createdAt: new Date(Date.now() - 3 * 3600000).toISOString() },
+  ];
+}
+
 /** Shared creation path — used by createQuote and createQuoteFromLead. */
 function makeQuoteVersionSnap(q: AdminQuote, action: string, actor = "admin"): AdminQuoteVersion {
   return {
@@ -1664,6 +1777,7 @@ function buildSeed(): DemoDb {
       type: "retail",
       ordersCount: 0,
       totalSpent: 0,
+      source: pick(rand, ["storefront", "referral", "site-visit", "b2b"] as const),
       joinedAt: new Date(Date.now() - Math.floor(rand() * 400 + 30) * 86400000).toISOString(),
     });
   }
@@ -1754,7 +1868,11 @@ function buildSeed(): DemoDb {
     return { ...rest, consentAt, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
+  const seedQuotes = buildSeedQuotes(adminProducts);
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: seedQuotes,
+    invoices: buildSeedInvoices(seedQuotes),
+    payments: buildSeedPayments(),
+    tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1778,6 +1896,11 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.orderEvents)) db.orderEvents = buildSeedOrderEvents(db.orders);
       if (!Array.isArray(db.quoteVersions)) db.quoteVersions = [];
       if (!Array.isArray(db.quoteTemplates)) db.quoteTemplates = [];
+      if (!Array.isArray(db.invoices)) db.invoices = [];
+      if (!Array.isArray(db.payments)) db.payments = [];
+      if (!Array.isArray(db.tasks)) db.tasks = [];
+      if (!Array.isArray(db.clients)) db.clients = buildSeedClients();
+      if (!Array.isArray(db.clientLinks)) db.clientLinks = buildSeedClientLinks();
       if (!Array.isArray(db.collections)) db.collections = buildSeedCollections(db.products);
       if (!Array.isArray(db.companies)) db.companies = buildSeedCompanies();
       if (!Array.isArray(db.priceLists)) db.priceLists = buildSeedPriceLists();
@@ -1928,6 +2051,9 @@ export const demoAdminApi: AdminApi = {
     const today = live.filter((o) => new Date(o.placedAt).getTime() >= startOfDay);
     const mtd = live.filter((o) => new Date(o.placedAt).getTime() >= startOfMonth);
     const revenueMtd = mtd.reduce((s, o) => s + o.total, 0);
+    // Control-center signals (mirror of admin_overview semantics; demo store computes them directly)
+    const OPEN_QUOTES: Array<AdminQuote["status"]> = ["draft", "review", "approval", "sent", "revised"];
+    const openQuoteRows = db.quotes.filter((q) => OPEN_QUOTES.includes(q.status));
     return {
       revenueToday: PKR(today.reduce((s, o) => s + o.total, 0)),
       revenueMtd: PKR(revenueMtd),
@@ -1937,6 +2063,11 @@ export const demoAdminApi: AdminApi = {
       pendingOrders: db.orders.filter((o) => o.status === "pending" || o.status === "processing").length,
       newLeads: db.leads.filter((l) => l.status === "new").length,
       lowStockProducts: db.products.filter((p) => p.inStock && p.stock < 10).length,
+      outstandingInvoices: (db.invoices ?? []).filter((i) => i.status === "Issued" || i.status === "Partially paid").length,
+      openQuotes: openQuoteRows.length,
+      pipelineValue: openQuoteRows.reduce((sum, q) => sum + q.total, 0),
+      overdueReturns: db.returns.filter((r) => r.status === "requested").length,
+      publishedPages: db.pages.filter((p) => p.status === "published").length,
     };
   },
 
@@ -2222,14 +2353,60 @@ export const demoAdminApi: AdminApi = {
 
   async listCustomers(params = {}) {
     const db = loadDb();
-    let items = [...db.customers].sort((a, b) => b.totalSpent - a.totalSpent);
+    let items = [...db.customers].sort((a, b) => b.totalSpent - a.totalSpent).map(withScore);
     if (params.type && params.type !== "all") items = items.filter((c) => c.type === params.type);
-    items = items.filter((c) => matchQuery(params.query, [c.name, c.company, c.email, c.city, c.phone]));
+    items = items.filter((c) => matchQuery(params.query, [c.name, c.company, c.email, c.city, c.phone, c.source]));
     return paginate(items, { page: params.page, perPage: params.perPage ?? 10 });
   },
 
   async getCustomer(id) {
-    return loadDb().customers.find((c) => c.id === id);
+    const c = loadDb().customers.find((x) => x.id === id);
+    return c ? withScore(c) : undefined;
+  },
+
+  async listClients(params = {}) {
+    const includeMerged = params?.includeMerged === true;
+    return [...loadDb().clients].filter((c) => includeMerged || !c.mergedInto).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+
+  async listMergeCandidates(): Promise<MergeCandidate[]> {
+    const out: MergeCandidate[] = [];
+    const active = loadDb().clients.filter((c) => !c.mergedInto);
+    const group = (keyOf: (c: AdminClient) => string | undefined, reason: MergeCandidate["reason"]) => {
+      const map = new Map<string, AdminClient[]>();
+      for (const c of active) {
+        const k = keyOf(c);
+        if (!k) continue;
+        const arr = map.get(k) ?? [];
+        arr.push(c);
+        map.set(k, arr);
+      }
+      for (const [key, members] of map) {
+        if (members.length >= 2) out.push({ id: `${reason}:${key}`, reason, key, clients: members });
+      }
+    };
+    group((c) => c.emailNorm || undefined, "email");
+    group((c) => c.phoneNorm || undefined, "phone");
+    return out.sort((a, b) => a.id.localeCompare(b.id));
+  },
+
+  async mergeClients(intoId: string, fromId: string): Promise<AdminClient> {
+    if (intoId === fromId) throw new Error("Choose two different records.");
+    let merged: AdminClient | undefined;
+    update((db) => {
+      const into = db.clients.find((c) => c.id === intoId);
+      const from = db.clients.find((c) => c.id === fromId);
+      if (!into) throw new Error(`Client ${intoId} not found.`);
+      if (!from) throw new Error(`Client ${fromId} not found.`);
+      if (into.mergedInto) throw new Error(`${intoId} is already merged into ${into.mergedInto}.`);
+      if (from.mergedInto) throw new Error(`${fromId} is already merged into ${from.mergedInto}.`);
+      db.clientLinks = db.clientLinks.map((l) => (l.clientId === fromId ? { ...l, clientId: intoId } : l));
+      from.mergedInto = intoId;
+      from.updatedAt = new Date().toISOString();
+      into.updatedAt = new Date().toISOString();
+      merged = { ...into };
+    });
+    return merged as AdminClient;
   },
 
   async listLeads(params = {}) {
@@ -3999,6 +4176,112 @@ export const demoAdminApi: AdminApi = {
       if (idx >= 0) list[idx] = saved; else list.push(saved);
     });
     return saved;
+  },
+
+  async listTasks(params?: ListParams & { status?: "all" | "open" | "done" }) {
+    let items = (loadDb().tasks ?? []).slice().sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;                     // open before done
+      return String(a.due ?? "9999-12-31").localeCompare(String(b.due ?? "9999-12-31"));
+    });
+    if (params?.status === "open") items = items.filter((t) => !t.done);
+    else if (params?.status === "done") items = items.filter((t) => t.done);
+    const q = params?.query?.trim().toLowerCase();
+    if (q) items = items.filter((t) => [t.id, t.title, t.client, t.owner, t.priority].some((v) => String(v ?? "").toLowerCase().includes(q)));
+    return paginate(items, params);
+  },
+
+  async createTask(input: NewTaskInput) {
+    let created: AdminTask | undefined;
+    update((db) => {
+      const title = input.title?.trim();
+      if (!title) throw new Error("Task title is required.");
+      const now = new Date().toISOString();
+      const id = nextTaskId(db.tasks ?? []);
+      created = {
+        id, title,
+        client: input.client?.trim() || undefined,
+        due: input.dueAt || undefined,
+        owner: input.owner?.trim() || "You",
+        priority: input.priority?.trim() || "normal",
+        done: false, createdAt: now, updatedAt: now,
+      };
+      (db.tasks ??= []).push(created);
+    });
+    return created!;
+  },
+
+  async setTaskDone(id: string, done: boolean) {
+    let updated: AdminTask | undefined;
+    update((db) => {
+      const t = (db.tasks ??= []).find((x) => x.id === id);
+      if (!t) return;
+      t.done = !!done;
+      t.updatedAt = new Date().toISOString();
+      updated = { ...t };
+    });
+    return updated;
+  },
+
+  async listInvoices(params?: ListParams & { status?: InvoiceStatus | "all"; query?: string }) {
+    const now = Date.now();
+    void now;
+    let items = (loadDb().invoices ?? []).map(withInvoiceBalance).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const q = params?.query?.trim().toLowerCase();
+    if (q) items = items.filter((r) => [r.id, r.ref, r.customer, r.company, r.quoteId, r.orderId].some((v) => String(v ?? "").toLowerCase().includes(q)));
+    if (params?.status && params.status !== "all") {
+      items = params.status === "Overdue" ? items.filter(invoiceIsOverdue) : items.filter((r) => r.status === params.status);
+    }
+    return paginate(items, params);
+  },
+
+  async getInvoice(id: string) {
+    return (loadDb().invoices ?? []).map(withInvoiceBalance).find((i) => i.id === id || i.ref === id);
+  },
+
+  async listInvoicePayments(invoiceId: string) {
+    return (loadDb().payments ?? []).filter((p) => p.invoiceId === invoiceId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  async convertQuoteToInvoice(quoteId: string) {
+    let created: AdminInvoice | undefined;
+    update((db) => {
+      const q = (db.quotes ??= []).find((x) => x.id === quoteId);
+      if (!q) throw new Error(`Quote ${quoteId} not found.`);
+      const existing = (db.invoices ??= []).find((i) => i.quoteId === q.id);
+      if (existing) { created = withInvoiceBalance(existing); return; }   // idempotency — mirrors the RPC
+      const id = nextInvoiceId(db.invoices);
+      const now = new Date().toISOString();
+      created = {
+        id, quoteId: q.id, customer: q.customerName, company: q.company, city: q.city,
+        items: q.items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity, image: it.image })),
+        subtotal: q.subtotal, discount: q.discountAmount, tax: 0, shipping: q.shipping, total: q.total, paid: 0, balance: q.total,
+        status: "Issued", notes: `Converted from quote ${q.id}.`, createdAt: now, updatedAt: now,
+      };
+      db.invoices.push(created);
+      (db.quoteVersions ??= []).push(makeQuoteVersionSnap(q, "convert-to-invoice"));
+    });
+    return created!;
+  },
+
+  async recordInvoicePayment(invoiceId: string, input: NewInvoicePaymentInput) {
+    let updated: AdminInvoice | undefined;
+    update((db) => {
+      const list = (db.invoices ??= []);
+      const inv = list.find((i) => i.id === invoiceId);
+      if (!inv) return;
+      if (inv.status === "Cancelled") throw new Error(`Invoice ${inv.id} is cancelled and cannot receive payments.`);
+      const amount = Math.round(Number(input.amount));
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Payment amount must be a positive number.");
+      const method = (input.method?.trim() || "Bank transfer");
+      const now = new Date().toISOString();
+      (db.payments ??= []).push({ id: `pay-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`, invoiceId: inv.id, amount, method, reference: input.reference?.trim() || undefined, note: input.note?.trim() || undefined, createdAt: now });
+      inv.paid = Math.round(inv.paid + amount);
+      inv.balance = Math.max(0, Math.round(inv.total) - inv.paid);
+      inv.status = inv.paid >= Math.round(inv.total) ? "Paid" : inv.paid > 0 ? "Partially paid" : "Issued";
+      inv.updatedAt = now;
+      updated = { ...inv };
+    });
+    return updated;
   },
 
   async deleteQuoteTemplate(id: string) {

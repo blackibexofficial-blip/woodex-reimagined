@@ -2,7 +2,7 @@
 
 Audience: the owner / release operator. The agent environment that produced this code
 has **no egress to Supabase** (HTTP 000) — nothing here has ever run against a hosted
-project. Rehearsal evidence (`pglite`, 50/50, migrations 0001–0011 + catalogue seed,
+project. Rehearsal evidence (`pglite`, 65/65, migrations 0001–0012 + catalogue seed, tasks RLS + admin_overview casing + client_merge included,
 including idempotent double-apply) proves the DDL and RPC behavior locally only. Every step below is mandatory before the storefront is allowed to charge anyone real money.
 
 Project ref (from `supabase/config.toml`): `ewbflgbshdstfxqretay`
@@ -76,6 +76,8 @@ Note: 0010 adds only the `convert_draft_order` RPC (draft → order, owner-appro
 Note: 0001 creates the `quotes` / `quote_versions` / `quote_templates` tables and their `quote.manage` RLS (sales-class) — the quotation platform (lifecycle, version history, print templates) uses them as-is; there is NO separate 0012. `quote_templates.template` stores brand color, header/footer blocks and copy tweaks; the built-in "Woodex classic" template is code-owned (`src/api/quote-templates.ts`) and cannot be deleted through the admin.
 
 Note: 0011 extends the compare-at price payload RPC only (`compareAtPrice` on products) — no quote interaction.
+
+Note: the invoice ledger (`invoices`/`payments` + RPCs `quote_invoice_snapshot` / `invoice_apply_payment`) is exercised in rehearsal offline; hosted creation is RPC-only by design (no direct INSERT policies on either table). The 0001 snapshot RPC sets the invoice total from the quote total and drops the line breakdown — acceptable today; raising a due date / full breakdown needs a CREATE OR REPLACE migration (not present in this sequence) with owner sign-off.
 
 ## 2. Deploy edge functions
 The two public intake functions import the shared Turnstile verifier

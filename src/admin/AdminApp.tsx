@@ -31,6 +31,10 @@ import AdminReturns from "@/admin/pages/Returns";
 import AdminExchanges from "@/admin/pages/Exchanges";
 import AdminClaims from "@/admin/pages/Claims";
 import AdminInvoice from "@/admin/pages/Invoice";
+import AdminInvoices from "@/admin/pages/Invoices";
+import AdminTasks from "@/admin/pages/Tasks";
+import AdminClientMerge from "@/admin/pages/ClientMerge";
+import AdminInvoiceDocument from "@/admin/pages/InvoiceDocument";
 import AdminCustomers from "@/admin/pages/Customers";
 import AdminLeads from "@/admin/pages/Leads";
 import AdminContent from "@/admin/pages/Content";
@@ -58,6 +62,8 @@ export default function AdminApp() {
         <Route path="login" element={<AdminLogin />} />
         {/* chrome-free printable invoice — standalone, outside the admin layout, guarded inside */}
         <Route path="invoice/:id" element={<AdminInvoice />} />
+        {/* chrome-free printable invoice from the ledger — same pattern */}
+        <Route path="invoice-document/:id" element={<AdminInvoiceDocument />} />
         {/* chrome-free printable quotation — same pattern */}
         <Route path="quote/:id" element={<AdminQuote />} />
         <Route element={<AdminLayout />}>
@@ -77,6 +83,9 @@ export default function AdminApp() {
           <Route path="orders" element={<AdminOrders />} />
           <Route path="drafts" element={<AdminDrafts />} />
           <Route path="quotes" element={<AdminQuotes />} />
+          <Route path="invoices" element={<AdminInvoices />} />
+          <Route path="tasks" element={<AdminTasks />} />
+          <Route path="client-merge" element={<AdminClientMerge />} />
           <Route path="suppliers" element={<AdminSuppliers />} />
           <Route path="showrooms" element={<AdminShowrooms />} />
           <Route path="series" element={<AdminSeries />} />

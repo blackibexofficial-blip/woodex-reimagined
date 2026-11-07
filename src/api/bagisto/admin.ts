@@ -28,7 +28,7 @@ import type {
   AdminBrand,
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
-  AdminQuoteVersion, AdminQuoteTemplate,
+  AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, AdminTask, AdminClient, MergeCandidate,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -194,6 +194,12 @@ export const bagistoAdminApi: AdminApi = {
       pendingOrders: orders.filter((o) => o.status === "pending" || o.status === "processing").length,
       newLeads: 0, // B2B/quote leads live in the storefront DB — see docs (custom endpoint recommended)
       lowStockProducts: 0,
+      // Control-center — not derivable from /sales/*; Bagisto invoicing is stubbed 501 here. Zeros, not invented numbers.
+      outstandingInvoices: 0,
+      openQuotes: 0,
+      pipelineValue: 0,
+      overdueReturns: 0,
+      publishedPages: 0,
     };
   },
 
@@ -448,6 +454,40 @@ export const bagistoAdminApi: AdminApi = {
 
   async deleteQuoteTemplate(): Promise<boolean> {
     throw new BagistoApiError(501, "Quote template deletion is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async listInvoices(): Promise<Paginated<AdminInvoice>> {
+    throw new BagistoApiError(501, "Invoices are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async getInvoice(): Promise<AdminInvoice | undefined> {
+    throw new BagistoApiError(501, "Invoices are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async listInvoicePayments(): Promise<AdminInvoicePayment[]> {
+    throw new BagistoApiError(501, "Invoice payments are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async convertQuoteToInvoice(): Promise<AdminInvoice> {
+    throw new BagistoApiError(501, "Quote→invoice conversion is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async recordInvoicePayment(): Promise<AdminInvoice | undefined> {
+    throw new BagistoApiError(501, "Invoice payment recording is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async listClients(): Promise<AdminClient[]> {
+    throw new BagistoApiError(501, "Merge review is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async listMergeCandidates(): Promise<MergeCandidate[]> {
+    throw new BagistoApiError(501, "Merge review is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async mergeClients(): Promise<AdminClient> {
+    throw new BagistoApiError(501, "Client merging is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
+  async listTasks(): Promise<Paginated<AdminTask>> {
+    throw new BagistoApiError(501, "Tasks are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async createTask(): Promise<AdminTask> {
+    throw new BagistoApiError(501, "Task creation is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async setTaskDone(): Promise<AdminTask | undefined> {
+    throw new BagistoApiError(501, "Task updates are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
   },
 
   async listSuppliers(): Promise<AdminSupplier[]> {

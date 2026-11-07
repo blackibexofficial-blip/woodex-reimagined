@@ -322,6 +322,58 @@ export interface QuoteTemplateBlock {
   content: string;
   visible: boolean;
 }
+export interface AdminTask {
+  id: string;              // TSK-#### (demo seeds from 1001; supabase rides bigint identity)
+  title: string;
+  /** Free-text client/deal label captured at creation (e.g. lead name) — not an FK for humans to read. */
+  client?: string;
+  leadId?: string;
+  quoteId?: string;
+  orderId?: string;
+  due?: string;
+  owner: string;
+  priority: string;        // low | normal | high — free-form per 0001 (default 'normal')
+  done: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export type NewTaskInput = { title: string; dueAt?: string; priority?: string; owner?: string; client?: string };
+
+export type InvoiceStatus = "Issued" | "Partially paid" | "Paid" | "Overdue" | "Cancelled";
+export interface AdminInvoicePayment {
+  id: string;
+  invoiceId: string;
+  amount: number;
+  method: string;
+  reference?: string;
+  note?: string;
+  createdAt: string;
+}
+export interface AdminInvoice {
+  id: string;             // INV-#### (demo seeds from 1001; supabase rides bigint identity)
+  ref?: string;
+  quoteId?: string;       // QOT-#### — set when created via quote→invoice snapshot
+  orderId?: string;       // ORD-#### — set when issued against an order (order path is separate)
+  customer: string;
+  company?: string;
+  city?: string;
+  items: Array<{ id: string; name: string; price: number; quantity: number; image?: string }>;
+  subtotal: number;
+  discount: number;
+  tax: number;
+  shipping: number;
+  total: number;
+  paid: number;
+  /** total - paid, computed at read time (never trusted from storage). */
+  balance: number;
+  status: InvoiceStatus;
+  due?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export type NewInvoicePaymentInput = { amount: number; method?: string; reference?: string; note?: string };
+
 export interface AdminQuoteTemplate {
   id: string;
   name: string;
@@ -522,6 +574,45 @@ export interface AdminOptionSetPatch {
   values?: AdminOptionValueInput[];
 }
 
+/* ── CRM identity layer (0001 clients / client_links / client_merge) ──────────
+ * Identity resolution is a human-in-the-loop surface: nothing merges itself.
+ * `emailNorm`/`phoneNorm` are the collision keys; `mergedInto` marks retired
+ * records (soft tombstone — no deletes). */
+export interface AdminClient {
+  id: string;             // "CLI-<n>" demo/hosted synthetic ref
+  name: string;
+  company?: string;
+  email?: string;
+  emailNorm?: string;
+  phone?: string;
+  phoneNorm?: string;
+  city?: string;
+  kind: "retail" | "business";
+  source?: string;        // acquisition attribution when known (lead/utm/referrer)
+  tags: string[];
+  notes?: string;
+  /** Set when this record was merged into another — retired id, kept for audit. */
+  mergedInto?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminClientLink {
+  clientId: string;
+  entity: string;         // "lead" | "quote" | "order" | "site_visit" | ...
+  entityId: string;
+}
+
+export interface MergeCandidate {
+  /** stable pair key for UI state */
+  id: string;
+  reason: "email" | "phone";
+  /** the shared normalized key */
+  key: string;
+  /** 2+ non-merged clients colliding on the same normalized key */
+  clients: AdminClient[];
+}
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -533,6 +624,10 @@ export interface AdminCustomer {
   ordersCount: number;
   totalSpent: number;
   joinedAt: string;      // ISO
+  /** Acquisition source when we know it (hosted: joined from clients by email_norm when present). */
+  source?: string;
+  /** Deterministic 1–99 profile score — always DERIVED from orders/totalSpent (never stored, never hand-entered). */
+  score?: number;
 }
 
 export interface AdminLead {
@@ -1207,6 +1302,18 @@ export interface DashboardStats {
   pendingOrders: number;
   newLeads: number;
   lowStockProducts: number;
+  /** Control-center signals — populated from the same source as the KPI strip
+   *  (admin_overview in supabase mode; demo computes equivalents from the store). */
+  /** Invoices in Issued + Partially paid — the finance-live ledger backlog. */
+  outstandingInvoices: number;
+  /** Open quotation workload (draft/review/approval/sent/revised). */
+  openQuotes: number;
+  /** Sum of open-quote totals — pipeline value. */
+  pipelineValue: number;
+  /** Returns requested but not yet handled. */
+  overdueReturns: number;
+  /** Pages with a published snapshot on the storefront. */
+  publishedPages: number;
 }
 
 export interface RevenuePoint {
@@ -1478,6 +1585,20 @@ export interface AdminApi {
   updateQuote(id: string, patch: AdminQuotePatch): Promise<AdminQuote | undefined>;
   /** False when the quote is missing or already converted. */
   deleteQuote(id: string): Promise<boolean>;
+  /** Invoices are RPC-gated server-side (quote_invoice_snapshot, invoice_apply_payment). Creation and payment both carry caps; no direct-insert path exists by design. */
+  listInvoices(params?: ListParams & { status?: InvoiceStatus | "all"; query?: string }): Promise<Paginated<AdminInvoice>>;
+  getInvoice(id: string): Promise<AdminInvoice | undefined>;
+  /** Payments for one invoice — finance-only by policy (payments_read); other roles get an empty list. */
+  listInvoicePayments(invoiceId: string): Promise<AdminInvoicePayment[]>;
+  /** Idempotent: re-calling with the same quote returns the existing invoice (RPC contract). Cap: quote.manage. */
+  listTasks(params?: ListParams & { status?: "all" | "open" | "done" }): Promise<Paginated<AdminTask>>;
+  createTask(input: NewTaskInput): Promise<AdminTask>;
+  /** Cap: crm.manage (RLS). No delete path — tasks are worked, not removed. */
+  setTaskDone(id: string, done: boolean): Promise<AdminTask | undefined>;
+
+  convertQuoteToInvoice(quoteId: string): Promise<AdminInvoice>;
+  /** Cap: finance.manage (RPC contract). Atomically appends the payment and recomputes Paid/Partially paid/Issued. */
+  recordInvoicePayment(invoiceId: string, input: NewInvoicePaymentInput): Promise<AdminInvoice | undefined>;
   /** Requires ≥1 line; same materialisation path as createOrder (channel `manual`); order carries the discount. */
   convertQuote(id: string, paymentMethod?: PaymentMethod): Promise<AdminOrder | undefined>;
   /** Newest first. Empty for quotes saved before the versioning port. */
@@ -1529,6 +1650,11 @@ export interface AdminApi {
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;
+
+  /** CRM identity — merge review queue. Nothing here auto-merges. */
+  listClients(params?: { includeMerged?: boolean }): Promise<AdminClient[]>;
+  listMergeCandidates(): Promise<MergeCandidate[]>;
+  mergeClients(intoId: string, fromId: string): Promise<AdminClient>;
 
   listLeads(params?: ListParams & { type?: LeadType | "all"; status?: LeadStatus | "all" }): Promise<Paginated<AdminLead>>;
   updateLeadStatus(id: string, status: LeadStatus): Promise<AdminLead | undefined>;

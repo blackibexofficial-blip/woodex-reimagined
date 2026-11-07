@@ -59,6 +59,12 @@ async function adminSuite(browser) {
     page.click('form button[type="submit"]'),
   ]);
   ok("demo sign-in reaches /admin/dashboard", true);
+  await waitText("Pipeline control center", 20000);
+  ok("dashboard shows the pipeline control-center card", true);
+  const cc = (await bodyText()).toLowerCase();
+  ok("control center shows outstanding-invoices tile", cc.includes("outstanding invoices"));
+  ok("control center shows open-pipeline tile", cc.includes("open pipeline"));
+  ok("control center shows pipeline value sub-line", cc.includes("across open quotes"));
 
   await page.goto(`${ADMIN}/analytics`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Order volume — last 30 days", 20000);

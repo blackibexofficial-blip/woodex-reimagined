@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar,
 } from "recharts";
 import {
-  Banknote, ShoppingCart, Receipt, Clock3, ClipboardList, AlertTriangle, ArrowRight, CalendarDays, PackageX,
+  Banknote, ShoppingCart, Receipt, Clock3, ClipboardList, AlertTriangle, ArrowRight, CalendarDays, PackageX, Sigma, Inbox, Globe,
 } from "lucide-react";
 import { getAdminApi } from "@/api";
 import type { AdminOrder, AdminProduct, DashboardStats, RevenuePoint } from "@/api/types";
@@ -51,6 +51,50 @@ export default function AdminDashboard() {
         <StatCard label="New leads" value={stats ? String(stats.newLeads) : "…"} sub="quote + B2B awaiting contact" icon={ClipboardList} tone="blue" />
         <StatCard label="Low stock" value={stats ? String(stats.lowStockProducts) : "…"} sub="in-stock items under 10 units" icon={AlertTriangle} tone="rose" />
       </div>
+
+      {/* control center — legacy "ecommerce overview" (Backlog #2); same query as the KPI strip, zero extra RPCs */}
+      <SectionCard
+        title="Pipeline control center"
+        action={<Link to="/admin/analytics" className="inline-flex items-center gap-1 text-xs font-medium text-hon-green-dark hover:text-hon-green-dark">Full analytics <ArrowRight className="h-3.5 w-3.5" /></Link>}
+      >
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            {
+              to: "/admin/quotes", label: "Open pipeline", icon: Sigma, tone: "text-violet-600",
+              value: stats ? formatNumber(stats.openQuotes) : "…",
+              sub: stats ? `${formatPKR(stats.pipelineValue)} across open quotes` : "pipeline value",
+            },
+            {
+              to: "/admin/invoices", label: "Outstanding invoices", icon: Receipt, tone: "text-amber-600",
+              value: stats ? formatNumber(stats.outstandingInvoices) : "…",
+              sub: "Issued + Partially paid — finance partner required to post",
+            },
+            {
+              to: "/admin/returns", label: "Needs attention", icon: Inbox, tone: "text-rose-600",
+              value: stats ? formatNumber(stats.overdueReturns) : "…",
+              sub: stats ? `returns awaiting handling · ${stats.newLeads} new leads to call` : "returns + leads aging",
+            },
+            {
+              to: "/admin/pages", label: "Storefront pages live", icon: Globe, tone: "text-emerald-600",
+              value: stats ? formatNumber(stats.publishedPages) : "…",
+              sub: "pages with a published snapshot",
+            },
+          ].map(({ to, label, icon: Icon, tone, value, sub }) => (
+            <Link
+              key={to}
+              to={to}
+              className="group flex flex-col gap-2 rounded-xl border border-border bg-white p-4 text-left transition hover:border-hon-green hover:shadow-sm"
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"><Icon className={`h-4 w-4 ${tone}`} /> {label}</span>
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+              </span>
+              <span className="text-2xl font-black tracking-tight text-foreground">{value}</span>
+              <span className="text-[10px] leading-4 text-muted-foreground">{sub}</span>
+            </Link>
+          ))}
+        </div>
+      </SectionCard>
 
       {/* revenue chart */}
       <SectionCard

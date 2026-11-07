@@ -302,6 +302,100 @@ const asRole = async (db, roleName, uid) => { await db.exec(`set role ${roleName
   const verSales = await db.query(`select count(*)::int as c from public.quote_versions where quote_id = $1`, [qId]);
   ok('quotation: sales may record a version snapshot', first(verSales) === 1);
 
+  // ── invoice ledger (0001 invoices/payments + RPCs) ─────────────────────
+  const qInvIns = await db.query(`insert into public.quotes (customer, items, total) values ('Invoice Rehearsal', '[]'::jsonb, 50000) returning id`);
+  const qInvId = first(qInvIns);
+  await asRole(db, 'authenticated', S);
+  await db.query(`select public.quote_invoice_snapshot($1::bigint)`, [qInvId]);
+  await db.exec('reset role');
+  const invLookup = await db.query(`select id, status, paid::int as paid from public.invoices where quote_id = $1`, [qInvId]);
+  ok('invoice: sales may snapshot a quote to an Issued invoice', invLookup.rows.length === 1 && invLookup.rows[0]?.status === 'Issued');
+  const invPk = invLookup.rows[0]?.id;
+
+  await asRole(db, 'authenticated', S);
+  await db.query(`select public.quote_invoice_snapshot($1::bigint)`, [qInvId]);
+  await db.exec('reset role');
+  const invReplay = await db.query(`select count(*)::int as c from public.invoices where quote_id = $1`, [qInvId]);
+  ok('invoice: snapshot is idempotent (replay keeps one invoice)', first(invReplay) === 1);
+
+  let salesPay = false;
+  try { await asRole(db, 'authenticated', S); await db.query(`select public.invoice_apply_payment($1::bigint, 50000, 'Bank transfer', 'TX-R1')`, [invPk]); salesPay = true; } catch { /* denied */ }
+  await db.exec('reset role');
+  ok('invoice: sales may NOT post a payment (finance.manage required)', salesPay === false);
+
+  await asRole(db, 'authenticated', F);
+  await db.query(`select public.invoice_apply_payment($1::bigint, 20000, 'Bank transfer', 'TX-R2')`, [invPk]);
+  await db.exec('reset role');
+  const invPart = await db.query(`select status, paid::int as paid from public.invoices where quote_id = $1`, [qInvId]);
+  ok('invoice: partial payment flips Issued → Partially paid', invPart.rows[0]?.status === 'Partially paid' && Number(invPart.rows[0]?.paid) === 20000);
+
+  await asRole(db, 'authenticated', F);
+  await db.query(`select public.invoice_apply_payment($1::bigint, 30000, 'Bank transfer', 'TX-R3')`, [invPk]);
+  await db.exec('reset role');
+  const invPaid = await db.query(`select status from public.invoices where quote_id = $1`, [qInvId]);
+  ok('invoice: full payment flips Partially paid → Paid', invPaid.rows[0]?.status === 'Paid');
+
+  await asRole(db, 'authenticated', V);
+  const invViewer = await db.query(`select count(*)::int as c from public.invoices where quote_id = $1`, [qInvId]);
+  await db.exec('reset role');
+  ok('invoice: viewer sees 0 invoice rows (quote.manage/finance.manage required)', first(invViewer) === 0);
+
+  // ── tasks (0001 tasks table; crm.manage only, NO delete policy) ─────────
+  await asRole(db, 'authenticated', S);
+  await db.query(`insert into public.tasks (client_id, title, due, owner, priority) values (null, 'Rehearsal follow-up', now() + interval '1 day', 'You', 'normal')`);
+  await db.exec('reset role');
+  const taskSales = await db.query(`select count(*)::int as c from public.tasks where title = 'Rehearsal follow-up'`);
+  ok('tasks: sales may create a task and read it back', first(taskSales) === 1);
+
+  await asRole(db, 'authenticated', V);
+  const taskViewer = await db.query(`select count(*)::int as c from public.tasks where title = 'Rehearsal follow-up'`);
+  await db.exec('reset role');
+  ok('tasks: viewer sees 0 task rows (crm.manage required)', first(taskViewer) === 0);
+
+  let editorTask = false;
+  try { await asRole(db, 'authenticated', E); await db.query(`insert into public.tasks (title) values ('Editor attempt')`); editorTask = true; } catch { /* denied */ }
+  await db.exec('reset role');
+  ok('tasks: editor may NOT create a task (lacks crm.manage)', editorTask === false);
+
+  // ── admin_overview (0001 RPC; open-quote casing fixed by 0012) ─────────
+  await asRole(db, 'authenticated', S);
+  const ovBefore = (await db.query(`select (public.admin_overview()->>'open_quotes')::int as openq, (public.admin_overview()->>'pipeline_value')::numeric as pv`)).rows[0];
+  await db.query(`insert into public.quotes (customer, items, total, status) values
+    ('Overview Rehearsal A', '[]'::jsonb, 10000, 'draft'),
+    ('Overview Rehearsal B', '[]'::jsonb, 20000, 'review'),
+    ('Overview Rehearsal C', '[]'::jsonb, 40000, 'sent'),
+    ('Overview Rehearsal D', '[]'::jsonb, 80000, 'converted')`);
+  const ovAfter = (await db.query(`select (public.admin_overview()->>'open_quotes')::int as openq, (public.admin_overview()->>'pipeline_value')::numeric as pv`)).rows[0];
+  await db.exec('reset role');
+  ok('overview: open_quotes counts app-written lowercase statuses (draft/review/sent; converted excluded)', ovAfter.openq - ovBefore.openq === 3);
+  ok('overview: pipeline_value moves by the same open set (10000+20000+40000)', Number(ovAfter.pv) - Number(ovBefore.pv) === 70000);
+
+  let viewerOverview = false;
+  try { await asRole(db, 'authenticated', V); await db.query(`select public.admin_overview()`); viewerOverview = true; } catch { /* denied */ }
+  await db.exec('reset role');
+  ok('overview: viewer (no cap) is denied (42501)', viewerOverview === false);
+
+  // ── client_merge (0001 clients + client_links; client_merge RPC; crm.manage) ──
+  const insInto = await db.query(`insert into public.clients (name, email, email_norm, kind, source) values ('Merge Twin A', 'twin@example.com', 'twin@example.com', 'business', 'site-visit') returning id`);
+  const insFrom = await db.query(`insert into public.clients (name, email, email_norm, kind, source) values ('Merge Twin B', 'TWIN@example.com', 'twin@example.com', 'business', 'site-visit') returning id`);
+  const intoId = first(insInto), fromId = first(insFrom);
+  await db.query(`insert into public.client_links (client_id, entity, entity_id) values ($1::bigint, 'lead', 424242)`, [fromId]);
+  await asRole(db, 'authenticated', S);
+  await db.query(`select public.client_merge($1::bigint, $2::bigint)`, [intoId, fromId]);
+  await db.exec('reset role');
+  const afterMerge = await db.query(`select (select merged_into::int from public.clients where id = $1) as merged, (select client_id::int from public.client_links where entity = 'lead' and entity_id = 424242) as link_client`, [fromId]);
+  ok('merge: sales may merge duplicates (links re-pointed, loser tombstoned)', Number(afterMerge.rows[0]?.merged) === intoId && Number(afterMerge.rows[0]?.link_client) === intoId);
+
+  let viewerMerge = false;
+  try { await asRole(db, 'authenticated', V); await db.query(`select public.client_merge($1::bigint, $2::bigint)`, [intoId, fromId]); viewerMerge = true; } catch { /* denied */ }
+  await db.exec('reset role');
+  ok('merge: viewer may NOT merge clients (crm.manage required)', viewerMerge === false);
+
+  await asRole(db, 'authenticated', V);
+  const viewerClients = await db.query(`select count(*)::int as c from public.clients where id in ($1::bigint, $2::bigint)`, [intoId, fromId]);
+  await db.exec('reset role');
+  ok('merge: viewer sees 0 client rows (crm.manage required)', first(viewerClients) === 0);
+
   const pass = results.filter(r => r[1]).length, fail = results.length - pass;
   console.log(`\nFRESH REHEARSAL (test:rehearsal): ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

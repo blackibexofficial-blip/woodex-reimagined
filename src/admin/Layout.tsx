@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
-  Armchair, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, FileText,
+  Armchair, Receipt, ClipboardCheck, GitMerge, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, FileText,
   Image, Settings, LogOut, ArrowLeft, Menu, X, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, SlidersHorizontal, Layers, BadgeCheck, LayoutTemplate, PenTool, Monitor,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
@@ -41,10 +41,12 @@ const NAV_GROUPS: Array<{
       { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
       { to: "/admin/drafts", label: "Drafts", icon: FileEdit },
       { to: "/admin/quotes", label: "Quotes", icon: ScrollText },
+      { to: "/admin/invoices", label: "Invoices", icon: Receipt },
       { to: "/admin/returns", label: "Returns", icon: Undo2 },
       { to: "/admin/exchanges", label: "Exchanges", icon: ArrowLeftRight },
       { to: "/admin/claims", label: "Claims", icon: ShieldCheck },
       { to: "/admin/customers", label: "Customers", icon: Users },
+      { to: "/admin/client-merge", label: "Merge review", icon: GitMerge },
     ],
   },
   {
@@ -59,6 +61,7 @@ const NAV_GROUPS: Array<{
     label: "Engage",
     items: [
       { to: "/admin/leads", label: "Leads", icon: ClipboardList },
+      { to: "/admin/tasks", label: "Tasks", icon: ClipboardCheck },
       { to: "/admin/blog", label: "Blog", icon: Newspaper },
       { to: "/admin/services", label: "Services", icon: Wrench },
       { to: "/admin/content", label: "Content", icon: FileText },
@@ -76,6 +79,9 @@ function pageTitle(pathname: string) {
   const seg = pathname.split("/")[2] ?? "dashboard";
   const map: Record<string, string> = {
     dashboard: "Dashboard", analytics: "Analytics", products: "Products", categories: "Categories",
+    invoices: "Invoices & Payments",
+    tasks: "Tasks & Follow-ups",
+    "client-merge": "CRM merge review",
     orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", transfers: "Transfers", options: "Product Options", content: "Content", warranty: "Warranty Content", pages: "Pages", showrooms: "Showrooms", "custom-design": "Custom Design Content", "virtual-showroom": "Virtual Showroom Content",
     media: "Media Library", settings: "Settings", inventory: "Inventory & Delivery Zones", series: "Furniture Series", brands: "Product Brands", homepage: "Homepage Sections",
   };

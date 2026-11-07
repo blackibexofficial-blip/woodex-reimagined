@@ -54,7 +54,7 @@
  *   invoice operations (no AdminApi methods — invoices are EF-first by design).
  */
 import { supabase } from "@/integrations/supabase/client";
-import type { Database, Json, TablesUpdate } from "@/integrations/supabase/types";
+import type { Database, Json, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AdminApi,
   AdminBlogPost, AdminBrand, AdminBundle, AdminCategory, AdminCollection, AdminCollectionKind,
@@ -62,7 +62,8 @@ import type {
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
   AdminPageContentItem, AdminPageDoc, AdminPageHistoryEntry, AdminPageSeo, AdminPriceList,
   AdminProduct, AdminProject, AdminPurchaseOrder, AdminPurchaseOrderPatch, AdminQuote,
-  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
+  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput, AdminTask, NewTaskInput, AdminClient, MergeCandidate,
+  AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
   AdminShowroom, AdminStockMovement, AdminStockTransfer, AdminStockTransferPatch, AdminSupplier,
   AdminSupplierPatch, AdminVirtualShowroomPage, AdminWarrantyPage,
   AdminClaim, AdminClaimPatch, AdminDraftOrder, AdminDraftOrderPatch, AdminExchange, AdminExchangePatch,
@@ -224,6 +225,12 @@ async function getDashboardStats(): Promise<DashboardStats> {
     pendingOrders: open.count ?? 0,
     newLeads: toNum(o.new_leads_7d),      // overview window is trailing-7d by design
     lowStockProducts: toNum(o.low_stock),
+    // Control-center — verbatim from admin_overview (RPC is the source of truth)
+    outstandingInvoices: toNum(o.pending_invoices),
+    openQuotes: toNum(o.open_quotes),
+    pipelineValue: toNum(o.pipeline_value),
+    overdueReturns: toNum(o.overdue_returns),
+    publishedPages: toNum(o.published_pages),
   };
 }
 async function getRevenueSeries(days: number): Promise<RevenuePoint[]> {
@@ -1527,6 +1534,253 @@ async function deleteQuoteTemplate(id: string): Promise<boolean> {
   const { count, error } = await supabase.from("quote_templates").delete({ count: "exact" }).eq("id", String(id));
   if (error) fail("deleteQuoteTemplate", error);
   return (count ?? 0) > 0;
+}
+
+/* ── CRM clients + merge-review (0001 clients/client_links; client_merge RPC) ──
+   Human-in-the-loop identity resolution: candidates are derived client-side by
+   grouping on normalized email/phone among non-merged clients (admin-ERP scale:
+   one 5k-row scan, no new RPCs). Merges execute via the capability-checked
+   client_merge RPC (crm.manage) — NOT a delete path: retired records are
+   tombstoned with merged_into and stay auditable. */
+const CLIENT_REF = (id: number) => `CLI-${id}`;
+const parseClientId = (s: string): number => {
+  const m = String(s).match(/^CLI-(\d+)$/);
+  return m ? Number(m[1]) : Number(s);
+};
+const rowToAdminClient = (r: Row): AdminClient => ({
+  id: CLIENT_REF(Number(r.id)),
+  name: String(r.name ?? ""),
+  ...(r.company ? { company: String(r.company) } : {}),
+  ...(r.email ? { email: String(r.email) } : {}),
+  ...(r.email_norm ? { emailNorm: String(r.email_norm) } : {}),
+  ...(r.phone ? { phone: String(r.phone) } : {}),
+  ...(r.phone_norm ? { phoneNorm: String(r.phone_norm) } : {}),
+  ...(r.city ? { city: String(r.city) } : {}),
+  kind: r.kind === "business" ? "business" : "retail",
+  ...(r.source ? { source: String(r.source) } : {}),
+  tags: Array.isArray(r.tags) ? (r.tags as unknown[]).map(String) : [],
+  ...(r.notes ? { notes: String(r.notes) } : {}),
+  ...(r.merged_into ? { mergedInto: CLIENT_REF(Number(r.merged_into)) } : {}),
+  createdAt: String(r.created_at),
+  updatedAt: String(r.updated_at),
+});
+const CLIENT_COLS = "id,name,company,email,email_norm,phone,phone_norm,city,kind,source,tags,notes,merged_into,created_at,updated_at";
+
+async function listClients(params?: { includeMerged?: boolean }): Promise<AdminClient[]> {
+  guard();
+  let q = supabase.from("clients").select(CLIENT_COLS).order("created_at", { ascending: true }).limit(2000);
+  if (!params?.includeMerged) q = q.is("merged_into", null);
+  const { data, error } = await q;
+  if (error) fail("listClients", error);
+  return (data ?? []).map(rowToAdminClient);
+}
+
+async function listMergeCandidates(): Promise<MergeCandidate[]> {
+  guard();
+  const { data, error } = await supabase.from("clients").select(CLIENT_COLS).is("merged_into", null).limit(5000);
+  if (error) fail("listMergeCandidates", error);
+  const clients = (data ?? []).map(rowToAdminClient);
+  const out: MergeCandidate[] = [];
+  const group = (keyOf: (c: AdminClient) => string | undefined, reason: MergeCandidate["reason"]) => {
+    const map = new Map<string, AdminClient[]>();
+    for (const c of clients) {
+      const k = keyOf(c);
+      if (!k) continue;
+      const arr = map.get(k) ?? [];
+      arr.push(c);
+      map.set(k, arr);
+    }
+    for (const [key, members] of map) {
+      if (members.length >= 2) out.push({ id: `${reason}:${key}`, reason, key, clients: members });
+    }
+  };
+  group((c) => c.emailNorm, "email");
+  group((c) => c.phoneNorm, "phone");
+  return out.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+async function mergeClients(intoId: string, fromId: string): Promise<AdminClient> {
+  guard();
+  if (intoId === fromId) throw new Error("Choose two different records.");
+  const { data, error } = await supabase.rpc("client_merge", { p_into: parseClientId(intoId), p_from: parseClientId(fromId) });
+  if (error) fail("client_merge", error);
+  return rowToAdminClient(data as unknown as Row);
+}
+
+/* ── tasks (0001 public.tasks; cap crm.manage; no delete path) ──────────────/* ── tasks (0001 public.tasks; cap crm.manage; no delete path) ──────────────
+   NOTE: the table has no client-label column — the legacy screen's free-text
+   "client" line rode client_id there. In supabase mode the context rides
+   lead/quote/order refs. Demo mode keeps the human label. */
+const TASK_REF = (id: number) => `TSK-${id}`;
+const parseTaskId = (s: string): number => {
+  const m = String(s).match(/^TSK-(\d+)$/);
+  return m ? Number(m[1]) : Number(s);
+};
+const rowToAdminTask = (r: Row): AdminTask => ({
+  id: TASK_REF(Number(r.id)),
+  title: String(r.title ?? ""),
+  ...(r.lead_id ? { leadId: String(r.lead_id) } : {}),
+  ...(r.quote_id ? { quoteId: QUOTE_REF(Number(r.quote_id)) } : {}),
+  ...(r.order_id ? { orderId: orderRef(Number(r.order_id)) } : {}),
+  ...(r.due ? { due: String(r.due) } : {}),
+  owner: String(r.owner ?? "You"),
+  priority: String(r.priority ?? "normal"),
+  done: Boolean(r.done),
+  createdAt: String(r.created_at),
+  updatedAt: String(r.updated_at),
+});
+
+async function listTasks(params?: ListParams & { status?: "all" | "open" | "done" }): Promise<Paginated<AdminTask>> {
+  guard();
+  const page = Math.max(1, params?.page ?? 1);
+  const perPage = Math.max(1, Math.min(100, params?.perPage ?? 20));
+  const { data, error } = await supabase.from("tasks").select("*").order("due", { ascending: true, nullsFirst: false }).order("done", { ascending: true });
+  if (error) fail("listTasks", error);
+  let rows = (data ?? []) as Row[];
+  const q = params?.query?.trim().toLowerCase();
+  if (q) rows = rows.filter((r) => [r.title, r.owner, r.priority, TASK_REF(Number(r.id))].some((v) => String(v ?? "").toLowerCase().includes(q)));
+  let items = rows.map(rowToAdminTask);
+  if (params?.status === "open") items = items.filter((t) => !t.done);
+  else if (params?.status === "done") items = items.filter((t) => t.done);
+  const total = items.length;
+  return pagenate(items.slice((page - 1) * perPage, page * perPage), total, page, perPage);
+}
+
+async function createTask(input: NewTaskInput): Promise<AdminTask> {
+  guard();
+  const title = input.title?.trim();
+  if (!title) throw new Error("Task title is required.");
+  const row: TablesInsert<"tasks"> = {
+    title,
+    due: input.dueAt ?? null,
+    priority: (input.priority?.trim() || "normal").toLowerCase(),
+    owner: input.owner?.trim() || "You",
+    done: false,
+  };
+  const { data, error } = await supabase.from("tasks").insert(row).select("*").single();
+  if (error) fail("createTask", error);
+  return rowToAdminTask(data as Row);
+}
+
+async function setTaskDone(id: string, done: boolean): Promise<AdminTask | undefined> {
+  guard();
+  const num = parseTaskId(id);
+  const { data, error } = await supabase.from("tasks").update({ done: !!done, updated_at: new Date().toISOString() }).eq("id", num).select("*").maybeSingle();
+  if (error) fail("setTaskDone", error);
+  return data ? rowToAdminTask(data as Row) : undefined;
+}
+
+/* ── invoices (0001: invoices + payments; RPC-only creation) ───────────────
+   quote→invoice rides quote_invoice_snapshot(p_quote_id) (cap quote.manage, idempotent).
+   payments ride invoice_apply_payment (cap finance.manage; atomically re-derives
+   paid + status Issued/Partially paid/Paid). There is NO direct INSERT policy on
+   either table — rows are created via the RPCs only. */
+const INVOICE_REF = (id: number) => `INV-${id}`;
+const parseInvoiceId = (s: string): number => {
+  const m = String(s).match(/^INV-(\d+)$/);
+  return m ? Number(m[1]) : Number(s);
+};
+const INVOICE_DB_STATUSES = new Set(["Issued", "Partially paid", "Paid", "Cancelled"]);
+const rowToAdminInvoice = (r: Row): AdminInvoice => {
+  const total = toNum(r.total);
+  const paid = toNum(r.paid);
+  const due = r.due ? String(r.due) : undefined;
+  const balance = Math.max(0, Math.round(total) - Math.round(paid));
+  const dbStatus = INVOICE_DB_STATUSES.has(String(r.status)) ? String(r.status) : "Issued";
+  const overdue = dbStatus !== "Paid" && dbStatus !== "Cancelled" && balance > 0 && !!due && Date.parse(due) < Date.now();
+  return {
+    id: INVOICE_REF(Number(r.id)),
+    ref: r.ref ? String(r.ref) : INVOICE_REF(Number(r.id)),
+    ...(r.quote_id ? { quoteId: QUOTE_REF(Number(r.quote_id)) } : {}),
+    ...(r.order_id ? { orderId: orderRef(Number(r.order_id)) } : {}),
+    customer: String(r.customer ?? ""),
+    items: (Array.isArray(r.items) ? r.items : []) as AdminInvoice["items"],
+    subtotal: toNum(r.subtotal),
+    discount: toNum(r.discount),
+    tax: toNum(r.tax),
+    shipping: toNum(r.shipping),
+    total,
+    paid,
+    balance,
+    status: (overdue ? "Overdue" : dbStatus) as InvoiceStatus,
+    ...(due ? { due } : {}),
+    ...(r.notes ? { notes: String(r.notes) } : {}),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+};
+
+async function listInvoices(params?: ListParams & { status?: InvoiceStatus | "all"; query?: string }): Promise<Paginated<AdminInvoice>> {
+  guard();
+  const page = Math.max(1, params?.page ?? 1);
+  const perPage = Math.max(1, Math.min(100, params?.perPage ?? 20));
+  const { data, error } = await supabase.from("invoices").select("*").order("created_at", { ascending: false });
+  if (error) fail("listInvoices", error);
+  let rows = (data ?? []) as Row[];
+  const q = params?.query?.trim().toLowerCase();
+  if (q) rows = rows.filter((r) => [r.customer, r.ref, INVOICE_REF(Number(r.id)), r.notes].some((v) => String(v ?? "").toLowerCase().includes(q)));
+  let items = rows.map(rowToAdminInvoice);
+  if (params?.status && params.status !== "all") items = items.filter((inv) => inv.status === params.status);
+  const total = items.length;
+  return pagenate(items.slice((page - 1) * perPage, page * perPage), total, page, perPage);
+}
+
+async function getInvoice(id: string): Promise<AdminInvoice | undefined> {
+  guard();
+  const num = parseInvoiceId(id);
+  const { data, error } = await supabase.from("invoices").select("*").eq("id", num).maybeSingle();
+  if (error) fail("getInvoice", error);
+  return data ? rowToAdminInvoice(data as Row) : undefined;
+}
+
+async function listInvoicePayments(invoiceId: string): Promise<AdminInvoicePayment[]> {
+  guard();
+  const num = parseInvoiceId(invoiceId);
+  const { data, error } = await supabase.from("payments").select("*").eq("invoice_id", num).order("created_at", { ascending: false });
+  if (error) {
+    // payments_read is finance.manage-only — other roles get an honest empty ledger, not an exception.
+    console.error("listInvoicePayments denied/failed:", error.message);
+    return [];
+  }
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: String(r.id),
+    invoiceId: INVOICE_REF(num),
+    amount: toNum(r.amount),
+    method: String(r.method ?? "Bank transfer"),
+    ...(r.reference ? { reference: String(r.reference) } : {}),
+    ...(r.note ? { note: String(r.note) } : {}),
+    createdAt: String(r.created_at),
+  }));
+}
+
+async function convertQuoteToInvoice(quoteId: string): Promise<AdminInvoice> {
+  guard();
+  const num = parseQuoteId(quoteId);
+  const { data, error } = await supabase.rpc("quote_invoice_snapshot", { p_quote_id: num });
+  if (error) fail("convertQuoteToInvoice", error);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error("quote_invoice_snapshot returned nothing.");
+  return rowToAdminInvoice(row as Row);
+}
+
+async function recordInvoicePayment(invoiceId: string, input: NewInvoicePaymentInput): Promise<AdminInvoice | undefined> {
+  guard();
+  const num = parseInvoiceId(invoiceId);
+  const amount = Math.round(Number(input.amount));
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Payment amount must be a positive number.");
+  const method = input.method?.trim() || "Bank transfer";
+  const { data, error } = await supabase.rpc("invoice_apply_payment", {
+    p_invoice_id: num,
+    p_amount: amount,
+    p_method: method,
+    p_reference: input.reference?.trim() || null,
+  });
+  if (error) {
+    if (String((error as { message?: string }).message ?? "").includes("not found")) return undefined;
+    fail("recordInvoicePayment", error);
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? rowToAdminInvoice(row as Row) : undefined;
 }
 
 async function deleteQuote(id: string): Promise<boolean> {
@@ -3333,6 +3587,17 @@ export const supabaseAdminApi: AdminApi = {
   saveQuoteTemplate,
   deleteQuoteTemplate,
   deleteQuote,
+  listInvoices,
+  getInvoice,
+  listInvoicePayments,
+  convertQuoteToInvoice,
+  recordInvoicePayment,
+  listTasks,
+  createTask,
+  setTaskDone,
+  listClients,
+  listMergeCandidates,
+  mergeClients,
   convertQuote,
   listSuppliers,
   createSupplier,

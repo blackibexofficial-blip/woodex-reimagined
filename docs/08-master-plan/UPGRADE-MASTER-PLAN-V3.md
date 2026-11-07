@@ -431,8 +431,37 @@ The plan's Slice-16-class parity target for the quotation designer is **delivere
 | Per-line engineering spec | ✅ in-repo — dims/unit, material, finish, series, category, custom notes |
 | QuoteTemplateDesigner port | ✅ in-repo — builtin "Woodex classic" (code-owned) + custom templates via `quote_templates`; required payment-terms wording locked |
 | Print/preview page upgrade | ✅ in-repo — template blocks render above/below the items table; spec line per item |
-| Invoice ledger (“quote_invoice_snapshot → invoice_apply_payment”) | ❌ not built this slice (the Agency OS invoice ledger stays pre-planned port; quoting stays order-path-driven via `quote.convert` — see 0004) |
+| Invoice ledger (“quote_invoice_snapshot → invoice_apply_payment”) | ✅ **in-repo (PR #18)** — `/admin/invoices` + print document + finance-only payment posting via 0001 RPCs; quote status untouched (invoice ≠ order conversion); snapshot remains lossy Phase-2 candidate (0012 = CREATE OR REPLACE + owner sign-off) |
 | Realtime multi-user collaboration | ❌ deliberately not built (post-activation, after hosted sign-off) |
 | Hosted activation | ❌ owner-gated — migrations 0001–0011 unapplied; nothing verified against live Supabase — rehearsal 50/50 (pglite) is the evidence class, per §12 |
 
 **Honesty note:** “parity” here means functional parity against the legacy funnel for the quotation surface, as amended by owner decisions taken 2026-11-07 (no share URLs, no 75/25 split, locked terms wording, version snapshots over inline edits) — not a literal port of legacy artifacts. Nothing in this addendum implies hosted readiness.
+
+
+## 16. Addendum — Tasks & follow-ups landed (2026-11-08, this branch)
+
+Legacy screen #16 is delivered in-repo, following the same template as the invoice ledger addendum (invoice/payment distinction preserved: **tasks are CRM work-items, not ledger documents**):
+
+| Plan item | Status (2026-11-08) |
+|---|---|
+| Tasks & Follow-ups page port | ✅ in-repo — KPI strip, chips, search, List/Board/Calendar, create/complete/reopen |
+| `tasks` schema + RLS use | ✅ rides 0001 verbatim — `crm.manage` for read/insert/update; **no delete policy** (worked, never deleted); no RPC, no new migration |
+| Sales access | ✅ sales holds `crm.manage` — rehearsed (create + read); viewer denied; editor denied |
+| Hosted gap | ❌ hosted unverified; demo client label is demo-only (hosted mode carries refs, no label column) — documented, not hidden |
+| Rehearsal count | 65/65 (pglite, migrations 0001–0012 + quotation + invoice + tasks + admin_overview casing + client_merge identity suites) |
+
+**Honesty note:** "parity" here means functional parity of the follow-ups surface (the visible funnel), not byte-copy of legacy internals; nothing in this addendum implies hosted readiness, and hosted activation remains owner-gated per §12.
+
+
+## 17. Addendum — Dashboard control center (2026-11-08, this branch)
+
+Legacy screens #6 and #21 delivered as one card: **Pipeline control center** on `/admin/dashboard` — open quotes + pipeline value (PKR), outstanding invoices (Issued + Partially paid), returns awaiting handling + new leads, published pages; each tile links to its admin surface. Supabase mode consumes `admin_overview` verbatim (no new RPC, no migration); demo computes identical signals from the seeded store; Bagisto baseline returns zeros + comment. e2e **46/46** (+4 tile asserts; case-insensitive after a CSS text-transform false-negative).
+
+**Resolved in-repo (0012, 2026-11-08):** `admin_overview()` recreated with lowercase open-quote predicates (`draft/review/approval/sent/revised`); identical otherwise; rehearsed 62/62 (0001–0012). Hosted apply still owner-gated — hosts must apply 0012 after 0011. This addendum implies no hosted readiness.
+
+
+## 18. Addendum — Clients merge-review shipped (2026-11-08, this branch)
+
+Legacy CRM depth item closed: **`/admin/client-merge`** — identity-review queue derived from non-merged `clients` grouped by `email_norm`/`phone_norm`; human picks the canonical record per pair (nothing auto-merges); consolidation executes via 0001 `client_merge` (crm.manage, security definer): `client_links` re-pointed, loser tombstoned (`merged_into`) — no deletes, full audit. Customer drawer gains **Source** + derived **Score** (1–99, computed — never stored). Demo seeds CLI-1001…CLI-1007 (email pair, phone pair, one retired record). Rehearsal **65/65** (+3 client_merge asserts).
+
+**Honesty note:** hosted customers are synthesized from orders — `source` surfaces only as hosted `clients` rows exist (merge backfill); score is always derived; hosted verification remains owner-gated. This addendum implies no hosted readiness.
