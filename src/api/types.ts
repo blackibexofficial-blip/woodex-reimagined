@@ -1209,6 +1209,10 @@ export interface AdminPageSeo {
   title?: string;
   description?: string;
   focusKeyphrase?: string;
+  /** Pages-builder SEO panel: serve this page with robots noindex (publish gate warns when on). */
+  noindex?: boolean;
+  /** Pages-builder SEO panel: block publishing until SEO checks pass (default true). */
+  strictGate?: boolean;
 }
 export interface AdminPageHistoryEntry {
   version: number;

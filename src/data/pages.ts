@@ -182,10 +182,10 @@ export const homePageSeed: AdminPage = {
   status: "published",
   doc: realHomeDoc(),
   seo: {
-    title: "WOODEX — Pakistan's Premium Office & Home Furniture Manufacturer",
+    title: "Office Furniture Manufacturer in Lahore | WOODEX Pakistan",
     description:
-      "Pakistan's premium office furniture manufacturer delivering exceptional design-to-delivery solutions for modern workspaces. Ergonomic chairs, executive desks, workstations and more.",
-    focusKeyphrase: "office furniture Pakistan",
+      "WOODEX — Lahore office furniture manufacturer. Ergonomic chairs, executive desks and home collections, built to order, installed nationwide. 5-year warranty.",
+    focusKeyphrase: "office furniture",
   },
   updatedAt: "2026-11-07T00:00:00.000Z",
   publishedAt: "2026-11-07T00:00:00.000Z",
