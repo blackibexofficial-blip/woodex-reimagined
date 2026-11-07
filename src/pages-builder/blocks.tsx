@@ -16,6 +16,7 @@ import { catalogueA } from "./sections/catalogue-a";
 import { catalogueB } from "./sections/catalogue-b";
 import { homeBlocks } from "./sections/home-blocks";
 import { InspectorSectionField, InspectorElementField, LinkedStylesField } from "./InspectorField";
+import { richTextField, RichHtml } from "./richtext";
 
 const ICONS = {
   shield: ShieldCheck,
@@ -31,8 +32,8 @@ const legacyBlocks: Config["components"] = {
     fields: {
       ...commonLayerFields,
       eyebrow: { type: "text", placeholder: "PEACE OF MIND" },
-      title: { type: "text", placeholder: "Furniture that outlasts the brief" },
-      subtitle: { type: "textarea", placeholder: "Supporting copy…" },
+      title: richTextField("Title", "Furniture that outlasts the brief"),
+      subtitle: richTextField("Subtitle", "Supporting copy…"),
       align: {
         type: "radio",
         options: [
@@ -57,9 +58,9 @@ const legacyBlocks: Config["components"] = {
             <div className={cn(centered && "text-center")}>
               <div className={cn("mb-5 h-1 w-12 bg-accent", centered && "mx-auto")} />
               {eyebrow ? <p className="mb-2 text-xs font-bold uppercase tracking-widest text-accent">{String(eyebrow)}</p> : null}
-              <h2 className="mb-3 text-3xl font-bold">{String(title ?? "")}</h2>
+              <RichHtml as="h2" className="mb-3 text-3xl font-bold" html={title} />
               {subtitle ? (
-                <p className={cn("max-w-2xl text-muted-foreground", centered && "mx-auto")}>{String(subtitle)}</p>
+                <RichHtml as="p" className={cn("max-w-2xl text-muted-foreground", centered && "mx-auto")} html={subtitle} />
               ) : null}
             </div>
           </div>

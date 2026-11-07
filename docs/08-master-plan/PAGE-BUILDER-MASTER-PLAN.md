@@ -228,7 +228,7 @@ hash-freeze and the upgrade procedure. `@puckeditor/core` peers: `react ^18 || ^
 | Wave 1 — Foundation: pages slice, tree & draft/publish | demo-DB `pages` slice; admin **Pages** workspace (folder tree, §0A.2 model); create/edit/duplicate/delete/status; history + revert; slug registry vs `App.tsx` routes | 3–4 |
 | Wave 2 — Sections & Elements libraries | the §0A.3 40-section UI-kit catalogue (thumbnails, "Label in Layers") + tabs Sections/UI kit/Templates/Images + category chips; Elements palette (BASIC+WIDGETS, §0A.4); Layers panel (select/reorder/hide/lock) | 5–7 |
 | Wave 3 — Theme: whole-website tokens | §0A.6 panel — colours/fonts/base size/heading scale (+ custom toggle), CSS custom properties, section skins Original/White/Cream/Navy, versioned demo-DB `theme` singleton + snapshot/restore | 3–4 |
-| Wave 4 — Inspector parity + Linked styles | **As built (PR #7):** Style tab (Desktop/Tablet/Mobile × Normal/Hover — padding/radius/border/align via static classes), Advanced tab (General Tag/ID/Title/Aria/Classes + responsive visibility + animation on scroll, reduced-motion aware), page-scoped **Linked styles** with live `hm-*` usage counts (inline-merge engine, Phase-B-lite), `Live home ↗` button, **inline text toolbar deferred** | 6–9 |
+| Wave 4 — Inspector parity + Linked styles | **As built (PR #7):** Style tab (Desktop/Tablet/Mobile × Normal/Hover — padding/radius/border/align via static classes), Advanced tab (General Tag/ID/Title/Aria/Classes + responsive visibility + animation on scroll, reduced-motion aware), page-scoped **Linked styles** with live `hm-*` usage counts (inline-merge engine, Phase-B-lite), `Live home ↗` button, **inline text toolbar shipped** (TipTap-native richtext fields, allow-list sanitizer) | 6–9 |
 | Wave 5 — SEO layer | §0A.7 panel — title/meta counters (60/160), focus keyphrase, live Google preview, local Yoast-style **Analyse** (keyphrase, H1=1, title/meta length, word count, readability), SEO + Readability score badges, publish gate; JSON-LD wiring; sitemap **deferred to W7/Bagisto** (see §0A.7 as-built note) | **[done — branch, owner merge-gated]** |
 | Wave 6 — AI + MCP build path | local MCP server (full-generation depth, owner §11-Q4): `create_page` / `upsert_section` / template fan-out for local-SEO catalogue; draft-first + validator; audit log; no publish tool | 5–8 |
 | Wave 7 — Bagisto mapping | JSON page document persisted as Bagisto CMS custom attribute (or native blocks) behind `getAdminApi()`; migration of demo-DB pages; dual-run period | 4–5 |
@@ -488,8 +488,7 @@ fixed…"); Colour preset; Spacing preset; **Overlay**; **Top/Bottom separator**
 (hide Desktop/Tablet/Mobile).
 **Style** — header: **Editing `Desktop ▾` · State `Normal ▾` · Reset**; **Linked styles** radio — **This element
 only** (Phase A: per-node CSS variables) vs **`All .hm-* on this page (N)`** (Phase B: managed page-scoped
-class rules in a sandboxed stylesheet, `@woodex-page-rules <slug>` layer — never inline styles, never global);
-groups: Display · **Typography** (size/weight/family (Jakarta/Inter + search)/align/line-height/letter-spacing/
+class rules in a sandboxed stylesheet, `@woodex-page-rules <slug>` layer — never inline styles, never global);groups: Display · **Typography** (size/weight/family (Jakarta/Inter + search)/align/line-height/letter-spacing/
 transform/style/decoration/colour slider) · Size · Margin · Padding · Border · Border radius · Background image ·
 **Effects & transform** (hover-achievable transforms behind State: Hover). Canvas gains the inline rich-text
 toolbar (B/I/U/S · link · colour · align · A/Aa · size) + "Heading 2" type chip + click-"+" insertion handle.
@@ -506,10 +505,11 @@ slide-left/zoom-in, `prefers-reduced-motion` honoured). **Linked styles (Phase-B
 (root custom field), carry background/text/heading/padding/radius declarations, show a live "N blocks carry this rule"
 count, and merge **inline at the wrapper** with order linked ⊂ element — zero leakage (rules travel in the document
 itself). `/lab/:slug` applies the merge through `BuilderDocContext`; the editor canvas paints element-level values only
-(Puck iframe boundary — honest, documented limitation). A standalone sandboxed stylesheet (`@woodex-page-rules`) and the
-inline canvas text toolbar remain open. Two editor-stability defects were fixed en route (Puck re-fed a fresh `data`
-identity per keystroke; `plugins` array recreated per render → panel remount/focus loss). Verification: tsc 0 · build ✓ ·
-e2e 42/42 · headless functional pass 14/14 (incl. LAB-computed merge assertions).
+(Puck iframe boundary — honest, documented limitation). A standalone sandboxed stylesheet (`@woodex-page-rules`) remains open. The **inline text toolbar SHIPPED (2026-11-07)**: Puck-native `richtext` fields (TipTap, `contentEditable`) on element text props (Heading / Sub-heading / Paragraph / Small label / Quote / 2-Columns left+right), the legacy SectionHeading title/subtitle and the RichText section body. `richtext.tsx` exports `richTextField` (the field factory), a pure DOM-free **allow-list sanitizer** (`b/strong/em/i/u/s/strike/span/br`, `a` restricted to `https?:/mailto:/tel:/root-relative/#` with `rel="noopener"`, spans stripped of all attributes) and `RichHtml`, which renders persisted HTML strings post-sanitize and spreads the inline-editor React element Puck hands the canvas as children (never stringified). Plain-text seeds render byte-identically. Section copy stays plain text (single-line headline design) — documented limitation. Two rich-text defects found & fixed en route: (a) Puck canvas field transforms replace contentEditable richtext props with inline-editor React elements — stringifying the prop printed `[object Object]` in the canvas (and would corrupt anything reading `.length`/`String()`); values now pass through raw and render as children; (b) the first sanitizer's permissive tag regex swallowed typed copy like `a < b & c` as a tag — replaced with a tokenizing scanner (quote-aware `>` scan; a candidate tag must open with `<A…` or `</A…`). Two editor-stability defects were fixed en route (Puck re-fed a fresh `data`
+identity per keystroke; `plugins` array recreated per render → panel remount/focus loss). Verification: tsc 0 · sanitizer probe 12/12 · build ✓ ·
+e2e 42/42 · headless functional pass 14/14 (incl. LAB-computed merge assertions) · rich-text round-trip (panel Bold → Save draft → `/lab/home`
+renders `<strong>`) ✓; canvas inline bubble menu verified mounted (2 `contenteditable` TipTap surfaces in-canvas) — mouse-driven selection not
+completed headlessly.
 
 **Chrome model (owner §11-Q2):** header/footer/announcement are **linked master sections** rendered in-canvas —
 one master per chrome part, instances on every builder page; editing any instance edits the master (propagates
@@ -791,13 +791,18 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   inline at the wrapper, linked ⊂ element; rules travel inside the page document so there is no global/cross-page leakage by
   construction (R13 until the standalone `@woodex-page-rules` stylesheet lands). LAB preview applies the merge through
   `BuilderDocContext`; the editor canvas paints element-level styles only (Puck iframe — documented limit). Remaining Wave 4
-  item: **inline text toolbar** (deferred to the next slice). Two editor-stability defects were fixed first because they made
+  item now **shipped** in the same PR: **inline text toolbar** (TipTap-native richtext fields on element text props + the legacy SectionHeading
+  title/subtitle + the RichText body; `RichHtml` renders persisted HTML via a pure allow-list sanitizer; canvas renders Puck's inline-editor
+  React element as children, never stringified). Two rich-text defects found & fixed: Puck canvas transforms replace richtext props with React
+  elements (`[object Object]` at the canvas) → raw pass-through + `isValidElement` child path; permissive tag regex ate typed copy (`a < b`) →
+  tokenizing scanner. Two editor-stability defects were fixed first because they made
   in-panel editing impossible: (1) fresh `data` identity per keystroke re-fed Puck and ate edits — frozen per-`puckKey` snapshot;
   (2) `plugins` array recreated per render tore the editor down per keystroke — memoized. Pages meta bar gains **Live home ↗**
   (partial answer to the owner's "no preview actual rendering as live home page" note; the deeper `/lab/home`-as-live-home question
-  remains open for owner decision). Verification: tsc 0 · build ✓ · e2e **42/42** · headless functional pass **14/14** (Advanced
+  remains open for owner decision). Verification: tsc 0 · build ✓ · e2e **42/42** · sanitizer probe **12/12** · headless functional pass **14/14** (Advanced
   tab slots, device switch, `:hover` slot, class binding, linked-rule rename + live count, LAB computed merge —
-  `bx-lg-t bx-sm-m hm-verify bx-has-bg-hover` on the rendered hero, linked `#0C1628` applied, `data-animate="fade-up"`).
+  `bx-lg-t bx-sm-m hm-verify bx-has-bg-hover` on the rendered hero, linked `#0C1628` applied, `data-animate="fade-up"`) ·
+  rich-text round-trip (panel Bold → Save draft → `/lab/home` renders `<strong>` on the inserted paragraph) ✓.
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
 - **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:
