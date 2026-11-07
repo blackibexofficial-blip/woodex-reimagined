@@ -3,7 +3,7 @@
 // Contract:
 //   POST { name, email?, phone?, interest?, source?, landing_path?, referrer?,
 //          utm_source?, utm_medium?, utm_campaign?,
-//          consent: true, consent_version: string } ->
+//          consent: true, consent_version: string, cfTurnstileToken? } ->
 //   202 { ok: true, id: number | null }
 //   400 on validation failure; 410 when the client's consent_version is stale;
 //   429 when the fixed-window limiter trips (20 / 10 min per edge caller key)
@@ -17,14 +17,19 @@
 // wall — WAF/Upstash global counters remain the owner's production decision.
 // On RPC failure the EF fails OPEN (logs) so a missing migration degrades to
 // pre-limiter behavior instead of silently dropping leads.
+// Turnstile gate (optional until TURNSTILE_SECRET is set): verified BEFORE the
+// limiter consumes budget; fail-open only when unconfigured, fail-closed 503 on
+// siteverify transport errors. See docs/08-master-plan/ANTI-ABUSE-DECISION.md.
 //
 // NOT verified against a hosted project (no Supabase egress in the authoring
 // environment). Validation rules mirror the reimagined storefront's contact
 // form; an outdated consent_version is rejected on purpose.
 import { createClient } from "npm:@supabase/supabase-js@^2.57.4";
+import { verifyTurnstileToken } from "../_shared/turnstile.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const TURNSTILE_SECRET = Deno.env.get("TURNSTILE_SECRET");
 
 const json = (body: Record<string, unknown>, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -43,6 +48,22 @@ Deno.serve(async (req) => {
 
   let b: Record<string, unknown> = {};
   try { b = await req.json(); } catch { return json({ error: "invalid JSON" }, 400); }
+
+  // ---- Turnstile gate (anti-bot) ----
+  // Unconfigured (TURNSTILE_SECRET unset) -> fail OPEN with a log, same posture as the
+  // fixed-window limiter below. Configured -> token REQUIRED and verified before any RPC;
+  // Cloudflare transport errors fail CLOSED (503).
+  if (!TURNSTILE_SECRET) {
+    console.warn("lead-capture: TURNSTILE_SECRET not set — challenge gate disabled (fail-open)");
+  } else {
+    const verify = await verifyTurnstileToken({
+      secret: TURNSTILE_SECRET,
+      token: b.cfTurnstileToken,
+      remoteip: (req.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || null,
+      action: "lead",
+    });
+    if (!verify.ok) return json({ error: verify.error }, verify.status);
+  }
 
   const name = String(b.name ?? "").trim().slice(0, 160);
   const email = b.email ? String(b.email).trim().toLowerCase().slice(0, 254) : null;

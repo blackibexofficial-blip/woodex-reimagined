@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import { LeadConsent } from "@/components/LeadConsent";
 import { buildConsent, collectAttributionBrowser } from "@/lib/consent";
+import { getTurnstileToken } from "@/lib/turnstile";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,15 @@ const Contact = () => {
     const subject = val("subject");
     const message = val("message");
     setSending(true);
+    let cfTurnstileToken: string | undefined;
+    try {
+      cfTurnstileToken = (await getTurnstileToken("lead")) ?? undefined;
+    } catch (err) {
+      console.error("Turnstile challenge failed:", err);
+      toast.error("Verification didn't load — check your connection and try again.");
+      setSending(false);
+      return;
+    }
     try {
       await getAdminApi().createLead({
         type: "quote",
@@ -58,6 +68,7 @@ const Contact = () => {
         summary: `Website enquiry — ${subject || "General"}: ${message.slice(0, 180)}`,
         ...buildConsent(),
         ...collectAttributionBrowser(),
+        cfTurnstileToken,
       });
       setSubmitted(true);
       form.reset();

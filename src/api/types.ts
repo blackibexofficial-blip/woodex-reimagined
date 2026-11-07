@@ -1221,6 +1221,8 @@ export interface NewOrderInput {
   subtotal: number;
   shipping: number;
   total: number;
+  /** Cloudflare Turnstile token (supabase mode only — verified by the order-submit EF; demo/bagisto ignore it). */
+  cfTurnstileToken?: string;
 }
 
 /** Payload from storefront forms (quotation, contact) → creates a lead in the pipeline. */
@@ -1244,6 +1246,8 @@ export interface NewLeadInput {
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
+  /** Cloudflare Turnstile token (supabase mode only — verified by the lead-capture EF; demo/bagisto ignore it). */
+  cfTurnstileToken?: string;
 }
 
 export interface ListParams {

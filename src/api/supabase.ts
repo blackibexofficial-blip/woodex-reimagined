@@ -515,11 +515,13 @@ async function createOrder(input: NewOrderInput): Promise<AdminOrder> {
       paymentMethod: input.paymentMethod,
       channelId: input.channelId,
       clientRef,
+      cfTurnstileToken: input.cfTurnstileToken,
     }),
   });
   const body = (await resp.json().catch(() => ({}))) as { ok?: boolean; order?: Record<string, unknown>; error?: string; detail?: string };
   if (!resp.ok) {
     if (resp.status === 429) throw new Error("Supabase: too many orders on this connection — please wait a few minutes and try again.");
+    if (resp.status === 403) throw new Error("Supabase: the anti-bot check failed — please retry the order (and complete the challenge if shown).");
     if (resp.status === 409) {
       throw new Error(`Supabase: order rejected — ${body.detail ?? "insufficient stock for one of the lines"}`);
     }
@@ -1083,10 +1085,12 @@ async function createLead(input: NewLeadInput): Promise<AdminLead> {
       utm_campaign: input.utmCampaign,
       consent: input.consent === true,
       consent_version: input.consentVersion,
+      cfTurnstileToken: input.cfTurnstileToken,
     }),
   });
   const body = (await resp.json().catch(() => ({}))) as { ok?: boolean; id?: number | null; error?: string };
   if (!resp.ok) {
+    if (resp.status === 403) throw new Error("Supabase: the anti-bot check failed — please retry (and complete the challenge if shown).");
     throw new Error(`Supabase: lead capture failed (${resp.status}) — ${body.error ?? "the lead-capture function rejected the submission"}`);
   }
   return {

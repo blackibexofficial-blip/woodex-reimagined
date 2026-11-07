@@ -60,6 +60,9 @@ this repo (`public/images/seed/`) and must be deployed with the app or every pro
 photo 404s.
 
 ## 2. Deploy edge functions
+The two public intake functions import the shared Turnstile verifier
+(`supabase/functions/_shared/turnstile.mjs`) — deploy from this repo as usual; relative
+imports bundle automatically. The EF-side gate is inert until TURNSTILE_SECRET is set.
 ```
 supabase functions deploy admin-bootstrap
 supabase functions deploy lead-capture     # MUST redeploy — previously returned {ok} only
@@ -73,6 +76,9 @@ supabase functions deploy order-submit     # public checkout path; verify_jwt=fa
 ## 3. Set function secrets
 ```
 supabase secrets set ADMIN_BOOTSTRAP_SECRET='<long random string — NOT committed anywhere>'
+# Optional but recommended (slice 12): EFs fail OPEN (log) without it. When set, ALSO set
+# VITE_TURNSTILE_SITE_KEY for the web build — configure both sides together.
+supabase secrets set TURNSTILE_SECRET='<from Cloudflare Turnstile dashboard>'
 ```
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_ANON_KEY` are reserved and
 auto-injected by the platform; `order-submit` / `lead-capture` need nothing else.
@@ -93,6 +99,8 @@ VITE_SUPABASE_URL=https://ewbflgbshdstfxqretay.supabase.co
 VITE_SUPABASE_PROJECT_ID=ewbflgbshdstfxqretay
 VITE_SUPABASE_PUBLISHABLE_KEY=<publishable key>
 VITE_API_MODE=supabase
+# optional anti-bot (must match TURNSTILE_SECRET on the EFs):
+VITE_TURNSTILE_SITE_KEY=<your site key>
 ```
 Rebuild (`npx vite build --mode production`) and redeploy. Storefront and admin must be
 rebuilt with these at build time — `import.meta.env` is baked in.
@@ -102,7 +110,7 @@ rebuilt with these at build time — `import.meta.env` is baked in.
 2. **Lead capture**: submit the public Contact enquiry form → admin Leads shows it
    (source `storefront`, consent + UTM attributable) — confirms lead-capture `{ok,id}`.
 3. **Tracking**: `/order-tracking` with a bogus ref returns "not found" — no data leak.
-4. **Order E2E**: place a real (test product, tiny total) order via storefront checkout
+4. **Order E2E**: place a real (test product, tiny total) order via storefront checkout (if Turnstile is configured, the invisible challenge runs automatically — confirm the order still completes)
    (or `curl order-submit`). Verify: `201 ok:true` → admin Orders shows `WDX-####` with
    **server-recomputed totals** and **shipping = Rs 2,500 flat (Rs 0 when subtotal ≥ Rs 50,000)**;
    product `stock_qty` decremented; a `stock_movements` `sale` row; `order_events` stage:intake.
@@ -141,5 +149,12 @@ later retry. Rollback does NOT require dropping any migration.
   in migration `0004`'s header — do not "fix" it to re-list-price without owner sign-off.
 - Seed stock is synthetic (see §1a). Until a stocktake is done, treat every seeded
   `stock_qty` as a lie and every seeded SKU as temporary.
+- **Turnstile gate (slice 12):** `order-submit` and `lead-capture` verify the challenge
+  BEFORE any RPC/limiter spend (`_shared/turnstile.mjs`, 8/8 `node --test`). Posture: secret
+  unset → fail OPEN (log); secret set → token required (invalid → 403); Cloudflare transport
+  error → 503 fail-CLOSED. Demo/preview builds render nothing. **NOT verified hosted**
+  (egress 000) — verify path is mocked-tests only until you run §2/§3/§5 against the project.
+  WAF / Upstash remain OPEN — see `docs/08-master-plan/ANTI-ABUSE-DECISION.md` (this file lands
+  via the anti-abuse docs PR; the code here does not depend on it).
 - Local evidence only (36/36 rehearsal, seed included). A fresh pair of eyes on this
   runbook before a real-money deploy is strongly advised.
