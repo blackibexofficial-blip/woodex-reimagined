@@ -8,7 +8,7 @@
  *               Product/Article/Breadcrumb per page; zero lovable.app references (13 checks)
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
  *
- * Total: 39 checks (22 admin + 13 seo + 3 lazy + 1 no-console admin rail). Run: bun run e2e
+ * Total: 48 checks (24 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -166,6 +166,12 @@ async function adminSuite(browser) {
     return t.includes("home") && t.includes("published");
   });
   ok("Pages workspace lists the seeded published home page", pagesSeeded);
+
+  await page.goto(`${ADMIN}/campaigns`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("Campaign funnel", 20000);
+  const campBody = (await bodyText()).toLowerCase();
+  ok("campaigns page renders funnel with seeded campaigns (boardroom-nov, hq-fit-out-q4) + win rate", campBody.includes("boardroom-nov") && campBody.includes("hq-fit-out-q4") && campBody.includes("win rate"));
+  ok("campaigns page shows the first-party honesty banner (no pixels)", campBody.includes("first-party attribution only"));
 
   // --- Wave 2: Library rail + Layers outline + lab render ---
   const clickRail = (text) =>

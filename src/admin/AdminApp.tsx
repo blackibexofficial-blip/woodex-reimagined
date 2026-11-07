@@ -33,6 +33,7 @@ import AdminClaims from "@/admin/pages/Claims";
 import AdminInvoice from "@/admin/pages/Invoice";
 import AdminInvoices from "@/admin/pages/Invoices";
 import AdminTasks from "@/admin/pages/Tasks";
+import AdminCampaigns from "@/admin/pages/Campaigns";
 import AdminClientMerge from "@/admin/pages/ClientMerge";
 import AdminInvoiceDocument from "@/admin/pages/InvoiceDocument";
 import AdminCustomers from "@/admin/pages/Customers";
@@ -85,6 +86,7 @@ export default function AdminApp() {
           <Route path="quotes" element={<AdminQuotes />} />
           <Route path="invoices" element={<AdminInvoices />} />
           <Route path="tasks" element={<AdminTasks />} />
+          <Route path="campaigns" element={<AdminCampaigns />} />
           <Route path="client-merge" element={<AdminClientMerge />} />
           <Route path="suppliers" element={<AdminSuppliers />} />
           <Route path="showrooms" element={<AdminShowrooms />} />
