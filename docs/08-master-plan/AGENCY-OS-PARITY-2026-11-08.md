@@ -3,7 +3,7 @@
 Reference implementation: `woodex420/woodex-2030` @ branch `arena/01a10a97-woodex-2030` (analysis-only, never pushed to).
 Screenshots supplied by the owner (2026-11-07/08) were cross-checked against both codebases. Every legacy dashboard screen was inventoried — 24 surfaces.
 
-**Bottom line:** the reimagined admin already carries the architectural spine Agency OS pioneered (quotes → versioning/templates, quote→order conversion with audit, capability-checked RPCs, draft orders, returns/exchanges/claims). This round closed the two named gaps: the **invoice ledger** (shipped, see PR #18) and the analysis itself. The rest of the delta is cataloged below with honest effort estimates — none of it is silently skipped.
+**Bottom line:** the reimagined admin already carries the architectural spine Agency OS pioneered (quotes → versioning/templates, quote→order conversion with audit, capability-checked RPCs, draft orders, returns/exchanges/claims). This round closed three gaps: the analysis itself, the **invoice ledger** (shipped, see PR #18) and **Tasks & follow-ups** (§16 below — landing as its own PR on this branch). The rest of the delta is cataloged below with honest effort estimates — none of it is silently skipped.
 
 ## Screen-by-screen verdict
 
@@ -24,7 +24,7 @@ Screenshots supplied by the owner (2026-11-07/08) were cross-checked against bot
 | 13 | Clients (identity resolution, score, merge-review) | `/admin/customers` | 🟡 List/detail live; **merge-review + score not built** → Backlog #3. Legacy documents the rule: "ambiguity goes to a human" — we keep that. |
 | 14 | CRM — Lead Pipeline (drag kanban, site visits, win rate) | `/admin/leads` (table + quote action) | 🟡 Read-side live; **drag kanban + site-visit tab** → Backlog #4 (needs UX decision, not new schema — `site_visits` exists in 0001) |
 | 15 | Shared Inbox (WhatsApp/call/email, 0 unread) | — | ❌ Backlog #5 — **realtime explicitly deferred**; poll-based v1 possible but low value until channel EFs exist |
-| 16 | Tasks & follow-ups (list/board/calendar, KPI strip) | — | ❌ Backlog #6 — schema ready (`tasks` in 0001); straightforward win, next candidate |
+| 16 | Tasks & follow-ups (list/board/calendar, KPI strip) | `/admin/tasks` | ✅ **Parity closed (2026-11-08)** — KPI strip (Open / Due today / Overdue / Completed), All/Open/Done chips, search, three views (List table · Open/Done board · month-grid due-date calendar), New-task dialog (title/client/due/priority/owner), Complete/Reopen per row; ledger posture: working, never deleting. 3 new rehearsal asserts (sales read+create · viewer denied · editor denied) |
 | 17 | Projects — Interior Projects (overview/BOQ/milestones/files/design/site visit/production/installation) | `/admin/projects` | 🟡 CRUD live, **BOQ/milestones/tabs not built** → Backlog #7 (largest single item) |
 | 18 | Returns | `/admin/returns` | ✅ Live |
 | 19 | Settings | `/admin/settings` | ✅ Live |
@@ -41,7 +41,7 @@ Screenshots supplied by the owner (2026-11-07/08) were cross-checked against bot
 3. **Clients CRM depth** — merge-review queue (`client_links`, `client_merge` RPC exists) + source attribution + score surfaced on customer detail. Est. 1–2 d. NO auto-merges.
 4. **Lead pipeline UX** — drag-drop kanban over the existing Leads adapter + site-visit tab (`site_visits` table + RLS ready in 0001). Est. 1 d. UX sign-off wanted.
 5. **Shared inbox v1 (poll-based)** — inbox/threads tables exist; v1 = read + reply log, NO realtime (post-activation). Low value pre-hosting; park until a channel EF exists. Est. 2–3 d. DO NOT build realtime now.
-6. **Tasks & follow-ups** — full port of their page: list/open-board/calendar tabs, KPI strip, complete action, due badges; schema in 0001 (`tasks`). Est. 1 d. **Best next slice.**
+6. ~~**Tasks & follow-ups**~~ **SHIPPED 2026-11-08** — full port: KPI strip, chips, search, List/Board/Calendar tabs, new-task dialog, complete/reopen; rides 0001 `tasks` RLS (`crm.manage`); rehearsal 56 → **59/59**. (PR opened on this branch; owner-gated.)
 7. **Interior Projects depth** — BOQ/milestones/files/production tabs against `projects` payload; largest single backlog item (~1–2 wks). Needs owner UX sign-off before build.
 
 ## Decisions recorded this review (do not re-litigate)
@@ -49,6 +49,7 @@ Screenshots supplied by the owner (2026-11-07/08) were cross-checked against bot
 - **No POS.** The 2026-11-07 skip stands — the Ecommerce screen in Agency OS is a catalog/orders control center, not a register; the register is still out of scope.
 - **No new migration for invoices.** 0001 already ships `invoices`/`payments` + `quote_invoice_snapshot` (idempotent, cap quote.manage) + `invoice_apply_payment` (cap finance.manage, auto status flip) and the payments policies are **finance-only reads**. The invoice surface here is adapter+UI; nothing was created hosted-side.
 - **The 0001 snapshot RPC IS lossy** (invoice lands with subtotal=total=quote.total; discount/shipping breakdown not carried). Deliberate this round: fix requires a CREATE OR REPLACE of the RPC (would be migration 0012) — owner hasn't signed that off; labeled in code comments as "Phase-2 candidate".
+- **Tasks ride plain RLS, not RPCs.** 0001 `tasks_read`/`insert`/`update` = `has_cap('crm.manage')` (sales holds it); **no `tasks_delete` policy exists** — worked, never deleted, matching ledger posture. Free-text client labels are deliberately demo-only: hosted mode has `client_id` (FK) and no label column, so the Supabase adapter surfaces related refs (quote/order/lead/site-visit) instead of inventing one; code comments say so. Demo seeds: TSK-1001 (Clifton Villa 9, overdue, normal), TSK-1002 (Gulberg Residency, due today, high).
 - **Invoice numbering:** legacy INV-26-#### with year prefix dropped — uses identity (INV-1001+) matching REF discipline elsewhere.
 - **No deletes on ledger documents.** Legacy's red-bin delete is not ported.
 - **Demo mode:** invoices seeded (Issued + Partially paid + one logged payment) so the page is fully previewable offline.

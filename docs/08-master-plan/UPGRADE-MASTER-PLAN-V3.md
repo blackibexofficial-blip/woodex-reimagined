@@ -436,3 +436,18 @@ The plan's Slice-16-class parity target for the quotation designer is **delivere
 | Hosted activation | ❌ owner-gated — migrations 0001–0011 unapplied; nothing verified against live Supabase — rehearsal 50/50 (pglite) is the evidence class, per §12 |
 
 **Honesty note:** “parity” here means functional parity against the legacy funnel for the quotation surface, as amended by owner decisions taken 2026-11-07 (no share URLs, no 75/25 split, locked terms wording, version snapshots over inline edits) — not a literal port of legacy artifacts. Nothing in this addendum implies hosted readiness.
+
+
+## 16. Addendum — Tasks & follow-ups landed (2026-11-08, this branch)
+
+Legacy screen #16 is delivered in-repo, following the same template as the invoice ledger addendum (invoice/payment distinction preserved: **tasks are CRM work-items, not ledger documents**):
+
+| Plan item | Status (2026-11-08) |
+|---|---|
+| Tasks & Follow-ups page port | ✅ in-repo — KPI strip, chips, search, List/Board/Calendar, create/complete/reopen |
+| `tasks` schema + RLS use | ✅ rides 0001 verbatim — `crm.manage` for read/insert/update; **no delete policy** (worked, never deleted); no RPC, no new migration |
+| Sales access | ✅ sales holds `crm.manage` — rehearsed (create + read); viewer denied; editor denied |
+| Hosted gap | ❌ hosted unverified; demo client label is demo-only (hosted mode carries refs, no label column) — documented, not hidden |
+| Rehearsal count | 59/59 (pglite, migrations 0001–0011 + quotation + invoice + tasks suites) |
+
+**Honesty note:** "parity" here means functional parity of the follow-ups surface (the visible funnel), not byte-copy of legacy internals; nothing in this addendum implies hosted readiness, and hosted activation remains owner-gated per §12.

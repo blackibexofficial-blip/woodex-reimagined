@@ -74,7 +74,7 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 - **PRs closed unmerged (owner decision, refs retained):** #1 (raw IBPanel handoff archive) and #11 (lint-red `@lovable.dev/mcp-js` bundler re-commit; underlying money-path landed via #10). Repo temporarily has **no open PRs**; this sweep's docs ride PR #15 once opened.
 - **Port candidates skipped by owner:** 139 legacy product photos (17.3 MB, fork `arena/0378ff53-woodex-reimagined`), fork audit docs (`docs/07-woodex-os/`), PagesLab spike (2 files in merged `cb0d09e3`). Fork and refs retained.
 - **Kept deliberately:** `v1.0.0` tag + all 9 merged remote branches (deletion needs explicit owner word).
-- Rehearsal is now **reproducible in-repo** (`npm run test:rehearsal`, pglite, offline): **56/56** today (migrations 0001–0011 + quotation RLS appendix + invoice ledger suite). The historical 66/66 was the pre-merge /tmp harness; treat `test:rehearsal` as the going-forward gate. Real typecheck = `tsc --noEmit -p tsconfig.app.json`, green. CI green on merge SHAs.
+- Rehearsal is now **reproducible in-repo** (`npm run test:rehearsal`, pglite, offline): **59/59** today (migrations 0001–0011 + quotation RLS appendix + invoice ledger suite + tasks RLS suite). The historical 66/66 was the pre-merge /tmp harness; treat `test:rehearsal` as the going-forward gate. Real typecheck = `tsc --noEmit -p tsconfig.app.json`, green. CI green on merge SHAs.
 - **Owner-held still:** hosted deploy (0001–0010) + seed + physical stocktake; Turnstile keys; zone-rate sheet. `convertDraftOrder` — DONE 2026-11-07 (owner-approved full spec, migration 0010).
 
 ### PENDING — engineering slices (agent-ready once authorised)
@@ -96,12 +96,20 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 
 ### DONE 2026-11-08 — Invoice ledger + Agency OS parity review (branch `arena/2b15db15-woodex-reimagined`; PR #18)
 
-- **Parity review delivered** — `docs/08-master-plan/AGENCY-OS-PARITY-2026-11-08.md`: every one of the 24 legacy dashboard screens audited (woodex-2030 `arena/01a10a97-woodex-2030`), verdict per screen, prioritised backlog (tasks next; interior-projects depth largest; marketing attribution; leads kanban; control-center card; inbox poll-based parked; realtime/POS/theme-studio all deliberately not built).
+- **Parity review delivered** — `docs/08-master-plan/AGENCY-OS-PARITY-2026-11-08.md`: every one of the 24 legacy dashboard screens audited (woodex-2030 `arena/01a10a97-woodex-2030`), verdict per screen, prioritised backlog (tasks shipped 2026-11-08; interior-projects depth largest; marketing attribution; leads kanban; control-center card; inbox poll-based parked; realtime/POS/theme-studio all deliberately not built).
 - **Invoice ledger shipped in-repo** — `/admin/invoices` (KPIs collected/outstanding/count; chips All/Issued/Partially paid/Paid/Overdue/Cancelled — Overdue derived; search; per-row print at `/admin/invoice-document/:id` + finance-only payment dialog); “Invoice from quote” dialog issues via 0001 RPC `quote_invoice_snapshot` (cap quote.manage, **idempotent** — replay returns the existing invoice).
 - **Finance-only posture** — payments post via `invoice_apply_payment` (cap finance.manage): auto-flips Issued → Partially paid → Paid; viewer sees zero rows; sales may snapshot + read, never post. **No deletes** on ledger documents.
 - **NO new migration** — 0001 already carried `invoices`/`payments` + both RPCs + RLS (verified by read + rehearsal). Adapters: demo (in-memory + seeded: INV-1001 quote-converted Issued, INV-1002 standalone Issued, INV-1003 Partially paid with logged payment), Supabase (list/CRUD-read over table; writes RPC-only), Bagisto (501 stubs). Print route decorates with locked payment-terms line.
 - Rehearsal 56/56 (6 new invoice asserts: quote→invoice snapshot ✓ idempotent ✓ sales-cannot-post ✓ partial flip ✓ full flip ✓ viewer denied ✓). Hosted activation unchanged — owner-gated.
 - **Deliberately not ported**: legacy red-bin delete on invoices; full-page E-Quotation; Viewed/Negotiation stages; lossy 0001 snapshot carried onto the invoice row (Phase-2 candidate via a 0012 RPC replace — needs owner sign-off).
+
+### DONE 2026-11-08 — Tasks & follow-ups port (branch `arena/2b15db15-woodex-reimagined`; PR #19)
+
+- **`/admin/tasks` shipped in-repo** — full parity port of legacy screen #16: KPI strip (Open / Due today / Overdue / Completed), All/Open/Done filter chips with counts, search (title/client/owner/priority/ref), three views — **List** table, **Open ↔ Done board**, **month-grid due-date calendar** — New-task dialog (title, client/deal label, due date, priority low/normal/high), Complete/Reopen per row.
+- **CRM-shared, no deletes** — 0001 `tasks` table (FKs into leads/quotes/orders/site_visits) + RLS `tasks_read/insert/update` = `has_cap('crm.manage')` (sales holds it); **no delete policy** — work items are completed/reopened, never destroyed. Demo seeds: TSK-1001 (Clifton Villa 9 · teak for the porch · quote QOT-1001 · overdue 2 d · normal), TSK-1002 (Gulberg Residency · swatch before production · QOT-1002 · due today · high).
+- **Demo labels vs hosted truth** — free-text client label exists only in demo; hosted Supabase mode stores `client_id` (FK) and has no label column, so `supabase.ts` surfaces related refs and drops unknown free text (documented in code comments). Bagisto = 501 stubs. **No new migration** — nothing applied hosted-side.
+- **Nav/route** — Engage group, directly under Leads; `/admin/tasks`; icon `ClipboardCheck`; layout title “Tasks & Follow-ups”.
+- Gates: tsc clean · eslint clean (repo config; 34 pre-existing warnings unchanged) · vite build ✓ · e2e **42/42** · rehearsal **59/59** (3 new: sales create+read ✓ viewer denied ✓ editor denied ✓). Hosted activation unchanged — owner-gated.
 
 ### HOLD — deliberately parked
 

@@ -340,6 +340,23 @@ const asRole = async (db, roleName, uid) => { await db.exec(`set role ${roleName
   await db.exec('reset role');
   ok('invoice: viewer sees 0 invoice rows (quote.manage/finance.manage required)', first(invViewer) === 0);
 
+  // ── tasks (0001 tasks table; crm.manage only, NO delete policy) ─────────
+  await asRole(db, 'authenticated', S);
+  await db.query(`insert into public.tasks (client_id, title, due, owner, priority) values (null, 'Rehearsal follow-up', now() + interval '1 day', 'You', 'normal')`);
+  await db.exec('reset role');
+  const taskSales = await db.query(`select count(*)::int as c from public.tasks where title = 'Rehearsal follow-up'`);
+  ok('tasks: sales may create a task and read it back', first(taskSales) === 1);
+
+  await asRole(db, 'authenticated', V);
+  const taskViewer = await db.query(`select count(*)::int as c from public.tasks where title = 'Rehearsal follow-up'`);
+  await db.exec('reset role');
+  ok('tasks: viewer sees 0 task rows (crm.manage required)', first(taskViewer) === 0);
+
+  let editorTask = false;
+  try { await asRole(db, 'authenticated', E); await db.query(`insert into public.tasks (title) values ('Editor attempt')`); editorTask = true; } catch { /* denied */ }
+  await db.exec('reset role');
+  ok('tasks: editor may NOT create a task (lacks crm.manage)', editorTask === false);
+
   const pass = results.filter(r => r[1]).length, fail = results.length - pass;
   console.log(`\nFRESH REHEARSAL (test:rehearsal): ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
