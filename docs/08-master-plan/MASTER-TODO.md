@@ -58,7 +58,7 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 2. `OWNER` **Merge PR #14** (Turnstile slice 12 + zone-rate brief + Track B fixes + Wave 2/2b/3 + this file). CI green on the branch head — see latest run.
 3. `OWNER` **Merge PR #11** (mcp bundler steady-state) if still wanted.
 4. `OWNER` **Apply the CI hunk** from `docs/08-master-plan/CI-TURNSTILE-STEP.md` (App lacks `workflows` scope) so CI runs the Turnstile verifier tests.
-5. `OWNER` **Hosted deploy** via `docs/08-master-plan/HOSTED-DEPLOY-RUNBOOK.md`: migrations 0001→0009 in order → **§1a seed** → deploy EFs → set env (`VITE_API_MODE=supabase`, `VITE_TURNSTILE_SITE_KEY`) → **physical stocktake before any real order** (placeholder `stock_qty` = 100/0 is fiction) → smoke §6 (incl. Turnstile path) → §8 sign-off.
+5. `OWNER` **Hosted deploy** via `docs/08-master-plan/HOSTED-DEPLOY-RUNBOOK.md`: migrations 0001→0011 in order → **§1a seed** → deploy EFs → set env (`VITE_API_MODE=supabase`, `VITE_TURNSTILE_SITE_KEY`) → **physical stocktake before any real order** (placeholder `stock_qty` = 100/0 is fiction) → smoke §6 (incl. Turnstile path) → §8 sign-off.
 6. `OWNER` **Turnstile activation**: create site/secret pair → `supabase secrets set TURNSTILE_SECRET=…` → `VITE_TURNSTILE_SITE_KEY=…` → redeploy EFs → rebuild web. Until both sides set, gate is inert (fail-open) — checkout unchanged.
 
 ### PENDING — decisions required (owner; I prepare, you call)
@@ -74,7 +74,7 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 - **PRs closed unmerged (owner decision, refs retained):** #1 (raw IBPanel handoff archive) and #11 (lint-red `@lovable.dev/mcp-js` bundler re-commit; underlying money-path landed via #10). Repo temporarily has **no open PRs**; this sweep's docs ride PR #15 once opened.
 - **Port candidates skipped by owner:** 139 legacy product photos (17.3 MB, fork `arena/0378ff53-woodex-reimagined`), fork audit docs (`docs/07-woodex-os/`), PagesLab spike (2 files in merged `cb0d09e3`). Fork and refs retained.
 - **Kept deliberately:** `v1.0.0` tag + all 9 merged remote branches (deletion needs explicit owner word).
-- Rehearsal is now **reproducible in-repo** (`npm run test:rehearsal`, pglite, offline): **41/41** today (migrations 0001–0010 + seed + cap matrix + conversion suite). The historical 66/66 was the pre-merge /tmp harness; treat `test:rehearsal` as the going-forward gate. Real typecheck = `tsc --noEmit -p tsconfig.app.json`, green. CI green on merge SHAs.
+- Rehearsal is now **reproducible in-repo** (`npm run test:rehearsal`, pglite, offline): **50/50** today (migrations 0001–0011 + seed + cap matrix + conversion suite + quotation RLS appendix). The historical 66/66 was the pre-merge /tmp harness; treat `test:rehearsal` as the going-forward gate. Real typecheck = `tsc --noEmit -p tsconfig.app.json`, green. CI green on merge SHAs.
 - **Owner-held still:** hosted deploy (0001–0010) + seed + physical stocktake; Turnstile keys; zone-rate sheet. `convertDraftOrder` — DONE 2026-11-07 (owner-approved full spec, migration 0010).
 
 ### PENDING — engineering slices (agent-ready once authorised)
@@ -82,7 +82,17 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 10. `DONE 2026-11-07` **Wave 2 — draft orders** — migration 0008 + adapter CRUD (list/get/create/update/delete); finance read-only; viewer nothing; identity 1001. Conversion stays a separate item (13).
 11. `DONE 2026-11-07` **Wave 3 — singleton resets** — `src/api/singleton-defaults.ts` is the single source (@/data seeds); supabase `resetWarrantyPage/CustomDesign/VirtualShowroom` wired; demo adapter deduped onto it.
 12. `DONE 2026-11-07` **Wave 2b — exchanges / claims backend** — migration 0009 (tables + `record_order_event` RPC, order.manage-only) + adapter lifecycles + `inventory_apply` stock effects (catalog.manage) + transition guards + timeline notes.
-13. `DONE 2026-11-07` **`convertDraftOrder` wired (migration 0010, full spec)** — catalogue reprice + order.manage-audited negotiated overrides + zone shipping + single-txn stock rollback + idempotent flip; admin reprice preview modal; rehearsed 41/41 (`npm run test:rehearsal`); hosted deploy pending owner.
+13. `DONE 2026-11-07` **`convertDraftOrder` wired (migration 0010, full spec)** — catalogue reprice + order.manage-audited negotiated overrides + zone shipping + single-txn stock rollback + idempotent flip; admin reprice preview modal; rehearsed 41/41 → 50/50 (`npm run test:rehearsal`); hosted deploy pending owner.
+
+### DONE 2026-11-07 — Quotation platform port (owner instruction: “Start complete implementation”; branch `arena/926d625e-woodex-reimagined`; PR pending owner merge)
+
+- **Lifecycle** Draft → Review → Approval → Sent → Revised (re-submits to Review) / Accepted / Declined; 8-stage `QuoteStatus` end-to-end (types → adapters → badge → list filter + chips → contextual quick-action buttons; converted stays terminal).
+- **Per-line engineering spec** — W/H/D + unit (`mm|cm|in`), material, finish, series, category, custom notes; rides `items` jsonb; print page renders a spec line per item.
+- **Versioning** — `quote_versions` snapshot appended on every save (create/edit/status-change/restore); history drawer on the editor (`v{n} · action — resulting status`); restore re-opens the snapshot as a fresh `revised` revision; converted quotes are never resurrected; `audit` jsonb ring buffer (20 entries) on the quote itself.
+- **Print template designer** (`QuoteTemplateDesigner`) — builtin **“Woodex classic”** (code-owned, not deletable), custom templates persist to `quote_templates`; required payment-terms wording locked (“Final payment terms will be included in formal quotation.”) — cannot be weakened; brand colour drives totals rules, headings, note boxes, sign-off lines.
+- **Print page** renders template blocks (letterhead / doc title + ref / validity banner / payment note / terms / signature grid) + per-line engineering spec; validity respects the full pre-commit lifecycle; expired banner extended to review/approval/revised.
+- **NO new migration** — rides 0001's `quotes` / `quote_versions` / `quote_templates` + `quote.manage` RLS (templates/versions matrix rehearsed: 50/50, 4 new asserts). POS remains skipped; Bagisto adapter untouched except stubbed 501s for the new 5 API methods; realtime collaboration deliberately not built (post-activation item).
+- Gates: tsc clean, eslint clean, build ✓, e2e 42/42, rehearsal 50/50. **Hosted-gated** — nothing applied live; PR merge itself owner-gated.
 
 ### HOLD — deliberately parked
 

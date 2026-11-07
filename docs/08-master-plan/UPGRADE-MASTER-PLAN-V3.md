@@ -416,3 +416,23 @@ Each of these ships as a failing-then-passing test or explicit verification arti
 | Auth | token sessions + RBAC | demo gate only | Supabase Auth JWT + `user_roles`, same caps |
 | Tests | 92/92 local SQL suites (not browser) | e2e 42/42 (admin flows) | SQL + pglite + staging + browser E2E on CI |
 | Production | never deployed; NO-GO audit | static SPA (no data) | owner-gated, P6 runbook only |
+
+
+---
+
+## 15. Addendum — quotation platform status (2026-11-07, this branch)
+
+The plan's Slice-16-class parity target for the quotation designer is **delivered in-repo**, not byte-for-byte legacy:
+
+| Plan item | Status (2026-11-07) |
+|---|---|
+| Draft→Review→Approval→Sent→Revised lifecycle | ✅ in-repo — 8-stage QuoteStatus, contextual quick actions; converted terminal; declined→revised→review loop |
+| Quote versioning (`quote_versions`) | ✅ in-repo — snapshot on every save; history drawer + restore; audit ring buffer on quote; never resurrects converted |
+| Per-line engineering spec | ✅ in-repo — dims/unit, material, finish, series, category, custom notes |
+| QuoteTemplateDesigner port | ✅ in-repo — builtin "Woodex classic" (code-owned) + custom templates via `quote_templates`; required payment-terms wording locked |
+| Print/preview page upgrade | ✅ in-repo — template blocks render above/below the items table; spec line per item |
+| Invoice ledger (“quote_invoice_snapshot → invoice_apply_payment”) | ❌ not built this slice (the Agency OS invoice ledger stays pre-planned port; quoting stays order-path-driven via `quote.convert` — see 0004) |
+| Realtime multi-user collaboration | ❌ deliberately not built (post-activation, after hosted sign-off) |
+| Hosted activation | ❌ owner-gated — migrations 0001–0011 unapplied; nothing verified against live Supabase — rehearsal 50/50 (pglite) is the evidence class, per §12 |
+
+**Honesty note:** “parity” here means functional parity against the legacy funnel for the quotation surface, as amended by owner decisions taken 2026-11-07 (no share URLs, no 75/25 split, locked terms wording, version snapshots over inline edits) — not a literal port of legacy artifacts. Nothing in this addendum implies hosted readiness.

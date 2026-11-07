@@ -2,14 +2,15 @@
 
 Audience: the owner / release operator. The agent environment that produced this code
 has **no egress to Supabase** (HTTP 000) — nothing here has ever run against a hosted
-project. Rehearsal evidence (`pglite`, 36/36, migrations 0001–0006 + catalogue seed,
+project. Rehearsal evidence (`pglite`, 50/50, migrations 0001–0011 + catalogue seed,
 including idempotent double-apply) proves the DDL and RPC behavior locally only. Every step below is mandatory before the storefront is allowed to charge anyone real money.
 
 Project ref (from `supabase/config.toml`): `ewbflgbshdstfxqretay`
 
 ## 0. Sanity gates before you start
 - You are deploying from the exact commit the owner approved (this runbook currently
-  ships from `arena/68ecf14d-woodex-reimagined` — PRs #11/#12).
+  ships from `arena/926d625e-woodex-reimagined` — PRs #11/#12, #16 (2026-11-07) and the
+  quotation-platform port carried by this branch (PR pending owner merge)).
 - Local preview runs in **demo** mode — it does not prove anything about Supabase.
 
 ## 1. Apply migrations IN ORDER (SQL Editor or `supabase db push`)
@@ -23,14 +24,17 @@ Project ref (from `supabase/config.toml`): `ewbflgbshdstfxqretay`
 8. `supabase/migrations/20261107000008_draft_orders.sql`
 9. `supabase/migrations/20261107000009_exchanges_claims.sql`
 10. `supabase/migrations/20261107000010_convert_draft_order.sql`
+11. `supabase/migrations/20261107000011_compare_at_in_payload.sql`
 
-All ten are written to be safe on a fresh/converged project. Verify after applying:
+All eleven are written to be safe on a fresh/converged project. Verify after applying:
 
 ```sql
 -- objects exist
 select to_regprocedure('public.order_submit(jsonb,jsonb,text,text)'),
        to_regprocedure('public.quote_convert(text,text)'),
        to_regprocedure('public.page_publish(text,text,text)');
+-- 0001 quote tables + RLS exist (the quotation platform reads/writes them)
+select to_regclass('public.quotes'), to_regclass('public.quote_versions'), to_regclass('public.quote_templates');
 -- column present
 select column_name from information_schema.columns
  where table_schema='public' and table_name='orders' and column_name in ('client_ref','sales_channel_id');
@@ -68,6 +72,10 @@ Note: 0007 is an additive ALTER of the delivery_zones table created in 0001 (zon
 Note: 0008 (draft orders) and 0009 (exchanges + claims, incl. the record_order_event RPC) add new staff-only surfaces — no storefront behavior change. Identity sequences start at 1001 so draft refs read DRF-1001+.
 
 Note: 0010 adds only the `convert_draft_order` RPC (draft → order, owner-approved 2026-11-07) — revokes PUBLIC/anon, authenticated-only, order.manage-gated. No table changes; no storefront behavior change.
+
+Note: 0001 creates the `quotes` / `quote_versions` / `quote_templates` tables and their `quote.manage` RLS (sales-class) — the quotation platform (lifecycle, version history, print templates) uses them as-is; there is NO separate 0012. `quote_templates.template` stores brand color, header/footer blocks and copy tweaks; the built-in "Woodex classic" template is code-owned (`src/api/quote-templates.ts`) and cannot be deleted through the admin.
+
+Note: 0011 extends the compare-at price payload RPC only (`compareAtPrice` on products) — no quote interaction.
 
 ## 2. Deploy edge functions
 The two public intake functions import the shared Turnstile verifier
@@ -158,7 +166,7 @@ later retry. Rollback does NOT require dropping any migration.
   (WAF-proxy vs Upstash counter vs Turnstile vs monitoring; recommendation: Turnstile +
   monitoring, WAF held in reserve). These guards protect stock counts and lead spam, they
   are not complete anti-abuse systems.
-- `convertDraftOrder` and `exchanges/claims` remain unwired by design (Wave 2: tables missing).
+- `convertDraftOrder` and `exchanges/claims` are wired end-to-end in-repo (Wave 2; migration 0010 RPC + adapters + rehearsal). Hosted activation still has to run through this runbook — in-repo wiring is not proof on the live project.
 - The conversion price authority model (negotiated quote lines) is intentional and documented
   in migration `0004`'s header — do not "fix" it to re-list-price without owner sign-off.
 - Seed stock is synthetic (see §1a). Until a stocktake is done, treat every seeded
@@ -170,5 +178,6 @@ later retry. Rollback does NOT require dropping any migration.
   (egress 000) — verify path is mocked-tests only until you run §2/§3/§5 against the project.
   WAF / Upstash remain OPEN — see `docs/08-master-plan/ANTI-ABUSE-DECISION.md` (this file lands
   via the anti-abuse docs PR; the code here does not depend on it).
-- Local evidence only (36/36 rehearsal, seed included). A fresh pair of eyes on this
+- **Quotation platform ships in-repo, hosted-gated:** lifecycle (draft → review → approval → sent → revised/accepted/declined), version history with restore, print template designer ("Woodex classic" built in; customs stored in `quote_templates`), engineering line specs. None of these need a NEW migration — they ride 0001's tables. Rehearsal 50/50 covers the RLS capability matrix for templates/versions. NOT applied or verified hosted.
+- Local evidence only (50/50 rehearsal, seed included). A fresh pair of eyes on this
   runbook before a real-money deploy is strongly advised.
