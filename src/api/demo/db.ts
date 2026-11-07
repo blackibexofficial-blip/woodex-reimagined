@@ -4854,6 +4854,14 @@ export const demoAdminApi: AdminApi = {
         value: input.value,
         status: "new",
         createdAt: new Date().toISOString(),
+        consent: input.consent,
+        consentAt: input.consentAt,
+        consentVersion: input.consentVersion,
+        landingPath: input.landingPath,
+        referrer: input.referrer,
+        utmSource: input.utmSource,
+        utmMedium: input.utmMedium,
+        utmCampaign: input.utmCampaign,
       };
       db.leads.push(lead);
       created = { ...lead };

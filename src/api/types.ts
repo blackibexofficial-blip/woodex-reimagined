@@ -470,6 +470,14 @@ export interface AdminLead {
   value?: number;        // estimated order value (PKR)
   status: LeadStatus;
   createdAt: string;     // ISO
+  consent?: boolean;
+  consentAt?: string;
+  consentVersion?: string;
+  landingPath?: string;
+  referrer?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
 }
 
 export interface AdminProduct {
@@ -1225,6 +1233,17 @@ export interface NewLeadInput {
   city?: string;
   summary: string;
   value?: number;
+  /** Consent capture (v3 P1): the storefront must present the WOODEX privacy notice before submit. */
+  consent?: boolean;
+  /** ISO timestamp the customer accepted the notice. */
+  consentAt?: string;
+  /** Served notice version (see src/lib/consent.ts CONSENT_VERSION). */
+  consentVersion?: string;
+  landingPath?: string;
+  referrer?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
 }
 
 export interface ListParams {
