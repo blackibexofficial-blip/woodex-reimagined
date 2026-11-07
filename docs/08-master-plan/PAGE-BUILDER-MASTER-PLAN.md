@@ -229,7 +229,7 @@ hash-freeze and the upgrade procedure. `@puckeditor/core` peers: `react ^18 || ^
 | Wave 2 — Sections & Elements libraries | the §0A.3 40-section UI-kit catalogue (thumbnails, "Label in Layers") + tabs Sections/UI kit/Templates/Images + category chips; Elements palette (BASIC+WIDGETS, §0A.4); Layers panel (select/reorder/hide/lock) | 5–7 |
 | Wave 3 — Theme: whole-website tokens | §0A.6 panel — colours/fonts/base size/heading scale (+ custom toggle), CSS custom properties, section skins Original/White/Cream/Navy, versioned demo-DB `theme` singleton + snapshot/restore | 3–4 |
 | Wave 4 — Inspector parity + Linked styles | **As built (PR #7):** Style tab (Desktop/Tablet/Mobile × Normal/Hover — padding/radius/border/align via static classes), Advanced tab (General Tag/ID/Title/Aria/Classes + responsive visibility + animation on scroll, reduced-motion aware), page-scoped **Linked styles** with live `hm-*` usage counts (inline-merge engine, Phase-B-lite), `Live home ↗` button, **inline text toolbar shipped** (TipTap-native richtext fields, allow-list sanitizer) | 6–9 |
-| Wave 5 — SEO layer | §0A.7 panel — title/meta counters (60/160), focus keyphrase, live Google preview, local Yoast-style **Analyse** (keyphrase, H1=1, title/meta length, word count, readability), SEO + Readability score badges, publish gate; JSON-LD wiring; sitemap **deferred to W7/Bagisto** (see §0A.7 as-built note) | **[done — branch, owner merge-gated]** |
+| Wave 5 — SEO layer | §0A.7 panel — title/meta counters (60/160), focus keyphrase, live Google preview, local Yoast-style **Analyse** (keyphrase, H1=1, title/meta length, word count, readability), SEO + Readability score badges, publish gate; JSON-LD wiring; sitemap **deferred to W7/Bagisto** (see §0A.7 as-built note) | **[done — merged via PR #6, 2026-11-07]** |
 | Wave 6 — AI + MCP build path | local MCP server (full-generation depth, owner §11-Q4): `create_page` / `upsert_section` / template fan-out for local-SEO catalogue; draft-first + validator; audit log; no publish tool | 5–8 |
 | Wave 7 — Bagisto mapping | JSON page document persisted as Bagisto CMS custom attribute (or native blocks) behind `getAdminApi()`; migration of demo-DB pages; dual-run period | 4–5 |
 | Buffer / owner UAT / parity polish | linked-styles Phase B slippage, screenshot sign-offs, migration of static pages | 8–12 |
@@ -434,7 +434,7 @@ starter document (`src/pages-builder/starter.ts`); localStorage persistence; adm
 **Known limitations:** per-browser localStorage; no media picker (image URL text field); scaled canvas;
 no multi-page list. All addressed in W1–W2.
 
-### Wave 1 — Foundation: pages slice, tree & draft/publish `[done]` (delivered 2026-11-06 on the PR #4 branch; owner-gated merge)
+### Wave 1 — Foundation: pages slice, tree & draft/publish `[done]` (delivered 2026-11-06 on the PR #4 branch; merged via PR #4)
 Demo-DB `pages` slice (same pattern as showrooms/warranty); admin **Pages** workspace per §0A.2: folder tree,
 search, `+ New`, top-level model with slugs, draft⇄published, per-page duplicate, history (cap 20) + one-click
 revert, slug-collision guard vs `src/App.tsx` routes (unit test). Pages list shows status, updatedAt, SEO score
@@ -442,7 +442,7 @@ badge (once W5 lands; placeholder chip before). Publish persists the document on
 **Gate:** CRUD round-trip live check; publish/unpublish flips storefront render; revert works; folders CRUD;
 e2e gains ≥2 page-store checks.
 
-### Wave 2 — Sections & Elements libraries `[done]` (delivered 2026-11-07, PR #4 branch; owner-gated merge)
+### Wave 2 — Sections & Elements libraries `[done]` (delivered 2026-11-07, PR #4 branch; merged via PR #4)
 Build the §5.1/§5.2/**§5.3** catalogues (elements may be vendored from **free MIT Tailgrids** per §5.3 rules) as Puck-registered components with WOODEX tokens: 40 sections across
 10 categories with thumbnail cards, "Label shown in Layers", tabs **Sections · UI kit · Templates · Images**,
 category chips (All 40 · Hero · Features · Pricing · Stats & charts · Testimonials · Team ·
@@ -495,7 +495,7 @@ toolbar (B/I/U/S · link · colour · align · A/Aa · size) + "Heading 2" type 
 **Gate:** class rule applies to all N matches and **does not leak cross-page** (unit test); Phase A ships usable
 even if Phase B slips; contrast AA on navy skin; keyboard focus visible; axe on lab pages; e2e +4.
 
-**As built (PR #7, 2026-11-07 — owner-merge-gated):** `_inspector` flat-prop composite custom field, post-injected on
+**As built (PR #7, 2026-11-07 — merged as PR #7):** `_inspector` flat-prop composite custom field, post-injected on
 **every** block (40 sections + 17 elements + 3 legacy). Content stays in Puck's auto-fields; the inspector renders
 **Style | Advanced** tabs. Style: Desktop/Tablet/Mobile segmented device switch driving padding/radius/border/text-align
 (static `builder.css` classes — storefront and canvas share one source) and Normal/:hover toggle for background / text /
@@ -508,15 +508,17 @@ itself). `/lab/:slug` applies the merge through `BuilderDocContext`; the editor 
 (Puck iframe boundary — honest, documented limitation). A standalone sandboxed stylesheet (`@woodex-page-rules`) remains open. The **inline text toolbar SHIPPED (2026-11-07)**: Puck-native `richtext` fields (TipTap, `contentEditable`) on element text props (Heading / Sub-heading / Paragraph / Small label / Quote / 2-Columns left+right), the legacy SectionHeading title/subtitle and the RichText section body. `richtext.tsx` exports `richTextField` (the field factory), a pure DOM-free **allow-list sanitizer** (`b/strong/em/i/u/s/strike/span/br`, `a` restricted to `https?:/mailto:/tel:/root-relative/#` with `rel="noopener"`, spans stripped of all attributes) and `RichHtml`, which renders persisted HTML strings post-sanitize and spreads the inline-editor React element Puck hands the canvas as children (never stringified). Plain-text seeds render byte-identically. Section copy stays plain text (single-line headline design) — documented limitation. Two rich-text defects found & fixed en route: (a) Puck canvas field transforms replace contentEditable richtext props with inline-editor React elements — stringifying the prop printed `[object Object]` in the canvas (and would corrupt anything reading `.length`/`String()`); values now pass through raw and render as children; (b) the first sanitizer's permissive tag regex swallowed typed copy like `a < b & c` as a tag — replaced with a tokenizing scanner (quote-aware `>` scan; a candidate tag must open with `<A…` or `</A…`). Two editor-stability defects were fixed en route (Puck re-fed a fresh `data`
 identity per keystroke; `plugins` array recreated per render → panel remount/focus loss). Verification: tsc 0 · sanitizer probe 12/12 · build ✓ ·
 e2e 42/42 · headless functional pass 14/14 (incl. LAB-computed merge assertions) · rich-text round-trip (panel Bold → Save draft → `/lab/home`
-renders `<strong>`) ✓; canvas inline bubble menu verified mounted (2 `contenteditable` TipTap surfaces in-canvas) — mouse-driven selection not
-completed headlessly.
+renders `<strong>`) ✓; canvas inline bubble menu verified mounted (2 `contenteditable` TipTap surfaces in-canvas) — superseded by PR #8: the canvas inline toolbar (`_RichTextMenu--inline`) is now confirmed mounted and functional in-canvas.
+
+**As built (PR #8, 2026-11-07 — merged to `main` as 387c9c8): Wave-4 regression fix + verification refresh.**
+The Wave-4 merge broke the builder for every load — `PageEditor` fed Puck `useMemo(() => (doc ? toPuckData(doc) : null), [puckKey])`; hooks evaluate before the loading gate's early return, so the loading render cached `null` as the snapshot forever and Puck mounted empty (blank canvas, outline "No items"; reproduced on pristine `main` @ 9febdc8). The snapshot now materializes only once the doc is ready or on an explicit `puckKey` remount (Library insert / version restore) — the intentionally frozen-per-key contract is preserved. Verified on rebuilt scratch: 11 blocks in canvas, 11 Layers rows, type → `Save draft` → reload → `/lab/home` roundtrip persists; e2e 42/42; tsc clean. The canvas inline toolbar is confirmed working end-to-end in-canvas (mouse click on the editable → type → Ctrl+A → `title="Bold"` → `<strong>` persisted in the TipTap surface). Also shipped: subtitle `hasRichContent` gate — entity/whitespace-only subtitles no longer emit empty `<p>` on the storefront. CI on merged `main` green.
 
 **Chrome model (owner §11-Q2):** header/footer/announcement are **linked master sections** rendered in-canvas —
 one master per chrome part, instances on every builder page; editing any instance edits the master (propagates
 everywhere); per-page detach requires a confirm dialog naming the page and the propagation consequence; announcement
 additionally supports per-page show/hide. Masters live in the demo-DB `pages` slice as `kind: "chrome"` docs.
 
-### Wave 5 — SEO layer `[done — branch, owner merge-gated]` (2026-11-07)
+### Wave 5 — SEO layer `[done — merged via PR #6, 2026-11-07]`
 §0A.7 SEO workspace per page: **Page title** (≤60) + **Meta description** (≤160) live counters; **Focus keyphrase**;
 breadcrumb URL preview + **live Google result preview** (title/URL/description render as SERP); **Analyse** button
 runs a fully local Yoast-style ruleset (keyphrase present elsewhere?; keyphrase in title/meta/first paragraph/H2?;
@@ -778,9 +780,9 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   Golden-path live verification 14/14 (panel renders, seed passes the default gate, emptying the keyphrase blocks Publish with a visible reason and
   keeps the draft unpublished). "Open in SEO manager ↗" removed (no MCP service in browser builds); build-time sitemap deferred to Wave 7 with the
   Bagisto seam (client-side demo DB is invisible at build time — documented, not hidden). e2e 42/42 (+3 JSON-LD/canonical asserts) · axe 7 routes 0
-  violations · tsc 0 · build ✓. Owner merge-gated.
+  violations · tsc 0 · build ✓. Owner merge-gated; merged via PR #6 (2026-11-07).
 - **2026-11-07 (Wave 4 — Inspector + Linked styles, PB-4)** — Owner selected **Full Wave 4** from the wave menu.
-  Built on `arena/d1d750ce-woodex-reimagined` (PR #7, owner merge-gated): `_inspector` flat-prop composite field post-injected on
+  Built on `arena/d1d750ce-woodex-reimagined` (PR #7, merged 2026-11-07): `_inspector` flat-prop composite field post-injected on
   **all** blocks (40 catalogue sections + 17 elements + 3 legacy). **Style** tab — Desktop/Tablet/Mobile segmented switch
   driving padding/radius/border/text-align through static `builder.css` classes (shared storefront/canvas source); **Normal/:hover**
   toggle for background / text / heading colours via hex+picker and CSS custom-property cascade islands; heading-colour overrides
