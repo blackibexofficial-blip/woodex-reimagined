@@ -773,6 +773,7 @@ export type Database = {
         Row: {
           id: number
           slug: string
+          kind: string
           title: string
           status: string
           seo_title: string | null
@@ -787,6 +788,7 @@ export type Database = {
         Insert: {
           id?: number
           slug: string
+          kind?: string
           title: string
           status?: string
           seo_title?: string | null
@@ -801,6 +803,7 @@ export type Database = {
         Update: {
           id?: number
           slug?: string
+          kind?: string
           title?: string
           status?: string
           seo_title?: string | null
@@ -1116,6 +1119,7 @@ export type Database = {
           customer_phone: string | null
           city: string | null
           reason: string | null
+          reason_detail: string | null
           state: string
           refund_amount: number
           resolution: string | null
@@ -1134,6 +1138,7 @@ export type Database = {
           customer_phone?: string | null
           city?: string | null
           reason?: string | null
+          reason_detail?: string | null
           state?: string
           refund_amount?: number
           resolution?: string | null
@@ -1152,6 +1157,7 @@ export type Database = {
           customer_phone?: string | null
           city?: string | null
           reason?: string | null
+          reason_detail?: string | null
           state?: string
           refund_amount?: number
           resolution?: string | null

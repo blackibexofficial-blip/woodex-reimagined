@@ -262,7 +262,7 @@ create table if not exists public.returns (
   order_id bigint references public.orders(id) on delete set null,
   customer text, customer_email text, customer_phone text, city text,
   items jsonb not null default '[]'::jsonb,
-  reason text,
+  reason text, reason_detail text,
   state text not null default 'Requested', refund_amount numeric(12,2) not null default 0,
   resolution text, restock boolean not null default true, inspection_note text,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
@@ -295,6 +295,7 @@ create index if not exists idx_site_visits_lead on public.site_visits(lead_id, s
 -- ── CMS & content singletons ────────────────────────────────────────────────
 create table if not exists public.pages (
   id bigint generated always as identity primary key, slug text unique not null,
+  kind text not null default 'page' check (kind in ('page','chrome')),
   title text not null, status text not null default 'Draft',
   seo_title text, seo_desc text, theme jsonb,
   seo jsonb not null default '{}'::jsonb,
