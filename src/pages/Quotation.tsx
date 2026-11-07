@@ -12,6 +12,7 @@ import { formatPKR, products } from "@/data/products";
 import { getAdminApi } from "@/api";
 import { LeadConsent } from "@/components/LeadConsent";
 import { buildConsent, collectAttributionBrowser } from "@/lib/consent";
+import { getTurnstileToken } from "@/lib/turnstile";
 import { useEffect } from "react";
 import PrintableInvoice, { ClientInfo } from "@/components/quotation/PrintableInvoice";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -69,6 +70,15 @@ const Quotation = () => {
       ? ` — basket: ${items.slice(0, 6).map((i) => `${i.name} x${i.quantity}`).join(", ")}${items.length > 6 ? "…" : ""} (${totalItems} items, est. ${formatPKR(totalPrice)})`
       : "";
     setSubmitting(true);
+    let cfTurnstileToken: string | undefined;
+    try {
+      cfTurnstileToken = (await getTurnstileToken("lead")) ?? undefined;
+    } catch (err) {
+      console.error("Turnstile challenge failed:", err);
+      toast.error("Verification didn't load — check your connection and try again.");
+      setSubmitting(false);
+      return;
+    }
     try {
       await getAdminApi().createLead({
         type: "quote",
@@ -80,6 +90,7 @@ const Quotation = () => {
         value: items.length ? totalPrice : undefined,
         ...buildConsent(),
         ...collectAttributionBrowser(),
+        cfTurnstileToken,
       });
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 5000);

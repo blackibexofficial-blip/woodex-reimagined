@@ -18,6 +18,7 @@ import { formatPKR } from "@/data/products";
 import { site, waLink } from "@/config/site";
 import { config } from "@/config/env";
 import { deliveryFeeFor } from "@/config/shipping";
+import { getTurnstileToken } from "@/lib/turnstile";
 
 const cities = [
   "Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan",
@@ -56,6 +57,15 @@ const Checkout = () => {
     e.preventDefault();
     if (placing) return;
     setPlacing(true);
+    let cfTurnstileToken: string | undefined;
+    try {
+      cfTurnstileToken = (await getTurnstileToken("order")) ?? undefined;
+    } catch (err) {
+      console.error("Turnstile challenge failed:", err);
+      toast.error("Verification didn't load — check your connection and try again.");
+      setPlacing(false);
+      return;
+    }
     try {
       const order = await getAdminApi().createOrder({
         customerName: formData.name.trim(),
@@ -70,6 +80,7 @@ const Checkout = () => {
         subtotal: totalPrice,
         shipping: deliveryFee,
         total: grandTotal,
+        cfTurnstileToken,
       });
       setPlacedOrder({
         id: order.id,

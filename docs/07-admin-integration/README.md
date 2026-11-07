@@ -58,7 +58,7 @@ Related: `backend/README.md` (server provisioning), `backend/bagisto.env.example
 | `VITE_BAGISTO_STOREFRONT_KEY` | `pk_storefront_…` | Public Shop API key (rate-limited, read-mostly). |
 | `VITE_BAGISTO_ADMIN_TOKEN` | `3\|abc…` | **SECRET.** Integration token for `/api/admin/*`. Private previews only — see §5. |
 | `VITE_BAGISTO_CHANNEL` / `VITE_BAGISTO_LOCALE` / `VITE_BAGISTO_CURRENCY` | `default` / `en` / `PKR` | Store context sent with API calls. |
-| `VITE_ADMIN_EMAIL` / `VITE_ADMIN_PASSWORD` | `admin@woodex.pk` / … | Demo `/admin` gate only. Not an auth boundary. |
+| `VITE_ADMIN_EMAIL` / `VITE_ADMIN_PASSWORD` | `admin@woodex.pk` / … | Demo `/admin` gate only. Not an auth boundary. Set `VITE_ADMIN_DEMO_HINT=1` to print them on the login screen (off by default). |
 | `VITE_SUPABASE_*` | … | Supabase project. Enables the "Sign in with Supabase" tab on `/admin/login`; full backend in `backend/supabase/`. Storefront runtime stays backend-free without it. |
 
 > After pulling admin DB schema changes, reset the demo DB once (`/admin/settings` → *Reset demo

@@ -13,9 +13,7 @@ import { pageSwatchSeed } from "@/data/materialsPage";
 import { projectsDisplay as projectSeed } from "@/data/projects";
 import { blogPosts as blogSeed } from "@/data/blogPosts";
 import { services as serviceSeed } from "@/data/services";
-import { warrantyPageSeed } from "@/data/warrantyPage";
-import { customDesignPageSeed } from "@/data/customDesignPage";
-import { virtualShowroomPageSeed } from "@/data/virtualShowroomPage";
+import { defaultWarrantyPage, defaultCustomDesignPage, defaultVirtualShowroomPage } from "@/api/singleton-defaults";
 import { buildSeedPages, buildSeedPageFolders, blankPageDoc, starterPageDoc } from "@/data/pages";
 import type {
   AdminApi,
@@ -614,20 +612,7 @@ const HOMEPAGE_SECTIONS_SEED: AdminHomepageSections = {
   carousel: { mode: "auto", productIds: [] },
 };
 
-function cloneWarrantyPage(src: AdminWarrantyPage): AdminWarrantyPage {
-  return {
-    hero: { eyebrow: src.hero.eyebrow, title: src.hero.title, subtitle: src.hero.subtitle },
-    tiers: src.tiers.map((t) => ({ ...t, coverage: [...t.coverage], excludes: [...t.excludes] })),
-    steps: src.steps.map((s) => ({ ...s })),
-    faqs: src.faqs.map((f) => ({ ...f })),
-  };
-}
-
-const WARRANTY_PAGE_SEED: AdminWarrantyPage = cloneWarrantyPage(warrantyPageSeed);
-
 const cloneDoc = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
-const CUSTOM_DESIGN_PAGE_SEED: AdminCustomDesignPage = cloneDoc(customDesignPageSeed);
-const VIRTUAL_SHOWROOM_PAGE_SEED: AdminVirtualShowroomPage = cloneDoc(virtualShowroomPageSeed);
 const clonePage = (pg: AdminPage): AdminPage => cloneDoc(pg);
 const newPageId = () => `page-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`;
 const newFolderId = () => `folder-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`;
@@ -1736,7 +1721,7 @@ function buildSeed(): DemoDb {
     return { ...rest, consentAt, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: cloneWarrantyPage(WARRANTY_PAGE_SEED), customDesignPage: cloneDoc(CUSTOM_DESIGN_PAGE_SEED), virtualShowroomPage: cloneDoc(VIRTUAL_SHOWROOM_PAGE_SEED), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1767,9 +1752,9 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.series)) db.series = buildSeedSeries();
       if (!Array.isArray(db.brands)) db.brands = buildSeedBrands();
       if (!db.homepageSections || typeof db.homepageSections !== "object") db.homepageSections = { bestSellers: { mode: "auto", productIds: [] }, carousel: { mode: "auto", productIds: [] } };
-      if (!db.warrantyPage || typeof db.warrantyPage !== "object" || !db.warrantyPage.hero || typeof db.warrantyPage.hero !== "object" || !Array.isArray(db.warrantyPage.tiers) || !Array.isArray(db.warrantyPage.steps) || !Array.isArray(db.warrantyPage.faqs)) db.warrantyPage = cloneWarrantyPage(warrantyPageSeed);
-      if (!db.customDesignPage || typeof db.customDesignPage !== "object" || !db.customDesignPage.hero || typeof db.customDesignPage.hero !== "object" || !db.customDesignPage.spaces || !Array.isArray(db.customDesignPage.spaces.items) || !Array.isArray(db.customDesignPage.testimonials)) db.customDesignPage = cloneDoc(CUSTOM_DESIGN_PAGE_SEED);
-      if (!db.virtualShowroomPage || typeof db.virtualShowroomPage !== "object" || !db.virtualShowroomPage.hero || typeof db.virtualShowroomPage.hero !== "object" || !Array.isArray(db.virtualShowroomPage.features)) db.virtualShowroomPage = cloneDoc(VIRTUAL_SHOWROOM_PAGE_SEED);
+      if (!db.warrantyPage || typeof db.warrantyPage !== "object" || !db.warrantyPage.hero || typeof db.warrantyPage.hero !== "object" || !Array.isArray(db.warrantyPage.tiers) || !Array.isArray(db.warrantyPage.steps) || !Array.isArray(db.warrantyPage.faqs)) db.warrantyPage = defaultWarrantyPage();
+      if (!db.customDesignPage || typeof db.customDesignPage !== "object" || !db.customDesignPage.hero || typeof db.customDesignPage.hero !== "object" || !db.customDesignPage.spaces || !Array.isArray(db.customDesignPage.spaces.items) || !Array.isArray(db.customDesignPage.testimonials)) db.customDesignPage = cloneDoc(defaultCustomDesignPage());
+      if (!db.virtualShowroomPage || typeof db.virtualShowroomPage !== "object" || !db.virtualShowroomPage.hero || typeof db.virtualShowroomPage.hero !== "object" || !Array.isArray(db.virtualShowroomPage.features)) db.virtualShowroomPage = cloneDoc(defaultVirtualShowroomPage());
       if (!Array.isArray(db.pages)) db.pages = buildSeedPages();
       else db.pages = db.pages.filter((pg) => pg && typeof pg === "object" && typeof pg.slug === "string" && pg.doc && Array.isArray(pg.doc.content) && (pg.kind === "page" || pg.kind === "chrome"));
       if (!Array.isArray(db.pageFolders)) db.pageFolders = buildSeedPageFolders();
@@ -2740,26 +2725,26 @@ export const demoAdminApi: AdminApi = {
   },
 
   async getWarrantyPage() {
-    return cloneWarrantyPage(loadDb().warrantyPage ?? WARRANTY_PAGE_SEED);
+    return cloneDoc(loadDb().warrantyPage ?? defaultWarrantyPage());
   },
 
   async updateWarrantyPage(content) {
     const clean = sanitizeWarrantyPage(content);
     update((db) => {
-      db.warrantyPage = cloneWarrantyPage(clean);
+      db.warrantyPage = cloneDoc(clean);
     });
-    return cloneWarrantyPage(clean);
+    return cloneDoc(clean);
   },
 
   async resetWarrantyPage() {
     update((db) => {
-      db.warrantyPage = cloneWarrantyPage(warrantyPageSeed);
+      db.warrantyPage = defaultWarrantyPage();
     });
-    return cloneWarrantyPage(warrantyPageSeed);
+    return defaultWarrantyPage();
   },
 
   async getCustomDesignPage() {
-    return cloneDoc(loadDb().customDesignPage ?? CUSTOM_DESIGN_PAGE_SEED) as AdminCustomDesignPage;
+    return cloneDoc(loadDb().customDesignPage ?? defaultCustomDesignPage()) as AdminCustomDesignPage;
   },
 
   async updateCustomDesignPage(content) {
@@ -2772,13 +2757,13 @@ export const demoAdminApi: AdminApi = {
 
   async resetCustomDesignPage() {
     update((db) => {
-      db.customDesignPage = cloneDoc(CUSTOM_DESIGN_PAGE_SEED) as AdminCustomDesignPage;
+      db.customDesignPage = defaultCustomDesignPage();
     });
-    return cloneDoc(CUSTOM_DESIGN_PAGE_SEED) as AdminCustomDesignPage;
+    return defaultCustomDesignPage();
   },
 
   async getVirtualShowroomPage() {
-    return cloneDoc(loadDb().virtualShowroomPage ?? VIRTUAL_SHOWROOM_PAGE_SEED) as AdminVirtualShowroomPage;
+    return cloneDoc(loadDb().virtualShowroomPage ?? defaultVirtualShowroomPage()) as AdminVirtualShowroomPage;
   },
 
   async updateVirtualShowroomPage(content) {
@@ -2791,9 +2776,9 @@ export const demoAdminApi: AdminApi = {
 
   async resetVirtualShowroomPage() {
     update((db) => {
-      db.virtualShowroomPage = cloneDoc(VIRTUAL_SHOWROOM_PAGE_SEED) as AdminVirtualShowroomPage;
+      db.virtualShowroomPage = defaultVirtualShowroomPage();
     });
-    return cloneDoc(VIRTUAL_SHOWROOM_PAGE_SEED) as AdminVirtualShowroomPage;
+    return defaultVirtualShowroomPage();
   },
 
   // ------------------------------------------------------------------

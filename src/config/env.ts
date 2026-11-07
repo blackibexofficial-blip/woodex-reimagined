@@ -69,6 +69,9 @@ export const config = {
     email: str(raw.VITE_ADMIN_EMAIL, "admin@woodex.pk"),
     password: str(raw.VITE_ADMIN_PASSWORD, "woodex-admin"),
     sessionKey: "woodex.admin.session",
+    /** Opt-in (local dev only): print the demo credentials on the /admin Login screen.
+     *  Unset/0 = never printed — shared previews must not expose the gate. */
+    showDemoHint: ["1", "true", "yes"].includes(str(raw.VITE_ADMIN_DEMO_HINT).toLowerCase()),
   },
 } as const;
 

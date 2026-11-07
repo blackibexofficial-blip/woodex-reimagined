@@ -2,7 +2,7 @@
 //
 // Contract:
 //   POST { items: [{ productId, quantity }], name, email?, phone, address?, city,
-//          notes?, paymentMethod, channelId?, clientRef? } ->
+//          notes?, paymentMethod, channelId?, clientRef?, cfTurnstileToken? } ->
 //   200 { ok: true, order: <AdminOrder-shaped JSON> }
 //   400 on validation failure; 409 on insufficient stock; 429 rate-limit; 500 otherwise.
 //
@@ -11,8 +11,10 @@
 // idempotency). Nothing sent by the client is trusted — including the
 // subtotal/total the browser may display for convenience.
 //
-// Rate-limiting deferred: needs per-IP counter infra (e.g. Upstash); until
-// wired, ops should monitor order rate. Anon may call this ONLY because the
+// Anti-abuse: Turnstile challenge verified before any RPC when TURNSTILE_SECRET is
+// set (fail-open when unset, fail-closed 503 on siteverify transport errors), plus a
+// fixed-window caller-key limit inside the RPC (migration 0005). Global budgets
+// (WAF/Upstash) remain the owner's decision — see docs/08-master-plan/ANTI-ABUSE-DECISION.md. Anon may call this ONLY because the
 // RPC is self-verifying — PostgREST never exposes the orders tables for
 // direct writes.
 //
@@ -20,9 +22,11 @@
 // environment). EF logic = thin pass-through; correctness lives in the RPC
 // (rehearsed under pglite, 20261107000003).
 import { createClient } from "npm:@supabase/supabase-js@^2.57.4";
+import { verifyTurnstileToken } from "../_shared/turnstile.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const TURNSTILE_SECRET = Deno.env.get("TURNSTILE_SECRET");
 
 const json = (body: Record<string, unknown>, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -50,6 +54,23 @@ Deno.serve(async (req) => {
         .filter((it) => it.productId && Number.isFinite(it.quantity) && it.quantity >= 1 && it.quantity <= 99)
     : [];
   if (items.length === 0) return json({ error: "at least one valid line is required" }, 400);
+
+  // ---- Turnstile gate (anti-bot) ----
+  // Unconfigured (TURNSTILE_SECRET unset) -> fail OPEN with a log, same posture as the
+  // fixed-window limiter. Configured -> token REQUIRED and verified before any RPC;
+  // Cloudflare transport errors fail CLOSED (503) so a blip never waves bots through
+  // a cash-on-delivery checkout.
+  if (!TURNSTILE_SECRET) {
+    console.warn("order-submit: TURNSTILE_SECRET not set — challenge gate disabled (fail-open)");
+  } else {
+    const verify = await verifyTurnstileToken({
+      secret: TURNSTILE_SECRET,
+      token: b.cfTurnstileToken,
+      remoteip: (req.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || null,
+      action: "order",
+    });
+    if (!verify.ok) return json({ error: verify.error }, verify.status);
+  }
 
   const name = clip(b.name, 160) ?? "";
   const phone = clip(b.phone, 40);

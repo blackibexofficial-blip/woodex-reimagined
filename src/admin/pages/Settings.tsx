@@ -28,17 +28,28 @@ export default function AdminSettings() {
   const save = async () => {
     if (!settings) return;
     setSaving(true);
-    await api.saveSettings(settings);
-    setSaving(false);
-    toast.success("Store settings saved.");
+    try {
+      await api.saveSettings(settings);
+      toast.success("Store settings saved.");
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? `Could not save settings: ${e.message}` : "Could not save settings.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetDemo = async () => {
     setResetting(true);
-    await api.resetDemoData();
-    setResetting(false);
-    toast.success("Demo data reset to seed. Reloading…");
-    setTimeout(() => window.location.reload(), 700);
+    try {
+      await api.resetDemoData();
+      toast.success("Demo data reset to seed. Reloading…");
+      setTimeout(() => window.location.reload(), 700);
+    } catch (e) {
+      console.error(e);
+      setResetting(false);
+      toast.error(e instanceof Error ? `Reset failed: ${e.message}` : "Reset failed.");
+    }
   };
 
   const integrations = [

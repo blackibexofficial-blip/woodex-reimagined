@@ -33,17 +33,24 @@
  *     the approved artifact, stock still verified FOR UPDATE; flips the quote,
  *     stamps convertedOrderId + audit atomically). Hosted deployment of
  *     migration 0004 is pending owner action.
+ *   draft orders (0008) — staff CRUD (read: order.manage or finance.manage;
+ *     write: order.manage); conversion is NOT wired (owner 2026-11-07: it must
+ *     reprice via the order-submit path). Exchanges + claims (0009) — full
+ *     lifecycle; line validation, transition guards and timeline notes via
+ *     record_order_event; stock effects via inventory_apply (catalog.manage).
+ *     Singleton resets (Wave 3) — restore the bundle's default copy from
+ *     @/api/singleton-defaults (warranty / custom-design / virtual-showroom).
  *
  * What is deliberately NOT wired — it throws SupabaseUnsupportedError naming
  * the cause instead of returning fabricated data:
- *   convertDraftOrder (draft orders: no table), exchanges/claims (no tables
- *   in convergence 0001), draft orders (no table), companies (admin B2B master
- *   is v3 Wave 2), page folders (no table), delivery zones (schema reshaped),
+ *   convertDraftOrder (deliberately unwired — owner 2026-11-07: conversion must
+ *   reprice via the order-submit path before drafts can become orders),
+ *   companies (admin B2B master — Wave 2+ scope), page folders (no table),
+ *   delivery zones (schema reshaped by 0007; ETA/COD zone config is an owner call),
  *   assignMediaToProduct (needs a media RPC), createProduct/duplicateProduct/
  *   deleteProduct/importProductsCsv (catalogue authoring goes through the
- *   seed/WP-migration path by design), getChannelSales (orders carry no channel),
- *   resetWarrantyPage/resetCustomDesignPage/resetVirtualShowroomPage (requires
- *   the default-content module — Wave 3), resetDemoData (never destructive),
+ *   seed/migration path by design), getChannelSales (orders carry no channel
+ *   attribution column yet — Wave-2 decision), resetDemoData (never destructive),
  *   invoice operations (no AdminApi methods — invoices are EF-first by design).
  */
 import { supabase } from "@/integrations/supabase/client";
@@ -58,16 +65,20 @@ import type {
   AdminQuotePatch, AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
   AdminShowroom, AdminStockMovement, AdminStockTransfer, AdminStockTransferPatch, AdminSupplier,
   AdminSupplierPatch, AdminVirtualShowroomPage, AdminWarrantyPage,
+  AdminClaim, AdminClaimPatch, AdminDraftOrder, AdminDraftOrderPatch, AdminExchange, AdminExchangePatch,
   BulkProductPatch, BundleStatus, DashboardStats, ListParams, NewAdminBundleInput,
   NewAdminCollectionInput, NewAdminPriceListInput, NewBlogPostInput, NewBrandInput, NewLeadInput,
   NewMaterialInput, NewOrderInput, NewOptionSetInput, NewProjectInput, NewPurchaseOrderInput,
   NewPurchaseOrderLineInput, NewQuoteInput, NewReturnInput, NewSalesChannelInput, NewServiceInput,
   NewAdminProductInput,
+  NewClaimInput, NewDraftOrderInput, NewDraftOrderLineInput, NewExchangeInput,
   NewSeriesInput, NewShowroomInput, NewStockTransferInput, NewSupplierInput,
   Paginated, PurchaseOrderReceipt, QuoteStatus, RevenuePoint, StockMovementType, StoreSettings,
+  ExchangeStatus, ClaimStatus, ClaimType, DraftOrderStatus, AdminOrderItem,
   StockTransferReceipt, TransferLocation, PurchaseOrderStatus, PriceListStatus,
   ProductImportRow, ProductImportResult,
 } from "@/api/types";
+import { defaultWarrantyPage, defaultCustomDesignPage, defaultVirtualShowroomPage } from "@/api/singleton-defaults";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -515,11 +526,13 @@ async function createOrder(input: NewOrderInput): Promise<AdminOrder> {
       paymentMethod: input.paymentMethod,
       channelId: input.channelId,
       clientRef,
+      cfTurnstileToken: input.cfTurnstileToken,
     }),
   });
   const body = (await resp.json().catch(() => ({}))) as { ok?: boolean; order?: Record<string, unknown>; error?: string; detail?: string };
   if (!resp.ok) {
     if (resp.status === 429) throw new Error("Supabase: too many orders on this connection — please wait a few minutes and try again.");
+    if (resp.status === 403) throw new Error("Supabase: the anti-bot check failed — please retry the order (and complete the challenge if shown).");
     if (resp.status === 409) {
       throw new Error(`Supabase: order rejected — ${body.detail ?? "insufficient stock for one of the lines"}`);
     }
@@ -690,47 +703,489 @@ async function updateReturn(id: string, patch: AdminReturnPatch): Promise<AdminR
   }
   return getReturn(id);
 }
-function listExchanges(_params?: ListParams & { status?: string | "all" }): Promise<Paginated<never>> {
-  return Promise.reject(new SupabaseUnsupportedError("listExchanges — not wired: the exchanges domain has no table in convergence 0001 (Wave 4 after RMA stabilises)."));
+
+/* ── exchanges (Wave 2b — exchanges/claims, migration 0009) ──────────────── */
+const EXCHANGE_TRANSITIONS: Record<ExchangeStatus, ExchangeStatus[]> = {
+  requested: ["approved", "rejected"],
+  approved: ["shipped"],
+  shipped: ["completed"],
+  completed: [],
+  rejected: [],
+};
+const EXCHANGE_REF = (id: number) => `EXC-${id}`;
+const parseExchangeId = (s: string): number => {
+  const m = String(s).match(/^EXC-(\d+)$/);
+  return m ? Number(m[1]) : Number(s);
+};
+const rowToAdminExchange = (r: Row): AdminExchange => {
+  const incoming = (Array.isArray(r.incoming) ? r.incoming : []) as AdminExchange["incoming"];
+  const outgoing = (Array.isArray(r.outgoing) ? r.outgoing : []) as AdminExchange["outgoing"];
+  return {
+    id: String(r.ref ?? EXCHANGE_REF(Number(r.id))),
+    orderId: r.order_id != null ? orderRef(Number(r.order_id)) : "—",
+    ...(r.return_id != null ? { returnId: `RMA-${pad4(Number(r.return_id))}` } : {}),
+    customerName: String(r.customer ?? ""),
+    customerEmail: r.customer_email ? String(r.customer_email) : "",
+    customerPhone: r.customer_phone ? String(r.customer_phone) : "",
+    city: r.city ? String(r.city) : "",
+    incoming,
+    outgoing,
+    ...(r.reason ? { reason: String(r.reason) } : {}),
+    status: String(r.status ?? "requested") as ExchangeStatus,
+    priceDifference: toNum(r.price_difference),
+    differenceSettled: Boolean(r.difference_settled),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+};
+async function listExchanges(params?: ListParams & { status?: ExchangeStatus | "all" }): Promise<Paginated<AdminExchange>> {
+  guard();
+  const page = Math.max(1, params?.page ?? 1);
+  const perPage = Math.max(1, Math.min(100, params?.perPage ?? 20));
+  const { data, error } = await supabase.from("exchanges").select("*").order("updated_at", { ascending: false });
+  if (error) fail("listExchanges", error);
+  let rows = (data ?? []) as Row[];
+  const q = params?.query?.trim().toLowerCase();
+  if (q) rows = rows.filter((r) => [r.ref, r.customer, r.customer_email, r.city, r.reason, r.order_id].some((v) => String(v ?? "").toLowerCase().includes(q)));
+  if (params?.status && params.status !== "all") rows = rows.filter((r) => String(r.status) === params.status);
+  const total = rows.length;
+  return pagenate(rows.slice((page - 1) * perPage, page * perPage).map(rowToAdminExchange), total, page, perPage);
 }
-function getExchange(_id: string): Promise<never | undefined> {
-  return Promise.reject(new SupabaseUnsupportedError("getExchange — not wired (Wave 4)."));
+async function getExchange(id: string): Promise<AdminExchange | undefined> {
+  guard();
+  const num = parseExchangeId(id);
+  const { data, error } = await supabase.from("exchanges").select("*").eq("id", num).maybeSingle();
+  if (error) fail("getExchange", error);
+  return data ? rowToAdminExchange(data) : undefined;
 }
-function createExchange(_input: unknown): Promise<never> {
-  return Promise.reject(new SupabaseUnsupportedError("createExchange — not wired (Wave 4)."));
+const recordOrderNote = async (orderId: number | null | undefined, note: string) => {
+  if (orderId == null) return;
+  const { error } = await supabase.rpc("record_order_event", { p_order_id: orderId, p_note: note });
+  if (error) console.warn(`Supabase: exchange/claim created/updated but the order timeline note was not recorded (${error.message})`);
+};
+async function createExchange(input: NewExchangeInput): Promise<AdminExchange | undefined> {
+  guard();
+  const orderId = parseOrderId(input.orderId);
+  const { data: order, error: e1 } = await supabase.from("orders").select("*").eq("id", orderId).maybeSingle();
+  if (e1) fail("getOrder", e1);
+  if (!order) return undefined;
+  const o = order as Row;
+  if (STAGE_TO_STATUS[String(o.stage ?? "intake")] !== "delivered") {
+    throw new Error("New ExchangeInput rejected: the order must be delivered before an exchange can be opened.");
+  }
+  let returnNum: number | null = null;
+  if (input.returnId) {
+    const m = String(input.returnId).match(/(\d+)/);
+    returnNum = m ? Number(m[1]) : NaN;
+    if (!Number.isFinite(returnNum)) throw new Error(`Linked return "${input.returnId}" carries no numeric id`);
+    const { data: ret, error: e2 } = await supabase.from("returns").select("id").eq("id", returnNum).maybeSingle();
+    if (e2) fail("getReturn", e2);
+    if (!ret) throw new Error(`Linked return ${input.returnId} not found.`);
+  }
+  const orderItems = (Array.isArray(o.items) ? o.items : []) as { id: string; name: string; price: number; image?: string; quantity: number }[];
+  const wantedIn = new Map((input.incoming ?? []).map((l) => [l.productId, Math.max(0, Math.trunc(Number(l.quantity) || 0))]));
+  const incoming: AdminExchange["incoming"] = [];
+  for (const line of orderItems) {
+    const qty = Math.min(wantedIn.get(line.id) ?? 0, line.quantity);
+    if (qty > 0) incoming.push({ id: line.id, name: line.name, ...(line.image ? { image: line.image } : {}), quantity: qty, price: toNum(line.price) });
+  }
+  if (incoming.length === 0) throw new Error("Select at least one item to take back.");
+  const wantedOut: { id: string; qty: number }[] = [];
+  for (const l of input.outgoing ?? []) {
+    const qty = Math.max(0, Math.trunc(Number(l.quantity) || 0));
+    if (l.productId?.trim() && qty > 0) wantedOut.push({ id: l.productId.trim(), qty });
+  }
+  if (wantedOut.length === 0) throw new Error("Add at least one replacement item.");
+  const { data: prods, error: e3 } = await supabase.from("products").select("*").in("id", wantedOut.map((l) => l.id));
+  if (e3) fail("getProducts", e3);
+  const prodRows = (prods ?? []) as Row[];
+  const outgoing: AdminExchange["outgoing"] = [];
+  for (const want of wantedOut) {
+    const pr = prodRows.find((x) => x.id === want.id);
+    if (!pr) continue;
+    const pImg = asObj(pr.payload).image;
+    outgoing.push({
+      id: String(pr.id),
+      name: String(pr.name ?? pr.id),
+      ...(typeof pImg === "string" && pImg ? { image: pImg } : {}),
+      quantity: want.qty,
+      price: toNum(pr.price),
+    });
+  }
+  if (outgoing.length === 0) throw new Error("Add at least one replacement item — none of the given product ids exist.");
+  const inTotal = incoming.reduce((acc, it) => acc + it.price * it.quantity, 0);
+  const outTotal = outgoing.reduce((acc, it) => acc + it.price * it.quantity, 0);
+  const diff = outTotal - inTotal;
+  const { data, error } = await supabase.from("exchanges").insert({
+    order_id: orderId,
+    return_id: returnNum,
+    customer: String(o.customer ?? ""),
+    customer_email: o.customer_email ? String(o.customer_email) : null,
+    customer_phone: o.customer_phone ? String(o.customer_phone) : null,
+    city: o.city ? String(o.city) : null,
+    incoming: incoming as unknown as Json,
+    outgoing: outgoing as unknown as Json,
+    reason: input.reason?.trim() || null,
+    status: "requested",
+    price_difference: diff,
+    difference_settled: diff === 0,
+  }).select("*").single();
+  if (error) fail("createExchange", error);
+  const num = (data as Row).id as number;
+  const ref = EXCHANGE_REF(num);
+  await supabase.from("exchanges").update({ ref }).eq("id", num);
+  await recordOrderNote(orderId, `Exchange ${ref} opened${returnNum ? ` — links RMA-${pad4(returnNum)}` : ""}`);
+  return rowToAdminExchange({ ...(data as Row), ref });
 }
-function updateExchange(_id: string, _patch: unknown): Promise<never | undefined> {
-  return Promise.reject(new SupabaseUnsupportedError("updateExchange — not wired (Wave 4)."));
+async function updateExchange(id: string, patch: AdminExchangePatch): Promise<AdminExchange | undefined> {
+  guard();
+  const num = parseExchangeId(id);
+  const { data: current, error: e0 } = await supabase.from("exchanges").select("*").eq("id", num).maybeSingle();
+  if (e0) fail("getExchange", e0);
+  if (!current) return undefined;
+  const curRow = current as Row;
+  const cur = rowToAdminExchange(curRow);
+  const terminal = cur.status === "completed" || cur.status === "rejected";
+  const row: TablesUpdate<"exchanges"> = {};
+  if (patch.differenceSettled !== undefined) {
+    if (terminal) throw new Error(`Exchange ${cur.id} is closed — no further edits.`);
+    row.difference_settled = Boolean(patch.differenceSettled);
+  }
+  let becomingShipped = false;
+  let becomingCompleted = false;
+  let nextStatus: ExchangeStatus | undefined;
+  if (patch.status !== undefined && patch.status !== cur.status) {
+    if (terminal) throw new Error(`Exchange ${cur.id} is closed — no further edits.`);
+    const allowed = EXCHANGE_TRANSITIONS[cur.status] ?? [];
+    if (!allowed.includes(patch.status)) {
+      throw new Error(`Exchange ${cur.id} cannot move from ${cur.status} to ${patch.status}.`);
+    }
+    row.status = patch.status;
+    nextStatus = patch.status;
+    becomingShipped = patch.status === "shipped";
+    becomingCompleted = patch.status === "completed";
+  }
+  row.updated_at = new Date().toISOString();
+  const { error } = await supabase.from("exchanges").update(row).eq("id", num);
+  if (error) fail("updateExchange", error);
+  if (becomingShipped) {
+    for (const line of cur.outgoing) {
+      const { error: e3 } = await supabase.rpc("inventory_apply", {
+        p_product_id: line.id,
+        p_delta: -Math.max(1, line.quantity),
+        p_reason: "exchange_dispatch",
+        p_note: `Exchange ${cur.id} dispatch — ${line.name}`,
+      });
+      if (e3) throw new Error(`Supabase: exchange ${cur.id} marked shipped but dispatch stock was not decremented for ${line.id} (the actor needs catalog.manage): ${e3.message}`);
+    }
+  }
+  if (becomingCompleted) {
+    for (const line of cur.incoming) {
+      const { error: e4 } = await supabase.rpc("inventory_apply", {
+        p_product_id: line.id,
+        p_delta: Math.max(1, line.quantity),
+        p_reason: "exchange_restock",
+        p_note: `Exchange ${cur.id} restock — ${line.name}`,
+      });
+      if (e4) throw new Error(`Supabase: exchange ${cur.id} marked completed but restock failed for ${line.id} (the actor needs catalog.manage): ${e4.message}`);
+    }
+  }
+  if (nextStatus) {
+    const note =
+      nextStatus === "approved" ? `Exchange ${cur.id} approved`
+      : nextStatus === "shipped" ? `Exchange ${cur.id} — replacement dispatched`
+      : nextStatus === "completed" ? `Exchange ${cur.id} completed${cur.priceDifference !== 0 && !(row.difference_settled ?? cur.differenceSettled) ? " — price difference still pending" : ""}`
+      : `Exchange ${cur.id} rejected`;
+    await recordOrderNote(curRow.order_id == null ? null : Number(curRow.order_id), note);
+  }
+  return getExchange(id);
 }
-function listClaims(_params?: ListParams & { status?: string | "all" }): Promise<Paginated<never>> {
-  return Promise.reject(new SupabaseUnsupportedError("listClaims — not wired: warranty-claims domain has no table in convergence 0001 (Wave 4)."));
+
+/* ── claims (Wave 2b) ───────────────────────────────────────────────────── */
+const CLAIM_TRANSITIONS: Record<ClaimStatus, ClaimStatus[]> = {
+  reported: ["assessing", "rejected"],
+  assessing: ["approved", "rejected"],
+  approved: ["resolved"],
+  rejected: [],
+  resolved: [],
+};
+const CLAIM_REF = (id: number) => `CLM-${id}`;
+const parseClaimId = (s: string): number => {
+  const m = String(s).match(/^CLM-(\d+)$/);
+  return m ? Number(m[1]) : Number(s);
+};
+const rowToAdminClaim = (r: Row): AdminClaim => ({
+  id: String(r.ref ?? CLAIM_REF(Number(r.id))),
+  ...(r.order_id != null ? { orderId: orderRef(Number(r.order_id)) } : {}),
+  customerName: String(r.customer ?? ""),
+  customerEmail: r.customer_email ? String(r.customer_email) : "",
+  customerPhone: r.customer_phone ? String(r.customer_phone) : "",
+  city: r.city ? String(r.city) : "",
+  productName: String(r.product_name ?? ""),
+  ...(r.product_id ? { productId: String(r.product_id) } : {}),
+  type: String(r.type ?? "warranty") as ClaimType,
+  issue: String(r.issue ?? ""),
+  status: String(r.status ?? "reported") as ClaimStatus,
+  ...(r.assessment_note ? { assessmentNote: String(r.assessment_note) } : {}),
+  ...(r.resolution_note ? { resolutionNote: String(r.resolution_note) } : {}),
+  ...(r.resolution_cost != null ? { resolutionCost: toNum(r.resolution_cost) } : {}),
+  createdAt: String(r.created_at),
+  updatedAt: String(r.updated_at),
+});
+async function listClaims(params?: ListParams & { status?: ClaimStatus | "all"; type?: ClaimType | "all" }): Promise<Paginated<AdminClaim>> {
+  guard();
+  const page = Math.max(1, params?.page ?? 1);
+  const perPage = Math.max(1, Math.min(100, params?.perPage ?? 20));
+  const { data, error } = await supabase.from("claims").select("*").order("updated_at", { ascending: false });
+  if (error) fail("listClaims", error);
+  let rows = (data ?? []) as Row[];
+  const q = params?.query?.trim().toLowerCase();
+  if (q) rows = rows.filter((r) => [r.ref, r.order_id, r.customer, r.customer_email, r.product_name, r.city, r.issue].some((v) => String(v ?? "").toLowerCase().includes(q)));
+  if (params?.status && params.status !== "all") rows = rows.filter((r) => String(r.status) === params.status);
+  if (params?.type && params.type !== "all") rows = rows.filter((r) => String(r.type) === params.type);
+  const total = rows.length;
+  return pagenate(rows.slice((page - 1) * perPage, page * perPage).map(rowToAdminClaim), total, page, perPage);
 }
-function getClaim(_id: string): Promise<never | undefined> {
-  return Promise.reject(new SupabaseUnsupportedError("getClaim — not wired (Wave 4)."));
+async function getClaim(id: string): Promise<AdminClaim | undefined> {
+  guard();
+  const num = parseClaimId(id);
+  const { data, error } = await supabase.from("claims").select("*").eq("id", num).maybeSingle();
+  if (error) fail("getClaim", error);
+  return data ? rowToAdminClaim(data) : undefined;
 }
-function createClaim(_input: unknown): Promise<never> {
-  return Promise.reject(new SupabaseUnsupportedError("createClaim — not wired (Wave 4)."));
+async function createClaim(input: NewClaimInput): Promise<AdminClaim | undefined> {
+  guard();
+  const productName = input.productName?.trim();
+  const issue = input.issue?.trim();
+  if (!productName) throw new Error("Tell us which product the claim is about.");
+  if (!issue) throw new Error("Describe the issue the customer reported.");
+  const orderId = input.orderId ? parseOrderId(input.orderId) : null;
+  let customerName = input.customerName?.trim() ?? "";
+  let customerEmail = input.customerEmail?.trim() ?? "";
+  let customerPhone = input.customerPhone?.trim() ?? "";
+  let city = input.city?.trim() ?? "";
+  if (orderId != null) {
+    const { data: order, error: e1 } = await supabase.from("orders").select("*").eq("id", orderId).maybeSingle();
+    if (e1) fail("getOrder", e1);
+    if (!order) throw new Error(`Order ${input.orderId} not found.`);
+    const o = order as Row;
+    customerName = String(o.customer ?? "");
+    customerEmail = o.customer_email ? String(o.customer_email) : "";
+    customerPhone = o.customer_phone ? String(o.customer_phone) : "";
+    city = o.city ? String(o.city) : "";
+  }
+  if (!customerName) throw new Error("Link an order or enter the customer's name.");
+  const { data, error } = await supabase.from("claims").insert({
+    order_id: orderId,
+    customer: customerName,
+    customer_email: customerEmail || null,
+    customer_phone: customerPhone || null,
+    city: city || null,
+    product_name: productName,
+    product_id: input.productId?.trim() || null,
+    type: input.type,
+    issue,
+    status: "reported",
+  }).select("*").single();
+  if (error) fail("createClaim", error);
+  const num = (data as Row).id as number;
+  const ref = CLAIM_REF(num);
+  await supabase.from("claims").update({ ref }).eq("id", num);
+  await recordOrderNote(orderId, `Claim ${ref} filed — ${input.type}`);
+  return rowToAdminClaim({ ...(data as Row), ref });
 }
-function updateClaim(_id: string, _patch: unknown): Promise<never | undefined> {
-  return Promise.reject(new SupabaseUnsupportedError("updateClaim — not wired (Wave 4)."));
+async function updateClaim(id: string, patch: AdminClaimPatch): Promise<AdminClaim | undefined> {
+  guard();
+  const num = parseClaimId(id);
+  const { data: current, error: e0 } = await supabase.from("claims").select("*").eq("id", num).maybeSingle();
+  if (e0) fail("getClaim", e0);
+  if (!current) return undefined;
+  const curRow = current as Row;
+  const cur = rowToAdminClaim(curRow);
+  const terminal = cur.status === "rejected" || cur.status === "resolved";
+  if (terminal && (patch.status !== undefined || patch.assessmentNote !== undefined || patch.resolutionNote !== undefined || patch.resolutionCost !== undefined)) {
+    throw new Error(`Claim ${cur.id} is closed — no further edits.`);
+  }
+  const row: TablesUpdate<"claims"> = {};
+  if (patch.assessmentNote !== undefined) row.assessment_note = patch.assessmentNote.trim() || null;
+  if (patch.resolutionNote !== undefined) row.resolution_note = patch.resolutionNote.trim() || null;
+  if (patch.resolutionCost !== undefined) {
+    const amt = Number(patch.resolutionCost);
+    if (!Number.isFinite(amt) || amt < 0) throw new Error("Resolution cost must be a positive number.");
+    row.resolution_cost = Math.round(amt);
+  }
+  let nextStatus: ClaimStatus | undefined;
+  if (patch.status !== undefined && patch.status !== cur.status) {
+    const allowed = CLAIM_TRANSITIONS[cur.status] ?? [];
+    if (!allowed.includes(patch.status)) {
+      throw new Error(`Claim ${cur.id} cannot move from ${cur.status} to ${patch.status}.`);
+    }
+    row.status = patch.status;
+    nextStatus = patch.status;
+  }
+  row.updated_at = new Date().toISOString();
+  const { error } = await supabase.from("claims").update(row).eq("id", num);
+  if (error) fail("updateClaim", error);
+  if (nextStatus) {
+    const assessmentNote = row.assessment_note ?? cur.assessmentNote;
+    const resolutionNote = row.resolution_note ?? cur.resolutionNote;
+    const note =
+      nextStatus === "assessing" ? `Claim ${cur.id} — assessment started`
+      : nextStatus === "approved" ? `Claim ${cur.id} approved${assessmentNote ? ` — ${assessmentNote}` : ""}`
+      : nextStatus === "rejected" ? `Claim ${cur.id} rejected${assessmentNote ? ` — ${assessmentNote}` : ""}`
+      : `Claim ${cur.id} resolved${resolutionNote ? ` — ${resolutionNote}` : ""}`;
+    await recordOrderNote(curRow.order_id == null ? null : Number(curRow.order_id), note);
+  }
+  return getClaim(id);
 }
-function listDraftOrders(_params?: ListParams & { status?: string | "all" }): Promise<Paginated<never>> {
-  return Promise.reject(new SupabaseUnsupportedError("listDraftOrders — not wired: draft-orders have no table in convergence 0001 (Wave 2)."));
+
+/* ── draft orders (Wave 2 — migration 0008; conversion NOT wired by owner decision 2026-11-07) ── */
+const DRAFT_REF = (id: number) => `DRF-${id}`;
+const parseDraftId = (s: string): number => {
+  const m = String(s).match(/^DRF-(\d+)$/);
+  return m ? Number(m[1]) : Number(s);
+};
+const sanitizeDraftLines = (lines: NewDraftOrderLineInput[]): AdminOrderItem[] => {
+  const items: AdminOrderItem[] = [];
+  let seq = 1;
+  for (const line of lines ?? []) {
+    const name = line.name?.trim();
+    const price = Number(line.price);
+    const qty = Math.max(1, Math.trunc(Number(line.quantity) || 1));
+    if (!name || !Number.isFinite(price) || price < 0) continue;
+    items.push({ id: line.productId?.trim() || `free-${Date.now().toString(36)}-${seq++}`, name, price: Math.round(price), quantity: qty, ...(line.image ? { image: line.image } : {}) });
+  }
+  return items;
+};
+const draftLineTotal = (items: AdminOrderItem[]): number => items.reduce((acc, it) => acc + toNum(it.price) * toNum(it.quantity), 0);
+const rowToAdminDraftOrder = (r: Row): AdminDraftOrder => {
+  const items = (Array.isArray(r.items) ? r.items : []) as AdminOrderItem[];
+  const subtotal = toNum(r.subtotal, draftLineTotal(items));
+  const shipping = toNum(r.shipping);
+  return {
+    id: String(r.ref ?? DRAFT_REF(Number(r.id))),
+    customerName: String(r.customer ?? ""),
+    customerPhone: r.customer_phone ? String(r.customer_phone) : "",
+    customerEmail: r.customer_email ? String(r.customer_email) : "",
+    ...(r.city ? { city: String(r.city) } : {}),
+    ...(r.address ? { address: String(r.address) } : {}),
+    items,
+    subtotal,
+    shipping,
+    total: toNum(r.total, subtotal + shipping),
+    ...(r.channel_id ? { channelId: String(r.channel_id) } : {}),
+    ...(r.note ? { notes: String(r.note) } : {}),
+    status: String(r.status ?? "draft") as DraftOrderStatus,
+    ...(r.converted_order_id ? { convertedOrderId: String(r.converted_order_id) } : {}),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+};
+async function listDraftOrders(params?: ListParams & { status?: DraftOrderStatus | "all" }): Promise<Paginated<AdminDraftOrder>> {
+  guard();
+  const page = Math.max(1, params?.page ?? 1);
+  const perPage = Math.max(1, Math.min(100, params?.perPage ?? 20));
+  const { data, error } = await supabase.from("draft_orders").select("*").order("updated_at", { ascending: false });
+  if (error) fail("listDraftOrders", error);
+  let rows = (data ?? []) as Row[];
+  const q = params?.query?.trim().toLowerCase();
+  if (q) rows = rows.filter((r) => [r.ref, r.customer, r.customer_phone, r.customer_email, r.city, r.note, r.converted_order_id].some((v) => String(v ?? "").toLowerCase().includes(q)));
+  if (params?.status && params.status !== "all") rows = rows.filter((r) => String(r.status) === params.status);
+  const total = rows.length;
+  return pagenate(rows.slice((page - 1) * perPage, page * perPage).map(rowToAdminDraftOrder), total, page, perPage);
 }
-function getDraftOrder(_id: string): Promise<never | undefined> {
-  return Promise.reject(new SupabaseUnsupportedError("getDraftOrder — not wired (Wave 2)."));
+async function getDraftOrder(id: string): Promise<AdminDraftOrder | undefined> {
+  guard();
+  const num = parseDraftId(id);
+  const { data, error } = await supabase.from("draft_orders").select("*").eq("id", num).maybeSingle();
+  if (error) fail("getDraftOrder", error);
+  return data ? rowToAdminDraftOrder(data) : undefined;
 }
-function createDraftOrder(_input: unknown): Promise<never> {
-  return Promise.reject(new SupabaseUnsupportedError("createDraftOrder — not wired (Wave 2)."));
+async function createDraftOrder(input: NewDraftOrderInput): Promise<AdminDraftOrder> {
+  guard();
+  const customerName = input.customerName?.trim();
+  const customerPhone = input.customerPhone?.trim();
+  if (!customerName) throw new Error("Customer name is required.");
+  if (!customerPhone) throw new Error("Customer phone is required.");
+  const items = sanitizeDraftLines(input.items ?? []);
+  if (items.length === 0) throw new Error("Add at least one line to the draft.");
+  const subtotal = draftLineTotal(items);
+  const shipping = input.shipping !== undefined ? Math.max(0, Math.round(Number(input.shipping) || 0)) : subtotal >= 150000 ? 0 : 1500;
+  const { data, error } = await supabase.from("draft_orders").insert({
+    customer: customerName,
+    customer_phone: customerPhone,
+    customer_email: input.customerEmail?.trim() || null,
+    city: input.city?.trim() || null,
+    address: input.address?.trim() || null,
+    items: items as unknown as Json,
+    subtotal,
+    shipping,
+    total: subtotal + shipping,
+    channel_id: input.channelId?.trim() || "ch-manual",
+    note: input.notes?.trim() || null,
+    status: "draft",
+  }).select("*").single();
+  if (error) fail("createDraftOrder", error);
+  const num = (data as Row).id as number;
+  const ref = DRAFT_REF(num);
+  await supabase.from("draft_orders").update({ ref }).eq("id", num);
+  return rowToAdminDraftOrder({ ...(data as Row), ref });
 }
-function updateDraftOrder(_id: string, _patch: unknown): Promise<never | undefined> {
-  return Promise.reject(new SupabaseUnsupportedError("updateDraftOrder — not wired (Wave 2)."));
+async function updateDraftOrder(id: string, patch: AdminDraftOrderPatch): Promise<AdminDraftOrder | undefined> {
+  guard();
+  const num = parseDraftId(id);
+  const { data: current, error: e0 } = await supabase.from("draft_orders").select("*").eq("id", num).maybeSingle();
+  if (e0) fail("getDraftOrder", e0);
+  if (!current) return undefined;
+  const curRow = current as Row;
+  const cur = rowToAdminDraftOrder(curRow);
+  if (cur.status === "converted") {
+    throw new Error(`Draft ${cur.id} is already converted — it can no longer be edited.`);
+  }
+  const row: TablesUpdate<"draft_orders"> = {};
+  if (patch.customerName !== undefined) {
+    const v = patch.customerName.trim();
+    if (!v) throw new Error("Customer name is required.");
+    row.customer = v;
+  }
+  if (patch.customerPhone !== undefined) {
+    const v = patch.customerPhone.trim();
+    if (!v) throw new Error("Customer phone is required.");
+    row.customer_phone = v;
+  }
+  if (patch.customerEmail !== undefined) row.customer_email = patch.customerEmail.trim() || null;
+  if (patch.city !== undefined) row.city = patch.city.trim() || null;
+  if (patch.address !== undefined) row.address = patch.address.trim() || null;
+  if (patch.notes !== undefined) row.note = patch.notes.trim() || null;
+  if (patch.channelId !== undefined) row.channel_id = patch.channelId.trim() || null;
+  let nextSubtotal = cur.subtotal;
+  if (patch.items !== undefined) {
+    const items = sanitizeDraftLines(patch.items);
+    if (items.length === 0) throw new Error("A draft needs at least one line.");
+    row.items = items as unknown as Json;
+    nextSubtotal = draftLineTotal(items);
+    row.subtotal = nextSubtotal;
+  }
+  if (patch.shipping !== undefined) row.shipping = Math.max(0, Math.round(Number(patch.shipping) || 0));
+  const nextShipping = row.shipping ?? cur.shipping;
+  row.total = nextSubtotal + nextShipping;
+  row.updated_at = new Date().toISOString();
+  const { error } = await supabase.from("draft_orders").update(row).eq("id", num);
+  if (error) fail("updateDraftOrder", error);
+  return getDraftOrder(id);
 }
-function deleteDraftOrder(_id: string): Promise<boolean> {
-  return Promise.reject(new SupabaseUnsupportedError("deleteDraftOrder — not wired (Wave 2)."));
+async function deleteDraftOrder(id: string): Promise<boolean> {
+  guard();
+  const num = parseDraftId(id);
+  const { data: current, error: e0 } = await supabase.from("draft_orders").select("id, status").eq("id", num).maybeSingle();
+  if (e0) fail("getDraftOrder", e0);
+  if (!current || String((current as Row).status) === "converted") return false;
+  const { error } = await supabase.from("draft_orders").delete().eq("id", num);
+  if (error) fail("deleteDraftOrder", error);
+  return true;
 }
 function convertDraftOrder(_id: string): Promise<AdminOrder> {
-  return Promise.reject(new SupabaseUnsupportedError("convertDraftOrder — not wired: conversion must reprice via the order-submit EF (Wave 2)."));
+  return Promise.reject(new SupabaseUnsupportedError("convertDraftOrder — not wired (owner decision 2026-11-07): conversion must reprice via the order-submit path (server-authoritative prices, stock-checked, replay-safe). Drafts stay pre-sales shortlists until that slice is approved."));
 }
 
 /* ── quotes ─────────────────────────────────────────────────────────────── */
@@ -1083,10 +1538,12 @@ async function createLead(input: NewLeadInput): Promise<AdminLead> {
       utm_campaign: input.utmCampaign,
       consent: input.consent === true,
       consent_version: input.consentVersion,
+      cfTurnstileToken: input.cfTurnstileToken,
     }),
   });
   const body = (await resp.json().catch(() => ({}))) as { ok?: boolean; id?: number | null; error?: string };
   if (!resp.ok) {
+    if (resp.status === 403) throw new Error("Supabase: the anti-bot check failed — please retry (and complete the challenge if shown).");
     throw new Error(`Supabase: lead capture failed (${resp.status}) — ${body.error ?? "the lead-capture function rejected the submission"}`);
   }
   return {
@@ -2452,18 +2909,15 @@ const singletonWrite = async <T>(table: SingletonTable, id: string, content: T):
   if (error) fail(`${table} write`, error);
   return content;
 };
-const singletonReset = (method: string): never => {
-  throw new SupabaseUnsupportedError(`${method} — not wired: the built-in default copy lives in the storefront bundle (Wave 3 extracts it to a shared defaults module); resetting content means restoring real defaults, which this adapter must not invent.`);
-};
 const getWarrantyPage = (): Promise<AdminWarrantyPage> => singletonRead("warranty_page", "warranty");
 const updateWarrantyPage = (content: AdminWarrantyPage): Promise<AdminWarrantyPage> => singletonWrite("warranty_page", "warranty", content);
-const resetWarrantyPage = (): Promise<AdminWarrantyPage> => Promise.reject(singletonReset("resetWarrantyPage"));
+const resetWarrantyPage = (): Promise<AdminWarrantyPage> => singletonWrite("warranty_page", "warranty", defaultWarrantyPage());
 const getCustomDesignPage = (): Promise<AdminCustomDesignPage> => singletonRead("custom_design_page", "custom-design");
 const updateCustomDesignPage = (content: AdminCustomDesignPage): Promise<AdminCustomDesignPage> => singletonWrite("custom_design_page", "custom-design", content);
-const resetCustomDesignPage = (): Promise<AdminCustomDesignPage> => Promise.reject(singletonReset("resetCustomDesignPage"));
+const resetCustomDesignPage = (): Promise<AdminCustomDesignPage> => singletonWrite("custom_design_page", "custom-design", defaultCustomDesignPage());
 const getVirtualShowroomPage = (): Promise<AdminVirtualShowroomPage> => singletonRead("virtual_showroom_page", "virtual-showroom");
 const updateVirtualShowroomPage = (content: AdminVirtualShowroomPage): Promise<AdminVirtualShowroomPage> => singletonWrite("virtual_showroom_page", "virtual-showroom", content);
-const resetVirtualShowroomPage = (): Promise<AdminVirtualShowroomPage> => Promise.reject(singletonReset("resetVirtualShowroomPage"));
+const resetVirtualShowroomPage = (): Promise<AdminVirtualShowroomPage> => singletonWrite("virtual_showroom_page", "virtual-showroom", defaultVirtualShowroomPage());
 
 /* ── pages builder ───────────────────────────────────────────────────────── */
 const pageTitleToSlug = (t: string) => t.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64) || "page";
