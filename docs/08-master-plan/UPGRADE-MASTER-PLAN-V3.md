@@ -238,6 +238,21 @@ Legend: ✅ port as-is · 🔧 port + rework · 🆕 new (Supabase-only) · 🗑
 
 ---
 
+### 8.1 Execution log — P0 slice 1 (2026-11-07, branch `arena/bb519cda-woodex-reimagined`)
+
+**Shipped in slice 1 (c285d5c) — real code, rehearsed, not yet hosted:**
+- `supabase/migrations/20261107000001_agency_os_convergence.sql` — full `woodex` schema: users/roles/capabilities (`my_role`/`my_caps`/`has_cap`/`require_cap`, Agency OS ROLE_CAPS 1:1: owner=`*`, editor, sales, finance, viewer), 47 tables (taxonomy, products+inventory ledger, CRM/sales/finance, CMS+singletons, inbox, app_settings) with FKs/indexes/generated `name`, 14 capability-checked `SECURITY DEFINER` RPCs (admin_overview, catalog_overrides, product_update, inventory_apply, order_stage, quote_invoice_snapshot, invoice_apply_payment, client_merge, bootstrap_owner…), `bootstrap_owner` revoked from `public`/`anon`/`authenticated`.
+- Deny-by-default grant model: ledger tables (products, stock_movements, orders, order_events, invoices, payments) receive **no** write grant from PostgREST — money and stock move only through capability-checked RPCs. CMS/CRM surfaces grant DML to `authenticated` with capability-gated RLS (101 policies, public reads on catalog/snapshots/singletons, insert-only `track_events`, owner-only settings/roles).
+- Admin demo-mode quarantine banner on every `/admin/*` screen (honest "not connected to Supabase" labeling), visible on the preview build.
+
+**Rehearsal evidence (WASM Postgres via pglite, /tmp harness — NOT committed, hosted-DB semantics only):** migration applies cleanly; 41/41 assertions green, including per-role deny matrix (viewer `42501` on admin_overview/product_update/inventory_apply; sales denied invoice payment; editor passes taxonomy write), quote→invoice idempotency (second call returns the same invoice), payment flow Issues→Partially paid→Paid, stock ledger with movement row, `client_merge` link re-pointing, `bootstrap_owner` refusal for authenticated callers, anon lead-insert denied (public path = service-role lead-capture EF planned for P1), anon catalog read ✓ / orders+invoices+clients+leads denied ✓.
+
+**NOT yet done in P0 (owner-side / environment-dependent):** staging Supabase project (creation, linking, hosted `supabase db reset`); `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` wiring; generated `Database` types (requires the applied schema on hosted/local CLI — `supabase` CLI absent in CI sandbox); `admin-bootstrap` edge function + first-owner flow; CI migration job; decision-log update. **P1 gate cannot run until staging exists — rehearsal ≠ production evidence.**
+
+**Build note:** `npm run build` could not be used (`bun` absent); built with `npx vite build --mode production` (build green, AdminApp chunk contains the banner). `typecheck` was NOT run for this slice — verify before treating as release-grade. Preview server rebuilt and re-verified (HTTP 200, banner present). `supabase/functions/mcp/index.ts` auto-generated churn was reverted before commit.
+
+---
+
 ## 9. Security & integrity gates (carry-forward from the Agency OS audit)
 
 Each of these ships as a failing-then-passing test or explicit verification artifact; none is “considered”:
