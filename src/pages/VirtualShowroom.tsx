@@ -5,18 +5,23 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import RoomConfigurator from "@/components/configurator/RoomConfigurator";
+import { useVirtualShowroomPage } from "@/lib/useVirtualShowroomPage";
+import type { AdminVirtualShowroomFeatureIcon } from "@/api/types";
+import type { LucideIcon } from "lucide-react";
+
+const ICONS: Record<AdminVirtualShowroomFeatureIcon, LucideIcon> = {
+  monitor: Monitor,
+  rotate: RotateCcw,
+  palette: Palette,
+  maximize: Maximize,
+  users: Users,
+  box: Box,
+};
 import showroomImg from "@/assets/virtual-showroom-hero.webp";
 
-const features = [
-  { icon: Monitor, title: "Real-Time 3D Preview", description: "Photorealistic rendering of every product from any angle, in your actual room dimensions." },
-  { icon: RotateCcw, title: "360° Product View", description: "Spin, zoom, and inspect every detail of our furniture before you commit." },
-  { icon: Palette, title: "Color & Material Configurator", description: "Try different fabric options, wood finishes, and color combinations instantly." },
-  { icon: Maximize, title: "Space Planning Tool", description: "Design your office layout with accurate dimensions and real-time space validation." },
-  { icon: Users, title: "Collaborative Design", description: "Share your virtual layout with colleagues and stakeholders for instant feedback." },
-  { icon: Box, title: "Save & Export", description: "Save your configurations and export professional presentation layouts and specs." },
-];
-
 const VirtualShowroom = () => {
+  const { content } = useVirtualShowroomPage();
+
   useEffect(() => {
     document.title = "Virtual Showroom — WOODEX Pakistan | 3D Room Configurator";
   }, []);
@@ -31,12 +36,12 @@ const VirtualShowroom = () => {
           <div className="container mx-auto px-4">
             <div className="grid lg:grid-cols-2 gap-10 items-center">
               <div>
-                <p className="text-accent text-xs font-bold uppercase tracking-widest mb-3">Experience It First</p>
+                <p className="text-accent text-xs font-bold uppercase tracking-widest mb-3">{content.hero.eyebrow}</p>
                 <h1 className="text-4xl lg:text-6xl font-black mb-4 leading-tight">
-                  Virtual Showroom
+                  {content.hero.title}
                 </h1>
                 <p className="text-primary-foreground/75 mb-7 text-lg leading-relaxed">
-                  Experience our furniture in immersive 3D. Click on any piece in the room to change its material in real time — wood, metal, fabric, or laminate.
+                  {content.hero.subtitle}
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <Button
@@ -68,10 +73,9 @@ const VirtualShowroom = () => {
           <div className="container mx-auto px-4">
             <div className="text-center mb-8">
               <div className="w-12 h-1 bg-accent mx-auto mb-5" />
-              <h2 className="text-3xl font-bold mb-2">Interactive Room Configurator</h2>
+              <h2 className="text-3xl font-bold mb-2">{content.configurator.heading}</h2>
               <p className="text-muted-foreground max-w-xl mx-auto">
-                Choose a room type, click on furniture hotspots, and swap materials in real time.
-                Filter by wood, metal, fabric, or brightness level.
+                {content.configurator.intro}
               </p>
             </div>
 
@@ -84,21 +88,24 @@ const VirtualShowroom = () => {
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <div className="w-12 h-1 bg-accent mx-auto mb-5" />
-              <h2 className="text-3xl font-bold mb-3">Virtual Showroom Features</h2>
-              <p className="text-muted-foreground">Experience furniture shopping like never before</p>
+              <h2 className="text-3xl font-bold mb-3">{content.featuresIntro.heading}</h2>
+              <p className="text-muted-foreground">{content.featuresIntro.subheading}</p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {features.map((f) => (
-                <div key={f.title} className="flex gap-4 p-5 bg-background rounded-sm border border-border hover:border-accent transition-colors">
+              {content.features.map((f) => {
+                const Icon = ICONS[f.icon] ?? Monitor;
+                return (
+                <div key={f.id} className="flex gap-4 p-5 bg-background rounded-sm border border-border hover:border-accent transition-colors">
                   <div className="w-10 h-10 rounded-sm bg-muted flex items-center justify-center flex-shrink-0">
-                    <f.icon className="h-5 w-5 text-accent" />
+                    <Icon className="h-5 w-5 text-accent" />
                   </div>
                   <div>
                     <h3 className="font-bold mb-1">{f.title}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">{f.description}</p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -106,9 +113,9 @@ const VirtualShowroom = () => {
         {/* CTA */}
         <section className="py-14 bg-primary text-primary-foreground">
           <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold mb-3">Ready to Design Your Dream Office?</h2>
+            <h2 className="text-3xl font-bold mb-3">{content.finalCta.heading}</h2>
             <p className="text-primary-foreground/75 mb-7 max-w-md mx-auto">
-              Start with our virtual showroom and get a tailored quote based on your custom design.
+              {content.finalCta.paragraph}
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground px-8" asChild>

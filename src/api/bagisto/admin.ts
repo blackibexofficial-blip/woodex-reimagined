@@ -21,6 +21,8 @@ import { config } from "@/config/env";
 import type {
   AdminHomepageSections,
   AdminWarrantyPage,
+  AdminCustomDesignPage,
+  AdminVirtualShowroomPage,
   AdminPage,
   AdminPageFolder,
   AdminBrand,
@@ -740,6 +742,24 @@ export const bagistoAdminApi: AdminApi = {
   },
   async resetWarrantyPage(): Promise<AdminWarrantyPage> {
     throw new BagistoApiError(501, "Warranty page content is not wired for Bagisto yet.");
+  },
+  async getCustomDesignPage(): Promise<AdminCustomDesignPage> {
+    throw new BagistoApiError(501, "Custom Design page content is demo-only until a Bagisto CMS block exists — see docs/07-admin-integration §8.");
+  },
+  async updateCustomDesignPage(): Promise<AdminCustomDesignPage> {
+    throw new BagistoApiError(501, "Custom Design page content is not wired for Bagisto yet.");
+  },
+  async resetCustomDesignPage(): Promise<AdminCustomDesignPage> {
+    throw new BagistoApiError(501, "Custom Design page content is not wired for Bagisto yet.");
+  },
+  async getVirtualShowroomPage(): Promise<AdminVirtualShowroomPage> {
+    throw new BagistoApiError(501, "Virtual Showroom page content is demo-only until a Bagisto CMS block exists — see docs/07-admin-integration §8.");
+  },
+  async updateVirtualShowroomPage(): Promise<AdminVirtualShowroomPage> {
+    throw new BagistoApiError(501, "Virtual Showroom page content is not wired for Bagisto yet.");
+  },
+  async resetVirtualShowroomPage(): Promise<AdminVirtualShowroomPage> {
+    throw new BagistoApiError(501, "Virtual Showroom page content is not wired for Bagisto yet.");
   },
   async listPages(): Promise<AdminPage[]> {
     throw new BagistoApiError(501, "Pages builder is demo-only until the Bagisto puck_data CMS mapping lands (Wave 7) — see docs/08-master-plan/PAGE-BUILDER-MASTER-PLAN.md.");

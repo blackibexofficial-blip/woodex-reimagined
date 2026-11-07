@@ -35,6 +35,8 @@ import AdminCustomers from "@/admin/pages/Customers";
 import AdminLeads from "@/admin/pages/Leads";
 import AdminContent from "@/admin/pages/Content";
 import AdminWarranty from "@/admin/pages/Warranty";
+import AdminCustomDesign from "@/admin/pages/CustomDesign";
+import AdminVirtualShowroom from "@/admin/pages/VirtualShowroom";
 import AdminBlog from "@/admin/pages/Blog";
 import AdminServices from "@/admin/pages/Services";
 import AdminMedia from "@/admin/pages/Media";
@@ -92,6 +94,8 @@ export default function AdminApp() {
           <Route path="blog" element={<AdminBlog />} />
           <Route path="content" element={<AdminContent />} />
           <Route path="warranty" element={<AdminWarranty />} />
+          <Route path="custom-design" element={<AdminCustomDesign />} />
+          <Route path="virtual-showroom" element={<AdminVirtualShowroom />} />
           <Route path="media" element={<AdminMedia />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="pages" element={<AdminPages />} />

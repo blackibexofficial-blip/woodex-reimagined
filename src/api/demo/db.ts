@@ -14,6 +14,8 @@ import { projectsDisplay as projectSeed } from "@/data/projects";
 import { blogPosts as blogSeed } from "@/data/blogPosts";
 import { services as serviceSeed } from "@/data/services";
 import { warrantyPageSeed } from "@/data/warrantyPage";
+import { customDesignPageSeed } from "@/data/customDesignPage";
+import { virtualShowroomPageSeed } from "@/data/virtualShowroomPage";
 import { buildSeedPages, buildSeedPageFolders, blankPageDoc, starterPageDoc } from "@/data/pages";
 import type {
   AdminApi,
@@ -56,6 +58,8 @@ import type {
   NewBrandInput,
   AdminHomepageSections,
   AdminWarrantyPage,
+  AdminCustomDesignPage,
+  AdminVirtualShowroomPage,
   AdminPage,
   AdminPageFolder,
   NewPageInput,
@@ -149,6 +153,8 @@ interface DemoDb {
   brands: AdminBrand[];
   homepageSections: AdminHomepageSections;
   warrantyPage: AdminWarrantyPage;
+  customDesignPage: AdminCustomDesignPage;
+  virtualShowroomPage: AdminVirtualShowroomPage;
   pages: AdminPage[];
   pageFolders: AdminPageFolder[];
   materials: AdminMaterial[];
@@ -620,6 +626,8 @@ function cloneWarrantyPage(src: AdminWarrantyPage): AdminWarrantyPage {
 const WARRANTY_PAGE_SEED: AdminWarrantyPage = cloneWarrantyPage(warrantyPageSeed);
 
 const cloneDoc = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+const CUSTOM_DESIGN_PAGE_SEED: AdminCustomDesignPage = cloneDoc(customDesignPageSeed);
+const VIRTUAL_SHOWROOM_PAGE_SEED: AdminVirtualShowroomPage = cloneDoc(virtualShowroomPageSeed);
 const clonePage = (pg: AdminPage): AdminPage => cloneDoc(pg);
 const newPageId = () => `page-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`;
 const newFolderId = () => `folder-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`;
@@ -707,6 +715,175 @@ function sanitizeWarrantyPage(input: AdminWarrantyPage): AdminWarrantyPage {
   });
 
   return { hero: cleanHero, tiers, steps, faqs };
+}
+
+/** Validate + normalize the admin-supplied custom design page content. Throws on hard errors. */
+function sanitizeCustomDesignPage(input: AdminCustomDesignPage): AdminCustomDesignPage {
+  if (!input || typeof input !== "object") throw new Error("Custom design page content is missing.");
+  const cleanStr = (v: unknown, field: string, max: number, required: boolean): string => {
+    const t = typeof v === "string" ? v.trim() : "";
+    if (required && !t) throw new Error(`${field} is required.`);
+    return t.slice(0, max);
+  };
+  const cleanList = (v: unknown, max: number, maxItem: number): string[] =>
+    Array.isArray(v)
+      ? v.map((x) => (typeof x === "string" ? x.trim() : "")).filter((x) => x.length > 0).slice(0, max).map((x) => x.slice(0, maxItem))
+      : [];
+  const uniqueId = (raw: unknown, prefix: string, index: number, used: Set<string>): string => {
+    let id = typeof raw === "string" && raw.trim() ? raw.trim().slice(0, 64) : `${prefix}-${index + 1}`;
+    if (used.has(id)) id = `${prefix}-${index + 1}-${Math.random().toString(36).slice(2, 8)}`;
+    used.add(id);
+    return id;
+  };
+  const slugify = (raw: unknown): string => {
+    const t = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+    return t.replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").replace(/-{2,}/g, "-").slice(0, 80) || "custom-design";
+  };
+
+  const hero = input.hero;
+  if (!hero || typeof hero !== "object") throw new Error("Hero block is missing.");
+  const cleanHero = {
+    eyebrow: cleanStr(hero.eyebrow, "Hero eyebrow", 120, true),
+    title: cleanStr(hero.title, "Hero title", 160, true),
+    subtitle: cleanStr(hero.subtitle, "Hero subtitle", 800, false),
+  };
+
+  const wds = input.wds;
+  if (!wds || typeof wds !== "object") throw new Error("WDS block is missing.");
+  const cleanWds = {
+    heading: cleanStr(wds.heading, "WDS heading", 200, true),
+    paragraph: cleanStr(wds.paragraph, "WDS paragraph", 1000, false),
+    subheading: cleanStr(wds.subheading, "WDS subheading", 160, false),
+    varietyOne: cleanStr(wds.varietyOne, "WDS variety (1)", 600, false),
+    varietyTwo: cleanStr(wds.varietyTwo, "WDS variety (2)", 600, false),
+  };
+
+  const spaces = input.spaces;
+  if (!spaces || typeof spaces !== "object") throw new Error("Space-work block is missing.");
+  if (!Array.isArray(spaces.items)) throw new Error("Space-work cards must be a list.");
+  if (spaces.items.length === 0) throw new Error("At least one space-work card is required.");
+  if (spaces.items.length > 9) throw new Error("At most 9 space-work cards.");
+  const spaceIds = new Set<string>();
+  const spaceItems = spaces.items.map((it, i) => {
+    const item = it ?? ({} as (typeof spaces.items)[number]);
+    return {
+      id: uniqueId(item.id, "sw", i, spaceIds),
+      label: cleanStr(item.label, `Card ${i + 1} label`, 100, true),
+      blurb: cleanStr(item.blurb, `Card ${i + 1} blurb`, 320, true),
+      slug: slugify(item.slug),
+    };
+  });
+  const cleanSpaces = {
+    heading: cleanStr(spaces.heading, "Space-work heading", 160, true),
+    subheading: cleanStr(spaces.subheading, "Space-work subheading", 400, false),
+    items: spaceItems,
+  };
+
+  const furniture = input.furniture;
+  if (!furniture || typeof furniture !== "object") throw new Error("Furniture block is missing.");
+  const cleanFurniture = {
+    heading: cleanStr(furniture.heading, "Furniture heading", 200, true),
+    paragraph: cleanStr(furniture.paragraph, "Furniture paragraph", 1000, false),
+    bullets: cleanList(furniture.bullets, 6, 200),
+  };
+
+  const designFirst = input.designFirst;
+  if (!designFirst || typeof designFirst !== "object") throw new Error("Design-first block is missing.");
+  const cleanDesignFirst = {
+    heading: cleanStr(designFirst.heading, "Design-first heading", 200, true),
+    bodyOne: cleanStr(designFirst.bodyOne, "Design-first paragraph (1)", 1200, false),
+    bodyTwo: cleanStr(designFirst.bodyTwo, "Design-first paragraph (2)", 1200, false),
+  };
+
+  const testimonialsIntro = input.testimonialsIntro ?? { heading: "What Our Clients Say", subheading: "" };
+  const cleanTestimonialsIntro = {
+    heading: cleanStr(testimonialsIntro.heading, "Testimonials heading", 160, true),
+    subheading: cleanStr(testimonialsIntro.subheading, "Testimonials subheading", 200, false),
+  };
+
+  if (!Array.isArray(input.testimonials)) throw new Error("Testimonials must be a list.");
+  if (input.testimonials.length > 6) throw new Error("At most 6 testimonials.");
+  const testimonialIds = new Set<string>();
+  const testimonials = input.testimonials.map((t, i) => {
+    const item = t ?? ({} as (typeof input.testimonials)[number]);
+    return {
+      id: uniqueId(item.id, "cd-test", i, testimonialIds),
+      text: cleanStr(item.text, `Testimonial ${i + 1} text`, 700, true),
+      name: cleanStr(item.name, `Testimonial ${i + 1} name`, 120, true),
+      role: cleanStr(item.role, `Testimonial ${i + 1} role`, 160, false),
+    };
+  });
+
+  const finalCta = input.finalCta;
+  if (!finalCta || typeof finalCta !== "object") throw new Error("Closing CTA block is missing.");
+  const cleanFinalCta = {
+    heading: cleanStr(finalCta.heading, "CTA heading", 200, true),
+    paragraph: cleanStr(finalCta.paragraph, "CTA paragraph", 400, false),
+  };
+
+  return { hero: cleanHero, wds: cleanWds, spaces: cleanSpaces, furniture: cleanFurniture, designFirst: cleanDesignFirst, testimonialsIntro: cleanTestimonialsIntro, testimonials, finalCta: cleanFinalCta };
+}
+
+const FEATURE_ICONS = new Set(["monitor", "rotate", "palette", "maximize", "users", "box"]);
+/** Validate + normalize the admin-supplied virtual showroom page content. Throws on hard errors. */
+function sanitizeVirtualShowroomPage(input: AdminVirtualShowroomPage): AdminVirtualShowroomPage {
+  if (!input || typeof input !== "object") throw new Error("Virtual showroom content is missing.");
+  const cleanStr = (v: unknown, field: string, max: number, required: boolean): string => {
+    const t = typeof v === "string" ? v.trim() : "";
+    if (required && !t) throw new Error(`${field} is required.`);
+    return t.slice(0, max);
+  };
+  const uniqueId = (raw: unknown, prefix: string, index: number, used: Set<string>): string => {
+    let id = typeof raw === "string" && raw.trim() ? raw.trim().slice(0, 64) : `${prefix}-${index + 1}`;
+    if (used.has(id)) id = `${prefix}-${index + 1}-${Math.random().toString(36).slice(2, 8)}`;
+    used.add(id);
+    return id;
+  };
+
+  const hero = input.hero;
+  if (!hero || typeof hero !== "object") throw new Error("Hero block is missing.");
+  const cleanHero = {
+    eyebrow: cleanStr(hero.eyebrow, "Hero eyebrow", 120, true),
+    title: cleanStr(hero.title, "Hero title", 160, true),
+    subtitle: cleanStr(hero.subtitle, "Hero subtitle", 600, false),
+  };
+
+  const configurator = input.configurator;
+  if (!configurator || typeof configurator !== "object") throw new Error("Configurator block is missing.");
+  const cleanConfigurator = {
+    heading: cleanStr(configurator.heading, "Configurator heading", 160, true),
+    intro: cleanStr(configurator.intro, "Configurator intro", 400, false),
+  };
+
+  const featuresIntro = input.featuresIntro ?? { heading: "Virtual Showroom Features", subheading: "" };
+  const cleanFeaturesIntro = {
+    heading: cleanStr(featuresIntro.heading, "Features heading", 160, true),
+    subheading: cleanStr(featuresIntro.subheading, "Features subheading", 200, false),
+  };
+
+  if (!Array.isArray(input.features)) throw new Error("Features must be a list.");
+  if (input.features.length === 0) throw new Error("At least one feature is required.");
+  if (input.features.length > 8) throw new Error("At most 8 features.");
+  const featureIds = new Set<string>();
+  const features = input.features.map((f, i) => {
+    const feature = f ?? ({} as (typeof input.features)[number]);
+    const icon = typeof feature.icon === "string" && FEATURE_ICONS.has(feature.icon) ? feature.icon : "monitor";
+    return {
+      id: uniqueId(feature.id, "vs-feature", i, featureIds),
+      icon: icon as (typeof input.features)[number]["icon"],
+      title: cleanStr(feature.title, `Feature ${i + 1} title`, 120, true),
+      description: cleanStr(feature.description, `Feature ${i + 1} description`, 300, true),
+    };
+  });
+
+  const finalCta = input.finalCta;
+  if (!finalCta || typeof finalCta !== "object") throw new Error("Closing CTA block is missing.");
+  const cleanFinalCta = {
+    heading: cleanStr(finalCta.heading, "CTA heading", 200, true),
+    paragraph: cleanStr(finalCta.paragraph, "CTA paragraph", 400, false),
+  };
+
+  return { hero: cleanHero, configurator: cleanConfigurator, featuresIntro: cleanFeaturesIntro, features, finalCta: cleanFinalCta };
 }
 
 const BRAND_SEED: Array<Omit<AdminBrand, "createdAt" | "updatedAt">> = [
@@ -1558,7 +1735,7 @@ function buildSeed(): DemoDb {
     return { ...rest, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: cloneWarrantyPage(WARRANTY_PAGE_SEED), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: cloneWarrantyPage(WARRANTY_PAGE_SEED), customDesignPage: cloneDoc(CUSTOM_DESIGN_PAGE_SEED), virtualShowroomPage: cloneDoc(VIRTUAL_SHOWROOM_PAGE_SEED), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1590,6 +1767,8 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.brands)) db.brands = buildSeedBrands();
       if (!db.homepageSections || typeof db.homepageSections !== "object") db.homepageSections = { bestSellers: { mode: "auto", productIds: [] }, carousel: { mode: "auto", productIds: [] } };
       if (!db.warrantyPage || typeof db.warrantyPage !== "object" || !db.warrantyPage.hero || typeof db.warrantyPage.hero !== "object" || !Array.isArray(db.warrantyPage.tiers) || !Array.isArray(db.warrantyPage.steps) || !Array.isArray(db.warrantyPage.faqs)) db.warrantyPage = cloneWarrantyPage(warrantyPageSeed);
+      if (!db.customDesignPage || typeof db.customDesignPage !== "object" || !db.customDesignPage.hero || typeof db.customDesignPage.hero !== "object" || !db.customDesignPage.spaces || !Array.isArray(db.customDesignPage.spaces.items) || !Array.isArray(db.customDesignPage.testimonials)) db.customDesignPage = cloneDoc(CUSTOM_DESIGN_PAGE_SEED);
+      if (!db.virtualShowroomPage || typeof db.virtualShowroomPage !== "object" || !db.virtualShowroomPage.hero || typeof db.virtualShowroomPage.hero !== "object" || !Array.isArray(db.virtualShowroomPage.features)) db.virtualShowroomPage = cloneDoc(VIRTUAL_SHOWROOM_PAGE_SEED);
       if (!Array.isArray(db.pages)) db.pages = buildSeedPages();
       else db.pages = db.pages.filter((pg) => pg && typeof pg === "object" && typeof pg.slug === "string" && pg.doc && Array.isArray(pg.doc.content) && (pg.kind === "page" || pg.kind === "chrome"));
       if (!Array.isArray(db.pageFolders)) db.pageFolders = buildSeedPageFolders();
@@ -2576,6 +2755,44 @@ export const demoAdminApi: AdminApi = {
       db.warrantyPage = cloneWarrantyPage(warrantyPageSeed);
     });
     return cloneWarrantyPage(warrantyPageSeed);
+  },
+
+  async getCustomDesignPage() {
+    return cloneDoc(loadDb().customDesignPage ?? CUSTOM_DESIGN_PAGE_SEED) as AdminCustomDesignPage;
+  },
+
+  async updateCustomDesignPage(content) {
+    const clean = sanitizeCustomDesignPage(content);
+    update((db) => {
+      db.customDesignPage = cloneDoc(clean) as AdminCustomDesignPage;
+    });
+    return cloneDoc(clean) as AdminCustomDesignPage;
+  },
+
+  async resetCustomDesignPage() {
+    update((db) => {
+      db.customDesignPage = cloneDoc(CUSTOM_DESIGN_PAGE_SEED) as AdminCustomDesignPage;
+    });
+    return cloneDoc(CUSTOM_DESIGN_PAGE_SEED) as AdminCustomDesignPage;
+  },
+
+  async getVirtualShowroomPage() {
+    return cloneDoc(loadDb().virtualShowroomPage ?? VIRTUAL_SHOWROOM_PAGE_SEED) as AdminVirtualShowroomPage;
+  },
+
+  async updateVirtualShowroomPage(content) {
+    const clean = sanitizeVirtualShowroomPage(content);
+    update((db) => {
+      db.virtualShowroomPage = cloneDoc(clean) as AdminVirtualShowroomPage;
+    });
+    return cloneDoc(clean) as AdminVirtualShowroomPage;
+  },
+
+  async resetVirtualShowroomPage() {
+    update((db) => {
+      db.virtualShowroomPage = cloneDoc(VIRTUAL_SHOWROOM_PAGE_SEED) as AdminVirtualShowroomPage;
+    });
+    return cloneDoc(VIRTUAL_SHOWROOM_PAGE_SEED) as AdminVirtualShowroomPage;
   },
 
   // ------------------------------------------------------------------
