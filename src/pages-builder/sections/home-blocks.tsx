@@ -34,7 +34,7 @@ const sec = (
   defaultProps: { ...commonLayerDefaults, ...defaults },
   resolvePermissions: resolveLayerPermissions,
   render: (props) => (
-    <SectionShell hidden={str(props, "hidden")} locked={str(props, "locked")} label={label}>
+    <SectionShell hidden={str(props, "hidden")} locked={str(props, "locked")} label={label} inspector={props._inspector}>
       <div className="container mx-auto px-4 py-12">{render(props)}</div>
     </SectionShell>
   ),

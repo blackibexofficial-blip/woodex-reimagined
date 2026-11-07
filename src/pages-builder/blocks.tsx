@@ -15,6 +15,7 @@ import { elementComponents } from "./elements";
 import { catalogueA } from "./sections/catalogue-a";
 import { catalogueB } from "./sections/catalogue-b";
 import { homeBlocks } from "./sections/home-blocks";
+import { InspectorSectionField, InspectorElementField, LinkedStylesField } from "./InspectorField";
 
 const ICONS = {
   shield: ShieldCheck,
@@ -48,10 +49,10 @@ const legacyBlocks: Config["components"] = {
       align: "center",
     },
     resolvePermissions: resolveLayerPermissions,
-    render: ({ hidden, locked, eyebrow, title, subtitle, align }: Record<string, unknown>) => {
+    render: ({ hidden, locked, eyebrow, title, subtitle, align, _inspector }: Record<string, unknown>) => {
       const centered = align === "center";
       return (
-        <SectionShell hidden={hidden as string} locked={locked as string} label="Section heading">
+        <SectionShell hidden={hidden as string} locked={locked as string} label="Section heading" inspector={_inspector}>
           <div className="container mx-auto px-4 py-14">
             <div className={cn(centered && "text-center")}>
               <div className={cn("mb-5 h-1 w-12 bg-accent", centered && "mx-auto")} />
@@ -76,8 +77,8 @@ const legacyBlocks: Config["components"] = {
     },
     defaultProps: { ...commonLayerDefaults, src: "", alt: "WOODEX showroom", caption: "" },
     resolvePermissions: resolveLayerPermissions,
-    render: ({ hidden, locked, src, alt, caption }: Record<string, unknown>) => (
-      <SectionShell hidden={hidden as string} locked={locked as string} label="Image banner">
+    render: ({ hidden, locked, src, alt, caption, _inspector }: Record<string, unknown>) => (
+      <SectionShell hidden={hidden as string} locked={locked as string} label="Image banner" inspector={_inspector}>
         <div className="container mx-auto px-4 py-6">
           {src ? (
             <figure className="overflow-hidden rounded-xl border border-border">
@@ -111,8 +112,8 @@ const legacyBlocks: Config["components"] = {
     },
     defaultProps: { ...commonLayerDefaults, label: "Book a showroom visit", href: "/showrooms", variant: "accent" },
     resolvePermissions: resolveLayerPermissions,
-    render: ({ hidden, locked, label, href, variant }: Record<string, unknown>) => (
-      <SectionShell hidden={hidden as string} locked={locked as string} label="Button link">
+    render: ({ hidden, locked, label, href, variant, _inspector }: Record<string, unknown>) => (
+      <SectionShell hidden={hidden as string} locked={locked as string} label="Button link" inspector={_inspector}>
         <div className="container mx-auto px-4 pb-14 text-center">
           {variant === "outline" ? (
             <Button variant="outline" className="px-8" asChild>
@@ -129,17 +130,46 @@ const legacyBlocks: Config["components"] = {
   },
 };
 
+const elementNames = new Set(Object.keys(elementComponents));
+
+const baseComponents: Config["components"] = {
+  ...legacyBlocks,
+  ...elementComponents,
+  ...catalogueA,
+  ...catalogueB,
+  ...homeBlocks,
+};
+
+/** Post-inject the Wave 4 inspector ("Style & Advanced") field into every block. */
+const components: Config["components"] = Object.fromEntries(
+  Object.entries(baseComponents).map(([name, cfg]) => [
+    name,
+    {
+      ...cfg,
+      fields: {
+        ...(cfg.fields ?? {}),
+        _inspector: {
+          type: "custom" as const,
+          label: "Style & Advanced",
+          render: elementNames.has(name) ? InspectorElementField : InspectorSectionField,
+        },
+      },
+    },
+  ]),
+);
+
 export const woodexConfig: Config = {
   root: {
+    fields: {
+      _linkedStyles: {
+        type: "custom",
+        label: "Linked styles (page)",
+        render: LinkedStylesField,
+      },
+    },
     render: ({ children }) => <div className="min-h-screen bg-background">{children}</div>,
   },
-  components: {
-    ...legacyBlocks,
-    ...elementComponents,
-    ...catalogueA,
-    ...catalogueB,
-    ...homeBlocks,
-  },
+  components,
   categories: {
     basics: { title: "WOODEX basics", components: ["SectionHeading", "ImageBanner", "ButtonLink"] },
     hero: { title: "Hero", components: ["HeroCentered", "HeroCenteredTrust", "HeroForm", "HeroSplitForm", "HeroSplitStats", "HeroDark"] },

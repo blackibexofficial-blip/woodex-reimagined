@@ -35,7 +35,7 @@ type ELProps = Record<string, unknown>;
 const str = (props: ELProps, key: string, fallback = "") => String(props[key] ?? fallback);
 
 const wrap = (el: string | null, props: ELProps, children: React.ReactNode) => (
-  <ElementShell hidden={str(props, "hidden")} locked={str(props, "locked")} label={el ? String(el) : "Element"}>
+  <ElementShell hidden={str(props, "hidden")} locked={str(props, "locked")} label={el ? String(el) : "Element"} inspector={props._inspector}>
     {children}
   </ElementShell>
 );

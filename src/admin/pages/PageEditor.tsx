@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, History, Loader2, Save, Undo2, FileWarning, SearchCheck } from "lucide-react";
+import { ArrowLeft, ExternalLink, Home, History, Loader2, Save, Undo2, FileWarning, SearchCheck } from "lucide-react";
 import { Puck, blocksPlugin, outlinePlugin, fieldsPlugin } from "@puckeditor/core";
 import "@/pages-builder/puck-editor.css";
+import "@/pages-builder/builder.css";
+import { BuilderDocProvider } from "@/pages-builder/BuilderDocContext";
+import { normalizeLinkedStyles, scanHmTokens } from "@/pages-builder/inspector";
 import type { Data } from "@puckeditor/core";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
@@ -82,6 +85,13 @@ export default function AdminPageEditor() {
     return undefined;
   }, [api, page, doc, title, seo]);
 
+  // Puck owns canvas state between saves. Feeding it a fresh `data` identity on every
+  // keystroke makes its fields panel remount (resetting our Style/Advanced tab state and
+  // swallowing in-flight edits), so Puck gets a frozen snapshot per puckKey — the same
+  // remount-after-external-change pattern insertBlock already relies on. Inline edits flow
+  // back via onChange without ever re-feeding `data`.
+  const puckData = useMemo(() => (doc ? toPuckData(doc) : null), [puckKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const seoReport = useMemo(() => {
     if (!doc) return null;
     const { bodyText, firstParagraph, h1Count } = extractBodyText(doc);
@@ -145,6 +155,14 @@ export default function AdminPageEditor() {
     toast.success("Block added — drag to reorder, or manage it in the Layers panel.");
   }, []);
 
+  // Plugin identity must stay stable — a new array (or new plugin objects) per render tears
+  // down Puck's rail/panels/canvas and swallows focus + panel state on every keystroke.
+  const puckPlugins = useMemo(
+    () => [blocksPlugin(), libraryPlugin(), outlinePlugin({ label: "Layers" }), fieldsPlugin()],
+    [],
+  );
+  const libraryActions = useMemo(() => ({ insert: insertBlock }), [insertBlock]);
+
   const restoreVersion = useCallback(async (version: number) => {
     if (!page) return;
     const updated = await api.revertPage(page.id, version);
@@ -154,11 +172,15 @@ export default function AdminPageEditor() {
       setDoc(updated.doc);
       setSeo(updated.seo ?? {});
       setDirty(false);
+      setPuckKey((k) => k + 1);
       toast.success(`Restored v${version} as the current draft — publish to ship it.`);
     } else {
       toast.error("Could not restore that version.");
     }
   }, [api, page]);
+
+  const linkedStyles = normalizeLinkedStyles(doc?.root?.props?._linkedStyles);
+  const hmCounts = scanHmTokens(doc?.content as unknown[] | undefined);
 
   if (loading) {
     return <div className="flex h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -195,8 +217,11 @@ export default function AdminPageEditor() {
         {dirty && <span className="text-[11px] font-medium uppercase tracking-wide text-amber-700">unsaved changes</span>}
         <code className="hidden rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground md:inline">/{page.slug}</code>
         <div className="ml-auto flex items-center gap-1.5">
-          <a href={`/lab/${page.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted">
+          <a href={`/lab/${page.slug}`} target="_blank" rel="noreferrer" title="/lab preview of the draft document" className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted">
             <ExternalLink className="h-3.5 w-3.5" /> Preview
+          </a>
+          <a href="/" target="_blank" rel="noreferrer" title="Open the live production home page" className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted">
+            <Home className="h-3.5 w-3.5" /> Live home ↗
           </a>
           <Button
             variant="outline"
@@ -279,18 +304,20 @@ export default function AdminPageEditor() {
 
       {/* Editor */}
       <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border shadow-sm">
-        <LibraryActionsContext.Provider value={{ insert: (type: string) => insertBlock(type) }}>
+        <BuilderDocProvider linkedStyles={linkedStyles} counts={hmCounts}>
+        <LibraryActionsContext.Provider value={libraryActions}>
           <BuilderModeContext.Provider value="editor">
             <Puck
               key={puckKey}
               config={woodexConfig}
-              data={toPuckData(doc)}
-              plugins={[blocksPlugin(), libraryPlugin(), outlinePlugin({ label: "Layers" }), fieldsPlugin()]}
+              data={puckData ?? { root: { props: {} }, content: [] }}
+              plugins={puckPlugins}
               onChange={(data) => { setDoc(fromPuckData(data)); setDirty(true); }}
               onPublish={() => doPublish(page.status !== "published")}
             />
           </BuilderModeContext.Provider>
         </LibraryActionsContext.Provider>
+        </BuilderDocProvider>
       </div>
     </div>
   );
