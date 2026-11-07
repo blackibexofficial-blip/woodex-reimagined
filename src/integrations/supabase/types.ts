@@ -1832,6 +1832,11 @@ export type Database = {
         Args: { p_product_id: string; p_delta: number; p_reason: string; p_note?: string }
         Returns: Database['public']['Tables']['products']['Row']
       }
+      // Wave 2b (2026-11-07) — hand-added; regenerate from the hosted DB after deploy.
+      record_order_event: {
+        Args: { p_order_id: number; p_note: string; p_kind?: string }
+        Returns: undefined
+      }
       order_stage: {
         Args: { p_order_id: number; p_stage: string; p_note?: string }
         Returns: Database['public']['Tables']['orders']['Row']
