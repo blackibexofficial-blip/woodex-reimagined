@@ -375,6 +375,27 @@ const asRole = async (db, roleName, uid) => { await db.exec(`set role ${roleName
   await db.exec('reset role');
   ok('overview: viewer (no cap) is denied (42501)', viewerOverview === false);
 
+  // ── client_merge (0001 clients + client_links; client_merge RPC; crm.manage) ──
+  const insInto = await db.query(`insert into public.clients (name, email, email_norm, kind, source) values ('Merge Twin A', 'twin@example.com', 'twin@example.com', 'business', 'site-visit') returning id`);
+  const insFrom = await db.query(`insert into public.clients (name, email, email_norm, kind, source) values ('Merge Twin B', 'TWIN@example.com', 'twin@example.com', 'business', 'site-visit') returning id`);
+  const intoId = first(insInto), fromId = first(insFrom);
+  await db.query(`insert into public.client_links (client_id, entity, entity_id) values ($1::bigint, 'lead', 424242)`, [fromId]);
+  await asRole(db, 'authenticated', S);
+  await db.query(`select public.client_merge($1::bigint, $2::bigint)`, [intoId, fromId]);
+  await db.exec('reset role');
+  const afterMerge = await db.query(`select (select merged_into::int from public.clients where id = $1) as merged, (select client_id::int from public.client_links where entity = 'lead' and entity_id = 424242) as link_client`, [fromId]);
+  ok('merge: sales may merge duplicates (links re-pointed, loser tombstoned)', Number(afterMerge.rows[0]?.merged) === intoId && Number(afterMerge.rows[0]?.link_client) === intoId);
+
+  let viewerMerge = false;
+  try { await asRole(db, 'authenticated', V); await db.query(`select public.client_merge($1::bigint, $2::bigint)`, [intoId, fromId]); viewerMerge = true; } catch { /* denied */ }
+  await db.exec('reset role');
+  ok('merge: viewer may NOT merge clients (crm.manage required)', viewerMerge === false);
+
+  await asRole(db, 'authenticated', V);
+  const viewerClients = await db.query(`select count(*)::int as c from public.clients where id in ($1::bigint, $2::bigint)`, [intoId, fromId]);
+  await db.exec('reset role');
+  ok('merge: viewer sees 0 client rows (crm.manage required)', first(viewerClients) === 0);
+
   const pass = results.filter(r => r[1]).length, fail = results.length - pass;
   console.log(`\nFRESH REHEARSAL (test:rehearsal): ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
