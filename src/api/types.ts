@@ -574,6 +574,45 @@ export interface AdminOptionSetPatch {
   values?: AdminOptionValueInput[];
 }
 
+/* ── CRM identity layer (0001 clients / client_links / client_merge) ──────────
+ * Identity resolution is a human-in-the-loop surface: nothing merges itself.
+ * `emailNorm`/`phoneNorm` are the collision keys; `mergedInto` marks retired
+ * records (soft tombstone — no deletes). */
+export interface AdminClient {
+  id: string;             // "CLI-<n>" demo/hosted synthetic ref
+  name: string;
+  company?: string;
+  email?: string;
+  emailNorm?: string;
+  phone?: string;
+  phoneNorm?: string;
+  city?: string;
+  kind: "retail" | "business";
+  source?: string;        // acquisition attribution when known (lead/utm/referrer)
+  tags: string[];
+  notes?: string;
+  /** Set when this record was merged into another — retired id, kept for audit. */
+  mergedInto?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminClientLink {
+  clientId: string;
+  entity: string;         // "lead" | "quote" | "order" | "site_visit" | ...
+  entityId: string;
+}
+
+export interface MergeCandidate {
+  /** stable pair key for UI state */
+  id: string;
+  reason: "email" | "phone";
+  /** the shared normalized key */
+  key: string;
+  /** 2+ non-merged clients colliding on the same normalized key */
+  clients: AdminClient[];
+}
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -585,6 +624,10 @@ export interface AdminCustomer {
   ordersCount: number;
   totalSpent: number;
   joinedAt: string;      // ISO
+  /** Acquisition source when we know it (hosted: joined from clients by email_norm when present). */
+  source?: string;
+  /** Deterministic 1–99 profile score — always DERIVED from orders/totalSpent (never stored, never hand-entered). */
+  score?: number;
 }
 
 export interface AdminLead {
@@ -1607,6 +1650,11 @@ export interface AdminApi {
 
   listCustomers(params?: ListParams & { type?: "all" | "retail" | "business" }): Promise<Paginated<AdminCustomer>>;
   getCustomer(id: string): Promise<AdminCustomer | undefined>;
+
+  /** CRM identity — merge review queue. Nothing here auto-merges. */
+  listClients(params?: { includeMerged?: boolean }): Promise<AdminClient[]>;
+  listMergeCandidates(): Promise<MergeCandidate[]>;
+  mergeClients(intoId: string, fromId: string): Promise<AdminClient>;
 
   listLeads(params?: ListParams & { type?: LeadType | "all"; status?: LeadStatus | "all" }): Promise<Paginated<AdminLead>>;
   updateLeadStatus(id: string, status: LeadStatus): Promise<AdminLead | undefined>;

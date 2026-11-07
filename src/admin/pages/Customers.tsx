@@ -137,6 +137,14 @@ export default function AdminCustomers() {
                 <div className="rounded-lg bg-secondary p-3"><dt className="text-[11px] uppercase text-muted-foreground">Total spent</dt><dd className="mt-0.5 text-lg font-bold">{formatPKR(selected.totalSpent)}</dd></div>
                 <div className="rounded-lg bg-secondary p-3"><dt className="text-[11px] uppercase text-muted-foreground">City</dt><dd className="mt-0.5 font-medium">{selected.city}</dd></div>
                 <div className="rounded-lg bg-secondary p-3"><dt className="text-[11px] uppercase text-muted-foreground">Customer since</dt><dd className="mt-0.5 font-medium">{formatDate(selected.joinedAt)}</dd></div>
+                <div className="rounded-lg bg-secondary p-3"><dt className="text-[11px] uppercase text-muted-foreground">Source</dt><dd className="mt-0.5 font-medium capitalize">{selected.source ?? "unknown"}</dd></div>
+                <div className="rounded-lg bg-secondary p-3" title="Derived 1–99 profile score from order count, lifetime value and account type — never stored, never hand-entered">
+                  <dt className="text-[11px] uppercase text-muted-foreground">Score</dt>
+                  <dd className="mt-0.5 flex items-baseline gap-1.5">
+                    <span className="text-lg font-black">{selected.score ?? "—"}</span>
+                    <span className="text-[10px] text-muted-foreground">/ 99 · derived</span>
+                  </dd>
+                </div>
               </dl>
             </div>
           )}

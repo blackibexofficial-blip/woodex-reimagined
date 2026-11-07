@@ -34,6 +34,9 @@ import type {
   AdminPriceList,
   AdminProduct,
   DashboardStats,
+  AdminClient,
+  AdminClientLink,
+  MergeCandidate,
   ListParams,
   NewAdminProductInput,
   ProductImportResult,
@@ -178,6 +181,8 @@ interface DemoDb {
   invoices: AdminInvoice[];
   payments: AdminInvoicePayment[];
   tasks: AdminTask[];
+  clients: AdminClient[];
+  clientLinks: AdminClientLink[];
   suppliers: AdminSupplier[];
   purchaseOrders: AdminPurchaseOrder[];
   stockTransfers: AdminStockTransfer[];
@@ -1194,6 +1199,42 @@ const nextInvoiceId = (existing: AdminInvoice[]): string => {
   return `INV-${(nums.length ? Math.max(...nums) : 1000) + 1}`;
 };
 
+const emailNorm = (v?: string) => (v ?? "").trim().toLowerCase();
+const phoneNorm = (v?: string) => (v ?? "").replace(/\D/g, "");
+const DAY_MS = 86400000;
+
+/** Deterministic identity-review seeds — one email-collision pair, one phone-collision pair, one merged audit trail. */
+function buildSeedClients(): AdminClient[] {
+  const t = Date.now();
+  const at = (n: number) => new Date(t - n * DAY_MS).toISOString();
+  return [
+    { id: "CLI-1001", name: "Bilal Ahmed", company: "Ahmed Interiors", email: "bilal.a@example.com", emailNorm: "bilal.a@example.com", phone: "+92 315 8899007", phoneNorm: "923158899007", city: "Islamabad", kind: "business", source: "site-visit", tags: ["b2b", "interior"], notes: undefined, createdAt: at(90), updatedAt: at(30) },
+    { id: "CLI-1002", name: "Kashif Mirza", company: "Ravi Agro Foods", email: "ops@raviagrofoods.pk", emailNorm: "ops@raviagrofoods.pk", phone: "+92 300 9988776", phoneNorm: "923009988776", city: "Multan", kind: "business", source: "lead", tags: ["b2b", "agri"], notes: undefined, createdAt: at(75), updatedAt: at(5) },
+    { id: "CLI-1003", name: "Rabia Iqbal", email: "rabia@example.com", emailNorm: "rabia@example.com", phone: "+92 322 4567890", phoneNorm: "923224567890", city: "Karachi", kind: "retail", source: "site-visit", tags: ["retail"], notes: undefined, createdAt: at(60), updatedAt: at(12) },
+    { id: "CLI-1004", name: "B Ahmed", email: "BILAL.A@example.com", emailNorm: "bilal.a@example.com", phone: "+92 301 2223344", phoneNorm: "923012223344", city: "Rawalpindi", kind: "retail", source: "referral", tags: ["retail"], notes: "Walked in, asked for a teak sofa set — no reference to his earlier quote.", createdAt: at(21), updatedAt: at(21) },
+    { id: "CLI-1005", name: "Rabia I", email: "r.iqbal@example.co.uk", emailNorm: "r.iqbal@example.co.uk", phone: "+92 322 4567890", phoneNorm: "923224567890", city: "Karachi", kind: "retail", source: "storefront", tags: [], notes: "Signed up with work email; same mobile as the Karachi sofa enquiry.", createdAt: at(9), updatedAt: at(9) },
+    { id: "CLI-1006", name: "Ayesha Khan", email: "ayesha.k@example.com", emailNorm: "ayesha.k@example.com", phone: "+92 333 7778899", phoneNorm: "923337778899", city: "Lahore", kind: "retail", source: "referral", tags: ["retail"], notes: undefined, createdAt: at(40), updatedAt: at(40) },
+    { id: "CLI-1007", name: "B. Ahmed", email: "bilal.a@example.com", emailNorm: "bilal.a@example.com", phone: "+92 315 8899007", phoneNorm: "923158899007", city: "Islamabad", kind: "business", source: "site-visit", tags: ["b2b"], notes: "Retired during 2026-10-14 review — duplicate of CLI-1001.", mergedInto: "CLI-1001", createdAt: at(120), updatedAt: at(28) },
+  ];
+}
+
+function buildSeedClientLinks(): AdminClientLink[] {
+  return [
+    { clientId: "CLI-1001", entity: "lead", entityId: "lead-1005" },
+    { clientId: "CLI-1001", entity: "quote", entityId: "QOT-1001" },
+    { clientId: "CLI-1002", entity: "lead", entityId: "lead-1008" },
+    { clientId: "CLI-1002", entity: "quote", entityId: "QOT-1002" },
+  ];
+}
+
+/** Deterministic 1–99 profile score — derived, never stored, never hand-entered. */
+export const customerScore = (o: { ordersCount: number; totalSpent: number; type: "retail" | "business" }): number => {
+  const base = o.ordersCount * 4 + Math.min(40, Math.floor(o.totalSpent / 250000)) + (o.type === "business" ? 18 : 0);
+  return Math.max(1, Math.min(99, base));
+};
+const withScore = <C extends { ordersCount: number; totalSpent: number; type: "retail" | "business" }>(c: C): C & { score: number } =>
+  ({ ...c, score: customerScore(c) });
+
 /** Next TSK-#### id for the demo store. */
 const nextTaskId = (tasks: AdminTask[]): string => {
   const nums = (tasks ?? []).map((t) => Number(String(t.id).match(/^TSK-(\d+)$/)?.[1] ?? 0)).filter((n) => Number.isFinite(n) && n > 0);
@@ -1736,6 +1777,7 @@ function buildSeed(): DemoDb {
       type: "retail",
       ordersCount: 0,
       totalSpent: 0,
+      source: pick(rand, ["storefront", "referral", "site-visit", "b2b"] as const),
       joinedAt: new Date(Date.now() - Math.floor(rand() * 400 + 30) * 86400000).toISOString(),
     });
   }
@@ -1830,7 +1872,7 @@ function buildSeed(): DemoDb {
   return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: seedQuotes,
     invoices: buildSeedInvoices(seedQuotes),
     payments: buildSeedPayments(),
-    tasks: buildSeedTasks(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
+    tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1857,6 +1899,8 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.invoices)) db.invoices = [];
       if (!Array.isArray(db.payments)) db.payments = [];
       if (!Array.isArray(db.tasks)) db.tasks = [];
+      if (!Array.isArray(db.clients)) db.clients = buildSeedClients();
+      if (!Array.isArray(db.clientLinks)) db.clientLinks = buildSeedClientLinks();
       if (!Array.isArray(db.collections)) db.collections = buildSeedCollections(db.products);
       if (!Array.isArray(db.companies)) db.companies = buildSeedCompanies();
       if (!Array.isArray(db.priceLists)) db.priceLists = buildSeedPriceLists();
@@ -2309,14 +2353,60 @@ export const demoAdminApi: AdminApi = {
 
   async listCustomers(params = {}) {
     const db = loadDb();
-    let items = [...db.customers].sort((a, b) => b.totalSpent - a.totalSpent);
+    let items = [...db.customers].sort((a, b) => b.totalSpent - a.totalSpent).map(withScore);
     if (params.type && params.type !== "all") items = items.filter((c) => c.type === params.type);
-    items = items.filter((c) => matchQuery(params.query, [c.name, c.company, c.email, c.city, c.phone]));
+    items = items.filter((c) => matchQuery(params.query, [c.name, c.company, c.email, c.city, c.phone, c.source]));
     return paginate(items, { page: params.page, perPage: params.perPage ?? 10 });
   },
 
   async getCustomer(id) {
-    return loadDb().customers.find((c) => c.id === id);
+    const c = loadDb().customers.find((x) => x.id === id);
+    return c ? withScore(c) : undefined;
+  },
+
+  async listClients(params = {}) {
+    const includeMerged = params?.includeMerged === true;
+    return [...loadDb().clients].filter((c) => includeMerged || !c.mergedInto).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+
+  async listMergeCandidates(): Promise<MergeCandidate[]> {
+    const out: MergeCandidate[] = [];
+    const active = loadDb().clients.filter((c) => !c.mergedInto);
+    const group = (keyOf: (c: AdminClient) => string | undefined, reason: MergeCandidate["reason"]) => {
+      const map = new Map<string, AdminClient[]>();
+      for (const c of active) {
+        const k = keyOf(c);
+        if (!k) continue;
+        const arr = map.get(k) ?? [];
+        arr.push(c);
+        map.set(k, arr);
+      }
+      for (const [key, members] of map) {
+        if (members.length >= 2) out.push({ id: `${reason}:${key}`, reason, key, clients: members });
+      }
+    };
+    group((c) => c.emailNorm || undefined, "email");
+    group((c) => c.phoneNorm || undefined, "phone");
+    return out.sort((a, b) => a.id.localeCompare(b.id));
+  },
+
+  async mergeClients(intoId: string, fromId: string): Promise<AdminClient> {
+    if (intoId === fromId) throw new Error("Choose two different records.");
+    let merged: AdminClient | undefined;
+    update((db) => {
+      const into = db.clients.find((c) => c.id === intoId);
+      const from = db.clients.find((c) => c.id === fromId);
+      if (!into) throw new Error(`Client ${intoId} not found.`);
+      if (!from) throw new Error(`Client ${fromId} not found.`);
+      if (into.mergedInto) throw new Error(`${intoId} is already merged into ${into.mergedInto}.`);
+      if (from.mergedInto) throw new Error(`${fromId} is already merged into ${from.mergedInto}.`);
+      db.clientLinks = db.clientLinks.map((l) => (l.clientId === fromId ? { ...l, clientId: intoId } : l));
+      from.mergedInto = intoId;
+      from.updatedAt = new Date().toISOString();
+      into.updatedAt = new Date().toISOString();
+      merged = { ...into };
+    });
+    return merged as AdminClient;
   },
 
   async listLeads(params = {}) {

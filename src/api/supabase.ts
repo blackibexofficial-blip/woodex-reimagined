@@ -62,7 +62,7 @@ import type {
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
   AdminPageContentItem, AdminPageDoc, AdminPageHistoryEntry, AdminPageSeo, AdminPriceList,
   AdminProduct, AdminProject, AdminPurchaseOrder, AdminPurchaseOrderPatch, AdminQuote,
-  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput, AdminTask, NewTaskInput,
+  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput, AdminTask, NewTaskInput, AdminClient, MergeCandidate,
   AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
   AdminShowroom, AdminStockMovement, AdminStockTransfer, AdminStockTransferPatch, AdminSupplier,
   AdminSupplierPatch, AdminVirtualShowroomPage, AdminWarrantyPage,
@@ -1536,7 +1536,78 @@ async function deleteQuoteTemplate(id: string): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
-/* ── tasks (0001 public.tasks; cap crm.manage; no delete path) ──────────────
+/* ── CRM clients + merge-review (0001 clients/client_links; client_merge RPC) ──
+   Human-in-the-loop identity resolution: candidates are derived client-side by
+   grouping on normalized email/phone among non-merged clients (admin-ERP scale:
+   one 5k-row scan, no new RPCs). Merges execute via the capability-checked
+   client_merge RPC (crm.manage) — NOT a delete path: retired records are
+   tombstoned with merged_into and stay auditable. */
+const CLIENT_REF = (id: number) => `CLI-${id}`;
+const parseClientId = (s: string): number => {
+  const m = String(s).match(/^CLI-(\d+)$/);
+  return m ? Number(m[1]) : Number(s);
+};
+const rowToAdminClient = (r: Row): AdminClient => ({
+  id: CLIENT_REF(Number(r.id)),
+  name: String(r.name ?? ""),
+  ...(r.company ? { company: String(r.company) } : {}),
+  ...(r.email ? { email: String(r.email) } : {}),
+  ...(r.email_norm ? { emailNorm: String(r.email_norm) } : {}),
+  ...(r.phone ? { phone: String(r.phone) } : {}),
+  ...(r.phone_norm ? { phoneNorm: String(r.phone_norm) } : {}),
+  ...(r.city ? { city: String(r.city) } : {}),
+  kind: r.kind === "business" ? "business" : "retail",
+  ...(r.source ? { source: String(r.source) } : {}),
+  tags: Array.isArray(r.tags) ? (r.tags as unknown[]).map(String) : [],
+  ...(r.notes ? { notes: String(r.notes) } : {}),
+  ...(r.merged_into ? { mergedInto: CLIENT_REF(Number(r.merged_into)) } : {}),
+  createdAt: String(r.created_at),
+  updatedAt: String(r.updated_at),
+});
+const CLIENT_COLS = "id,name,company,email,email_norm,phone,phone_norm,city,kind,source,tags,notes,merged_into,created_at,updated_at";
+
+async function listClients(params?: { includeMerged?: boolean }): Promise<AdminClient[]> {
+  guard();
+  let q = supabase.from("clients").select(CLIENT_COLS).order("created_at", { ascending: true }).limit(2000);
+  if (!params?.includeMerged) q = q.is("merged_into", null);
+  const { data, error } = await q;
+  if (error) fail("listClients", error);
+  return (data ?? []).map(rowToAdminClient);
+}
+
+async function listMergeCandidates(): Promise<MergeCandidate[]> {
+  guard();
+  const { data, error } = await supabase.from("clients").select(CLIENT_COLS).is("merged_into", null).limit(5000);
+  if (error) fail("listMergeCandidates", error);
+  const clients = (data ?? []).map(rowToAdminClient);
+  const out: MergeCandidate[] = [];
+  const group = (keyOf: (c: AdminClient) => string | undefined, reason: MergeCandidate["reason"]) => {
+    const map = new Map<string, AdminClient[]>();
+    for (const c of clients) {
+      const k = keyOf(c);
+      if (!k) continue;
+      const arr = map.get(k) ?? [];
+      arr.push(c);
+      map.set(k, arr);
+    }
+    for (const [key, members] of map) {
+      if (members.length >= 2) out.push({ id: `${reason}:${key}`, reason, key, clients: members });
+    }
+  };
+  group((c) => c.emailNorm, "email");
+  group((c) => c.phoneNorm, "phone");
+  return out.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+async function mergeClients(intoId: string, fromId: string): Promise<AdminClient> {
+  guard();
+  if (intoId === fromId) throw new Error("Choose two different records.");
+  const { data, error } = await supabase.rpc("client_merge", { p_into: parseClientId(intoId), p_from: parseClientId(fromId) });
+  if (error) fail("client_merge", error);
+  return rowToAdminClient(data as unknown as Row);
+}
+
+/* ── tasks (0001 public.tasks; cap crm.manage; no delete path) ──────────────/* ── tasks (0001 public.tasks; cap crm.manage; no delete path) ──────────────
    NOTE: the table has no client-label column — the legacy screen's free-text
    "client" line rode client_id there. In supabase mode the context rides
    lead/quote/order refs. Demo mode keeps the human label. */
@@ -3524,6 +3595,9 @@ export const supabaseAdminApi: AdminApi = {
   listTasks,
   createTask,
   setTaskDone,
+  listClients,
+  listMergeCandidates,
+  mergeClients,
   convertQuote,
   listSuppliers,
   createSupplier,
