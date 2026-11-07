@@ -22,6 +22,7 @@ Other scripts: `bun run build` (regenerates `sitemap.xml`, then production build
 http://localhost:8080/admin
 Email:    admin@woodex.pk      (VITE_ADMIN_EMAIL)
 Password: woodex-admin         (VITE_ADMIN_PASSWORD)
+# Set VITE_ADMIN_DEMO_HINT=1 to also print these on the login screen (local dev only, default off).
 ```
 
 Dashboard · Products (price/stock edit + CSV export) · Orders (status pipeline) · Customers ·
@@ -47,6 +48,7 @@ else touches `import.meta.env`):
 | `VITE_API_MODE` | `demo` (default, localStorage) · `bagisto` (live REST) |
 | `VITE_BAGISTO_API_URL` / `VITE_BAGISTO_STOREFRONT_KEY` / `VITE_BAGISTO_ADMIN_TOKEN` | Bagisto connection — see `docs/07-admin-integration` |
 | `VITE_ADMIN_EMAIL` / `VITE_ADMIN_PASSWORD` | Demo `/admin` gate |
+| `VITE_ADMIN_DEMO_HINT` | `=1` prints the demo credentials on the login screen (local only, default off) |
 | `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_PROJECT_ID` | Supabase project — enables optional "Sign in with Supabase" on `/admin/login`; schema + edge functions vendored in `backend/supabase/` |
 | `VITE_GA4_ID` | GA4 measurement id (`G-XXXXXXX`) — optional; blank = analytics fully disabled (no script, no network). Page views tracked on SPA route changes |
 

@@ -160,11 +160,18 @@ export default function AdminLogin() {
           </form>
 
           {mode === "demo" ? (
+            config.admin.showDemoHint ? (
             <div className="mt-6 rounded-lg border border-border bg-muted p-4 text-xs text-muted-foreground">
               <p className="font-semibold uppercase tracking-wide text-hon-green-dark">Demo credentials</p>
               <p className="mt-1.5">Email: <span className="font-mono text-foreground">{config.admin.email}</span></p>
               <p>Password: <span className="font-mono text-foreground">{config.admin.password}</span></p>
             </div>
+            ) : (
+              <div className="mt-6 rounded-lg border border-border bg-muted p-4 text-xs leading-5 text-muted-foreground">
+                <p className="font-semibold uppercase tracking-wide text-hon-green-dark">Demo sign-in</p>
+                <p className="mt-1.5">Credentials come from the build's <code className="font-mono text-foreground">VITE_ADMIN_EMAIL</code> / <code className="font-mono text-foreground">VITE_ADMIN_PASSWORD</code> environment variables (see README). They are not printed on this screen — set <code className="font-mono text-foreground">VITE_ADMIN_DEMO_HINT=1</code> locally to show them.</p>
+              </div>
+            )
           ) : (
             <div className="mt-6 rounded-lg border border-border bg-muted p-4 text-xs leading-5 text-muted-foreground">
               <p className="font-semibold uppercase tracking-wide text-hon-green-dark">Supabase Auth</p>
