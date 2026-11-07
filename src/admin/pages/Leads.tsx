@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, ClipboardList, ChevronLeft, ChevronRight, Mail, Phone, FileText, Handshake, ScrollText, Loader2 } from "lucide-react";
+import { Building2, ClipboardList, ChevronLeft, ChevronRight, Mail, Phone, FileText, Handshake, ScrollText, Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminLead, LeadStatus, LeadType } from "@/api/types";
@@ -132,6 +132,23 @@ export default function AdminLeads() {
                   {/* requirement */}
                   <div className="min-w-0 flex-1">
                     <p className="text-xs leading-5 text-muted-foreground line-clamp-2" title={lead.summary}>{lead.summary}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px]">
+                      {lead.consent ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-hon-green-pale px-2 py-0.5 font-semibold text-hon-green-dark" title={lead.consentAt ? `Consent recorded ${new Date(lead.consentAt).toLocaleString("en-GB")}` : "Consent recorded"}>
+                          <ShieldCheck className="h-3 w-3" aria-hidden="true" /> consented{lead.consentVersion ? ` · ${lead.consentVersion}` : ""}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-900" title="Lead predates consent capture, or was captured outside the storefront form">
+                          <ShieldAlert className="h-3 w-3" aria-hidden="true" /> no consent record
+                        </span>
+                      )}
+                      {(lead.utmSource || lead.utmMedium || lead.utmCampaign) && (
+                        <span className="font-mono text-muted-foreground" title="UTM attribution at capture time">
+                          {[lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" / ")}
+                        </span>
+                      )}
+                      {lead.landingPath && <span className="font-mono text-muted-foreground" title="Landing path">{lead.landingPath}</span>}
+                    </div>
                     <p className="mt-1 text-[11px] text-muted-foreground">{lead.city ? `${lead.city} · ` : ""}{timeAgo(lead.createdAt)}</p>
                   </div>
 

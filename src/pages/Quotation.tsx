@@ -10,6 +10,8 @@ import Footer from "@/components/Footer";
 import { useQuote, quoteLineKey } from "@/contexts/QuoteContext";
 import { formatPKR, products } from "@/data/products";
 import { getAdminApi } from "@/api";
+import { LeadConsent } from "@/components/LeadConsent";
+import { buildConsent, collectAttributionBrowser } from "@/lib/consent";
 import { useEffect } from "react";
 import PrintableInvoice, { ClientInfo } from "@/components/quotation/PrintableInvoice";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -47,10 +49,15 @@ const Quotation = () => {
   }, []);
 
   const [submitting, setSubmitting] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (submitting) return;
+    if (!consent) {
+      toast.error("Please tick the consent box so we can store your details securely.");
+      return;
+    }
     const form = e.currentTarget;
     const val = (id: string) => ((form.elements.namedItem(id) as HTMLInputElement | null)?.value ?? "").trim();
     const name = val("name");
@@ -71,6 +78,8 @@ const Quotation = () => {
         phone,
         summary: `${projectType}${basketSummary}`,
         value: items.length ? totalPrice : undefined,
+        ...buildConsent(),
+        ...collectAttributionBrowser(),
       });
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 5000);
@@ -424,12 +433,10 @@ const Quotation = () => {
                         <Label htmlFor="project-type">Project Type *</Label>
                         <Input id="project-type" placeholder="e.g., New office setup, Office renovation" required />
                       </div>
-                      <Button type="submit" size="lg" disabled={submitting} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 gap-2 uppercase tracking-wider text-xs">
+                      <LeadConsent checked={consent} onChange={setConsent} />
+                      <Button type="submit" size="lg" disabled={submitting || !consent} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 gap-2 uppercase tracking-wider text-xs">
                         <ArrowRight className="h-4 w-4" /> {submitting ? "Submitting…" : "Download Quote!"}
                       </Button>
-                      <p className="text-xs text-muted-foreground">
-                        By submitting this form, you agree to our privacy policy. We'll only use your information to provide the requested quotation.
-                      </p>
                     </form>
                   )}
                 </div>

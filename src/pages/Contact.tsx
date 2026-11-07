@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Mail, Phone, MapPin, Clock, Send, MessageCircle, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
+import { LeadConsent } from "@/components/LeadConsent";
+import { buildConsent, collectAttributionBrowser } from "@/lib/consent";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,7 @@ const faqs = [
 const Contact = () => {
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
@@ -37,6 +40,10 @@ const Contact = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (sending) return;
+    if (!consent) {
+      toast.error("Please tick the consent box so we can store your details securely.");
+      return;
+    }
     const form = e.currentTarget;
     const val = (id: string) => ((form.elements.namedItem(id) as HTMLInputElement | HTMLTextAreaElement | null)?.value ?? "").trim();
     const subject = val("subject");
@@ -49,6 +56,8 @@ const Contact = () => {
         email: val("email") || undefined,
         phone: val("phone") || "—",
         summary: `Website enquiry — ${subject || "General"}: ${message.slice(0, 180)}`,
+        ...buildConsent(),
+        ...collectAttributionBrowser(),
       });
       setSubmitted(true);
       form.reset();
@@ -146,7 +155,8 @@ const Contact = () => {
                           <Label htmlFor="message">Message *</Label>
                           <Textarea id="message" placeholder="Tell us about your project..." className="min-h-[140px]" required />
                         </div>
-                        <Button type="submit" disabled={sending} className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground font-semibold">
+                        <LeadConsent checked={consent} onChange={setConsent} />
+                        <Button type="submit" disabled={sending || !consent} className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground font-semibold">
                           {sending ? "Sending…" : "Send Message"}
                         </Button>
                       </form>
