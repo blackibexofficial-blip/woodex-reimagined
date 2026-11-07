@@ -21,6 +21,16 @@ export interface AdminOrderItem {
   image?: string;
   /** Variant SKU (product id + option suffixes) when bought as a configured variant. */
   sku?: string;
+  /** Optional engineering spec — filled by the quotation builder; carried verbatim in JSON. */
+  category?: string;
+  series?: string;
+  material?: string;
+  finish?: string;
+  width?: number;
+  height?: number;
+  depth?: number;
+  unit?: "mm" | "cm" | "in";
+  customNotes?: string;
 }
 
 export interface AdminOrder {
@@ -216,6 +226,15 @@ export interface NewDraftOrderLineInput {
   price: number;
   quantity: number;
   image?: string;
+  category?: string;
+  series?: string;
+  material?: string;
+  finish?: string;
+  width?: number;
+  height?: number;
+  depth?: number;
+  unit?: "mm" | "cm" | "in";
+  customNotes?: string;
 }
 export interface NewDraftOrderInput {
   customerName: string;
@@ -231,7 +250,7 @@ export interface NewDraftOrderInput {
 export type AdminDraftOrderPatch = Partial<NewDraftOrderInput>;
 
 /* ── Quotes (priced quotations — closes the B2B Quotation-form → lead → quote → order loop) ── */
-export type QuoteStatus = "draft" | "sent" | "accepted" | "declined" | "converted";
+export type QuoteStatus = "draft" | "review" | "approval" | "sent" | "revised" | "accepted" | "declined" | "converted";
 export interface AdminQuote {
   id: string;            // e.g. "QOT-1001"
   /** Originating CRM lead, when the quote was drafted from one. */
@@ -254,8 +273,64 @@ export interface AdminQuote {
   notes?: string;
   status: QuoteStatus;
   convertedOrderId?: string;
+  /** Monotonic save counter (v1 = creation). Present only on quotes created/edited after the versioning port. */
+  version?: number;
+  /** Chosen print template (custom or builtin id). Undefined = builtin "Woodex classic". */
+  templateId?: string;
+  /** Lightweight audit trail — status transitions and edits. Newest last, capped at 20 entries. */
+  audit?: QuoteAuditEntry[];
   createdAt: string;
   updatedAt: string;
+}
+export interface QuoteAuditEntry {
+  version: number;
+  at: string;
+  /** "create" | "edit" | "status" | "restore" | "send" */
+  action: string;
+  /** Free detail, e.g. "review→approval" or "restore:3". */
+  detail?: string;
+}
+export interface AdminQuoteVersion {
+  id: string;
+  quoteId: string;
+  version: number;
+  action?: string;
+  actor?: string;
+  createdAt: string;
+  /** Frozen copy of the financially-relevant quote state at save time. */
+  snapshot: {
+    items: AdminOrderItem[];
+    subtotal: number;
+    discountPct: number;
+    discountAmount: number;
+    shipping: number;
+    total: number;
+    status: string;
+    notes?: string;
+    templateId?: string;
+    validityDays?: number;
+    validUntil: string;
+  };
+}
+export type QuoteTemplateBlockType =
+  | "letterhead" | "doc-ref" | "doc-title" | "validity"
+  | "payment-note" | "terms" | "signature" | "custom";
+export interface QuoteTemplateBlock {
+  id: string;
+  type: QuoteTemplateBlockType;
+  label: string;
+  content: string;
+  visible: boolean;
+}
+export interface AdminQuoteTemplate {
+  id: string;
+  name: string;
+  /** Accent colour for headings / rules (hex). */
+  brandColor: string;
+  header: QuoteTemplateBlock[];
+  footer: QuoteTemplateBlock[];
+  /** Builtin templates live in code and are read-only; editing one clones it. */
+  builtIn?: boolean;
 }
 export type NewQuoteLineInput = NewDraftOrderLineInput;
 export interface NewQuoteInput {
@@ -271,8 +346,10 @@ export interface NewQuoteInput {
   validityDays?: number;
   shipping?: number;
   notes?: string;
+  /** Print template id (builtin or custom). Missing = builtin Woodex classic. */
+  templateId?: string;
 }
-export type AdminQuotePatch = Partial<NewQuoteInput> & { status?: QuoteStatus };
+export type AdminQuotePatch = Partial<NewQuoteInput> & { status?: QuoteStatus; templateId?: string };
 
 /* ── Suppliers (purchasing master — referenced by purchase orders) ────────── */
 export type SupplierTerms = "advance" | "cod" | "net15" | "net30" | "net45";
@@ -1403,6 +1480,16 @@ export interface AdminApi {
   deleteQuote(id: string): Promise<boolean>;
   /** Requires ≥1 line; same materialisation path as createOrder (channel `manual`); order carries the discount. */
   convertQuote(id: string, paymentMethod?: PaymentMethod): Promise<AdminOrder | undefined>;
+  /** Newest first. Empty for quotes saved before the versioning port. */
+  listQuoteVersions(id: string): Promise<AdminQuoteVersion[]>;
+  /** Rewrites the quote from a frozen version snapshot, bumps the version, action "restore:N". */
+  restoreQuoteVersion(id: string, version: number): Promise<AdminQuote | undefined>;
+  /** Builtin template replaces-shadows any custom with the same id. */
+  listQuoteTemplates(): Promise<AdminQuoteTemplate[]>;
+  /** Upsert by id; saving a builtin id clones into a new custom template instead of mutating code. */
+  saveQuoteTemplate(template: AdminQuoteTemplate): Promise<AdminQuoteTemplate>;
+  /** Builtin templates may not be deleted. */
+  deleteQuoteTemplate(id: string): Promise<boolean>;
   listSuppliers(params?: ListParams & { active?: "all" | "active" | "inactive" }): Promise<AdminSupplier[]>;
   createSupplier(input: NewSupplierInput): Promise<AdminSupplier>;
   updateSupplier(id: string, patch: AdminSupplierPatch): Promise<AdminSupplier | undefined>;
