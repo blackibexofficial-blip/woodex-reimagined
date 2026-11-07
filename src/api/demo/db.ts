@@ -132,8 +132,6 @@ interface DemoDb {
   orders: AdminOrder[];
   customers: AdminCustomer[];
   leads: AdminLead[];
-  categories: AdminCategory[];
-  media: AdminMediaAsset[];
   settings: StoreSettings;
   inventoryMeta: Record<string, { lowStockThreshold: number; location: string; lastUpdated: string }>;
   movements: AdminStockMovement[];
