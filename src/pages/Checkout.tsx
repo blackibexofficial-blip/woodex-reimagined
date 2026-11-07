@@ -16,6 +16,7 @@ import Footer from "@/components/Footer";
 import { useCart, cartLineKey } from "@/contexts/CartContext";
 import { formatPKR } from "@/data/products";
 import { site, waLink } from "@/config/site";
+import { config } from "@/config/env";
 
 const cities = [
   "Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan",
@@ -71,7 +72,7 @@ const Checkout = () => {
       });
       setPlacedOrder({
         id: order.id,
-        total: grandTotal,
+        total: order.total,
         count: totalItems,
         payment: paymentMethod,
         name: formData.name.trim(),
@@ -119,7 +120,7 @@ const Checkout = () => {
                 >
                   <a
                     href={waLink(
-                      `Assalamualaikum WOODEX! Order ${placedOrder.id} placed — ${placedOrder.count} item(s), total ${formatPKR(placedOrder.total)} (${placedOrder.payment === "cod" ? "Cash on Delivery" : "Bank Transfer"}). Name: ${placedOrder.name}, phone: ${placedOrder.phone}. Please confirm availability & delivery schedule.`
+                      `Assalamualaikum WOODEX! Order ${placedOrder.id} placed — ${placedOrder.count} item(s), total ${formatPKR(placedOrder.total)}${config.apiMode === "supabase" ? " (delivery fee confirmed at dispatch)" : ""} (${placedOrder.payment === "cod" ? "Cash on Delivery" : "Bank Transfer"}). Name: ${placedOrder.name}, phone: ${placedOrder.phone}. Please confirm availability & delivery schedule.`
                     )}
                     target="_blank"
                     rel="noopener noreferrer"
