@@ -4,3 +4,6 @@ verify_jwt = false
 
 [functions.order-tracking]
 verify_jwt = false
+
+[functions.lead-capture]
+verify_jwt = false
