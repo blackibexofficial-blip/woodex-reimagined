@@ -229,7 +229,7 @@ hash-freeze and the upgrade procedure. `@puckeditor/core` peers: `react ^18 || ^
 | Wave 2 — Sections & Elements libraries | the §0A.3 40-section UI-kit catalogue (thumbnails, "Label in Layers") + tabs Sections/UI kit/Templates/Images + category chips; Elements palette (BASIC+WIDGETS, §0A.4); Layers panel (select/reorder/hide/lock) | 5–7 |
 | Wave 3 — Theme: whole-website tokens | §0A.6 panel — colours/fonts/base size/heading scale (+ custom toggle), CSS custom properties, section skins Original/White/Cream/Navy, versioned demo-DB `theme` singleton + snapshot/restore | 3–4 |
 | Wave 4 — Inspector parity + Linked styles | **As built (PR #7):** Style tab (Desktop/Tablet/Mobile × Normal/Hover — padding/radius/border/align via static classes), Advanced tab (General Tag/ID/Title/Aria/Classes + responsive visibility + animation on scroll, reduced-motion aware), page-scoped **Linked styles** with live `hm-*` usage counts (inline-merge engine, Phase-B-lite), `Live home ↗` button, **inline text toolbar shipped** (TipTap-native richtext fields, allow-list sanitizer) | 6–9 |
-| Wave 5 — SEO layer | §0A.7 panel — title/meta counters (60/160), focus keyphrase, live Google preview, local Yoast-style **Analyse** (keyphrase, H1=1, title/meta length, word count, readability), SEO + Readability score badges, publish gate; JSON-LD wiring; sitemap **deferred to W7/Bagisto** (see §0A.7 as-built note) | **[done — branch, owner merge-gated]** |
+| Wave 5 — SEO layer | §0A.7 panel — title/meta counters (60/160), focus keyphrase, live Google preview, local Yoast-style **Analyse** (keyphrase, H1=1, title/meta length, word count, readability), SEO + Readability score badges, publish gate; JSON-LD wiring; sitemap **deferred to W7/Bagisto** (see §0A.7 as-built note) | **[done — merged via PR #6, 2026-11-07]** |
 | Wave 6 — AI + MCP build path | local MCP server (full-generation depth, owner §11-Q4): `create_page` / `upsert_section` / template fan-out for local-SEO catalogue; draft-first + validator; audit log; no publish tool | 5–8 |
 | Wave 7 — Bagisto mapping | JSON page document persisted as Bagisto CMS custom attribute (or native blocks) behind `getAdminApi()`; migration of demo-DB pages; dual-run period | 4–5 |
 | Buffer / owner UAT / parity polish | linked-styles Phase B slippage, screenshot sign-offs, migration of static pages | 8–12 |
@@ -434,7 +434,7 @@ starter document (`src/pages-builder/starter.ts`); localStorage persistence; adm
 **Known limitations:** per-browser localStorage; no media picker (image URL text field); scaled canvas;
 no multi-page list. All addressed in W1–W2.
 
-### Wave 1 — Foundation: pages slice, tree & draft/publish `[done]` (delivered 2026-11-06 on the PR #4 branch; owner-gated merge)
+### Wave 1 — Foundation: pages slice, tree & draft/publish `[done]` (delivered 2026-11-06 on the PR #4 branch; merged via PR #4)
 Demo-DB `pages` slice (same pattern as showrooms/warranty); admin **Pages** workspace per §0A.2: folder tree,
 search, `+ New`, top-level model with slugs, draft⇄published, per-page duplicate, history (cap 20) + one-click
 revert, slug-collision guard vs `src/App.tsx` routes (unit test). Pages list shows status, updatedAt, SEO score
@@ -442,7 +442,7 @@ badge (once W5 lands; placeholder chip before). Publish persists the document on
 **Gate:** CRUD round-trip live check; publish/unpublish flips storefront render; revert works; folders CRUD;
 e2e gains ≥2 page-store checks.
 
-### Wave 2 — Sections & Elements libraries `[done]` (delivered 2026-11-07, PR #4 branch; owner-gated merge)
+### Wave 2 — Sections & Elements libraries `[done]` (delivered 2026-11-07, PR #4 branch; merged via PR #4)
 Build the §5.1/§5.2/**§5.3** catalogues (elements may be vendored from **free MIT Tailgrids** per §5.3 rules) as Puck-registered components with WOODEX tokens: 40 sections across
 10 categories with thumbnail cards, "Label shown in Layers", tabs **Sections · UI kit · Templates · Images**,
 category chips (All 40 · Hero · Features · Pricing · Stats & charts · Testimonials · Team ·
@@ -495,7 +495,7 @@ toolbar (B/I/U/S · link · colour · align · A/Aa · size) + "Heading 2" type 
 **Gate:** class rule applies to all N matches and **does not leak cross-page** (unit test); Phase A ships usable
 even if Phase B slips; contrast AA on navy skin; keyboard focus visible; axe on lab pages; e2e +4.
 
-**As built (PR #7, 2026-11-07 — owner-merge-gated):** `_inspector` flat-prop composite custom field, post-injected on
+**As built (PR #7, 2026-11-07 — merged as PR #7):** `_inspector` flat-prop composite custom field, post-injected on
 **every** block (40 sections + 17 elements + 3 legacy). Content stays in Puck's auto-fields; the inspector renders
 **Style | Advanced** tabs. Style: Desktop/Tablet/Mobile segmented device switch driving padding/radius/border/text-align
 (static `builder.css` classes — storefront and canvas share one source) and Normal/:hover toggle for background / text /
@@ -518,7 +518,7 @@ one master per chrome part, instances on every builder page; editing any instanc
 everywhere); per-page detach requires a confirm dialog naming the page and the propagation consequence; announcement
 additionally supports per-page show/hide. Masters live in the demo-DB `pages` slice as `kind: "chrome"` docs.
 
-### Wave 5 — SEO layer `[done — branch, owner merge-gated]` (2026-11-07)
+### Wave 5 — SEO layer `[done — merged via PR #6, 2026-11-07]`
 §0A.7 SEO workspace per page: **Page title** (≤60) + **Meta description** (≤160) live counters; **Focus keyphrase**;
 breadcrumb URL preview + **live Google result preview** (title/URL/description render as SERP); **Analyse** button
 runs a fully local Yoast-style ruleset (keyphrase present elsewhere?; keyphrase in title/meta/first paragraph/H2?;
@@ -780,9 +780,9 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   Golden-path live verification 14/14 (panel renders, seed passes the default gate, emptying the keyphrase blocks Publish with a visible reason and
   keeps the draft unpublished). "Open in SEO manager ↗" removed (no MCP service in browser builds); build-time sitemap deferred to Wave 7 with the
   Bagisto seam (client-side demo DB is invisible at build time — documented, not hidden). e2e 42/42 (+3 JSON-LD/canonical asserts) · axe 7 routes 0
-  violations · tsc 0 · build ✓. Owner merge-gated.
+  violations · tsc 0 · build ✓. Owner merge-gated; merged via PR #6 (2026-11-07).
 - **2026-11-07 (Wave 4 — Inspector + Linked styles, PB-4)** — Owner selected **Full Wave 4** from the wave menu.
-  Built on `arena/d1d750ce-woodex-reimagined` (PR #7, owner merge-gated): `_inspector` flat-prop composite field post-injected on
+  Built on `arena/d1d750ce-woodex-reimagined` (PR #7, merged 2026-11-07): `_inspector` flat-prop composite field post-injected on
   **all** blocks (40 catalogue sections + 17 elements + 3 legacy). **Style** tab — Desktop/Tablet/Mobile segmented switch
   driving padding/radius/border/text-align through static `builder.css` classes (shared storefront/canvas source); **Normal/:hover**
   toggle for background / text / heading colours via hex+picker and CSS custom-property cascade islands; heading-colour overrides
