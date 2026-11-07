@@ -80,6 +80,9 @@ export const DraftOrderStatusBadge = ({ status }: { status: DraftOrderStatus }) 
 
 const quoteStyles: Record<QuoteStatus, string> = {
   draft: "bg-amber-100 text-amber-800 border-amber-200",
+  review: "bg-violet-100 text-violet-800 border-violet-200",
+  approval: "bg-orange-100 text-orange-800 border-orange-200",
+  revised: "bg-indigo-100 text-indigo-800 border-indigo-200",
   sent: "bg-sky-100 text-sky-800 border-sky-200",
   accepted: "bg-emerald-100 text-emerald-800 border-emerald-200",
   declined: "bg-rose-100 text-rose-800 border-rose-200",

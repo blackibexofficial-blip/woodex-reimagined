@@ -28,6 +28,7 @@ import type {
   AdminBrand,
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
+  AdminQuoteVersion, AdminQuoteTemplate,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -427,6 +428,26 @@ export const bagistoAdminApi: AdminApi = {
 
   async convertQuote(): Promise<AdminOrder | undefined> {
     throw new BagistoApiError(501, "Quote conversion is not wired for Bagisto yet.");
+  },
+
+  async listQuoteVersions(): Promise<AdminQuoteVersion[]> {
+    throw new BagistoApiError(501, "Quote versioning is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
+  async restoreQuoteVersion(): Promise<AdminQuote | undefined> {
+    throw new BagistoApiError(501, "Quote version restore is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
+  async listQuoteTemplates(): Promise<AdminQuoteTemplate[]> {
+    throw new BagistoApiError(501, "Quote templates are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
+  async saveQuoteTemplate(): Promise<AdminQuoteTemplate> {
+    throw new BagistoApiError(501, "Quote template save is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
+  async deleteQuoteTemplate(): Promise<boolean> {
+    throw new BagistoApiError(501, "Quote template deletion is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
   },
 
   async listSuppliers(): Promise<AdminSupplier[]> {

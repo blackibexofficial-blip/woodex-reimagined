@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Search, Plus, Loader2, Pencil, Trash2, PackageCheck, Printer, ScrollText, Minus, X,
+  History, Send, CheckCheck, RotateCcw, FilePenLine, Ban, BadgeCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { AdminProduct, AdminQuote, PaymentMethod, QuoteStatus } from "@/api/types";
+import type { AdminProduct, AdminQuote, AdminQuoteTemplate, AdminQuoteVersion, PaymentMethod, QuoteStatus } from "@/api/types";
 import {
   formatPKR, formatDate, timeAgo, paymentLabel,
   QuoteStatusBadge, SectionCard, SectionSkeleton, EmptyState,
 } from "@/admin/components";
+import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
+import QuoteTemplateDesigner from "@/admin/components/quotation/QuoteTemplateDesigner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,11 +22,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
-const STATUSES: Array<QuoteStatus | "all"> = ["all", "draft", "sent", "accepted", "declined", "converted"];
-const EDITABLE_STATUSES: QuoteStatus[] = ["draft", "sent", "accepted", "declined"];
+const STATUSES: Array<QuoteStatus | "all"> = ["all", "draft", "review", "approval", "sent", "revised", "accepted", "declined", "converted"];
+const EDITABLE_STATUSES: QuoteStatus[] = ["draft", "review", "approval", "sent", "revised", "accepted", "declined"];
 const PAYMENT_METHODS: PaymentMethod[] = ["cod", "bank-transfer", "easypaisa", "jazzcash", "card"];
 
-type LineDraft = { productId?: string; name: string; price: number; quantity: number; image?: string };
+type LineDraft = {
+  productId?: string; name: string; price: number; quantity: number; image?: string;
+  category?: string; series?: string; material?: string; finish?: string;
+  width?: number; height?: number; depth?: number; unit?: "mm" | "cm" | "in"; customNotes?: string;
+};
 
 export default function AdminQuotes() {
   const api = useMemo(() => getAdminApi(), []);
@@ -50,6 +57,12 @@ export default function AdminQuotes() {
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<QuoteStatus>("draft");
   const [saving, setSaving] = useState(false);
+  const [templateId, setTemplateId] = useState<string>(DEFAULT_QUOTE_TEMPLATE.id);
+  const [templates, setTemplates] = useState<AdminQuoteTemplate[]>([DEFAULT_QUOTE_TEMPLATE]);
+  const [designerOpen, setDesignerOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [versions, setVersions] = useState<AdminQuoteVersion[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
 
   /* catalogue picker state */
   const [catQuery, setCatQuery] = useState("");
@@ -111,6 +124,7 @@ export default function AdminQuotes() {
     setName(""); setPhone(""); setEmail(""); setCompany(""); setCity(""); setAddress("");
     setLines([]); setDiscountPct("0"); setValidityDays("14"); setShipping("0"); setNotes(""); setStatus("draft");
     setCatQuery(""); setCatResults([]); setFreeName(""); setFreePrice(""); setFreeQty("1");
+    setTemplateId(DEFAULT_QUOTE_TEMPLATE.id); loadTemplates();
     setEditorOpen(true);
   };
 
@@ -122,9 +136,15 @@ export default function AdminQuotes() {
     setEditTarget(t);
     setName(t.customerName); setPhone(t.customerPhone); setEmail(t.customerEmail);
     setCompany(t.company ?? ""); setCity(t.city ?? ""); setAddress(t.address ?? "");
-    setLines(t.items.map((i) => ({ productId: i.id.startsWith("free-") ? undefined : i.id, name: i.name, price: i.price, quantity: i.quantity, image: i.image })));
+    setLines(t.items.map((i) => ({
+      productId: i.id.startsWith("free-") ? undefined : i.id,
+      name: i.name, price: i.price, quantity: i.quantity, image: i.image,
+      category: i.category, series: i.series, material: i.material, finish: i.finish,
+      width: i.width, height: i.height, depth: i.depth, unit: i.unit, customNotes: i.customNotes,
+    })));
     setDiscountPct(String(t.discountPct)); setValidityDays(String(t.validityDays)); setShipping(String(t.shipping));
     setNotes(t.notes ?? ""); setStatus(t.status);
+    setTemplateId(t.templateId ?? DEFAULT_QUOTE_TEMPLATE.id); loadTemplates();
     setCatQuery(""); setCatResults([]);
     setEditorOpen(true);
   };
@@ -155,11 +175,16 @@ export default function AdminQuotes() {
       company: company.trim() || undefined,
       city: city.trim() || undefined,
       address: address.trim() || undefined,
-      items: lines.map((l) => ({ productId: l.productId, name: l.name, price: l.price, quantity: l.quantity, image: l.image })),
+      items: lines.map((l) => ({
+        productId: l.productId, name: l.name, price: l.price, quantity: l.quantity, image: l.image,
+        category: l.category, series: l.series, material: l.material, finish: l.finish,
+        width: l.width, height: l.height, depth: l.depth, unit: l.unit, customNotes: l.customNotes,
+      })),
       discountPct: discountPctNum,
       validityDays: Math.min(90, Math.max(1, Math.trunc(Number(validityDays) || 14))),
       shipping: shippingNum,
       notes: notes.trim() || undefined,
+      templateId: templateId.trim() || undefined,
     };
     if (!payload.customerName) return toast.error("Customer name is required.");
     if (!payload.customerPhone) return toast.error("Customer phone is required.");
@@ -219,8 +244,63 @@ export default function AdminQuotes() {
     }
   };
 
+  const patchLine = (i: number, patch: Partial<LineDraft>) => setLines((d) => d.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const dimValue = (raw: string) => (raw === "" ? undefined : Math.max(0, Number(raw) || 0));
+
+  const loadTemplates = useCallback(() => {
+    api.listQuoteTemplates().then(setTemplates).catch(() => setTemplates([DEFAULT_QUOTE_TEMPLATE]));
+  }, [api]);
+
+  const openHistory = () => {
+    if (!editTarget) return;
+    setHistoryOpen(true);
+    setVersionsLoading(true);
+    api.listQuoteVersions(editTarget.id)
+      .then(setVersions)
+      .catch(() => { setVersions([]); toast.error("Version history could not be loaded."); })
+      .finally(() => setVersionsLoading(false));
+  };
+
+  const moveStatus = async (next: QuoteStatus) => {
+    if (!editTarget) return;
+    setSaving(true);
+    try {
+      const updated = await api.updateQuote(editTarget.id, { status: next });
+      if (updated) {
+        setStatus(updated.status);
+        setEditTarget(updated);
+        toast.success(`${updated.id} → ${updated.status} · v${updated.version ?? 1}.`);
+        await load();
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Status change failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const restoreVersion = async (v: number) => {
+    if (!editTarget) return;
+    setSaving(true);
+    try {
+      const restored = await api.restoreQuoteVersion(editTarget.id, v);
+      if (restored) {
+        toast.success(`v${v} restored — reopened as v${restored.version ?? "?"}.`);
+        setHistoryOpen(false);
+        openEdit(restored);
+        await load();
+      } else {
+        toast.error("Restore failed — quote missing or already converted.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Restore failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const linesQty = (t: AdminQuote) => t.items.reduce((s, i) => s + i.quantity, 0);
-  const isExpired = (t: AdminQuote) => (t.status === "draft" || t.status === "sent") && new Date(t.validUntil).getTime() < Date.now();
+  const isExpired = (t: AdminQuote) => ["draft", "review", "approval", "revised", "sent"].includes(t.status) && new Date(t.validUntil).getTime() < Date.now();
 
   return (
     <div className="space-y-4">
@@ -412,7 +492,7 @@ export default function AdminQuotes() {
             {lines.length > 0 && (
               <ul className="divide-y divide-muted rounded-lg border border-muted">
                 {lines.map((l, i) => (
-                  <li key={`${l.productId ?? "free"}-${i}`} className="flex items-center gap-3 p-2.5">
+                  <li key={`${l.productId ?? "free"}-${i}`} className="flex flex-wrap items-center gap-3 p-2.5">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium">{l.name}</p>
                       <p className="text-[11px] text-muted-foreground">{formatPKR(l.price)} each{l.productId ? "" : " · free line"}</p>
@@ -429,6 +509,52 @@ export default function AdminQuotes() {
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
+                    <details className="w-full">
+                      <summary className="cursor-pointer select-none text-[9px] font-semibold uppercase tracking-widest text-muted-foreground transition hover:text-foreground">Line details — dims · material · finish</summary>
+                      <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+                        <div>
+                          <Label htmlFor={`line-w-${i}`} className="mb-0.5 block text-[9px] font-bold uppercase text-muted-foreground">Width</Label>
+                          <Input id={`line-w-${i}`} type="number" min={0} inputMode="numeric" value={l.width ?? ""} onChange={(e) => patchLine(i, { width: dimValue(e.target.value) })} className="h-8 bg-white text-xs" />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-h-${i}`} className="mb-0.5 block text-[9px] font-bold uppercase text-muted-foreground">Height</Label>
+                          <Input id={`line-h-${i}`} type="number" min={0} inputMode="numeric" value={l.height ?? ""} onChange={(e) => patchLine(i, { height: dimValue(e.target.value) })} className="h-8 bg-white text-xs" />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-d-${i}`} className="mb-0.5 block text-[9px] font-bold uppercase text-muted-foreground">Depth</Label>
+                          <Input id={`line-d-${i}`} type="number" min={0} inputMode="numeric" value={l.depth ?? ""} onChange={(e) => patchLine(i, { depth: dimValue(e.target.value) })} className="h-8 bg-white text-xs" />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-unit-${i}`} className="mb-0.5 block text-[9px] font-bold uppercase text-muted-foreground">Unit</Label>
+                          <Select value={l.unit ?? "mm"} onValueChange={(v) => patchLine(i, { unit: v as "mm" | "cm" | "in" })}>
+                            <SelectTrigger id={`line-unit-${i}`} className="h-8 bg-white text-xs" aria-label="Dimension unit"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {["mm", "cm", "in"].map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2">
+                          <Label htmlFor={`line-cat-${i}`} className="mb-0.5 block text-[9px] font-bold uppercase text-muted-foreground">Category</Label>
+                          <Input id={`line-cat-${i}`} value={l.category ?? ""} onChange={(e) => patchLine(i, { category: e.target.value || undefined })} placeholder="Dining / Office" className="h-8 bg-white text-xs" />
+                        </div>
+                        <div className="col-span-2">
+                          <Label htmlFor={`line-series-${i}`} className="mb-0.5 block text-[9px] font-bold uppercase text-muted-foreground">Series</Label>
+                          <Input id={`line-series-${i}`} value={l.series ?? ""} onChange={(e) => patchLine(i, { series: e.target.value || undefined })} placeholder="e.g. Heritage" className="h-8 bg-white text-xs" />
+                        </div>
+                        <div className="col-span-2">
+                          <Label htmlFor={`line-mat-${i}`} className="mb-0.5 block text-[9px] font-bold uppercase text-muted-foreground">Material</Label>
+                          <Input id={`line-mat-${i}`} value={l.material ?? ""} onChange={(e) => patchLine(i, { material: e.target.value || undefined })} placeholder="Sheesham solid" className="h-8 bg-white text-xs" />
+                        </div>
+                        <div className="col-span-2">
+                          <Label htmlFor={`line-fin-${i}`} className="mb-0.5 block text-[9px] font-bold uppercase text-muted-foreground">Finish</Label>
+                          <Input id={`line-fin-${i}`} value={l.finish ?? ""} onChange={(e) => patchLine(i, { finish: e.target.value || undefined })} placeholder="Walnut PU matte" className="h-8 bg-white text-xs" />
+                        </div>
+                        <div className="col-span-full">
+                          <Label htmlFor={`line-notes-${i}`} className="mb-0.5 block text-[9px] font-bold uppercase text-muted-foreground">Custom notes</Label>
+                          <Input id={`line-notes-${i}`} value={l.customNotes ?? ""} onChange={(e) => patchLine(i, { customNotes: e.target.value || undefined })} placeholder="e.g. walnut veneer, matte PU — confirm with customer" className="h-8 bg-white text-xs" />
+                        </div>
+                      </div>
+                    </details>
                   </li>
                 ))}
               </ul>
@@ -471,6 +597,72 @@ export default function AdminQuotes() {
               </div>
             )}
 
+            {/* lifecycle quick actions + print template */}
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-2.5">
+              {editTarget && (
+                <>
+                  <span className="mr-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Flow</span>
+                  {status === "draft" && (
+                    <Button type="button" size="sm" variant="outline" className="h-8 text-xs" disabled={saving} onClick={() => moveStatus("review")}>
+                      <Send className="mr-1 h-3.5 w-3.5" />Submit for review
+                    </Button>
+                  )}
+                  {status === "review" && (
+                    <Button type="button" size="sm" variant="outline" className="h-8 text-xs" disabled={saving} onClick={() => moveStatus("approval")}>
+                      <CheckCheck className="mr-1 h-3.5 w-3.5" />Approve
+                    </Button>
+                  )}
+                  {status === "approval" && (
+                    <Button type="button" size="sm" variant="outline" className="h-8 text-xs" disabled={saving} onClick={() => moveStatus("sent")}>
+                      <Send className="mr-1 h-3.5 w-3.5" />Mark sent
+                    </Button>
+                  )}
+                  {status === "sent" && (
+                    <>
+                      <Button type="button" size="sm" variant="outline" className="h-8 text-xs" disabled={saving} onClick={() => moveStatus("revised")}>
+                        <RotateCcw className="mr-1 h-3.5 w-3.5" />Revised
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" className="h-8 text-xs text-emerald-700" disabled={saving} onClick={() => moveStatus("accepted")}>
+                        <BadgeCheck className="mr-1 h-3.5 w-3.5" />Accept
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" className="h-8 text-xs text-destructive" disabled={saving} onClick={() => moveStatus("declined")}>
+                        <Ban className="mr-1 h-3.5 w-3.5" />Decline
+                      </Button>
+                    </>
+                  )}
+                  {status === "revised" && (
+                    <Button type="button" size="sm" variant="outline" className="h-8 text-xs" disabled={saving} onClick={() => moveStatus("review")}>
+                      <Send className="mr-1 h-3.5 w-3.5" />Re-submit for review
+                    </Button>
+                  )}
+                  {status === "declined" && (
+                    <Button type="button" size="sm" variant="outline" className="h-8 text-xs" disabled={saving} onClick={() => moveStatus("revised")}>
+                      <RotateCcw className="mr-1 h-3.5 w-3.5" />Revise &amp; re-issue
+                    </Button>
+                  )}
+                  {status === "accepted" && <span className="text-[11px] font-semibold text-emerald-700">Accepted — convert to an order when ready.</span>}
+                </>
+              )}
+              <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                <Select value={templateId} onValueChange={setTemplateId}>
+                  <SelectTrigger className="h-8 w-44 bg-white text-xs" aria-label="Print template"><SelectValue placeholder="Print template" /></SelectTrigger>
+                  <SelectContent>
+                    {templates.map((tpl) => (
+                      <SelectItem key={tpl.id} value={tpl.id}>{tpl.name}{tpl.builtIn ? " (builtin)" : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setDesignerOpen(true)} title="Design the printable template">
+                  <FilePenLine className="mr-1 h-4 w-4" />Design
+                </Button>
+                {editTarget && (
+                  <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={openHistory} title="Version history &amp; restore">
+                    <History className="mr-1 h-4 w-4" />v{editTarget.version ?? 1} · History
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="qot-notes" className="mb-1.5 block text-xs font-medium text-muted-foreground">Internal note <span className="font-normal">(staff only)</span></Label>
               <Textarea id="qot-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="PO reference, payment terms, validity confirmation…" className="bg-white text-xs" />
@@ -482,6 +674,47 @@ export default function AdminQuotes() {
               {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <ScrollText className="mr-1.5 h-4 w-4" />}
               {saving ? "Saving…" : editTarget ? "Save changes" : "Save quote"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── template designer ─────────────────────────────────── */}
+      <QuoteTemplateDesigner
+        open={designerOpen}
+        onOpenChange={setDesignerOpen}
+        currentId={templateId}
+        onPick={(id) => { setTemplateId(id); toast.success("Template attached — it renders on the printable quotation."); }}
+      />
+
+      {/* ── version history ────────────────────────────────────── */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>History — {editTarget?.id}</DialogTitle>
+          </DialogHeader>
+          {versionsLoading ? (
+            <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading snapshots…</div>
+          ) : versions.length === 0 ? (
+            <p className="py-4 text-xs text-muted-foreground">No snapshots recorded yet. Every save creates one — restore an earlier totals, items, discount, validity or notes state here.</p>
+          ) : (
+            <ol className="divide-y divide-border">
+              {versions.map((v) => (
+                <li key={v.version} className="flex items-center gap-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-foreground">v{v.version} · {v.action ?? "update"}{v.snapshot?.status ? <span className="font-normal text-muted-foreground"> — {v.snapshot.status}</span> : null}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</p>
+                  </div>
+                  {editTarget && v.version !== editTarget.version && (
+                    <Button type="button" size="sm" variant="outline" className="h-7 text-[11px]" disabled={saving} onClick={() => restoreVersion(v.version)}>
+                      Restore
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

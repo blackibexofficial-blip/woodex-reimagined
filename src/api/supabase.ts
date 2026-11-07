@@ -62,7 +62,7 @@ import type {
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
   AdminPageContentItem, AdminPageDoc, AdminPageHistoryEntry, AdminPageSeo, AdminPriceList,
   AdminProduct, AdminProject, AdminPurchaseOrder, AdminPurchaseOrderPatch, AdminQuote,
-  AdminQuotePatch, AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
+  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
   AdminShowroom, AdminStockMovement, AdminStockTransfer, AdminStockTransferPatch, AdminSupplier,
   AdminSupplierPatch, AdminVirtualShowroomPage, AdminWarrantyPage,
   AdminClaim, AdminClaimPatch, AdminDraftOrder, AdminDraftOrderPatch, AdminExchange, AdminExchangePatch,
@@ -78,6 +78,7 @@ import type {
   StockTransferReceipt, TransferLocation, PurchaseOrderStatus, PriceListStatus,
   ProductImportRow, ProductImportResult,
 } from "@/api/types";
+import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
 import { defaultWarrantyPage, defaultCustomDesignPage, defaultVirtualShowroomPage } from "@/api/singleton-defaults";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -174,7 +175,7 @@ const rowToAdminProduct = (r: Row): AdminProduct => {
     category: r.category_id ?? String(p.category ?? "ungrouped"),
     sku: r.sku ?? (p.sku != null ? String(p.sku) : String(r.id)),
     price: toNum(r.price),
-    compareAtPrice: p.compareAtPrice !== undefined ? toNum(p.compareAtPrice) : undefined,
+    compareAtPrice: p.compareAtPrice != null ? toNum(p.compareAtPrice) : undefined,
     image: (typeof p.image === "string" ? p.image : images?.[0]) as string | undefined,
     inStock: Boolean(r.in_stock),
     stock: toNum(r.stock_qty),
@@ -1053,7 +1054,22 @@ const sanitizeDraftLines = (lines: NewDraftOrderLineInput[]): AdminOrderItem[] =
     const price = Number(line.price);
     const qty = Math.max(1, Math.trunc(Number(line.quantity) || 1));
     if (!name || !Number.isFinite(price) || price < 0) continue;
-    items.push({ id: line.productId?.trim() || `free-${Date.now().toString(36)}-${seq++}`, name, price: Math.round(price), quantity: qty, ...(line.image ? { image: line.image } : {}) });
+    items.push({
+      id: line.productId?.trim() || `free-${Date.now().toString(36)}-${seq++}`,
+      name,
+      price: Math.round(price),
+      quantity: qty,
+      ...(line.image ? { image: line.image } : {}),
+      ...(line.category ? { category: line.category } : {}),
+      ...(line.series ? { series: line.series } : {}),
+      ...(line.material ? { material: line.material } : {}),
+      ...(line.finish ? { finish: line.finish } : {}),
+      ...(line.width !== undefined ? { width: line.width } : {}),
+      ...(line.height !== undefined ? { height: line.height } : {}),
+      ...(line.depth !== undefined ? { depth: line.depth } : {}),
+      ...(line.unit ? { unit: line.unit } : {}),
+      ...(line.customNotes ? { customNotes: line.customNotes } : {}),
+    });
   }
   return items;
 };
@@ -1257,6 +1273,9 @@ const rowToAdminQuote = (r: Row): AdminQuote => {
     validityDays: toNum(details.validityDays, 7) || 7,
     validUntil: String(details.validUntil ?? new Date(toNum(Date.parse(r.created_at) || Date.now()) + 7 * 86400000).toISOString()),
     ...(r.note ? { notes: r.note } : {}),
+    version: toNum(r.version, 1) || 1,
+    ...(details.templateId !== undefined ? { templateId: String(details.templateId) } : {}),
+    ...(Array.isArray(r.audit) ? { audit: r.audit as unknown as AdminQuote["audit"] } : {}),
     status: String(r.status ?? "draft") as QuoteStatus,
     ...(details.convertedOrderId ? { convertedOrderId: String(details.convertedOrderId) } : {}),
     createdAt: r.created_at,
@@ -1351,7 +1370,7 @@ async function updateQuote(id: string, patch: AdminQuotePatch): Promise<AdminQuo
   if (!current) return undefined;
   const cur = current as Row;
   const details = { ...asObj(cur.details) };
-  for (const k of ["discountPct", "shipping", "validityDays", "validUntil", "convertedOrderId", "leadId"]) {
+  for (const k of ["discountPct", "shipping", "validityDays", "validUntil", "convertedOrderId", "leadId", "templateId"]) {
     const v = (patch as Record<string, unknown>)[k];
     if (v !== undefined) details[k] = v;
   }
@@ -1365,6 +1384,15 @@ async function updateQuote(id: string, patch: AdminQuotePatch): Promise<AdminQuo
   details.discountPct = discountPct;
   details.discountAmount = discountAmount;
   details.total = total;
+  const newVersion = (toNum(cur.version, 1) || 1) + 1;
+  const prevStatus = String(cur.status ?? "draft");
+  const auditList: unknown[] = Array.isArray(cur.audit) ? [...(cur.audit as unknown[])] : [];
+  const statusChanged = patch.status !== undefined && patch.status !== prevStatus;
+  auditList.push(statusChanged
+    ? { version: newVersion, at: new Date().toISOString(), action: "status", detail: `${prevStatus}→${patch.status}` }
+    : { version: newVersion, at: new Date().toISOString(), action: "edit" });
+  const cappedAudit = auditList.slice(-20);
+
   const row: TablesUpdate<"quotes"> = {};
   if (patch.customerName !== undefined) row.customer = patch.customerName;
   if (patch.customerEmail !== undefined) row.customer_email = patch.customerEmail;
@@ -1377,10 +1405,130 @@ async function updateQuote(id: string, patch: AdminQuotePatch): Promise<AdminQuo
   if (patch.status !== undefined) row.status = patch.status;
   row.details = details as Json;
   row.total = total;
+  row.version = newVersion;
+  row.audit = cappedAudit as Json;
   const { error } = await supabase.from("quotes").update(row).eq("id", num);
   if (error) fail("updateQuote", error);
+  // version snapshot (audit auxiliary — never blocks the save)
+  try {
+    const { error: eVer } = await supabase.from("quote_versions").insert({
+      quote_id: num,
+      version: newVersion,
+      action: statusChanged ? `status:${String(patch.status)}` : "edit",
+      actor: null,
+      snapshot: {
+        items: lines,
+        subtotal: toNum(details.subtotal),
+        discountPct: details.discountPct,
+        discountAmount: details.discountAmount,
+        shipping: details.shipping,
+        total,
+        status: String(patch.status ?? cur.status),
+        notes: row.note ?? cur.note ?? null,
+        templateId: details.templateId ?? null,
+        validityDays: details.validityDays,
+        validUntil: details.validUntil,
+      } as unknown as Json,
+    });
+    if (eVer) console.error("quote_versions insert failed (non-fatal):", eVer.message);
+  } catch (eVer) {
+    console.error("quote_versions insert failed (non-fatal):", eVer);
+  }
   return getQuote(id);
 }
+async function listQuoteVersions(id: string): Promise<AdminQuoteVersion[]> {
+  guard();
+  const num = parseQuoteId(id);
+  const { data, error } = await supabase
+    .from("quote_versions")
+    .select("*")
+    .eq("quote_id", num)
+    .order("version", { ascending: false })
+    .limit(30);
+  if (error) fail("listQuoteVersions", error);
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: String(r.id),
+    quoteId: QUOTE_REF(num),
+    version: toNum(r.version),
+    action: (r.action ?? undefined) as string | undefined,
+    actor: (r.actor ?? undefined) as string | undefined,
+    createdAt: String(r.created_at),
+    snapshot: asObj(r.snapshot) as unknown as AdminQuoteVersion["snapshot"],
+  }));
+}
+
+async function restoreQuoteVersion(id: string, version: number): Promise<AdminQuote | undefined> {
+  guard();
+  const num = parseQuoteId(id);
+  const target = Math.max(1, Math.trunc(version));
+  const { data, error } = await supabase
+    .from("quote_versions")
+    .select("*")
+    .eq("quote_id", num)
+    .eq("version", target)
+    .maybeSingle();
+  if (error) fail("restoreQuoteVersion read", error);
+  if (!data) return undefined;
+  const snap = asObj((data as Row).snapshot) as unknown as AdminQuoteVersion["snapshot"];
+  const patch: AdminQuotePatch = {
+    items: Array.isArray(snap.items) ? snap.items : [],
+    discountPct: typeof snap.discountPct === "number" ? snap.discountPct : undefined,
+    shipping: typeof snap.shipping === "number" ? snap.shipping : undefined,
+    validityDays: typeof snap.validityDays === "number" ? snap.validityDays : undefined,
+    notes: snap.notes,
+    templateId: snap.templateId,
+    status: snap.status === "converted" ? undefined : "revised",
+  };
+  return updateQuote(id, patch);
+}
+
+async function listQuoteTemplates(): Promise<AdminQuoteTemplate[]> {
+  guard();
+  const { data, error } = await supabase.from("quote_templates").select("*").order("updated_at", { ascending: false });
+  if (error) fail("listQuoteTemplates", error);
+  const custom = ((data ?? []) as Row[])
+    .map((r) => {
+      const tpl = asObj(r.template);
+      return {
+        id: String(r.id),
+        name: String(r.name ?? "Untitled template"),
+        brandColor: typeof tpl.brandColor === "string" ? tpl.brandColor : "#318b45",
+        header: Array.isArray(tpl.header) ? (tpl.header as AdminQuoteTemplate["header"]) : DEFAULT_QUOTE_TEMPLATE.header.map((b) => ({ ...b, id: `${b.id}-c` })),
+        footer: Array.isArray(tpl.footer) ? (tpl.footer as AdminQuoteTemplate["footer"]) : DEFAULT_QUOTE_TEMPLATE.footer.map((b) => ({ ...b, id: `${b.id}-c` })),
+        builtIn: false,
+      } satisfies AdminQuoteTemplate;
+    })
+    .filter((t) => t.id !== DEFAULT_QUOTE_TEMPLATE.id);
+  return [DEFAULT_QUOTE_TEMPLATE, ...custom];
+}
+
+async function saveQuoteTemplate(template: AdminQuoteTemplate): Promise<AdminQuoteTemplate> {
+  guard();
+  const name = String(template.name ?? "").trim();
+  if (!name) throw new Error("Template name is required.");
+  let saved: AdminQuoteTemplate = { ...template, name, builtIn: false };
+  if (!saved.id || saved.id === DEFAULT_QUOTE_TEMPLATE.id || template.builtIn) {
+    saved = { ...saved, id: `tpl-${Date.now().toString(36)}` };
+  }
+  const row = {
+    id: saved.id,
+    name: saved.name,
+    template: { brandColor: saved.brandColor, header: saved.header, footer: saved.footer } as unknown as Json,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("quote_templates").upsert(row, { onConflict: "id" });
+  if (error) fail("saveQuoteTemplate", error);
+  return saved;
+}
+
+async function deleteQuoteTemplate(id: string): Promise<boolean> {
+  guard();
+  if (String(id) === DEFAULT_QUOTE_TEMPLATE.id) return false;
+  const { count, error } = await supabase.from("quote_templates").delete({ count: "exact" }).eq("id", String(id));
+  if (error) fail("deleteQuoteTemplate", error);
+  return (count ?? 0) > 0;
+}
+
 async function deleteQuote(id: string): Promise<boolean> {
   guard();
   const num = parseQuoteId(id);
@@ -3179,6 +3327,11 @@ export const supabaseAdminApi: AdminApi = {
   createQuote,
   createQuoteFromLead,
   updateQuote,
+  listQuoteVersions,
+  restoreQuoteVersion,
+  listQuoteTemplates,
+  saveQuoteTemplate,
+  deleteQuoteTemplate,
   deleteQuote,
   convertQuote,
   listSuppliers,

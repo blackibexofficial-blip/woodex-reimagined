@@ -124,8 +124,11 @@ import type {
   OrderStatus,
   PaymentMethod,
   RevenuePoint,
+  AdminQuoteVersion,
+  AdminQuoteTemplate,
   StoreSettings,
 } from "@/api/types";
+import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
 
 const DB_KEY = "woodex.admin.db.v1";
 
@@ -164,6 +167,8 @@ interface DemoDb {
   claims: AdminClaim[];
   draftOrders: AdminDraftOrder[];
   quotes: AdminQuote[];
+  quoteVersions: AdminQuoteVersion[];
+  quoteTemplates: AdminQuoteTemplate[];
   suppliers: AdminSupplier[];
   purchaseOrders: AdminPurchaseOrder[];
   stockTransfers: AdminStockTransfer[];
@@ -1085,7 +1090,7 @@ function sanitizeDraftLines(lines: NewDraftOrderLineInput[]): AdminOrderItem[] {
     const price = Number(line.price);
     const qty = Math.max(1, Math.trunc(Number(line.quantity) || 1));
     if (!name || !Number.isFinite(price) || price < 0) continue;
-    items.push({ id: line.productId?.trim() || `free-${Date.now().toString(36)}-${seq++}`, name, price: Math.round(price), quantity: qty, image: line.image });
+    items.push({ id: line.productId?.trim() || `free-${Date.now().toString(36)}-${seq++}`, name, price: Math.round(price), quantity: qty, image: line.image, category: line.category, series: line.series, material: line.material, finish: line.finish, width: line.width, height: line.height, depth: line.depth, unit: line.unit, customNotes: line.customNotes });
   }
   return items;
 }
@@ -1172,6 +1177,30 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
 }
 
 /** Shared creation path — used by createQuote and createQuoteFromLead. */
+function makeQuoteVersionSnap(q: AdminQuote, action: string, actor = "admin"): AdminQuoteVersion {
+  return {
+    id: `qv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    quoteId: q.id,
+    version: q.version ?? 1,
+    action,
+    actor,
+    createdAt: q.updatedAt,
+    snapshot: {
+      items: q.items.map((it) => ({ ...it })),
+      subtotal: q.subtotal,
+      discountPct: q.discountPct,
+      discountAmount: q.discountAmount,
+      shipping: q.shipping,
+      total: q.total,
+      status: q.status,
+      notes: q.notes,
+      templateId: q.templateId,
+      validityDays: q.validityDays,
+      validUntil: q.validUntil,
+    },
+  };
+}
+
 function createQuoteInDb(db: DemoDb, input: NewQuoteInput): AdminQuote {
   const customerName = input.customerName?.trim();
   const customerPhone = input.customerPhone?.trim();
@@ -1198,11 +1227,15 @@ function createQuoteInDb(db: DemoDb, input: NewQuoteInput): AdminQuote {
     validityDays,
     validUntil: new Date(Date.parse(now) + validityDays * 86400000).toISOString(),
     notes: input.notes?.trim() || undefined,
+    templateId: input.templateId?.trim() || undefined,
     status: "draft",
+    version: 1,
+    audit: [{ version: 1, at: now, action: "create" }],
     createdAt: now,
     updatedAt: now,
   };
   (db.quotes ??= []).push(quote);
+  (db.quoteVersions ??= []).push(makeQuoteVersionSnap(quote, "create"));
   return quote;
 }
 
@@ -1721,7 +1754,7 @@ function buildSeed(): DemoDb {
     return { ...rest, consentAt, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
 
-  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets() };
+  return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: buildSeedQuotes(adminProducts), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1743,6 +1776,8 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.movements)) db.movements = [];
       if (!Array.isArray(db.zones)) db.zones = buildSeedZones();
       if (!Array.isArray(db.orderEvents)) db.orderEvents = buildSeedOrderEvents(db.orders);
+      if (!Array.isArray(db.quoteVersions)) db.quoteVersions = [];
+      if (!Array.isArray(db.quoteTemplates)) db.quoteTemplates = [];
       if (!Array.isArray(db.collections)) db.collections = buildSeedCollections(db.products);
       if (!Array.isArray(db.companies)) db.companies = buildSeedCompanies();
       if (!Array.isArray(db.priceLists)) db.priceLists = buildSeedPriceLists();
@@ -2086,6 +2121,9 @@ export const demoAdminApi: AdminApi = {
       if (!p) return;
       const explicitStatus = patch.stockStatus !== undefined;
       Object.assign(p, patch);
+      // null sentinel from the adapters means "clear the strikethrough" — store as absent (undefined), never as a value
+      const payloadRec = p as unknown as Record<string, unknown>;
+      if (payloadRec.compareAtPrice === null) delete payloadRec.compareAtPrice;
       if (!explicitStatus && patch.stock !== undefined) syncFulfilment(p);      // shelf qty changed → derive fulfilment from it
       if (patch.stock !== undefined) touchProductMeta(db, p.id);
       if (explicitStatus && p.stockStatus === "out_of_stock") p.inStock = false;
@@ -3897,10 +3935,81 @@ export const demoAdminApi: AdminApi = {
       t.shipping = totals.shipping;
       t.total = totals.total;
       if (t.status === "sent" && t.items.length === 0) throw new Error("Add at least one line before sending the quote.");
+      const effectiveVersion = (t.version ?? 1) + 1;
+      t.version = effectiveVersion;
+      if (patch.templateId !== undefined) t.templateId = patch.templateId.trim() || undefined;
+      t.audit = [...(t.audit ?? []).slice(-19), { version: effectiveVersion, at: now, action: patch.status !== undefined ? "status" : "edit", detail: patch.status !== undefined ? patch.status : undefined }];
       t.updatedAt = now;
+      (db.quoteVersions ??= []).push(makeQuoteVersionSnap(t, patch.status !== undefined ? `status:${patch.status}` : "edit"));
       updated = { ...t, items: [...t.items] };
     });
     return updated;
+  },
+
+  async listQuoteVersions(id: string) {
+    return (loadDb().quoteVersions ?? []).filter((v) => v.quoteId === id).sort((a, b) => b.version - a.version);
+  },
+
+  async restoreQuoteVersion(id: string, version: number) {
+    let restored: AdminQuote | undefined;
+    const now = new Date().toISOString();
+    update((db) => {
+      const t = (db.quotes ??= []).find((x) => x.id === id);
+      if (!t) return;
+      if (t.status === "converted") throw new Error(`Quote ${t.id} is already converted — it can no longer be restored.`);
+      const v = (db.quoteVersions ??= []).find((x) => x.quoteId === id && x.version === version);
+      if (!v) return;
+      t.items = v.snapshot.items.map((it) => ({ ...it }));
+      t.discountPct = v.snapshot.discountPct;
+      t.shipping = Math.max(0, Math.round(v.snapshot.shipping));
+      if (v.snapshot.validityDays !== undefined) t.validityDays = v.snapshot.validityDays;
+      t.validUntil = v.snapshot.validUntil;
+      t.notes = v.snapshot.notes;
+      t.templateId = v.snapshot.templateId;
+      if (v.snapshot.status !== "converted") t.status = "revised";
+      const totals = quoteTotals(t.items, t.discountPct, t.shipping);
+      t.subtotal = totals.subtotal;
+      t.discountAmount = totals.discountAmount;
+      t.shipping = totals.shipping;
+      t.total = totals.total;
+      t.version = (t.version ?? 1) + 1;
+      t.audit = [...(t.audit ?? []).slice(-19), { version: t.version, at: now, action: "restore", detail: `restore:${version}` }];
+      t.updatedAt = now;
+      (db.quoteVersions ??= []).push(makeQuoteVersionSnap(t, `restore:${version}`));
+      restored = { ...t, items: [...t.items] };
+    });
+    return restored;
+  },
+
+  async listQuoteTemplates() {
+    const custom = (loadDb().quoteTemplates ?? []).filter((t) => t.id !== DEFAULT_QUOTE_TEMPLATE.id);
+    return [DEFAULT_QUOTE_TEMPLATE, ...custom];
+  },
+
+  async saveQuoteTemplate(template: AdminQuoteTemplate) {
+    const name = template.name.trim();
+    if (!name) throw new Error("Template name is required.");
+    let saved: AdminQuoteTemplate = { ...template, name, builtIn: false };
+    if (!saved.id || saved.id === DEFAULT_QUOTE_TEMPLATE.id || template.builtIn) {
+      saved = { ...saved, id: `tpl-${Date.now().toString(36)}` };
+    }
+    update((db) => {
+      const list = (db.quoteTemplates ??= []);
+      const idx = list.findIndex((x) => x.id === saved.id);
+      if (idx >= 0) list[idx] = saved; else list.push(saved);
+    });
+    return saved;
+  },
+
+  async deleteQuoteTemplate(id: string) {
+    if (id === DEFAULT_QUOTE_TEMPLATE.id) return false;
+    let ok = false;
+    update((db) => {
+      const before = (db.quoteTemplates ??= []).length;
+      db.quoteTemplates = db.quoteTemplates.filter((t) => t.id !== id);
+      ok = db.quoteTemplates.length !== before;
+    });
+    return ok;
   },
 
   async deleteQuote(id: string) {

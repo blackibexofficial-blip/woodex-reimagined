@@ -249,6 +249,59 @@ const asRole = async (db, roleName, uid) => { await db.exec(`set role ${roleName
   const evCount2 = await db.query(`select count(*)::int as c from public.order_events where order_id = (select id from public.orders where ref = $1) and kind = 'stage:intake' and note like 'Converted from draft%'`, [ref]);
   ok('0010: conversion journaled in order_events with negotiated audit', first(evCount2) === 1);
 
+  // ── 0011 compare_at_in_payload ─────────────────────────────────────────
+  await asRole(db, 'authenticated', E);
+  await db.query(`select public.product_update_payload('test-convert-chair', '{"compareAtPrice": 1500}'::jsonb)`);
+  await db.exec('reset role');
+  const pl1 = await db.query(`select payload->>'compareAtPrice' as v from public.products where id = 'test-convert-chair'`);
+  ok('0011: compareAtPrice rides the document RPC (1500)', pl1.rows[0]?.v === '1500');
+
+  await asRole(db, 'authenticated', E);
+  await db.query(`select public.product_update_payload('test-convert-chair', '{"compareAtPrice": null}'::jsonb)`);
+  await db.exec('reset role');
+  const pl2 = await db.query(`select payload->'compareAtPrice' as v from public.products where id = 'test-convert-chair'`);
+  ok('0011: compareAtPrice clears with JSON null', pl2.rows[0]?.v === null);
+
+  let priceRejected = false;
+  try { await asRole(db, 'authenticated', E); await db.query(`select public.product_update_payload('test-convert-chair', '{"price": 5}'::jsonb)`); } catch { priceRejected = true; }
+  await db.exec('reset role');
+  ok('0011: price stays RPC-only (document path still rejected)', priceRejected);
+
+  let badCompareAt = false;
+  try { await asRole(db, 'authenticated', E); await db.query(`select public.product_update_payload('test-convert-chair', '{"compareAtPrice": "not-a-number"}'::jsonb)`); } catch { badCompareAt = true; }
+  await db.exec('reset role');
+  ok('0011: compareAtPrice must be a non-negative number or null', badCompareAt);
+
+  let salesDenied = false;
+  try { await asRole(db, 'authenticated', S); await db.query(`select public.product_update_payload('test-convert-chair', '{"compareAtPrice": 1500}'::jsonb)`); } catch { salesDenied = true; }
+  await db.exec('reset role');
+  ok('0011: sales may NOT merge product payload (catalog.manage required)', salesDenied);
+
+  // ── quotation platform (0001 quote tables + quote.manage) ──────────────
+  await asRole(db, 'authenticated', S);
+  await db.query(`insert into public.quote_templates (id, name, template) values ('rehearsal-tpl', 'Rehearsal', $1::jsonb) on conflict (id) do update set template = excluded.template`, [JSON.stringify({ brandColor: '#318b45', header: [], footer: [] })]);
+  await db.exec('reset role');
+  const tplRead = await db.query(`select count(*)::int as c from public.quote_templates where id = 'rehearsal-tpl'`);
+  ok('quotation: sales may upsert + read a template (quote.manage)', first(tplRead) === 1);
+
+  let editorTplWritten = false;
+  try { await asRole(db, 'authenticated', E); await db.query(`insert into public.quote_templates (id, name, template) values ('rehearsal-tpl-2', 'Nope', '{}'::jsonb)`); editorTplWritten = true; } catch { /* denied */ }
+  await db.exec('reset role');
+  ok('quotation: editor may NOT write templates (quote.manage required)', editorTplWritten === false);
+
+  await asRole(db, 'authenticated', V);
+  const verViewer = await db.query(`select count(*)::int as c from public.quote_versions`);
+  await db.exec('reset role');
+  ok('quotation: viewer sees 0 version rows (quote.manage required)', first(verViewer) === 0);
+
+  const qIns = await db.query(`insert into public.quotes (customer, items) values ('Rehearsal Customer', '[]'::jsonb) returning id`);
+  const qId = first(qIns);
+  await asRole(db, 'authenticated', S);
+  await db.query(`insert into public.quote_versions (quote_id, version, snapshot, action) values ($1, 1, $2::jsonb, 'create')`, [qId, JSON.stringify({ items: [], total: 0, status: 'draft' })]);
+  await db.exec('reset role');
+  const verSales = await db.query(`select count(*)::int as c from public.quote_versions where quote_id = $1`, [qId]);
+  ok('quotation: sales may record a version snapshot', first(verSales) === 1);
+
   const pass = results.filter(r => r[1]).length, fail = results.length - pass;
   console.log(`\nFRESH REHEARSAL (test:rehearsal): ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
