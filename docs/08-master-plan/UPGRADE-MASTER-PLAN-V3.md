@@ -249,6 +249,14 @@ Legend: ✅ port as-is · 🔧 port + rework · 🆕 new (Supabase-only) · 🗑
 
 **NOT yet done in P0 (owner-side / environment-dependent):** staging Supabase project (creation, linking, hosted `supabase db reset`); `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` wiring; generated `Database` types (requires the applied schema on hosted/local CLI — `supabase` CLI absent in CI sandbox); `admin-bootstrap` edge function + first-owner flow; CI migration job; decision-log update. **P1 gate cannot run until staging exists — rehearsal ≠ production evidence.**
 
+**Slice 2 (27c46c2, 20c26d4, 23c1cfe, 6546afe, 1c2eb87) — real types, EFs, guardrails (still no hosted project):**
+- `types.ts` replaced empty `Database` with catalog-introspected types (48 tables, 14 RPC signatures; tsc green; stamped for regeneration via `supabase gen types` when CLI/staging exists).
+- Edge Functions authored, all `verify_jwt=false` and service-role only, **none verified on hosted infra**: `admin-bootstrap` (first-owner mint behind `ADMIN_BOOTSTRAP_SECRET`), `order-tracking` (digest-gated public lookup; uniform 404; narrow projection), `lead-capture` (sole public lead intake; mandated consent+version; stale version → 410; rate-limiting explicitly deferred).
+- `src/lib/tracking.ts`: digest-token utils bound to the migration's order-stage vocabulary; 6/6 node:test assertions (tsx) pass.
+- `src/integrations/supabase/woodex.ts`: typed RPC/table wrappers; fast-fails when env absent; demo mode untouched.
+- P0 residuals: staging project creation + hosted `supabase db reset`; generated types via CLI; decision log; CI migration rehearsal — **CI workflow changes need owner sign-off (not done)**.
+- Honesty: nothing in this slice is exercised end-to-end; no claim of production, and no claim that any EF has executed anywhere.
+
 **Build note:** `npm run build` could not be used (`bun` absent); built with `npx vite build --mode production` (build green, AdminApp chunk contains the banner). `typecheck` was NOT run for this slice — verify before treating as release-grade. Preview server rebuilt and re-verified (HTTP 200, banner present). `supabase/functions/mcp/index.ts` auto-generated churn was reverted before commit.
 
 ---
