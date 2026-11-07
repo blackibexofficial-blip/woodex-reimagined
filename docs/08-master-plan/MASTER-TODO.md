@@ -103,7 +103,7 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 - Rehearsal 56/56 (6 new invoice asserts: quote→invoice snapshot ✓ idempotent ✓ sales-cannot-post ✓ partial flip ✓ full flip ✓ viewer denied ✓). Hosted activation unchanged — owner-gated.
 - **Deliberately not ported**: legacy red-bin delete on invoices; full-page E-Quotation; Viewed/Negotiation stages; lossy 0001 snapshot carried onto the invoice row (Phase-2 candidate via a 0012 RPC replace — needs owner sign-off).
 
-### DONE 2026-11-08 — Tasks & follow-ups port (branch `arena/2b15db15-woodex-reimagined`; PR #19)
+### DONE 2026-11-08 — Tasks & follow-ups port (branch `arena/2b15db15-woodex-reimagined`; this PR)
 
 - **`/admin/tasks` shipped in-repo** — full parity port of legacy screen #16: KPI strip (Open / Due today / Overdue / Completed), All/Open/Done filter chips with counts, search (title/client/owner/priority/ref), three views — **List** table, **Open ↔ Done board**, **month-grid due-date calendar** — New-task dialog (title, client/deal label, due date, priority low/normal/high), Complete/Reopen per row.
 - **CRM-shared, no deletes** — 0001 `tasks` table (FKs into leads/quotes/orders/site_visits) + RLS `tasks_read/insert/update` = `has_cap('crm.manage')` (sales holds it); **no delete policy** — work items are completed/reopened, never destroyed. Demo seeds: TSK-1001 (Clifton Villa 9 · teak for the porch · quote QOT-1001 · overdue 2 d · normal), TSK-1002 (Gulberg Residency · swatch before production · QOT-1002 · due today · high).
