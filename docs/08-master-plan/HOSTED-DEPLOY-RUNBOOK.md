@@ -133,9 +133,10 @@ later retry. Rollback does NOT require dropping any migration.
   insert: same fixed window — 20 / 10 min per edge caller key; `PUBLIC` execute is revoked,
   only `service_role` may invoke it. On limiter-RPC failure the EF **fails OPEN** (logs) so a
   missing migration degrades to pre-limiter behavior instead of silently dropping leads.
-- PRODUCT DECISION STILL OPEN for both: WAF rule or an Upstash-backed global counter before
-  real traffic — these guards protect stock counts and lead spam, they are not complete
-  anti-abuse systems.
+- PRODUCT DECISION STILL OPEN for both: see `docs/08-master-plan/ANTI-ABUSE-DECISION.md`
+  (WAF-proxy vs Upstash counter vs Turnstile vs monitoring; recommendation: Turnstile +
+  monitoring, WAF held in reserve). These guards protect stock counts and lead spam, they
+  are not complete anti-abuse systems.
 - `convertDraftOrder` and `exchanges/claims` remain unwired by design (Wave 2: tables missing).
 - The conversion price authority model (negotiated quote lines) is intentional and documented
   in migration `0004`'s header — do not "fix" it to re-list-price without owner sign-off.
