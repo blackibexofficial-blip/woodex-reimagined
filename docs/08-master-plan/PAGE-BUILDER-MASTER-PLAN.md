@@ -229,7 +229,7 @@ hash-freeze and the upgrade procedure. `@puckeditor/core` peers: `react ^18 || ^
 | Wave 2 — Sections & Elements libraries | the §0A.3 40-section UI-kit catalogue (thumbnails, "Label in Layers") + tabs Sections/UI kit/Templates/Images + category chips; Elements palette (BASIC+WIDGETS, §0A.4); Layers panel (select/reorder/hide/lock) | 5–7 |
 | Wave 3 — Theme: whole-website tokens | §0A.6 panel — colours/fonts/base size/heading scale (+ custom toggle), CSS custom properties, section skins Original/White/Cream/Navy, versioned demo-DB `theme` singleton + snapshot/restore | 3–4 |
 | Wave 4 — Inspector parity + Linked styles | §0A.8 Content/Style/Advanced tabs; Desktop/Tablet/Mobile × Normal/Hover; **Linked styles** (element-only vs `All .hm-* on this page (N)`) as a managed page-scoped class-rule stylesheet; animation on scroll (reduced-motion aware); inline text toolbar; General Tag/ID/Title/Aria/Classes; responsive visibility | 6–9 |
-| Wave 5 — SEO layer | §0A.7 panel — title/meta counters (60/160), focus keyphrase, live Google preview, local Yoast-style **Analyse** (keyphrase, H1=1, title/meta length, word count, readability), SEO + Readability score badges, publish gate; sitemap + JSON-LD wiring | 3–5 |
+| Wave 5 — SEO layer | §0A.7 panel — title/meta counters (60/160), focus keyphrase, live Google preview, local Yoast-style **Analyse** (keyphrase, H1=1, title/meta length, word count, readability), SEO + Readability score badges, publish gate; JSON-LD wiring; sitemap **deferred to W7/Bagisto** (see §0A.7 as-built note) | **[done — branch, owner merge-gated]** |
 | Wave 6 — AI + MCP build path | local MCP server (full-generation depth, owner §11-Q4): `create_page` / `upsert_section` / template fan-out for local-SEO catalogue; draft-first + validator; audit log; no publish tool | 5–8 |
 | Wave 7 — Bagisto mapping | JSON page document persisted as Bagisto CMS custom attribute (or native blocks) behind `getAdminApi()`; migration of demo-DB pages; dual-run period | 4–5 |
 | Buffer / owner UAT / parity polish | linked-styles Phase B slippage, screenshot sign-offs, migration of static pages | 8–12 |
@@ -501,7 +501,7 @@ one master per chrome part, instances on every builder page; editing any instanc
 everywhere); per-page detach requires a confirm dialog naming the page and the propagation consequence; announcement
 additionally supports per-page show/hide. Masters live in the demo-DB `pages` slice as `kind: "chrome"` docs.
 
-### Wave 5 — SEO layer `[open]` (3–5 d)
+### Wave 5 — SEO layer `[done — branch, owner merge-gated]` (2026-11-07)
 §0A.7 SEO workspace per page: **Page title** (≤60) + **Meta description** (≤160) live counters; **Focus keyphrase**;
 breadcrumb URL preview + **live Google result preview** (title/URL/description render as SERP); **Analyse** button
 runs a fully local Yoast-style ruleset (keyphrase present elsewhere?; keyphrase in title/meta/first paragraph/H2?;
@@ -514,6 +514,24 @@ or Bagisto `pages`), canonical + og:title/description/image/article:published_ti
 FAQPage/Article per blocks used). robots.txt unchanged; `/lab/*` stays disallowed.
 **Gate:** analysis flags missing keyphrase (red) and blesses a golden page (all green + scores ≥ 80);
 sitemap includes a freshly published page after rebuild; Rich Results test passes for a FAQ-built page.
+
+**As built (2026-11-07, `arena/87cc179f-woodex-reimagined`):** ships as a **fully local** Yoast-style analyser (`src/lib/seo/analyse.ts`,
+pure functions, zero dependencies — no keys, no network) wired into the Pages editor top bar (SEO button + live score chip) and a right-side
+sheet (`src/admin/pages/SeoPanel.tsx`): live ≤60/≤160 counters with severity colours, focus keyphrase, breadcrumb URL + Google SERP preview,
+red/amber/green checks, SEO + Readability badges (Flesch reported honestly — see below), `noindex` switch and the **strict publish gate (default ON)**
+which blocks publishing on missing/too-short title, missing meta description, ≠1 H1 or empty keyphrase; when the gate is switched off, publishing
+proceeds behind a confirm dialog. All blockers link to the offending panel. `/lab/:slug` now emits canonical + og:title/description/image/type +
+`article:published_time` (published pages) + Twitter card + JSON-LD (BreadcrumbList always, FAQPage from `FaqAccordion` blocks) — smoke-verified
+(42/42, +3 new asserts) and axe-clean. `AdminPageSeo` gains optional `noindex` + `strictGate` (backwards compatible). Seed goldens: the real-mirror
+Home analyses at **SEO 89 (good)** — every check green except Readability (Flesch 28). Readability is reported **honestly and not softened**: the
+plan's Flesch ≥ 60 threshold kept; trade vocabulary scores harshly on the standard formula — re-tuning the metric to bless commerce copy was rejected.
+Gate evidence: emptying the stored keyphrase flips the panel red, blocks Publish with a toast naming the violation, keeps the page a draft and the
+demo DB unpublished (14/14 live verification). **Deltas from spec (disclosed, not hidden):** (a) sitemap-at-build-time **not implemented** — the
+client-side demo DB has no build-time view of published pages; real aggregation lands with the Bagisto seam (Wave 7) — `robots.txt` unchanged, `/lab/*`
+stays disallowed; (b) "**Open in SEO manager ↗**" button **removed** — no MCP HTTP service ships in the browser build (agents use MCP `seo_audit_page`
+instead; §0A.7 permits removal in builds without the service); (c) "keyphrase in H2" approximated by the body-occurrence check (headings are strings
+inside blocks; sections render h2 without a canonical h2-only string source); (d) publish **unpublish** is never gated (gate applies to going live);
+(e) Rich Results / sitemap rebuild checks move to W7 with the public route. E2E 42/42 + admin render path e2e-clean; CI remains the canonical gate.
 
 ### Wave 6 — AI + MCP build path `[planned]` (5–7 d)
 Local **MCP server** (`woodex-builder-mcp`, stdio + optional HTTP) bound to the same pages store — zero cost
@@ -733,6 +751,19 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   Persisted browsers carrying the untouched starter doc are auto-upgraded by a one-time migration in `src/api/demo/db.ts`
   (`woodex.pages.home-v2`, only when the stored Home still matches the pristine starter; user edits are preserved). e2e smoke
   expectation updated to the new hero copy. WorkspacePlanning carousel deliberately not mirrored in the quick fix.
+- **2026-11-07 (Wave 5 — SEO layer, PB-5)** — Owner selected "Wave 5 — Pages SEO layer" from the wave menu. Implemented on
+  `arena/87cc179f-woodex-reimagined`: `src/lib/seo/analyse.ts` (pure-function Yoast-style analyser + Puck document text extractor;
+  Flesch reading ease; 9 equal-weight checks; hard publish-gate violations separated from advisory checks) and
+  `src/admin/pages/SeoPanel.tsx` (right sheet: URL + SERP previews, live 60/160 counters, focus keyphrase, SEO/Readability badges,
+  red/amber/green analysis list with an Analyse button, noindex switch, strict-gate switch). Pages editor: SEO toggle button with live score
+  chip in the top bar; gate enforced in `doPublish` before any write (owner restored-into-publish also gated); panel state persists to
+  `AdminPageSeo` (`noindex?`/`strictGate?` — optional, backwards compatible) on Save draft. `/lab/:slug`: canonical + OG/Twitter + published-time
+  + JSON-LD BreadcrumbList + FAQPage (from FaqAccordion) with scoped cleanup on unmount. Seed Home re-keyed to `office furniture` and its SEO
+  title/meta rewritten to the plan's own limits (57/157 chars) — analysis now reads SEO 89 / 8 of 9 checks green (readability honestly bad, Flesch 28).
+  Golden-path live verification 14/14 (panel renders, seed passes the default gate, emptying the keyphrase blocks Publish with a visible reason and
+  keeps the draft unpublished). "Open in SEO manager ↗" removed (no MCP service in browser builds); build-time sitemap deferred to Wave 7 with the
+  Bagisto seam (client-side demo DB is invisible at build time — documented, not hidden). e2e 42/42 (+3 JSON-LD/canonical asserts) · axe 7 routes 0
+  violations · tsc 0 · build ✓. Owner merge-gated.
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
 - **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:

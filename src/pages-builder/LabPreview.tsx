@@ -35,6 +35,87 @@ const LabPreview = () => {
     };
   }, [page]);
 
+  // Canonical + Open Graph/Twitter card + JSON-LD (Wave 5 · PB-5).
+  // BreadcrumbList always; FAQPage when the document contains a FaqAccordion block.
+  // Builder pages are noindex until they ship on a public route (Bagisto wave) —
+  // these tags are harmless on preview and correct the moment a public URL exists.
+  useEffect(() => {
+    if (!page) return;
+    const created: HTMLElement[] = [];
+    const origin = window.location.origin;
+    const canonical = `${origin}/lab/${page.slug}`;
+    const seoTitle = page.seo?.title?.trim() || page.title;
+    const seoDesc = page.seo?.description?.trim() || "";
+    const ogImage = `${origin}/og-cover.jpg`;
+    const add = (el: HTMLElement) => { document.head.appendChild(el); created.push(el); };
+    const addMeta = (attr: "name" | "property", key: string, content: string) => {
+      if (!content) return;
+      const meta = document.createElement("meta");
+      meta.setAttribute(attr, key);
+      meta.setAttribute("content", content);
+      add(meta);
+    };
+
+    const canonicalLink = document.createElement("link");
+    canonicalLink.rel = "canonical";
+    canonicalLink.href = canonical;
+    add(canonicalLink);
+
+    addMeta("property", "og:site_name", "WOODEX");
+    addMeta("property", "og:type", "website");
+    addMeta("property", "og:url", canonical);
+    addMeta("property", "og:title", seoTitle);
+    addMeta("property", "og:description", seoDesc);
+    addMeta("property", "og:image", ogImage);
+    addMeta("property", "og:image:alt", "WOODEX — office furniture manufacturer, Lahore");
+    if (page.status === "published" && page.publishedAt) addMeta("property", "article:published_time", page.publishedAt);
+    addMeta("name", "twitter:card", "summary_large_image");
+    addMeta("name", "twitter:title", seoTitle);
+    addMeta("name", "twitter:description", seoDesc);
+    addMeta("name", "twitter:image", ogImage);
+
+    const plain = (v: unknown) => String(v ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    const addJsonLd = (obj: Record<string, unknown>) => {
+      const script = document.createElement("script");
+      script.type = "application/ld+json";
+      script.textContent = JSON.stringify(obj);
+      add(script);
+    };
+
+    addJsonLd({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: `${origin}/` },
+        { "@type": "ListItem", position: 2, name: page.title, item: canonical },
+      ],
+    });
+
+    const faqItems: Array<{ q: string; a: string }> = [];
+    for (const block of page.doc?.content ?? []) {
+      if (block?.type !== "FaqAccordion") continue;
+      const items = (block.props as { items?: Array<{ q?: string; a?: string }> } | undefined)?.items ?? [];
+      for (const item of items) {
+        const q = plain(item?.q);
+        const a = plain(item?.a);
+        if (q && a) faqItems.push({ q, a });
+      }
+    }
+    if (faqItems.length > 0) {
+      addJsonLd({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqItems.slice(0, 10).map((item) => ({
+          "@type": "Question",
+          name: item.q,
+          acceptedAnswer: { "@type": "Answer", text: item.a },
+        })),
+      });
+    }
+
+    return () => { for (const el of created) el.remove(); };
+  }, [page]);
+
   const published = page?.status === "published";
 
   return (

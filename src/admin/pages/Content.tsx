@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Palette, Briefcase, Newspaper, Wrench, ArrowRight, ExternalLink, Info, FileText, ShieldCheck } from "lucide-react";
+import { Palette, Briefcase, Newspaper, Wrench, ArrowRight, ExternalLink, Info, FileText, ShieldCheck, PenTool, Monitor } from "lucide-react";
 import { useMaterials } from "@/lib/useMaterials";
 import { useProjects } from "@/lib/useProjects";
 import { useBlogPosts } from "@/lib/useBlogPosts";
@@ -61,6 +61,24 @@ export default function AdminContent() {
       count: "1 policy page",
       editor: "/admin/warranty",
       live: "/warranty",
+    },
+    {
+      icon: PenTool,
+      title: "Custom Design",
+      tint: "bg-indigo-100 text-indigo-800",
+      desc: "The /custom-design page — hero, WDS studio block, service cards, furniture split, testimonials and closing CTA.",
+      count: "1 consult page",
+      editor: "/admin/custom-design",
+      live: "/custom-design",
+    },
+    {
+      icon: Monitor,
+      title: "Virtual Showroom",
+      tint: "bg-sky-100 text-sky-800",
+      desc: "The /virtual-showroom page — hero, room configurator intro, features grid and closing CTA.",
+      count: "1 WDS page",
+      editor: "/admin/virtual-showroom",
+      live: "/virtual-showroom",
     },
   ];
 

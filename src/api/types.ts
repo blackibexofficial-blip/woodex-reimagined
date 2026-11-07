@@ -739,6 +739,47 @@ export interface AdminWarrantyPage {
   faqs: AdminWarrantyFaq[];
 }
 
+/* ── Custom Design + Virtual Showroom pages (admin-managed since B4) ───────── */
+export interface AdminCustomDesignSpaceItem {
+  /** Stable row id for the editor. Number shown on the card is derived from position. */
+  id: string;
+  label: string;
+  blurb: string;
+  /** Services slug the card links to (/services/:slug). */
+  slug: string;
+}
+export interface AdminCustomDesignTestimonial {
+  id: string;
+  text: string;
+  name: string;
+  role: string;
+}
+export interface AdminCustomDesignPage {
+  hero: { eyebrow: string; title: string; subtitle: string };
+  wds: { heading: string; paragraph: string; subheading: string; varietyOne: string; varietyTwo: string };
+  spaces: { heading: string; subheading: string; items: AdminCustomDesignSpaceItem[] };
+  furniture: { heading: string; paragraph: string; bullets: string[] };
+  designFirst: { heading: string; bodyOne: string; bodyTwo: string };
+  testimonialsIntro: { heading: string; subheading: string };
+  testimonials: AdminCustomDesignTestimonial[];
+  finalCta: { heading: string; paragraph: string };
+}
+
+export type AdminVirtualShowroomFeatureIcon = "monitor" | "rotate" | "palette" | "maximize" | "users" | "box";
+export interface AdminVirtualShowroomFeature {
+  id: string;
+  icon: AdminVirtualShowroomFeatureIcon;
+  title: string;
+  description: string;
+}
+export interface AdminVirtualShowroomPage {
+  hero: { eyebrow: string; title: string; subtitle: string };
+  configurator: { heading: string; intro: string };
+  featuresIntro: { heading: string; subheading: string };
+  features: AdminVirtualShowroomFeature[];
+  finalCta: { heading: string; paragraph: string };
+}
+
 /* ── Materials & finishes (admin-managed since P1.2) ─────────────────────── */
 export type AdminMaterialCategory = "wood" | "laminate" | "metal" | "fabric";
 export type AdminMaterialBrightness = "light" | "medium" | "dark" | "all";
@@ -1209,6 +1250,10 @@ export interface AdminPageSeo {
   title?: string;
   description?: string;
   focusKeyphrase?: string;
+  /** Pages-builder SEO panel: serve this page with robots noindex (publish gate warns when on). */
+  noindex?: boolean;
+  /** Pages-builder SEO panel: block publishing until SEO checks pass (default true). */
+  strictGate?: boolean;
 }
 export interface AdminPageHistoryEntry {
   version: number;
@@ -1420,6 +1465,12 @@ export interface AdminApi {
   getWarrantyPage(): Promise<AdminWarrantyPage>;
   updateWarrantyPage(content: AdminWarrantyPage): Promise<AdminWarrantyPage>;
   resetWarrantyPage(): Promise<AdminWarrantyPage>;
+  getCustomDesignPage(): Promise<AdminCustomDesignPage>;
+  updateCustomDesignPage(content: AdminCustomDesignPage): Promise<AdminCustomDesignPage>;
+  resetCustomDesignPage(): Promise<AdminCustomDesignPage>;
+  getVirtualShowroomPage(): Promise<AdminVirtualShowroomPage>;
+  updateVirtualShowroomPage(content: AdminVirtualShowroomPage): Promise<AdminVirtualShowroomPage>;
+  resetVirtualShowroomPage(): Promise<AdminVirtualShowroomPage>;
   /** Pages builder (Wave 1) — demo-DB pages slice; documents are Puck-shaped JSON. */
   listPages(kind?: "page" | "chrome"): Promise<AdminPage[]>;
   getPage(idOrSlug: string): Promise<AdminPage | undefined>;

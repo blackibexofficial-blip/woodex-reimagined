@@ -190,6 +190,16 @@ async function adminSuite(browser) {
   await page.goto(`${BASE}/lab/home`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Design For Your Workspace", 15000);
   ok("/lab/home renders the built page", true);
+  const labMeta = await page.evaluate(() => ({
+    canonical: document.querySelector('link[rel="canonical"]')?.href ?? null,
+    ogTitle: document.querySelector('meta[property="og:title"]')?.getAttribute("content") ?? null,
+    ogDescription: document.querySelector('meta[property="og:description"]')?.getAttribute("content") ?? null,
+    ogImage: document.querySelector('meta[property="og:image"]')?.getAttribute("content") ?? null,
+    ld: [...document.querySelectorAll('script[type="application/ld+json"]')].map((el) => { try { return JSON.parse(el.textContent || "{}"); } catch { return {}; } }),
+  }));
+  ok("/lab/home carries canonical + og:title/description/image", Boolean(labMeta.canonical && labMeta.ogTitle && labMeta.ogDescription && labMeta.ogImage));
+  ok("/lab/home carries BreadcrumbList JSON-LD", labMeta.ld.some((d) => d["@type"] === "BreadcrumbList"));
+  ok("/lab/home carries FAQPage JSON-LD from the FaqAccordion block", labMeta.ld.some((d) => d["@type"] === "FAQPage" && Array.isArray(d.mainEntity) && d.mainEntity.length >= 1));
   ok("no console/page errors (admin flow)", logs.length === 0);
   await page.close();
 }

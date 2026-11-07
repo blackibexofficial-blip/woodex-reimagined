@@ -9,72 +9,12 @@ import shopImg from "@/assets/custom-design-shop.webp";
 import floorplanImg from "@/assets/custom-design-floorplan.webp";
 import tabletImg from "@/assets/custom-design-tablet.webp";
 import { site } from "@/config/site";
+import { useCustomDesignPage } from "@/lib/useCustomDesignPage";
 
-
-const spaceWorkItems = [
-  {
-    num: "01",
-    label: "3D Rendered Floor Plan",
-    blurb:
-      "Photoreal 3D renders of your office before a single board is cut — see the layout, light and finishes.",
-    slug: "space-planning-design",
-  },
-  {
-    num: "02",
-    label: "Custom Office Furniture",
-    blurb:
-      "Bespoke executive desks, workstations and reception counters built around your brand and floor plate.",
-    slug: "custom-design",
-  },
-  {
-    num: "03",
-    label: "2D Spatial Planning",
-    blurb:
-      "Scaled CAD layouts with BIFMA-compliant clearances, circulation paths and fire-egress checks.",
-    slug: "space-planning-design",
-  },
-  {
-    num: "04",
-    label: "Project Management",
-    blurb:
-      "A dedicated certified PM owns budget, timeline and stakeholder communication from day one.",
-    slug: "project-management",
-  },
-  {
-    num: "05",
-    label: "Interior Designing",
-    blurb:
-      "Materials, finishes, lighting and brand storytelling that turn empty floors into a finished workplace.",
-    slug: "custom-design",
-  },
-  {
-    num: "06",
-    label: "Turnkey Solutions",
-    blurb:
-      "Single contract from concept to handover — design, manufacture, deliver, install and warranty.",
-    slug: "b2b-office-solutions",
-  },
-];
-
-const testimonials = [
-  {
-    text: "WOODEX furnished our 8 new branches across Punjab. Their project management was exceptional — on time, on budget.",
-    name: "Bilal Ahmed",
-    role: "Allied Bank Limited",
-  },
-  {
-    text: "From patient waiting areas to executive offices, WOODEX delivered quality furniture that meets healthcare standards.",
-    name: "Dr. Ayesha Siddiqui",
-    role: "Shifa International Hospital",
-  },
-  {
-    text: "Our 200-seat tech office was designed and furnished in just 6 weeks. The ergonomic chairs are a game-changer.",
-    name: "Hassan Raza",
-    role: "TechVentures Islamabad",
-  },
-];
 
 const CustomDesign = () => {
+  const { content } = useCustomDesignPage();
+
   useEffect(() => {
     document.title =
       "Custom Design Services — Bespoke Office Furniture Design Pakistan | WOODEX";
@@ -131,17 +71,15 @@ const CustomDesign = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/85 to-transparent" />
           <div className="container mx-auto px-4 relative py-24 lg:py-32 max-w-6xl">
             <p className="text-accent text-[11px] font-bold uppercase tracking-[0.25em] mb-4">
-              Bespoke Furniture Design
+              {content.hero.eyebrow}
             </p>
             <h1 className="text-4xl lg:text-6xl font-black leading-[1.05] mb-5 max-w-2xl">
-              Custom Design
-              <br />
-              Services
+              {content.hero.title.split("\n").map((line, i) => (
+                <span key={i} className="block">{line}</span>
+              ))}
             </h1>
             <p className="text-primary-foreground/80 max-w-lg leading-relaxed mb-7">
-              Bring your vision to life with our bespoke furniture design service. From initial
-              concept to final creation, we craft unique pieces tailored precisely to your
-              specifications, brand identity and workflow.
+              {content.hero.subtitle}
             </p>
             <div className="flex flex-wrap gap-3">
               <Button className="bg-accent hover:bg-hon-green-dark text-accent-foreground px-7" asChild>
@@ -166,26 +104,20 @@ const CustomDesign = () => {
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center max-w-6xl mx-auto">
               <div>
                 <h2 className="text-3xl lg:text-5xl font-black mb-6 leading-[1.05]">
-                  Visualize, Design
-                  <br />
-                  and Shop with WDS
+                  {content.wds.heading.split("\n").map((line, i) => (
+                    <span key={i} className="block">{line}</span>
+                  ))}
                 </h2>
                 <p className="text-muted-foreground leading-relaxed mb-5">
-                  WDS is WOODEX's interactive design studio — built to help Pakistani businesses,
-                  interior designers and corporate buyers choose the best material, colour and
-                  layout combinations before they commit. Walk through ready-made office scenarios,
-                  swap finishes in real time, and see exactly how your floor will look once it is
-                  built.
+                  {content.wds.paragraph}
                 </p>
 
-                <h3 className="font-bold text-lg mt-8 mb-2">Unlimited variety in design</h3>
+                <h3 className="font-bold text-lg mt-8 mb-2">{content.wds.subheading}</h3>
                 <p className="text-muted-foreground leading-relaxed mb-4">
-                  Choose from hundreds of options for every furniture element — desks, chairs,
-                  storage, partitions and accessories — long before you buy.
+                  {content.wds.varietyOne}
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  Mix décors and textures inside your own virtual environment and visualise the
-                  finished space in the most intuitive way possible.
+                  {content.wds.varietyTwo}
                 </p>
               </div>
 
@@ -212,22 +144,21 @@ const CustomDesign = () => {
         <section className="py-20 bg-background">
           <div className="container mx-auto px-4">
             <div className="text-center mb-14">
-              <h2 className="text-3xl lg:text-5xl font-black mb-3">Make Your Space Work</h2>
+              <h2 className="text-3xl lg:text-5xl font-black mb-3">{content.spaces.heading}</h2>
               <div className="w-16 h-1 bg-accent mx-auto mb-5" />
               <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                From smart interiors to full-scale fit-outs, our services cover everything you
-                need to build a standout commercial space across Pakistan.
+                {content.spaces.subheading}
               </p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto">
-              {spaceWorkItems.map((s) => (
+              {content.spaces.items.map((s, i) => (
                 <Link
-                  key={s.num}
+                  key={s.id}
                   to={`/services/${s.slug}`}
                   className="group p-7 border border-border rounded-sm hover:border-accent hover:shadow-md transition-all bg-background"
                 >
-                  <span className="text-3xl font-black text-accent/80">{s.num}</span>
+                  <span className="text-3xl font-black text-accent/80">{String(i + 1).padStart(2, "0")}</span>
                   <h3 className="font-bold text-lg mt-3 mb-2 group-hover:text-accent transition-colors">
                     {s.label}
                   </h3>
@@ -248,18 +179,15 @@ const CustomDesign = () => {
               <div>
                 <div className="w-12 h-1 bg-accent mb-5" />
                 <h2 className="text-3xl lg:text-4xl font-bold mb-5 leading-tight">
-                  Custom Office Furniture
+                  {content.furniture.heading}
                 </h2>
                 <p className="text-muted-foreground leading-relaxed mb-5">
-                  Every workspace is unique. WOODEX's in-house design studio translates your brand,
-                  dimensions and workflow into precision-engineered office furniture — from a
-                  single sculptural executive desk to a 500-seat floor of brand-aligned
-                  workstations, built right here in Lahore.
+                  {content.furniture.paragraph}
                 </p>
                 <ul className="space-y-2 text-sm text-muted-foreground mb-7">
-                  <li className="flex gap-3"><span className="text-accent font-bold">→</span> Pantone & RAL brand colour matching on every finish.</li>
-                  <li className="flex gap-3"><span className="text-accent font-bold">→</span> CNC-precision manufacturing in our Lahore facility.</li>
-                  <li className="flex gap-3"><span className="text-accent font-bold">→</span> 5-year structural warranty on all custom pieces.</li>
+                  {content.furniture.bullets.map((bullet, i) => (
+                    <li key={i} className="flex gap-3"><span className="text-accent font-bold">→</span> {bullet}</li>
+                  ))}
                 </ul>
                 <Button className="bg-accent hover:bg-hon-green-dark text-accent-foreground" asChild>
                   <Link to="/contact">Book Meeting <ArrowRight className="ml-2 h-4 w-4" /></Link>
@@ -286,17 +214,13 @@ const CustomDesign = () => {
               <div>
                 <div className="w-12 h-1 bg-accent mb-5" />
                 <h2 className="text-3xl lg:text-4xl font-bold mb-5 leading-tight">
-                  Design first, build once
+                  {content.designFirst.heading}
                 </h2>
                 <p className="text-muted-foreground leading-relaxed mb-4">
-                  Our space planners study your team density, collaboration patterns and growth
-                  plans, then deliver scaled CAD layouts and photoreal 3D renders so you can see
-                  — and adjust — your office before it is built.
+                  {content.designFirst.bodyOne}
                 </p>
                 <p className="text-muted-foreground leading-relaxed mb-7">
-                  Most office fit-outs in Pakistan fail not in installation but in planning. WOODEX
-                  uses real data — headcount projections, BIFMA clearances, fire-egress rules — to
-                  produce layouts that flex with your business for the next five years.
+                  {content.designFirst.bodyTwo}
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Button className="bg-accent hover:bg-hon-green-dark text-accent-foreground" asChild>
@@ -327,16 +251,16 @@ const CustomDesign = () => {
         <section className="py-20 bg-section-light border-t">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-2">What Our Clients Say</h2>
+              <h2 className="text-3xl font-bold mb-2">{content.testimonialsIntro.heading}</h2>
               <div className="w-12 h-1 bg-accent mx-auto mb-4" />
               <p className="text-muted-foreground text-sm">
-                Trusted by leading organisations across Pakistan
+                {content.testimonialsIntro.subheading}
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              {testimonials.map((t) => (
+              {content.testimonials.map((t) => (
                 <div
-                  key={t.name}
+                  key={t.id}
                   className="p-6 bg-background border border-border rounded-sm hover:border-accent transition-colors"
                 >
                   <div className="flex gap-0.5 mb-4">
@@ -357,10 +281,9 @@ const CustomDesign = () => {
         <section className="py-16 bg-background">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto bg-section-light border border-border rounded-sm p-10 lg:p-14 text-center">
-              <h2 className="text-3xl lg:text-4xl font-bold mb-3">Ready to Design Your Office?</h2>
+              <h2 className="text-3xl lg:text-4xl font-bold mb-3">{content.finalCta.heading}</h2>
               <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Start with our virtual showroom and get a tailored quote based on your custom
-                design brief.
+                {content.finalCta.paragraph}
               </p>
               <Button className="bg-accent hover:bg-hon-green-dark text-accent-foreground px-8" asChild>
                 <Link to="/quotation">Get Custom Quote</Link>

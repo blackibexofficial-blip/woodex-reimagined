@@ -169,7 +169,8 @@ slices instead of duplicating them.
 - **P3.5 (2026-11-06):** **Option C — defer Urdu / hreflang for launch** (English-only, groundwork stays:
   `en_PK` locale, sitemap + JSON-LD language metadata already correct; no fake hreflang). Revisit when Urdu
   demand is real; options A/B documented in `docs/08-master-plan/urdu-hreflang-spike.md`.
-- **Phase 4 order (owner-picked):** A1 (done) → **B1** (done) — further Phase 4 sequence undecided.
+- **Phase 4 order (owner-picked):** A1 (done) → B1 (done) → B2 (done) → B3 (done) → **B4** (owner-picked 2026-11-07,
+  Custom Design + Virtual Showroom, singleton admin editors stacked on the Wave 5 branch / PR #6) — further Phase 4 sequence undecided.
 - **PR #3 (2026-11-06):** keep open; continue stacking work on the branch. Do NOT merge without explicit owner request.
 
 ## Phase 4 — Owner audit upgrades (legacy lbpanel + Spree parity) — proposed, pending owner priority
@@ -248,7 +249,20 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
   `bun run typecheck` exit 0. Storefront now reads live content — EXCEPT the contact card row (phone/hours/warranty
   email), which still interpolates site config by design.
 - [x] **B3** Services / Blog / Materials & Colors / Projects — admin editors DONE (P1.2–P1.5).
-- [ ] **B4** Custom Design consultation blocks; Virtual Showroom (WDS) content — static; admin only if owner wants.
+- [x] **B4** Custom Design consultation blocks; Virtual Showroom (WDS) content — DONE (2026-11-07, owner-picked
+  2026-11-07; stacked on the Wave 5 branch, merge-gated with it): both pages moved from hardcoded storefront copy to
+  demo content-store singletons (`AdminCustomDesignPage` / `AdminVirtualShowroomPage`), the B2 Warranty pattern — admin
+  editors at `/admin/custom-design` + `/admin/virtual-showroom` (hero, WDS block, space-work cards with reorder + services
+  slug, furniture bullets, testimonial cards, closing CTA / VS: hero, configurator intro, features grid with whitelisted
+  icons, closing CTA). Storefront `/custom-design` + `/virtual-showroom` render the singleton live via
+  `useCustomDesignPage()` / `useVirtualShowroomPage()` (seed fallback = identical render); icon keys whitelisted, slugs
+  slugified, hard-error validation server-rejects empty hero/cards/features; "Restore defaults" resets to the seed; stale
+  slices heal by re-seed on load. Content hub gained both cards; Engage nav registered both routes. Bagisto side: honest
+  501 stubs. Seed ships byte-identical to the previous hardcoded copy (images and layout remain code-side by design).
+  Live check 9/9 headless (hub cards · load · eyebrow edit round-trip on /custom-design · restore defaults · VS subtitle
+  round-trip · seeded fallback render · 0 first-party console errors) · e2e 42/42 · b4 acceptance 9/9 · tsc 0 · clean rebuild.
+  Deliberately NOT done: WDS is an interactive 3D tool (RoomConfigurator) — its internals are not editable content, only
+  the copy around it; storefront copy for SEO metas (title/description/JSON-LD) stays code-owned, same as B2.
 
 ### C. Orders & purchasing (Spree parity) — Phase 2 remainders
 - [x] **P2.4** Draft Orders — `/admin/drafts`; convert → pending order (source `manual`). DONE (see Phase 2 log).

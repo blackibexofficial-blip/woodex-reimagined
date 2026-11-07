@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, History, Loader2, Save, Undo2, FileWarning } from "lucide-react";
+import { ArrowLeft, ExternalLink, History, Loader2, Save, Undo2, FileWarning, SearchCheck } from "lucide-react";
 import { Puck, blocksPlugin, outlinePlugin, fieldsPlugin } from "@puckeditor/core";
 import "@/pages-builder/puck-editor.css";
 import type { Data } from "@puckeditor/core";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { AdminPage, AdminPageDoc } from "@/api/types";
+import type { AdminPage, AdminPageDoc, AdminPageSeo } from "@/api/types";
+import { analyseSeo, extractBodyText } from "@/lib/seo/analyse";
+import SeoPanel from "./SeoPanel";
 import { formatDateTime } from "@/admin/components";
 import { isOwnerSession } from "@/lib/owner";
 import { woodexConfig } from "@/pages-builder/blocks";
@@ -42,6 +44,8 @@ export default function AdminPageEditor() {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [seo, setSeo] = useState<AdminPageSeo>({});
+  const [showSeo, setShowSeo] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,6 +56,7 @@ export default function AdminPageEditor() {
       setPage(found);
       setTitle(found.title);
       setDoc(found.doc);
+      setSeo(found.seo ?? {});
       setDirty(false);
     } catch {
       toast.error("Could not load this page (demo API unavailable).");
@@ -65,7 +70,7 @@ export default function AdminPageEditor() {
   const saveDraft = useCallback(async (): Promise<AdminPage | undefined> => {
     if (!page || !doc) return undefined;
     setSaving(true);
-    const updated = await api.updatePage(page.id, { title, doc });
+    const updated = await api.updatePage(page.id, { title, doc, seo });
     setSaving(false);
     if (updated) {
       setPage(updated);
@@ -75,13 +80,41 @@ export default function AdminPageEditor() {
     }
     toast.error("Could not save the draft.");
     return undefined;
-  }, [api, page, doc, title]);
+  }, [api, page, doc, title, seo]);
+
+  const seoReport = useMemo(() => {
+    if (!doc) return null;
+    const { bodyText, firstParagraph, h1Count } = extractBodyText(doc);
+    return analyseSeo({
+      title: seo.title ?? "",
+      metaDescription: seo.description ?? "",
+      focusKeyphrase: seo.focusKeyphrase ?? "",
+      bodyText,
+      firstParagraph,
+      h1Count,
+    });
+  }, [doc, seo]);
 
   const doPublish = useCallback(async (publish: boolean) => {
     if (!page) return;
     if (!owner) {
       toast.error("Only the owner can publish (demo gate = owner today; Bagisto RBAC in Wave 7).");
       return;
+    }
+    if (publish) {
+      const noindexOn = seo.noindex === true;
+      const violations = [...(seoReport?.blocked ?? []), ...(noindexOn ? ["noindex is ON — flip it off in the SEO panel before going live."] : [])];
+      if (violations.length > 0) {
+        const list = violations.slice(0, 2).join(" ");
+        const more = violations.length > 2 ? ` (+${violations.length - 2} more)` : "";
+        if (seo.strictGate === false) {
+          if (!window.confirm(`SEO is not ready: ${list}${more}\n\nPublish anyway?`)) return;
+        } else {
+          toast.error(`SEO gate blocks publish: ${list}${more} Open the SEO panel to fix.`);
+          setShowSeo(true);
+          return;
+        }
+      }
     }
     // Save pending edits first so Publish never ships a stale document.
     if (dirty && !(await saveDraft())) return;
@@ -93,7 +126,7 @@ export default function AdminPageEditor() {
     setDirty(false);
     toast.success(publish ? `Published "${updated.title}" (v${updated.version}).` : `"${updated.title}" unpublished — draft again.`);
     if (publish && pageSlug !== updated.slug) navigate(`/admin/pages/${updated.slug}`, { replace: true });
-  }, [api, page, dirty, owner, pageSlug, navigate, saveDraft]);
+  }, [api, page, dirty, owner, pageSlug, navigate, saveDraft, seo, seoReport]);
 
   const insertBlock = useCallback((type: string, index?: number) => {
     setDoc((prev) => {
@@ -119,6 +152,7 @@ export default function AdminPageEditor() {
       setPage(updated);
       setTitle(updated.title);
       setDoc(updated.doc);
+      setSeo(updated.seo ?? {});
       setDirty(false);
       toast.success(`Restored v${version} as the current draft — publish to ship it.`);
     } else {
@@ -164,6 +198,31 @@ export default function AdminPageEditor() {
           <a href={`/lab/${page.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted">
             <ExternalLink className="h-3.5 w-3.5" /> Preview
           </a>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSeo((v) => !v)}
+            aria-pressed={showSeo}
+            title="SEO title, description, keyphrase, analysis and publish gate"
+            className="gap-1.5"
+          >
+            <SearchCheck className="h-4 w-4" /> SEO
+            {seoReport && (
+              <span
+                aria-hidden
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none",
+                  seoReport.seoRating === "good"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : seoReport.seoRating === "ok"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-red-100 text-red-800",
+                )}
+              >
+                {seoReport.seoScore}
+              </span>
+            )}
+          </Button>
           <Button variant="outline" size="sm" onClick={saveDraft} disabled={saving || !dirty}>
             {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />} Save draft
           </Button>
@@ -182,6 +241,19 @@ export default function AdminPageEditor() {
           </Button>
         </div>
       </div>
+
+      {seoReport && (
+        <SeoPanel
+          open={showSeo}
+          onOpenChange={setShowSeo}
+          slug={page.slug}
+          host={typeof window !== "undefined" ? window.location.host : "woodex.pk"}
+          seo={seo}
+          onSeoChange={(patch) => { setSeo((prev) => ({ ...prev, ...patch })); setDirty(true); }}
+          report={seoReport}
+          pageTitle={title}
+        />
+      )}
 
       {/* History rail */}
       {showHistory && (
