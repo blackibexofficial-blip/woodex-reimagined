@@ -67,6 +67,16 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 8. `DECISION` **WAF / Upstash** — brief recommends Turnstile (done) + monitoring now; WAF proxy **held in reserve**; Upstash deferred behind explicit **fail-open vs fail-closed** call. Also name the **monitoring alert recipient** (unused so far).
 9. `DECISION` **Stocktake** — when and who counts the physical inventory before go-live (feeds `seed.sql` stock or a post-seed `UPDATE`).
 
+### 2026-11-07 sweep — post-#13/#14 (owner instruction: “as you recommend”)
+
+- **Branch/tag audit (read-only), now recorded:** `docs/08-master-plan/BRANCH-INVENTORY-2026-11-07.md`. Shallow-clone artifact — trees compare, logs don't. `main` = merged union of #13/#14 verified: only 2 files differ from pre-merge tip (the merge union #13's brief + runbook). All 13 remote refs + `v1.0.0` tag classified landed/parked/archived.
+- **Zero lines lost in the merges** — every merged PR (#2–#14) adds 0 source files vs main (measured). Catalogue already ported: 148/148 slugs present in `src/data/products.ts`.
+- **PRs closed unmerged (owner decision, refs retained):** #1 (raw IBPanel handoff archive) and #11 (lint-red `@lovable.dev/mcp-js` bundler re-commit; underlying money-path landed via #10). Repo temporarily has **no open PRs**; this sweep's docs ride PR #15 once opened.
+- **Port candidates skipped by owner:** 139 legacy product photos (17.3 MB, fork `arena/0378ff53-woodex-reimagined`), fork audit docs (`docs/07-woodex-os/`), PagesLab spike (2 files in merged `cb0d09e3`). Fork and refs retained.
+- **Kept deliberately:** `v1.0.0` tag + all 9 merged remote branches (deletion needs explicit owner word).
+- Rehearsal remains **66/66** (harness rebuilds 0001–0009; file counts in this doc). Real typecheck gate = `tsc --noEmit -p tsconfig.app.json`, green. CI green on both merge SHAs.
+- **Owner-held still:** hosted deploy (0001–0009) + seed + physical stocktake; Turnstile keys; zone-rate sheet; `convertDraftOrder` sign-off.
+
 ### PENDING — engineering slices (agent-ready once authorised)
 
 10. `DONE 2026-11-07` **Wave 2 — draft orders** — migration 0008 + adapter CRUD (list/get/create/update/delete); finance read-only; viewer nothing; identity 1001. Conversion stays a separate item (13).
