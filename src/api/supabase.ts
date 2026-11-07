@@ -24,12 +24,17 @@
  *     warranty/custom-design/virtual-showroom singletons, media library,
  *     inventory (read via inventory_meta, adjust via inventory_apply, movement
  *     ledger), leads (capture via lead-capture EF — never direct anon writes),
- *     order confirm — NO (see below).
+ *     order confirm — NO (see below);
+ *   createOrder → order-submit EF → order_submit RPC (server re-pricing of the
+ *     converged catalogue, SELECT ... FOR UPDATE stock atomicity, client_ref
+ *     replay idempotency; client subtotal/total ignored by design). Hosted
+ *     deployment of migration 0003 + the order-submit EF is pending owner action.
  *
  * What is deliberately NOT wired — it throws SupabaseUnsupportedError naming
  * the cause instead of returning fabricated data:
- *   createOrder / convertQuote (requires order-submit EF: server-side price
- *   re-verification — never trusts client prices), exchanges/claims (no tables
+ *   convertQuote (quote→order conversion: same server re-price path as
+ *   order_submit; left unwired until owner cuts it — one adapter change),
+ *   exchanges/claims (no tables
  *   in convergence 0001), draft orders (no table), companies (admin B2B master
  *   is v3 Wave 2), page folders (no table), delivery zones (schema reshaped),
  *   assignMediaToProduct (needs a media RPC), createProduct/duplicateProduct/
@@ -487,8 +492,53 @@ async function getOrderEvents(orderId: string): Promise<AdminOrderEvent[]> {
     createdAt: r.created_at,
   }));
 }
-function createOrder(_input: NewOrderInput): Promise<AdminOrder> {
-  return Promise.reject(new SupabaseUnsupportedError("createOrder — not wired: the order-submit edge function (server-side price re-verification against the converged catalogue) is not deployed; the admin never writes orders directly, prices must never come from the client."));
+async function createOrder(input: NewOrderInput): Promise<AdminOrder> {
+  guard();
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/order-submit`;
+  const clientRef = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", apikey: String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "") },
+    body: JSON.stringify({
+      items: (input.items ?? []).map((l) => ({ productId: String(l.id), quantity: l.quantity })),
+      name: input.customerName,
+      email: input.customerEmail,
+      phone: input.customerPhone,
+      address: input.address,
+      city: input.city,
+      notes: input.notes,
+      paymentMethod: input.paymentMethod,
+      channelId: input.channelId,
+      clientRef,
+    }),
+  });
+  const body = (await resp.json().catch(() => ({}))) as { ok?: boolean; order?: Record<string, unknown>; error?: string; detail?: string };
+  if (!resp.ok) {
+    if (resp.status === 409) {
+      throw new Error(`Supabase: order rejected — ${body.detail ?? "insufficient stock for one of the lines"}`);
+    }
+    throw new Error(`Supabase: order-submit failed (${resp.status}) — ${body.error ?? "the function rejected the submission"}`);
+  }
+  const o = body.order!;
+  // client-sent subtotal/shipping/total are IGNORED — the RPC is the only price authority
+  return {
+    id: String(o.ref ?? o.id),
+    customerName: String(o.customerName ?? input.customerName),
+    customerEmail: String(o.customerEmail ?? input.customerEmail ?? ""),
+    customerPhone: String(o.customerPhone ?? input.customerPhone),
+    ...(o.address ? { address: String(o.address) } : input.address ? { address: input.address } : {}),
+    ...(input.channelId ? { channelId: input.channelId } : {}),
+    city: String(o.city ?? input.city),
+    items: ((o.items as AdminOrder["items"]) ?? input.items) as AdminOrder["items"],
+    subtotal: toNum(o.subtotal),
+    shipping: toNum(o.shipping),
+    total: toNum(o.total),
+    paymentMethod: String(o.paymentMethod ?? input.paymentMethod) as AdminOrder["paymentMethod"],
+    status: "pending",
+    placedAt: String(o.placedAt ?? new Date().toISOString()),
+    discountPct: 0,
+    discountAmount: 0,
+  } as unknown as AdminOrder;
 }
 
 /* ── returns (RMA) ─────────────────────────────────────────────────────── */

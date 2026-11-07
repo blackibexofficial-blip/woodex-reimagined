@@ -1689,6 +1689,10 @@ export type Database = {
         Args: { p_id: number; p_version: number }
         Returns: Database['public']['Tables']['pages']['Row']
       }
+      order_submit: {
+        Args: { p_lines: Json; p_customer: Json; p_channel_id?: string | null; p_client_ref?: string | null }
+        Returns: Json
+      }
       bootstrap_owner: {
         Args: { p_user: string; p_name?: string }
         Returns: undefined

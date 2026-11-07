@@ -7,3 +7,6 @@ verify_jwt = false
 
 [functions.lead-capture]
 verify_jwt = false
+
+[functions.order-submit]
+verify_jwt = false
