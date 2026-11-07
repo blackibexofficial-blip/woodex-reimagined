@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Home, History, Loader2, Save, Undo2, FileWarning, SearchCheck } from "lucide-react";
 import { Puck, blocksPlugin, outlinePlugin, fieldsPlugin } from "@puckeditor/core";
@@ -87,10 +87,23 @@ export default function AdminPageEditor() {
 
   // Puck owns canvas state between saves. Feeding it a fresh `data` identity on every
   // keystroke makes its fields panel remount (resetting our Style/Advanced tab state and
-  // swallowing in-flight edits), so Puck gets a frozen snapshot per puckKey — the same
+  // swallowing in-flight edits), so its `data` is a frozen snapshot per puckKey — the same
   // remount-after-external-change pattern insertBlock already relies on. Inline edits flow
   // back via onChange without ever re-feeding `data`.
-  const puckData = useMemo(() => (doc ? toPuckData(doc) : null), [puckKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  //
+  // The snapshot must never cache the loading render's null: hooks evaluate before the
+  // loading gate below returns, so would-be `useMemo(() => doc ?? null, [puckKey])` freezes
+  // null forever and mounts Puck with an empty document — a permanently blank canvas and an
+  // empty outline. Materialize the snapshot only once the doc is ready (first non-null doc,
+  // or an explicit puckKey remount after Library inserts / version restore) and never while
+  // loading, preserving the frozen-per-key contract.
+  const snapshotRef = useRef<Data | null>(null);
+  const snapshotKeyRef = useRef(puckKey);
+  if (doc && (snapshotRef.current === null || snapshotKeyRef.current !== puckKey)) {
+    snapshotRef.current = toPuckData(doc);
+    snapshotKeyRef.current = puckKey;
+  }
+  const puckData = snapshotRef.current;
 
   const seoReport = useMemo(() => {
     if (!doc) return null;

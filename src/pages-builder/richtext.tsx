@@ -100,6 +100,23 @@ export const sanitizeRichHtml = (value: string): string => {
 };
 
 /**
+ * Should a richtext prop render? Canvas passes an inline-editor React element (always render so the
+ * editor stays mounted — clearing its text must not unmount it); storefront passes an HTML/plain string
+ * (render only when it contains visible text, so an empty cleared field doesn't emit an empty tag).
+ */
+export const hasRichContent = (value: unknown): boolean => {
+  if (isValidElement(value)) return true;
+  // Strip tags to measure visible text — "", "<br>", "&nbsp;", "   " are all effectively empty.
+  // The sanitizer escapes "&" → "&amp;" first, so decode it back before looking for &nbsp;.
+  const text = sanitizeRichHtml(String(value ?? ""))
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/gi, "&")
+    .replace(/&nbsp;/gi, " ")
+    .trim();
+  return text.length > 0;
+};
+
+/**
  * Render rich-text into `Tag` (default span).
  *
  * - Puck canvas: contentEditable richtext props arrive as an inline-editor React element
