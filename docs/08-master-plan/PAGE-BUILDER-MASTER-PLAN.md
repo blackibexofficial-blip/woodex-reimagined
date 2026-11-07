@@ -228,7 +228,7 @@ hash-freeze and the upgrade procedure. `@puckeditor/core` peers: `react ^18 || ^
 | Wave 1 — Foundation: pages slice, tree & draft/publish | demo-DB `pages` slice; admin **Pages** workspace (folder tree, §0A.2 model); create/edit/duplicate/delete/status; history + revert; slug registry vs `App.tsx` routes | 3–4 |
 | Wave 2 — Sections & Elements libraries | the §0A.3 40-section UI-kit catalogue (thumbnails, "Label in Layers") + tabs Sections/UI kit/Templates/Images + category chips; Elements palette (BASIC+WIDGETS, §0A.4); Layers panel (select/reorder/hide/lock) | 5–7 |
 | Wave 3 — Theme: whole-website tokens | §0A.6 panel — colours/fonts/base size/heading scale (+ custom toggle), CSS custom properties, section skins Original/White/Cream/Navy, versioned demo-DB `theme` singleton + snapshot/restore | 3–4 |
-| Wave 4 — Inspector parity + Linked styles | §0A.8 Content/Style/Advanced tabs; Desktop/Tablet/Mobile × Normal/Hover; **Linked styles** (element-only vs `All .hm-* on this page (N)`) as a managed page-scoped class-rule stylesheet; animation on scroll (reduced-motion aware); inline text toolbar; General Tag/ID/Title/Aria/Classes; responsive visibility | 6–9 |
+| Wave 4 — Inspector parity + Linked styles | **As built (PR #7):** Style tab (Desktop/Tablet/Mobile × Normal/Hover — padding/radius/border/align via static classes), Advanced tab (General Tag/ID/Title/Aria/Classes + responsive visibility + animation on scroll, reduced-motion aware), page-scoped **Linked styles** with live `hm-*` usage counts (inline-merge engine, Phase-B-lite), `Live home ↗` button, **inline text toolbar deferred** | 6–9 |
 | Wave 5 — SEO layer | §0A.7 panel — title/meta counters (60/160), focus keyphrase, live Google preview, local Yoast-style **Analyse** (keyphrase, H1=1, title/meta length, word count, readability), SEO + Readability score badges, publish gate; JSON-LD wiring; sitemap **deferred to W7/Bagisto** (see §0A.7 as-built note) | **[done — branch, owner merge-gated]** |
 | Wave 6 — AI + MCP build path | local MCP server (full-generation depth, owner §11-Q4): `create_page` / `upsert_section` / template fan-out for local-SEO catalogue; draft-first + validator; audit log; no publish tool | 5–8 |
 | Wave 7 — Bagisto mapping | JSON page document persisted as Bagisto CMS custom attribute (or native blocks) behind `getAdminApi()`; migration of demo-DB pages; dual-run period | 4–5 |
@@ -477,7 +477,7 @@ instance (class + token swap, navy skin uses light ink at AA contrast).
 **Gate:** token edit → all lab pages restyle live; skins ×4 render; snapshot revert; no FOUC (tokens inlined
 before first paint via build-time defaults + `data-theme` attribute); e2e +2.
 
-### Wave 4 — Inspector parity + Linked styles `[open]` (6–9 d)
+### Wave 4 — Inspector parity + Linked styles `[as built — PR #7]` (6–9 d)
 The §0A.8 right inspector, three tabs:
 **Content** — Section skin; **Background** `None · Image · Video · YouTube` + **Parallax** toggle ("image stays
 fixed…"); Colour preset; Spacing preset; **Overlay**; **Top/Bottom separator**; Container `Boxed|Full`,
@@ -495,6 +495,21 @@ transform/style/decoration/colour slider) · Size · Margin · Padding · Border
 toolbar (B/I/U/S · link · colour · align · A/Aa · size) + "Heading 2" type chip + click-"+" insertion handle.
 **Gate:** class rule applies to all N matches and **does not leak cross-page** (unit test); Phase A ships usable
 even if Phase B slips; contrast AA on navy skin; keyboard focus visible; axe on lab pages; e2e +4.
+
+**As built (PR #7, 2026-11-07 — owner-merge-gated):** `_inspector` flat-prop composite custom field, post-injected on
+**every** block (40 sections + 17 elements + 3 legacy). Content stays in Puck's auto-fields; the inspector renders
+**Style | Advanced** tabs. Style: Desktop/Tablet/Mobile segmented device switch driving padding/radius/border/text-align
+(static `builder.css` classes — storefront and canvas share one source) and Normal/:hover toggle for background / text /
+heading colours (hex + picker, CSS custom-property cascade islands, zero stylesheet injection). Advanced: Tag (sections),
+ID, Title, Aria, free classes + `hm-*` opt-in, hide-per-device (`bx-hide-*`), animation on scroll (fade-up/fade-in/
+slide-left/zoom-in, `prefers-reduced-motion` honoured). **Linked styles (Phase-B-lite)** are declared at the page root
+(root custom field), carry background/text/heading/padding/radius declarations, show a live "N blocks carry this rule"
+count, and merge **inline at the wrapper** with order linked ⊂ element — zero leakage (rules travel in the document
+itself). `/lab/:slug` applies the merge through `BuilderDocContext`; the editor canvas paints element-level values only
+(Puck iframe boundary — honest, documented limitation). A standalone sandboxed stylesheet (`@woodex-page-rules`) and the
+inline canvas text toolbar remain open. Two editor-stability defects were fixed en route (Puck re-fed a fresh `data`
+identity per keystroke; `plugins` array recreated per render → panel remount/focus loss). Verification: tsc 0 · build ✓ ·
+e2e 42/42 · headless functional pass 14/14 (incl. LAB-computed merge assertions).
 
 **Chrome model (owner §11-Q2):** header/footer/announcement are **linked master sections** rendered in-canvas —
 one master per chrome part, instances on every builder page; editing any instance edits the master (propagates
@@ -576,7 +591,7 @@ Wayback/diff viewer.
 | R10 | bun.lock hand-merged entries diverge from a fresh bun resolve | Medium | Validated: trailing-comma-strip strict parse (780 pkgs); CI `install --frozen-lockfile` on every push (watch next run); if CI fails, regenerate lock on a bun-enabled machine and land as dedicated PR |
 | R11 | Legal pages authored hastily create compliance exposure | Medium | Template with standard PK e-comm clauses; owner/legal review before publish (Wave 3 gate) |
 | R12 | Two sources of truth during migration (static vs builder) | Medium | Migration registry; per-route data-present check; delete static only post-UAT; e2e asserts both paths identical for shared pages |
-| R13 | **Linked styles** ("All .hm-section on this page (9)") implemented as inline styles → broken specificity + cross-page leakage | **High** | Phase A element-only (per-node CSS vars) ships first; Phase B = managed page-scoped class-rule stylesheet (`@woodex-page-rules <slug>` layer); unit tests assert zero cross-page leakage; page-scope enforced by the engine, not by authors |
+| R13 | **Linked styles** ("All .hm-section on this page (9)") implemented as inline styles → broken specificity + cross-page leakage | **High** | PR #7 ships **Phase-B-lite**: rules live in the document root (`_linkedStyles`), merge inline per wrapper (linked ⊂ element) — no stylesheet, no global selectors, zero cross-page leakage by construction. Remaining hardening: standalone `@woodex-page-rules` sandboxed stylesheet; author-facing `hm-*` collision guard |
 | R14 | **Theme (whole website)** edit reshapes every page at once (one bad token = site-wide breakage) | **High** | Versioned `theme` singleton snapshots + one-click restore; "Use custom heading sizes" behind explicit confirm; staged preview re-render checklist before save-propagate; a11y contrast check on skins at save time |
 | R15 | AI agents (W6) write content that reaches production unreviewed | Medium | No `publish_page` MCP tool exists; AI docs are drafts with `source:"ai"` + diff + validator report; human publishes in admin; audit log slice `woodex.ai.audit.v1` |
 | R16 | Parity scope creep (legacy is years of builder) → budget blowout | **High** | Parity acknowledged as ceiling, not MVP; per-wave owner gates; W4 hardest wave split into Phase A/B; if slipping, W6 shrinks to audit-only; W2 catalogue can phase (HERO+FEATURES first, Pricing/Team later) |
@@ -764,6 +779,25 @@ strategy; the to-do file is the tracker — update both in the same commit per w
   keeps the draft unpublished). "Open in SEO manager ↗" removed (no MCP service in browser builds); build-time sitemap deferred to Wave 7 with the
   Bagisto seam (client-side demo DB is invisible at build time — documented, not hidden). e2e 42/42 (+3 JSON-LD/canonical asserts) · axe 7 routes 0
   violations · tsc 0 · build ✓. Owner merge-gated.
+- **2026-11-07 (Wave 4 — Inspector + Linked styles, PB-4)** — Owner selected **Full Wave 4** from the wave menu.
+  Built on `arena/d1d750ce-woodex-reimagined` (PR #7, owner merge-gated): `_inspector` flat-prop composite field post-injected on
+  **all** blocks (40 catalogue sections + 17 elements + 3 legacy). **Style** tab — Desktop/Tablet/Mobile segmented switch
+  driving padding/radius/border/text-align through static `builder.css` classes (shared storefront/canvas source); **Normal/:hover**
+  toggle for background / text / heading colours via hex+picker and CSS custom-property cascade islands; heading-colour overrides
+  apply through descendant rules (no `!important` except the single hover-background override). **Advanced** tab — Tag (sections),
+  ID, Title, Aria, free classes with `hm-*` opt-in, **responsive visibility** (hide per device), **animation on scroll**
+  (fade-up/fade-in/slide-left/zoom-in, `prefers-reduced-motion` honoured). **Linked styles (Phase-B-lite)** at the page root —
+  named `hm-*` rules (background/text/heading/padding/radius) with a live "N blocks carry this rule" document scan; merge happens
+  inline at the wrapper, linked ⊂ element; rules travel inside the page document so there is no global/cross-page leakage by
+  construction (R13 until the standalone `@woodex-page-rules` stylesheet lands). LAB preview applies the merge through
+  `BuilderDocContext`; the editor canvas paints element-level styles only (Puck iframe — documented limit). Remaining Wave 4
+  item: **inline text toolbar** (deferred to the next slice). Two editor-stability defects were fixed first because they made
+  in-panel editing impossible: (1) fresh `data` identity per keystroke re-fed Puck and ate edits — frozen per-`puckKey` snapshot;
+  (2) `plugins` array recreated per render tore the editor down per keystroke — memoized. Pages meta bar gains **Live home ↗**
+  (partial answer to the owner's "no preview actual rendering as live home page" note; the deeper `/lab/home`-as-live-home question
+  remains open for owner decision). Verification: tsc 0 · build ✓ · e2e **42/42** · headless functional pass **14/14** (Advanced
+  tab slots, device switch, `:hover` slot, class binding, linked-rule rename + live count, LAB computed merge —
+  `bx-lg-t bx-sm-m hm-verify bx-has-bg-hover` on the rendered hero, linked `#0C1628` applied, `data-animate="fade-up"`).
 - **Next** — Owner answers master plan §11 → Wave 1 (PB-1) kickoff; B4 (Custom Design) remains next Phase 4
   module; Vercel cutover checklist is owner-side.
 - **2026-11-06 (evening, v2.0)** — Owner shared five screenshots of the **legacy Woodex Interior builder**:
