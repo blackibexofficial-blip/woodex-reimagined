@@ -257,6 +257,13 @@ Legend: ✅ port as-is · 🔧 port + rework · 🆕 new (Supabase-only) · 🗑
 - P0 residuals: staging project creation + hosted `supabase db reset`; generated types via CLI; decision log; CI migration rehearsal — **CI workflow changes need owner sign-off (not done)**.
 - Honesty: nothing in this slice is exercised end-to-end; no claim of production, and no claim that any EF has executed anywhere.
 
+**Slice 3 (febc1e5) — consent-first public intake (preview-visible, demo-safe):**
+- Both public lead forms (Contact enquiry, Quotation basket) now gate submit on an **explicit consent tick** (`lead-privacy-v1`, inline notice — no dead `/privacy` link). Attribution (`landingPath`, `referrer`, `utm_source|medium|campaign`) captured at submit.
+- `AdminLead`/`NewLeadInput` extended (additive, back-compat); demo `createLead` persists consent context; bagisto path unchanged in behavior.
+- `src/lib/consent.ts` + `LeadConsent` component; 4/4 consent unit tests; both forms spread identical consent+attribution into the same contract the `lead-capture` EF requires — no double maintenance.
+- Preview rebuilt + verified (200s on `/`, `/contact`, LeadConsent chunk).
+- Still NOT verified against hosted Supabase; forms remain demo/localStorage until staging.
+
 **Build note:** `npm run build` could not be used (`bun` absent); built with `npx vite build --mode production` (build green, AdminApp chunk contains the banner). `typecheck` was NOT run for this slice — verify before treating as release-grade. Preview server rebuilt and re-verified (HTTP 200, banner present). `supabase/functions/mcp/index.ts` auto-generated churn was reverted before commit.
 
 ---
