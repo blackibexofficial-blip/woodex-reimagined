@@ -2,7 +2,7 @@
 
 Audience: the owner / release operator. The agent environment that produced this code
 has **no egress to Supabase** (HTTP 000) — nothing here has ever run against a hosted
-project. Rehearsal evidence (`pglite`, 62/62, migrations 0001–0012 + catalogue seed, tasks RLS + admin_overview casing included,
+project. Rehearsal evidence (`pglite`, 65/65, migrations 0001–0012 + catalogue seed, tasks RLS + admin_overview casing + client_merge included,
 including idempotent double-apply) proves the DDL and RPC behavior locally only. Every step below is mandatory before the storefront is allowed to charge anyone real money.
 
 Project ref (from `supabase/config.toml`): `ewbflgbshdstfxqretay`

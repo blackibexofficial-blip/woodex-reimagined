@@ -448,7 +448,7 @@ Legacy screen #16 is delivered in-repo, following the same template as the invoi
 | `tasks` schema + RLS use | ✅ rides 0001 verbatim — `crm.manage` for read/insert/update; **no delete policy** (worked, never deleted); no RPC, no new migration |
 | Sales access | ✅ sales holds `crm.manage` — rehearsed (create + read); viewer denied; editor denied |
 | Hosted gap | ❌ hosted unverified; demo client label is demo-only (hosted mode carries refs, no label column) — documented, not hidden |
-| Rehearsal count | 62/62 (pglite, migrations 0001–0012 + quotation + invoice + tasks + admin_overview casing suites) |
+| Rehearsal count | 65/65 (pglite, migrations 0001–0012 + quotation + invoice + tasks + admin_overview casing + client_merge identity suites) |
 
 **Honesty note:** "parity" here means functional parity of the follow-ups surface (the visible funnel), not byte-copy of legacy internals; nothing in this addendum implies hosted readiness, and hosted activation remains owner-gated per §12.
 
@@ -458,3 +458,10 @@ Legacy screen #16 is delivered in-repo, following the same template as the invoi
 Legacy screens #6 and #21 delivered as one card: **Pipeline control center** on `/admin/dashboard` — open quotes + pipeline value (PKR), outstanding invoices (Issued + Partially paid), returns awaiting handling + new leads, published pages; each tile links to its admin surface. Supabase mode consumes `admin_overview` verbatim (no new RPC, no migration); demo computes identical signals from the seeded store; Bagisto baseline returns zeros + comment. e2e **46/46** (+4 tile asserts; case-insensitive after a CSS text-transform false-negative).
 
 **Resolved in-repo (0012, 2026-11-08):** `admin_overview()` recreated with lowercase open-quote predicates (`draft/review/approval/sent/revised`); identical otherwise; rehearsed 62/62 (0001–0012). Hosted apply still owner-gated — hosts must apply 0012 after 0011. This addendum implies no hosted readiness.
+
+
+## 18. Addendum — Clients merge-review shipped (2026-11-08, this branch)
+
+Legacy CRM depth item closed: **`/admin/client-merge`** — identity-review queue derived from non-merged `clients` grouped by `email_norm`/`phone_norm`; human picks the canonical record per pair (nothing auto-merges); consolidation executes via 0001 `client_merge` (crm.manage, security definer): `client_links` re-pointed, loser tombstoned (`merged_into`) — no deletes, full audit. Customer drawer gains **Source** + derived **Score** (1–99, computed — never stored). Demo seeds CLI-1001…CLI-1007 (email pair, phone pair, one retired record). Rehearsal **65/65** (+3 client_merge asserts).
+
+**Honesty note:** hosted customers are synthesized from orders — `source` surfaces only as hosted `clients` rows exist (merge backfill); score is always derived; hosted verification remains owner-gated. This addendum implies no hosted readiness.
