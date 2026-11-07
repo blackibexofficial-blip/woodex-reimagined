@@ -61,7 +61,10 @@ create table if not exists public.categories (
   id text primary key, name text not null,
   group_ text not null default 'office' check (group_ in ('office','home')),
   parent_id text references public.categories(id) on delete set null,
-  sort int not null default 0, created_at timestamptz not null default now()
+  sort int not null default 0,
+  visible boolean not null default true,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
 );
 create table if not exists public.series (
   id text primary key, name text not null, collection_id text,
@@ -91,6 +94,7 @@ create table if not exists public.products (
   id text primary key,
   payload jsonb not null,
   name text generated always as (payload->>'name') stored,
+  sku text,
   series_id text references public.series(id) on delete set null,
   category_id text references public.categories(id) on delete set null,
   price numeric(12,2) not null default 0,
@@ -98,6 +102,7 @@ create table if not exists public.products (
   in_stock boolean not null default true,
   updated_at timestamptz not null default now()
 );
+create unique index if not exists idx_products_sku on public.products(sku) where sku is not null;
 create index if not exists idx_products_series on public.products(series_id);
 create index if not exists idx_products_category on public.products(category_id);
 
@@ -136,6 +141,7 @@ create table if not exists public.delivery_zones (
 );
 create table if not exists public.price_lists (
   id text primary key, name text not null, channel text, currency text not null default 'PKR',
+  status text not null default 'active' check (status in ('draft','active','scheduled','expired')),
   items jsonb not null default '[]'::jsonb, created_at timestamptz not null default now()
 );
 create table if not exists public.bundles (
@@ -166,6 +172,7 @@ create table if not exists public.clients (
   name text not null, company text, email text, email_norm text,
   phone text, phone_norm text, city text,
   tags jsonb not null default '[]'::jsonb, notes text, source text,
+  kind text not null default 'retail' check (kind in ('retail','business')),
   merged_into bigint references public.clients(id) on delete set null,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
@@ -178,6 +185,7 @@ create table if not exists public.client_links (
 create table if not exists public.quotes (
   id bigint generated always as identity primary key, ref text,
   customer text not null, contact text, lead_id bigint references public.leads(id) on delete set null,
+  company text, city text, address text, customer_email text, customer_phone text,
   items jsonb not null, total numeric(12,2) not null default 0,
   status text not null default 'Draft', source text not null default 'storefront',
   note text, audit jsonb not null default '[]'::jsonb, details jsonb not null default '{}'::jsonb,
@@ -201,6 +209,18 @@ create table if not exists public.orders (
   id bigint generated always as identity primary key, ref text,
   customer text not null, items jsonb not null,
   total numeric(12,2) not null default 0,
+  subtotal numeric(12,2) not null default 0,
+  shipping numeric(12,2) not null default 0,
+  payment_method text not null default 'bank-transfer' check (payment_method in ('cod','bank-transfer','easypaisa','jazzcash','card')),
+  customer_email text,
+  customer_phone text,
+  address text,
+  city text,
+  courier_name text,
+  tracking_number text,
+  internal_notes text,
+  discount_pct numeric(5,2),
+  discount_amount numeric(12,2) not null default 0,
   status text not null default 'In Progress', stage text not null default 'production',
   owner text not null default 'You', due timestamptz,
   tracking_token_hash text,
@@ -237,7 +257,9 @@ create table if not exists public.payments (
 create table if not exists public.returns (
   id bigint generated always as identity primary key, ref text,
   order_id bigint references public.orders(id) on delete set null,
-  customer text, item text, reason text,
+  customer text, customer_email text, customer_phone text, city text,
+  items jsonb not null default '[]'::jsonb,
+  reason text,
   state text not null default 'Requested', refund_amount numeric(12,2) not null default 0,
   resolution text, restock boolean not null default true, inspection_note text,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
@@ -284,8 +306,11 @@ create index if not exists idx_page_blocks_page on public.page_blocks(page_id, s
 create table if not exists public.page_versions (
   id bigint generated always as identity primary key,
   page_id bigint not null references public.pages(id) on delete cascade,
+  version int not null,
   snapshot jsonb not null, note text, who text not null default 'You',
-  created_at timestamptz not null default now()
+  action text not null default 'save',
+  created_at timestamptz not null default now(),
+  unique (page_id, version)
 );
 create table if not exists public.saved_sections (
   id bigint generated always as identity primary key,
