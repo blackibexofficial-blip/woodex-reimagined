@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import {
-  BadgeCheck, Check, ChevronDown, ListChecks, Loader2, Minus, Plus, Search, Star, Tag, Trash2, TrendingDown, X,
+  BadgeCheck, Check, ChevronDown, Download, ListChecks, Loader2, Minus, Plus, Search, Star, Tag, Trash2, TrendingDown, Undo2, Upload, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
@@ -21,6 +21,111 @@ const STATUS_LABEL: Record<StockStatus, string> = {
   made_to_order: "Made to order",
   out_of_stock: "Out of stock",
 };
+
+/* ── csv round-trip helpers (spreadsheet interchange) ───────────────────── */
+function csvEsc(v: string): string { return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function splitCsv(text: string): string[][] {
+  const out: string[][] = [];
+  let row: string[] = [""];
+  let inQ = false;
+  const t = text.replace(/\r\n?/g, "\n");
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (inQ) {
+      if (ch === '"') { if (t[i + 1] === '"') { row[row.length - 1] += '"'; i++; } else inQ = false; }
+      else row[row.length - 1] += ch;
+      continue;
+    }
+    if (ch === '"') { inQ = true; continue; }
+    if (ch === ",") { row.push(""); continue; }
+    if (ch === "\n") { out.push(row); row = [""]; continue; }
+    row[row.length - 1] += ch;
+  }
+  if (row.length > 1 || row[0].trim() !== "") out.push(row);
+  return out;
+}
+
+const EXPORT_HEADERS = ["id", "sku", "name", "category", "brand", "price", "compare_at_price", "stock", "stock_status", "is_best_seller"] as const;
+const BOOL_TRUE = new Set(["yes", "y", "true", "1", "in stock", "in_stock"]);
+const BOOL_FALSE = new Set(["no", "n", "false", "0", "out of stock", "out_of_stock"]);
+const normHeader = (h: string) => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+const csvBool = (raw: string): boolean | undefined => {
+  const v = raw.trim().toLowerCase();
+  if (BOOL_TRUE.has(v)) return true;
+  if (BOOL_FALSE.has(v)) return false;
+  return undefined;
+};
+const csvNum = (raw: string): number | undefined => {
+  const v = raw.trim().replace(/[,]/g, "");
+  if (!v) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+type ResolvedProduct = Pick<AdminProduct, "id" | "sku" | "name" | "category" | "price" | "compareAtPrice" | "stock" | "stockStatus" | "isBestSeller" | "brandId">;
+type ImportChange = { field: "price" | "compareAtPrice" | "stock" | "stockStatus" | "isBestSeller"; from: string; to: string };
+type ImportRowResult =
+  | { ok: true; id: string; sku: string; name: string; changes: ImportChange[] }
+  | { ok: false; ref: string; message: string };
+
+function buildImportPreview(text: string, rowsByIndex: Map<string, ResolvedProduct>): { results: ImportRowResult[]; unchanged: number } {
+  const grid = splitCsv(text);
+  const results: ImportRowResult[] = [];
+  let unchanged = 0;
+  if (grid.length === 0) return { results, unchanged };
+  const headers = grid[0].map(normHeader);
+  const col = (row: string[], ...names: string[]): string => {
+    for (const n of names) {
+      const i = headers.indexOf(n);
+      if (i >= 0) return row[i] ?? "";
+    }
+    return "";
+  };
+  for (let r = 1; r < grid.length; r++) {
+    const rec = grid[r];
+    if (rec.every((c) => !c.trim())) continue;
+    const idOrSku = (col(rec, "id") || col(rec, "sku") || "").trim();
+    if (!idOrSku) { results.push({ ok: false, ref: `row ${r + 1}`, message: "Missing id and sku — cannot match" }); continue; }
+    const hit = rowsByIndex.get(idOrSku.toLowerCase());
+    if (!hit) { results.push({ ok: false, ref: idOrSku, message: "No catalogue match" }); continue; }
+    const changes: ImportChange[] = [];
+    const priceRaw = col(rec, "price");
+    const price = csvNum(priceRaw);
+    if (priceRaw.trim()) {
+      if (price === undefined || price < 1) { results.push({ ok: false, ref: hit.sku, message: `price "${priceRaw.trim()}" is not a positive number` }); continue; }
+      if (Math.round(price) !== Math.round(hit.price)) changes.push({ field: "price", from: String(hit.price), to: String(Math.round(price)) });
+    }
+    const cmpRaw = col(rec, "compare_at_price", "compareatprice", "compare_at");
+    if (cmpRaw.trim()) {
+      const cmp = csvNum(cmpRaw);
+      if (cmp === undefined || cmp < 0) { results.push({ ok: false, ref: hit.sku, message: `compare_at_price "${cmpRaw.trim()}" is not a non-negative number` }); continue; }
+      if ((hit.compareAtPrice ?? -1) !== cmp) changes.push({ field: "compareAtPrice", from: hit.compareAtPrice != null ? String(hit.compareAtPrice) : "—", to: String(Math.round(cmp)) });
+    }
+    const stockRaw = col(rec, "stock", "qty", "stock_qty");
+    if (stockRaw.trim()) {
+      const stk = csvNum(stockRaw);
+      if (stk === undefined || stk < 0 || !Number.isInteger(stk)) { results.push({ ok: false, ref: hit.sku, message: `stock "${stockRaw.trim()}" is not a non-negative integer` }); continue; }
+      if (stk !== hit.stock) changes.push({ field: "stock", from: String(hit.stock), to: String(stk) });
+    }
+    const statusRaw = col(rec, "stock_status", "stockstatus", "fulfilment", "fulfillment");
+    if (statusRaw.trim()) {
+      const status = statusRaw.trim().toLowerCase().replace(/[\s-]+/g, "_");
+      if (!["in_stock", "made_to_order", "out_of_stock"].includes(status)) { results.push({ ok: false, ref: hit.sku, message: `stock_status "${statusRaw.trim()}" is not in_stock / made_to_order / out_of_stock` }); continue; }
+      if (status !== hit.stockStatus) changes.push({ field: "stockStatus", from: hit.stockStatus, to: status });
+    }
+    const bestRaw = col(rec, "is_best_seller", "best_seller", "bestseller", "best_seller_flag");
+    if (bestRaw.trim()) {
+      const flag = csvBool(bestRaw);
+      if (flag === undefined) { results.push({ ok: false, ref: hit.sku, message: `is_best_seller "${bestRaw.trim()}" is not yes/no` }); continue; }
+      if (flag !== hit.isBestSeller) changes.push({ field: "isBestSeller", from: hit.isBestSeller ? "yes" : "no", to: flag ? "yes" : "no" });
+    }
+    if (changes.length === 0) { unchanged++; continue; }
+    results.push({ ok: true, id: hit.id, sku: hit.sku, name: hit.name, changes });
+  }
+  return { results, unchanged };
+}
+
+type UndoEntry = { label: string; snaps: ResolvedProduct[] };
 
 type ActionKind = "pricePct" | "stockStatus" | "markOnSale" | "clearSale" | "bestSeller" | "stockDelta" | "brand" | null;
 
@@ -43,6 +148,13 @@ export default function AdminBulkEditor() {
   const [stockDelta, setStockDelta] = useState(10);
   const [brandId, setBrandId] = useState("woodex");
   const [busy, setBusy] = useState(false);
+  const [focusIdx, setFocusIdx] = useState<number | null>(null);
+  const [importRows, setImportRows] = useState<ImportRowResult[] | null>(null);
+  const [importUnchanged, setImportUnchanged] = useState(0);
+  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const rowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,6 +203,10 @@ export default function AdminBulkEditor() {
     if (selectAllRef.current) selectAllRef.current.indeterminate = !allVisibleSelected && someVisibleSelected;
   }, [allVisibleSelected, someVisibleSelected]);
 
+  useEffect(() => {
+    setFocusIdx((i) => (i === null ? null : visible.length === 0 ? null : Math.min(i, visible.length - 1)));
+  }, [visible.length]);
+
   const toggleOne = (id: string) =>
     setSelected((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const toggleAll = () =>
@@ -104,10 +220,15 @@ export default function AdminBulkEditor() {
   const selectedCount = selected.size;
   const applyPatch = async (patch: BulkProductPatch, successMessage: string) => {
     if (selectedCount === 0) return;
+    // snapshot pre-apply state so the operator can revert the whole batch
+    const before = rows
+      .filter((r) => selected.has(r.id))
+      .map((r): ResolvedProduct => ({ id: r.id, sku: r.sku, name: r.name, category: r.category, price: r.price, compareAtPrice: r.compareAtPrice, stock: r.stock, stockStatus: r.stockStatus, isBestSeller: r.isBestSeller, brandId: r.brandId }));
     setBusy(true);
     try {
       const { updated } = await api.bulkUpdateProducts([...selected], patch);
-      toast.success(`${successMessage} — ${updated} product${updated === 1 ? "" : "s"} updated.`);
+      toast.success(`${successMessage} — ${updated} product${updated === 1 ? "" : "s"} updated. Press Undo to revert.`, { duration: 8000 });
+      if (before.length > 0) setUndoStack((prev) => [...prev.slice(-4), { label: successMessage, snaps: before }]);
       setAction(null);
       await load();
     } catch (e) {
@@ -115,6 +236,130 @@ export default function AdminBulkEditor() {
       toast.error(e instanceof Error ? e.message : "Bulk update failed.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const undoLast = async () => {
+    const entry = undoStack[undoStack.length - 1];
+    if (!entry) return;
+    setBusy(true);
+    let okCount = 0;
+    const failures: string[] = [];
+    for (const s of entry.snaps) {
+      const patch = {
+        price: s.price,
+        stock: s.stock,
+        stockStatus: s.stockStatus,
+        isBestSeller: s.isBestSeller,
+        brandId: s.brandId,
+        category: s.category,
+        // pre-apply strikethrough restored — or explicitly cleared when the batch ADDED one
+        compareAtPrice: s.compareAtPrice ?? (null as unknown as number),
+      };
+      try {
+        await api.updateProduct(s.id, patch);
+        okCount += 1;
+      } catch (e) {
+        failures.push(s.sku + (e instanceof Error ? ` (${e.message})` : ""));
+      }
+    }
+    setUndoStack((prev) => prev.slice(0, -1));
+    setBusy(false);
+    if (failures.length > 0) {
+      toast.error(`Undo "${entry.label}" restored ${okCount}/${entry.snaps.length} — failed: ${failures.slice(0, 4).join(", ")}`);
+    } else {
+      toast.success(`Undone "${entry.label}" — restored ${okCount} products.`);
+    }
+    await load();
+  };
+
+  const exportCsv = () => {
+    const scope = selectedCount > 0 ? rows.filter((r) => selected.has(r.id)) : visible;
+    const brandName = (id?: string) => (id ? brands.find((b) => b.id === id)?.name ?? id : "");
+    const body = scope.map((p) => [
+      p.id, p.sku, p.name, p.category, brandName(p.brandId),
+      String(p.price), p.compareAtPrice != null ? String(p.compareAtPrice) : "",
+      String(p.stock), p.stockStatus, p.isBestSeller ? "yes" : "no",
+    ]);
+    const text = [Array.from(EXPORT_HEADERS), ...body].map((r) => r.map(csvEsc).join(",")).join("\n");
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `woodex-bulk-export-${body.length}-products.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${body.length} products to CSV. Edit then re-import — empty cells are left unchanged.`);
+  };
+
+  const onImportFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    file.text().then((text) => {
+      const rowsByIndex = new Map<string, ResolvedProduct>();
+      for (const r of rows) {
+        rowsByIndex.set(r.id.toLowerCase(), r);
+        rowsByIndex.set(r.sku.toLowerCase(), r);
+      }
+      const { results, unchanged } = buildImportPreview(text, rowsByIndex);
+      setImportRows(results);
+      setImportUnchanged(unchanged);
+    }).catch(() => toast.error("Could not read that file."));
+  };
+
+  const applyImport = async () => {
+    if (!importRows) return;
+    const applyable = importRows.filter((r): r is Extract<ImportRowResult, { ok: true }> => r.ok && r.changes.length > 0);
+    if (applyable.length === 0) return;
+    setBusy(true);
+    let okCount = 0;
+    const failures: string[] = [];
+    for (const row of applyable) {
+      const patch: Record<string, unknown> = {};
+      for (const c of row.changes) {
+        if (c.field === "price" || c.field === "stock") patch[c.field] = Number(c.to);
+        else if (c.field === "compareAtPrice") patch.compareAtPrice = Number(c.to);
+        else if (c.field === "stockStatus") patch.stockStatus = c.to;
+        else if (c.field === "isBestSeller") patch.isBestSeller = c.to === "yes";
+      }
+      try {
+        await api.updateProduct(row.id, patch as Parameters<typeof api.updateProduct>[1]);
+        okCount += 1;
+      } catch (e) {
+        failures.push(row.sku + (e instanceof Error ? ` (${e.message})` : ""));
+      }
+    }
+    setImportRows(null);
+    setBusy(false);
+    if (failures.length > 0) toast.error(`Import applied to ${okCount}/${applyable.length} products — failed: ${failures.slice(0, 4).join(", ")}`);
+    else toast.success(`Import applied to ${okCount} products.`);
+    await load();
+  };
+
+  const onGridKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const count = visible.length;
+    if (count === 0) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const dir = e.key === "ArrowDown" ? 1 : -1;
+      setFocusIdx((i) => {
+        const next = Math.min(count - 1, Math.max(0, (i ?? (dir > 0 ? -1 : count)) + dir));
+        rowRefs.current[next]?.scrollIntoView({ block: "nearest" });
+        return next;
+      });
+    } else if (e.key === "Home") { e.preventDefault(); setFocusIdx(0); rowRefs.current[0]?.scrollIntoView({ block: "nearest" }); }
+    else if (e.key === "End") { e.preventDefault(); setFocusIdx(count - 1); rowRefs.current[count - 1]?.scrollIntoView({ block: "nearest" }); }
+    else if (e.key === " ") {
+      if (focusIdx === null) return;
+      e.preventDefault();
+      toggleOne(visible[focusIdx].id);
+    } else if ((e.metaKey || e.ctrlKey) && (e.key === "a" || e.key === "A")) {
+      e.preventDefault();
+      setSelected((prev) => new Set([...prev, ...visibleIds]));
+    } else if (e.key === "/") {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+      e.preventDefault();
+      searchRef.current?.focus();
     }
   };
 
@@ -136,7 +381,7 @@ export default function AdminBulkEditor() {
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input aria-label="Search products" placeholder="Search name, SKU or category…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
+            <Input ref={searchRef} aria-label="Search products" placeholder="Search name, SKU or category…  ( / )" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
           </div>
           <select aria-label="Category" value={category} onChange={(e) => setCategory(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
             <option value="all">All categories ({categories.length})</option>
@@ -155,14 +400,18 @@ export default function AdminBulkEditor() {
             </TabsList>
           </Tabs>
           <span className="text-xs text-muted-foreground ml-auto">{visible.length} shown</span>
+          <Button size="sm" variant="outline" onClick={exportCsv} title="Download selected products (or everything shown, if none selected) as CSV"><Download className="h-4 w-4 mr-1.5" />Export CSV</Button>
+          <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} title="Re-import an edited bulk-export CSV — every row is diffed before anything is written"><Upload className="h-4 w-4 mr-1.5" />Import CSV</Button>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" aria-hidden="true" tabIndex={-1} onChange={onImportFile} />
         </div>
 
+        <p className="mb-2 text-[11px] text-muted-foreground">Keyboard: ↑/↓ move · Space select · Ctrl/⌘+A all shown · / jump to search · Esc clears focus</p>
         {loading ? (
           <SectionSkeleton rows={8} />
         ) : visible.length === 0 ? (
           <EmptyState icon={Search} title="Nothing matches" hint="Try clearing the search or the filters." />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto outline-none rounded-md focus-visible:ring-2 focus-visible:ring-accent/50" tabIndex={0} aria-label="Catalogue grid. Arrow keys move the active row; Space toggles its selection." onKeyDown={onGridKey} onBlur={() => setFocusIdx(null)}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -175,8 +424,14 @@ export default function AdminBulkEditor() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {visible.map((p) => (
-                  <tr key={p.id} className={selected.has(p.id) ? "bg-accent/5" : undefined}>
+                {visible.map((p, idx) => (
+                  <tr
+                    key={p.id}
+                    ref={(el) => { rowRefs.current[idx] = el; }}
+                    aria-selected={selected.has(p.id)}
+                    onClick={(e) => { const t = e.target as HTMLElement; if (t.closest("input,button,a,select")) return; toggleOne(p.id); }}
+                    className={`cursor-pointer transition ${idx === focusIdx ? "bg-accent/15 ring-1 ring-inset ring-accent/60" : selected.has(p.id) ? "bg-accent/5" : ""}`}
+                  >
                     <td className="py-2 pr-2"><input type="checkbox" aria-label={`Select ${p.name}`} className="h-4 w-4 accent-[hsl(var(--accent))]" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} /></td>
                     <td className="py-2 pr-4">
                       <div className="flex items-center gap-3">
@@ -216,9 +471,53 @@ export default function AdminBulkEditor() {
           <Button size="sm" variant="secondary" onClick={() => setAction("stockDelta")}><Plus className="h-4 w-4 mr-1.5" /> Stock ±N</Button>
           <Button size="sm" variant="secondary" onClick={() => setAction("bestSeller")}><Star className="h-4 w-4 mr-1.5" /> Best seller</Button>
           <Button size="sm" variant="secondary" onClick={() => setAction("brand")}><BadgeCheck className="h-4 w-4 mr-1.5" /> Brand</Button>
+          <Button size="sm" variant="outline" disabled={busy || undoStack.length === 0} onClick={() => void undoLast()} title={undoStack.length > 0 ? `Revert "${undoStack[undoStack.length - 1].label}" (${undoStack[undoStack.length - 1].snaps.length} products)` : "Nothing to undo"}><Undo2 className="h-4 w-4 mr-1.5" />Undo</Button>
           <Button size="sm" variant="ghost" aria-label="Clear selection" onClick={() => setSelected(new Set())}><X className="h-4 w-4" /></Button>
         </div>
       )}
+
+      {/* CSV import preview — dry run, apply only what differs */}
+      <Dialog open={importRows !== null} onOpenChange={(open) => { if (!open) setImportRows(null); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Import CSV — {importRows?.filter((r) => r.ok && r.changes.length > 0).length ?? 0} product(s) with changes</DialogTitle>
+          </DialogHeader>
+          {importRows && (
+            <>
+              {importUnchanged > 0 && <p className="text-xs text-muted-foreground">{importUnchanged} identical row(s) skipped — nothing re-written.</p>}
+              <div className="max-h-[46vh] overflow-y-auto rounded-md border border-border">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-secondary text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <tr><th className="px-3 py-2">Product</th><th className="px-3 py-2">Changes</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {importRows.map((r, i) => {
+                      if (r.ok) {
+                        const okRow = r as Extract<ImportRowResult, { ok: true }>;
+                        return (
+                          <tr key={`${okRow.id}-${i}`}>
+                            <td className="px-3 py-2 max-w-[180px]"><span className="font-medium">{okRow.name}</span><span className="block text-[10px] text-muted-foreground">{okRow.sku}</span></td>
+                            <td className="px-3 py-2"><ul className="space-y-0.5">{okRow.changes.map((c, j) => <li key={j}><span className="font-semibold">{c.field}</span>: <span className="text-muted-foreground">{c.from}</span> → <span className="font-semibold">{c.to}</span></li>)}</ul></td>
+                          </tr>
+                        );
+                      }
+                      const errRow = r as Extract<ImportRowResult, { ok: false }>;
+                      return (
+                        <tr key={`err-${i}`} className="bg-amber-50"><td className="px-3 py-2 font-mono">{errRow.ref}</td><td className="px-3 py-2 text-amber-900">skipped — {errRow.message}</td></tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Empty cells were ignored. The <code>id</code> column (or <code>sku</code>) is required to match rows. compare_at_price updates set a number; to remove a strikethrough use Clear sale above.</p>
+            </>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportRows(null)} disabled={busy}>Cancel</Button>
+            <Button onClick={() => void applyImport()} disabled={busy || !importRows || !importRows.some((r) => r.ok && r.changes.length > 0)} className="bg-accent text-accent-foreground hover:bg-hon-green-dark">{busy ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Check className="h-4 w-4 mr-1.5" />}Apply {importRows?.filter((r) => r.ok && r.changes.length > 0).length ?? 0} product(s)</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Action dialogs */}
       <Dialog open={action !== null} onOpenChange={(open) => { if (!open) setAction(null); }}>
