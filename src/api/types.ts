@@ -1044,6 +1044,8 @@ export const MATERIAL_PART_LABELS: Record<AdminMaterialPart, string> = {
 /* ── Projects / case studies (admin-managed since P1.3) ─────────────────── */
 export interface AdminProject {
   id: string;
+  /** Practice workspace payload (BOQ / milestones / files) — absent for plain portfolio entries. */
+  practice?: ProjectPractice;
   title: string;
   client: string;
   category: string;
@@ -1067,8 +1069,44 @@ export interface AdminProject {
   updatedAt: string;
 }
 
+/* ── Interior projects — practice workspace (rides the projects payload; no migration) ──
+   BOQ is PLANNED cost only (no actuals/variance — needs owner sign-off on a
+   costing model). Files are metadata-only; no bytes are stored. Milestones use a
+   four-badge status. Everything serializes into `projects.payload`. */
+export type ProjectMilestoneStatus = "not_started" | "in_progress" | "blocked" | "done";
+export const PROJECT_MILESTONE_STATUSES: ProjectMilestoneStatus[] = ["not_started", "in_progress", "blocked", "done"];
+export interface ProjectMilestone {
+  id: string;
+  phase: string;
+  owner: string;
+  due?: string;
+  status: ProjectMilestoneStatus;
+}
+export interface ProjectBoqRow {
+  id: string;
+  section: string;
+  item: string;
+  qty: number;
+  unit: string;
+  rate: number;
+}
+export interface ProjectFileItem {
+  id: string;
+  name: string;
+  size: number;
+  kind: "drawing" | "image" | "document" | "model";
+  uploadedBy: string;
+  uploadedAt: string;
+}
+export interface ProjectPractice {
+  boq: ProjectBoqRow[];
+  milestones: ProjectMilestone[];
+  files: ProjectFileItem[];
+}
+
 export interface NewProjectInput {
   title: string;
+  practice?: ProjectPractice;
   client: string;
   category: string;
   image?: string;

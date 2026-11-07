@@ -8,7 +8,7 @@
  *               Product/Article/Breadcrumb per page; zero lovable.app references (13 checks)
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
  *
- * Total: 52 checks (28 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
+ * Total: 54 checks (30 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -190,6 +190,21 @@ async function adminSuite(browser) {
   await clickByText('[role="dialog"] button', "Close");
   await page.waitForFunction(() => !document.querySelector("#visit-at"), { timeout: 8000 }).catch(() => {});
   ok("visit dialog closes cleanly", await page.evaluate(() => !document.querySelector("#visit-at")));
+
+  // interior projects — practice workspace (BOQ · milestones · files)
+  await page.goto(`${ADMIN}/projects`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForSelector('button[aria-label^="Practice workspace for"]', { timeout: 20000 });
+  await page.evaluate(() => document.querySelector('button[aria-label^="Practice workspace for"]')?.click());
+  await page.waitForSelector('[role="dialog"]', { timeout: 15000 });
+  const projBody = (await bodyText()).toLowerCase();
+  ok("practice workspace opens with seeded planned cost (rs 7,477,500)", projBody.includes("7,477,500"));
+  const mtabs = await page.$$('[role="tab"]');
+  for (const t of mtabs) {
+    const txt = await t.evaluate((el) => el.textContent ?? "");
+    if (txt.includes("Files")) { await t.click(); break; }
+  }
+  await page.waitForFunction(() => document.body.innerText.includes("mep-asbuilt-schematic.pdf"), { timeout: 10000 }).catch(() => {});
+  ok("practice workspace Files tab lists the seeded drawing (mep-asbuilt-schematic.pdf)", (await bodyText()).includes("mep-asbuilt-schematic.pdf"));
 
   // --- Wave 2: Library rail + Layers outline + lab render ---
   const clickRail = (text) =>

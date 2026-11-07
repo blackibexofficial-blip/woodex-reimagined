@@ -38,6 +38,7 @@ import type {
   AdminClientLink,
   MergeCandidate,
   AdminSiteVisit,
+  ProjectPractice,
   NewSiteVisitInput,
   SiteVisitPatch,
   ListParams,
@@ -517,11 +518,68 @@ function buildSeedMaterials(): AdminMaterial[] {
   return [...finishes, ...swatches];
 }
 
+/** Practice workspaces seeded for the two live jobs (BOQ = planned cost; files = metadata-only). */
+function buildSeedProjectPractices(): Record<string, ProjectPractice> {
+  return {
+    "7": {
+      boq: [
+        { id: "boq-g7-1", section: "Demolition & prep", item: "Strip-out & disposal", qty: 3500, unit: "sqft", rate: 180 },
+        { id: "boq-g7-2", section: "Demolition & prep", item: "Wet-zone waterproofing (shampoo wall)", qty: 650, unit: "sqft", rate: 450 },
+        { id: "boq-g7-3", section: "Joinery & panelling", item: "Walnut feature panelling", qty: 420, unit: "sqft", rate: 2850 },
+        { id: "boq-g7-4", section: "Joinery & panelling", item: "Barber consoles (custom walnut)", qty: 6, unit: "units", rate: 185000 },
+        { id: "boq-g7-5", section: "Joinery & panelling", item: "Retail display shelving", qty: 1, unit: "lot", rate: 950000 },
+        { id: "boq-g7-6", section: "Electrical & lighting", item: "Edison pendant grid with dimmers", qty: 1, unit: "lot", rate: 780000 },
+        { id: "boq-g7-7", section: "Electrical & lighting", item: "Mirror LED defogger pads", qty: 6, unit: "units", rate: 38000 },
+        { id: "boq-g7-8", section: "Plumbing", item: "Shampoo bowl + trap (2 stations)", qty: 2, unit: "units", rate: 165000 },
+        { id: "boq-g7-9", section: "Plumbing", item: "Drainage rework + vent", qty: 1, unit: "lot", rate: 240000 },
+        { id: "boq-g7-10", section: "Furniture", item: "Barber chairs (leather & brass)", qty: 6, unit: "units", rate: 145000 },
+        { id: "boq-g7-11", section: "Furniture", item: "Waiting lounge set (sofas + table)", qty: 1, unit: "lot", rate: 850000 },
+      ],
+      milestones: [
+        { id: "ms-g7-1", phase: "Concept sign-off", owner: "Creative director", due: "2025-09-04", status: "done" },
+        { id: "ms-g7-2", phase: "3D render approval", owner: "Design team", due: "2025-09-18", status: "done" },
+        { id: "ms-g7-3", phase: "Demolition & MEP rework", owner: "Site team", due: "2025-10-02", status: "done" },
+        { id: "ms-g7-4", phase: "Joinery manufacture at factory", owner: "Factory", due: "2025-11-14", status: "in_progress" },
+        { id: "ms-g7-5", phase: "Fit-out & services install", owner: "Site team", due: "2025-11-21", status: "in_progress" },
+        { id: "ms-g7-6", phase: "Signage & retail styling", owner: "Stylist", due: "2025-11-26", status: "not_started" },
+        { id: "ms-g7-7", phase: "Snag list & commissioning", owner: "Site team", due: "2025-11-28", status: "not_started" },
+        { id: "ms-g7-8", phase: "Handover & photoshoot", owner: "Whole team", due: "2025-12-05", status: "not_started" },
+      ],
+      files: [
+        { id: "file-g7-1", name: "GU7-floor-plan-rev3.dwg", size: 2_400_000, kind: "drawing", uploadedBy: "You", uploadedAt: "2025-10-27T09:30:00.000Z" },
+        { id: "file-g7-2", name: "salon-3D-render-final.png", size: 8_100_000, kind: "image", uploadedBy: "Design team", uploadedAt: "2025-10-25T14:10:00.000Z" },
+        { id: "file-g7-3", name: "mep-asbuilt-schematic.pdf", size: 1_200_000, kind: "document", uploadedBy: "Site engineer", uploadedAt: "2025-11-05T11:20:00.000Z" },
+        { id: "file-g7-4", name: "barber-chair-spec-sheet.pdf", size: 640_000, kind: "document", uploadedBy: "You", uploadedAt: "2025-10-26T16:45:00.000Z" },
+      ],
+    },
+    "1": {
+      boq: [
+        { id: "boq-d1-1", section: "Executive floors", item: "C-suite modular workstations", qty: 15, unit: "units", rate: 285000 },
+        { id: "boq-d1-2", section: "Executive floors", item: "ErgoMax task chairs (250)", qty: 250, unit: "units", rate: 42000 },
+        { id: "boq-d1-3", section: "Meeting & collaboration", item: "Board conference tables (walnut)", qty: 3, unit: "units", rate: 1250000 },
+        { id: "boq-d1-4", section: "Meeting & collaboration", item: "Workstation benching (120 units)", qty: 120, unit: "units", rate: 95000 },
+      ],
+      milestones: [
+        { id: "ms-d1-1", phase: "Quantified survey & BOQ", owner: "Site engineer", due: "2024-03-02", status: "done" },
+        { id: "ms-d1-2", phase: "Factory production slots", owner: "Factory", due: "2024-04-12", status: "done" },
+        { id: "ms-d1-3", phase: "Phased floor delivery (6 floors)", owner: "Logistics", due: "2024-05-28", status: "done" },
+        { id: "ms-d1-4", phase: "Handover & close-out docs", owner: "Whole team", due: "2024-06-07", status: "done" },
+      ],
+      files: [
+        { id: "file-d1-1", name: "DHA-corporate-tower-floor6-plan.dwg", size: 3_100_000, kind: "drawing", uploadedBy: "Site engineer", uploadedAt: "2024-02-18T10:05:00.000Z" },
+        { id: "file-d1-2", name: "csuite-render-v4.png", size: 9_400_000, kind: "image", uploadedBy: "Design team", uploadedAt: "2024-02-22T12:30:00.000Z" },
+      ],
+    },
+  };
+}
+
 function buildSeedProjects(): AdminProject[] {
   const now = Date.now();
   const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  const practiceSeeds = buildSeedProjectPractices();
   return projectSeed.map((p, i) => ({
     ...p,
+    ...(practiceSeeds[p.id] ? { practice: cloneProjectPractice(practiceSeeds[p.id]) } : {}),
     active: true,
     sortOrder: (i + 1) * 10,
     createdAt: iso(300 - i * 25),
@@ -545,6 +603,14 @@ function buildSeedBlogPosts(): AdminBlogPost[] {
 
 function cloneService<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T;
+}
+function cloneProjectPractice(p: ProjectPractice | undefined): ProjectPractice | undefined {
+  if (!p) return undefined;
+  return {
+    boq: p.boq.map((r) => ({ ...r })),
+    milestones: p.milestones.map((m) => ({ ...m })),
+    files: p.files.map((f) => ({ ...f })),
+  };
 }
 
 function buildSeedServices(): AdminService[] {
@@ -3383,7 +3449,7 @@ export const demoAdminApi: AdminApi = {
     const db = loadDb();
     return [...(db.projects ??= [])]
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((r) => ({ ...r, furnitureUsed: [...r.furnitureUsed], testimonial: r.testimonial ? { ...r.testimonial } : undefined }));
+      .map((r) => ({ ...r, furnitureUsed: [...r.furnitureUsed], testimonial: r.testimonial ? { ...r.testimonial } : undefined, practice: cloneProjectPractice(r.practice) }));
   },
 
   async createProject(input) {
@@ -3450,8 +3516,9 @@ export const demoAdminApi: AdminApi = {
       if (patch.rating !== undefined) proj.rating = patch.rating;
       if (patch.active !== undefined) proj.active = patch.active;
       if (patch.sortOrder !== undefined) proj.sortOrder = patch.sortOrder;
+      if (patch.practice !== undefined) proj.practice = cloneProjectPractice(patch.practice);
       proj.updatedAt = new Date().toISOString();
-      updated = { ...proj, furnitureUsed: [...proj.furnitureUsed], testimonial: proj.testimonial ? { ...proj.testimonial } : undefined };
+      updated = { ...proj, furnitureUsed: [...proj.furnitureUsed], testimonial: proj.testimonial ? { ...proj.testimonial } : undefined, practice: cloneProjectPractice(proj.practice) };
     });
     return updated;
   },
