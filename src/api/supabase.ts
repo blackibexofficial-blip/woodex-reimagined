@@ -28,13 +28,15 @@
  *   createOrder → order-submit EF → order_submit RPC (server re-pricing of the
  *     converged catalogue, SELECT ... FOR UPDATE stock atomicity, client_ref
  *     replay idempotency; client subtotal/total ignored by design). Hosted
- *     deployment of migration 0003 + the order-submit EF is pending owner action.
+ *     deployment of migration 0003 + the order-submit EF is pending owner action;
+ *   quote convert → quote_convert RPC (quote.manage cap; negotiated lines are
+ *     the approved artifact, stock still verified FOR UPDATE; flips the quote,
+ *     stamps convertedOrderId + audit atomically). Hosted deployment of
+ *     migration 0004 is pending owner action.
  *
  * What is deliberately NOT wired — it throws SupabaseUnsupportedError naming
  * the cause instead of returning fabricated data:
- *   convertQuote (quote→order conversion: same server re-price path as
- *   order_submit; left unwired until owner cuts it — one adapter change),
- *   exchanges/claims (no tables
+ *   convertDraftOrder (draft orders: no table), exchanges/claims (no tables
  *   in convergence 0001), draft orders (no table), companies (admin B2B master
  *   is v3 Wave 2), page folders (no table), delivery zones (schema reshaped),
  *   assignMediaToProduct (needs a media RPC), createProduct/duplicateProduct/
@@ -899,8 +901,47 @@ async function deleteQuote(id: string): Promise<boolean> {
   if (error) fail("deleteQuote", error);
   return true;
 }
-function convertQuote(_id: string, _paymentMethod?: string): Promise<never> {
-  return Promise.reject(new SupabaseUnsupportedError("convertQuote — not wired: conversion must reprice from the live catalogue via the order-submit EF (price integrity), which is not deployed yet. Never builds an order from client-supplied prices."));
+async function convertQuote(id: string, paymentMethod?: string): Promise<AdminOrder | undefined> {
+  guard();
+  // admin-gated RPC (quote.manage): re-verifies stock per catalogue line under
+  // FOR UPDATE, carries negotiated line prices + discount as the approved
+  // commercial artifact, stamps the order, flips the quote atomically.
+  const { data, error } = await supabase.rpc("quote_convert", {
+    p_quote_ref: id,
+    p_payment_method: paymentMethod ?? null,
+  });
+  if (error) {
+    const msg = String(error.message ?? "");
+    const code = (error as { code?: string }).code;
+    if (/out of stock/i.test(msg)) throw new Error(`Supabase: quote conversion rejected — ${msg}`);
+    if (code === "42501" || /not authorized/i.test(msg)) throw new Error("Supabase: you are not authorized to convert quotes.");
+    fail("convertQuote", error);
+  }
+  const r = data as Record<string, unknown> | null;
+  if (!r?.ok) {
+    const reason = String(r?.reason ?? "unknown");
+    // demo parity: missing quote or already-converted (idempotent re-click) -> undefined
+    if (reason === "not-found" || reason === "already-converted" || reason === "bad-id") return undefined;
+    throw new Error(`Supabase: quote conversion failed — ${reason}`);
+  }
+  return {
+    id: String(r.ref ?? r.id),
+    customerName: String(r.customerName ?? ""),
+    customerEmail: String(r.customerEmail ?? ""),
+    customerPhone: String(r.customerPhone ?? ""),
+    ...(r.address ? { address: String(r.address) } : {}),
+    city: String(r.city ?? ""),
+    items: ((r.items as AdminOrder["items"]) ?? []) as AdminOrder["items"],
+    subtotal: toNum(r.subtotal),
+    shipping: toNum(r.shipping),
+    total: toNum(r.total),
+    paymentMethod: String(r.paymentMethod ?? paymentMethod ?? "cod") as AdminOrder["paymentMethod"],
+    status: "pending",
+    placedAt: String(r.placedAt ?? new Date().toISOString()),
+    ...(typeof r.channelId === "string" ? { channelId: r.channelId } : {}),
+    discountPct: toNum(r.discountPct),
+    discountAmount: toNum(r.discountAmount),
+  } as unknown as AdminOrder;
 }
 
 /* ── customers (clients) ─────────────────────────────────────────────────── */

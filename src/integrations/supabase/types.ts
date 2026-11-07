@@ -1693,6 +1693,10 @@ export type Database = {
         Args: { p_lines: Json; p_customer: Json; p_channel_id?: string | null; p_client_ref?: string | null }
         Returns: Json
       }
+      quote_convert: {
+        Args: { p_quote_ref: string; p_payment_method?: string | null }
+        Returns: Json
+      }
       bootstrap_owner: {
         Args: { p_user: string; p_name?: string }
         Returns: undefined
