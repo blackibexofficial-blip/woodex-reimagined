@@ -1909,6 +1909,11 @@ export interface AdminApi {
    * an explanatory error (demo keeps simulated metadata-only uploads).
    */
   uploadProjectFile(projectId: string, fileName: string, bytes: ArrayBuffer, contentType: string): Promise<ProjectFileItem>;
+  /**
+   * Signed download URL (2-minute TTL) for a file stored in the private projects bucket (0014).
+   * Throws a descriptive error when the path/bucket is unavailable (e.g. bucket not applied yet).
+   */
+  getProjectFileDownloadUrl(storagePath: string): Promise<string>;
   listBlogPosts(): Promise<AdminBlogPost[]>;
   createBlogPost(input: NewBlogPostInput): Promise<AdminBlogPost>;
   updateBlogPost(id: string, patch: Partial<NewBlogPostInput>): Promise<AdminBlogPost | undefined>;

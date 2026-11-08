@@ -8,7 +8,7 @@
  *               Product/Article/Breadcrumb per page; zero lovable.app references (13 checks)
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
  *
- * Total: 63 checks (35 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
+ * Total: 64 checks (35 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -260,6 +260,8 @@ async function adminSuite(browser) {
   const prodBody = (await bodyText()).toLowerCase();
   ok("production tab activates with the seeded shop-floor stages", productionTabbed && prodBody.includes("material prep") && prodBody.includes("fabrication") && prodBody.includes("qc inspection"));
   ok("seeded fabrication stage renders its 75% in-progress badge", prodBody.includes("in progress · 75%"));
+  const lockedDispatch = await page.$('[role="dialog"] fieldset[aria-label="Dispatch details"][disabled]');
+  ok("QC gate locks the dispatch block while QC is pending (banner + disabled date)", prodBody.includes("dispatch blocked") && lockedDispatch !== null);
 
   // actuals tab — relational job-costing ledger (migration 0013 mirror) vs BOQ plan
   const actualsTabbed = await clickTab("Actuals");

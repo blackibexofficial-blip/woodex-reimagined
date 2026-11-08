@@ -201,6 +201,13 @@ an owner-gated deploy step: apply 0013 then 0014, regenerate
 `src/integrations/supabase/types.ts` (`supabase gen types typescript --local` replaces the hand-extended
 blocks), and only then enable real uploads/variance there. Demo mode is unaffected either way.
 
+Practice-workspace additions on top of 0013/0014 (same PR): the Production tab gates dispatch client-side —
+with QC not passed, the dispatch stage/date/vehicle/driver/phone/challan inputs are disabled, a `role=status`
+banner explains why, and saving workspace state that carries dispatch data is refused until QC passes
+(server-side enforcement would need a hosted payload trigger — owner sign-off required). The Files tab
+renders a signed-URL download button (2-minute TTL) for files whose `storagePath` points into the private
+bucket, visible only under `VITE_API_MODE=supabase`.
+
 ## 10. Phased roadmap
 
 - **Phase 1 ✅** this integration + offline `/admin` demo.

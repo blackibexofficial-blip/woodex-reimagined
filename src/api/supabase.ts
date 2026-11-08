@@ -3173,6 +3173,15 @@ async function uploadProjectFile(projectId: string, fileName: string, bytes: Arr
     storagePath: objectPath,
   };
 }
+
+async function getProjectFileDownloadUrl(storagePath: string): Promise<string> {
+  guard();
+  const clean = String(storagePath).replace(/^\/+/, "");
+  if (!clean || clean.split("/").includes("..")) throw new Error("Invalid storage path.");
+  const { data, error } = await supabase.storage.from("projects").createSignedUrl(clean, 120);
+  if (error || !data?.signedUrl) fail("getProjectFileDownloadUrl", error);
+  return data.signedUrl;
+}
 const rowToBlogPost = (r: Row): AdminBlogPost => ({
   id: r.id,
   ...(asObj(r.payload) as object),
@@ -3962,6 +3971,7 @@ export const supabaseAdminApi: AdminApi = {
   updateProjectActual,
   deleteProjectActual,
   uploadProjectFile,
+  getProjectFileDownloadUrl,
   listBlogPosts,
   createBlogPost,
   updateBlogPost,

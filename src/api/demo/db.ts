@@ -3627,6 +3627,10 @@ export const demoAdminApi: AdminApi = {
     throw new Error("Real file upload needs the hosted Supabase bucket (migration 0014) applied on the project — in demo mode files stay simulated metadata only. See docs/07-admin-integration.");
   },
 
+  async getProjectFileDownloadUrl(): Promise<string> {
+    throw new Error("Signed download URLs need the hosted Supabase bucket (migration 0014) — not available in demo mode.");
+  },
+
   /* ── project actuals ledger (migration 0013 mirror — demo, in-memory) ── */
   async listProjectCostCodes(projectId) {
     const db = loadDb();

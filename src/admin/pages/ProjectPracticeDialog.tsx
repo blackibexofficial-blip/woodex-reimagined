@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { isSupabaseMode } from "@/config/env";
 import {
   Briefcase, CalendarDays, FilePlus2, FileText, Image as ImageIcon, Loader2, ListChecks, MapPin, Trash2, Ruler, Save,
-  Box, FilePenLine, Table2, Plus, ReceiptText,
+  Box, FilePenLine, Table2, Plus, ReceiptText, Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
@@ -184,9 +184,22 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not delete the line"); }
   };
 
-  /* files — real upload (supabase mode only; demo stays simulated) */
+  /* files — real upload + signed-URL download (supabase mode only; demo stays simulated) */
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const downloadFile = async (f: ProjectFileItem) => {
+    if (!f.storagePath) return;
+    setDownloadingId(f.id);
+    try {
+      const url = await api.getProjectFileDownloadUrl(f.storagePath);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Download failed — the hosted bucket (migration 0014) may not be applied yet.");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
   const uploadFile = async (file: File) => {
     if (file.size > 50 * 1024 * 1024) { toast.error("File is larger than the 50 MB bucket cap."); return; }
     setUploading(true);
@@ -206,6 +219,7 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
   /* production */
   const prod = draft.production ?? defaultProduction();
   const prodPct = productionProgress(prod);
+  const qcPassed = prod.qc.result === "passed";
   const touchProduction = (mut: (p: ProjectProduction) => void) =>
     touch((d) => {
       const p = d.production ? { stages: d.production.stages.map((s) => ({ ...s })), qc: { ...d.production.qc }, dispatch: { ...d.production.dispatch } } : defaultProduction();
@@ -230,6 +244,19 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
   const removeFile = (id: string) => touch((d) => { d.files = d.files.filter((f) => f.id !== id); });
 
   const save = async () => {
+    // client-side dispatch gate — production data rides the payload; refuse to
+    // persist dispatch details (or a dispatched stage) while QC is not passed.
+    const d = draft.production;
+    const dispatchStage = d?.stages.find((s) => s.stage === "dispatch");
+    const hasDispatchData = Boolean(d && (
+      Object.values(d.dispatch).some((v) => String(v).trim() !== "") ||
+      (Number.isFinite(dispatchStage?.pct ?? 0) && (dispatchStage?.pct ?? 0) > 0)
+    ));
+    if (d && d.qc.result !== "passed" && hasDispatchData) {
+      setTab("production");
+      toast.error("QC is not passed — dispatch data can't be saved until QC is Passed (or clear the dispatch block).");
+      return;
+    }
     setSaving(true);
     try {
       const updated = await api.updateProject(project.id, { practice: draft } as Partial<NewProjectInput>);
@@ -474,16 +501,20 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"><Box className="h-4 w-4" /> Shop floor — {prodPct}% complete · QC gates dispatch</p>
               </div>
               <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-hon-green transition-all" style={{ width: `${prodPct}%` }} /></div>
+              <div role="status" className={`mb-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-semibold ${qcPassed ? "border-emerald-200 bg-emerald-50 text-emerald-800" : prod.qc.result === "failed" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-amber-300 bg-amber-50 text-amber-900"}`}>
+                {qcPassed ? <><Ruler className="h-4 w-4 shrink-0" /> QC passed — dispatch cleared for the yard.</> : <><FilePenLine className="h-4 w-4 shrink-0" /> Dispatch blocked — QC is {prod.qc.result === "failed" ? "FAILED" : "pending"}. Record a passing QC inspection before dispatch leaves the yard. Saving with dispatch data filled is refused while QC is not passed.</>}
+              </div>
               <ul className="space-y-2">
                 {PROJECT_PRODUCTION_STAGES.map((stage) => {
                   const row = prod.stages.find((s) => s.stage === stage);
                   const pct = row?.pct ?? 0;
                   const done = pct >= 100;
+                  const dispatchLocked = stage === "dispatch" && !qcPassed;
                   return (
                     <li key={stage} className="grid grid-cols-12 items-center gap-2 rounded-xl border border-border bg-card p-2">
                       <span className="col-span-2 text-[11px] font-bold text-foreground">{PROJECT_PRODUCTION_STAGE_LABELS[stage]}</span>
                       <Input aria-label={`${PROJECT_PRODUCTION_STAGE_LABELS[stage]} note`} placeholder="Note — e.g. CNC slot booked" value={row?.note ?? ""} onChange={(e) => setStage(stage, { note: e.target.value })} className={`${inputCls} col-span-5`} />
-                      <Input aria-label={`${PROJECT_PRODUCTION_STAGE_LABELS[stage]} percent`} type="number" min={0} max={100} step={5} value={pct} onChange={(e) => setStage(stage, { pct: Number(e.target.value) })} className={`${inputCls} col-span-2`} />
+                      <Input aria-label={`${PROJECT_PRODUCTION_STAGE_LABELS[stage]} percent`} type="number" min={0} max={100} step={5} value={pct} disabled={dispatchLocked} onChange={(e) => setStage(stage, { pct: Number(e.target.value) })} className={`${inputCls} col-span-2 disabled:cursor-not-allowed disabled:opacity-50`} title={dispatchLocked ? "Locked — QC must pass before the dispatch stage can advance" : undefined} />
                       <span className="col-span-3 flex justify-end"><span className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${done ? "border-emerald-200 bg-emerald-100 text-emerald-800" : pct > 0 ? "border-sky-200 bg-sky-100 text-sky-800" : "border-slate-200 bg-slate-100 text-slate-700"}`}>{done ? "Done" : pct > 0 ? `In progress · ${pct}%` : "Pending"}</span></span>
                     </li>
                   );
@@ -504,19 +535,19 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                   </div>
                 </div>
                 <Input aria-label="QC defect note" placeholder="Defect note (when failed — e.g. veneer chip on console no. 3)" value={prod.qc.defectNote} onChange={(e) => setQc({ defectNote: e.target.value })} className={`${inputCls} mt-2 w-full`} />
-                <p className="mt-1.5 text-[10px] text-muted-foreground">Dispatch should not leave the yard until QC is <span className="font-semibold">Passed</span>. Informational only in this slice — enforcement needs a hosted migration.</p>
+                <p className="mt-1.5 text-[10px] text-muted-foreground">Client-side gate: dispatch inputs stay locked and <span className="font-semibold">saving with dispatch data filled is refused</span> until QC is <span className="font-semibold">Passed</span>. Server-side enforcement (a hosted payload trigger) needs owner sign-off.</p>
               </div>
 
               {/* dispatch */}
               <div className="mt-3 rounded-xl border border-border bg-card p-3">
                 <p className="pb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Dispatch</p>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
+                <fieldset disabled={!qcPassed} className="grid grid-cols-2 gap-2 sm:grid-cols-6 disabled:opacity-60" aria-label="Dispatch details">
                   <Input aria-label="Dispatch date" type="date" value={prod.dispatch.date} onChange={(e) => setDispatch({ date: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-1`} />
-                  <Input aria-label="Vehicle" placeholder="Vehicle" value={prod.dispatch.vehicle} onChange={(e) => setDispatch({ vehicle: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-1`} />
-                  <Input aria-label="Driver" placeholder="Driver" value={prod.dispatch.driver} onChange={(e) => setDispatch({ driver: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-1`} />
-                  <Input aria-label="Driver phone" placeholder="Driver phone" value={prod.dispatch.driverPhone} onChange={(e) => setDispatch({ driverPhone: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-1`} />
-                  <Input aria-label="Challan ref" placeholder="Challan ref" value={prod.dispatch.challanRef} onChange={(e) => setDispatch({ challanRef: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-2`} />
-                </div>
+                  <Input aria-label="Vehicle" placeholder={qcPassed ? "Vehicle" : "Locked — QC first"} value={prod.dispatch.vehicle} onChange={(e) => setDispatch({ vehicle: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-1`} />
+                  <Input aria-label="Driver" placeholder={qcPassed ? "Driver" : "Locked — QC first"} value={prod.dispatch.driver} onChange={(e) => setDispatch({ driver: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-1`} />
+                  <Input aria-label="Driver phone" placeholder={qcPassed ? "Driver phone" : "Locked — QC first"} value={prod.dispatch.driverPhone} onChange={(e) => setDispatch({ driverPhone: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-1`} />
+                  <Input aria-label="Challan ref" placeholder={qcPassed ? "Challan ref" : "Locked — QC first"} value={prod.dispatch.challanRef} onChange={(e) => setDispatch({ challanRef: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-2`} />
+                </fieldset>
               </div>
             </TabsContent>
 
@@ -547,7 +578,12 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                           <span className="block truncate font-mono text-[11px] font-semibold text-foreground" title={f.storagePath ?? f.name}>{f.name}</span>
                           <span className="text-[10px] text-muted-foreground">{fmtSize(f.size)} · {f.uploadedBy} · {new Date(f.uploadedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
                         </span>
-                        <button type="button" aria-label={`Remove ${f.name}`} onClick={() => removeFile(f.id)} className="rounded p-1 text-muted-foreground hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                        <span className="flex shrink-0 items-center gap-1">
+                          {isSupabaseMode && f.storagePath && (
+                            <button type="button" aria-label={`Download ${f.name}`} title="Download (signed URL, 2 min)" onClick={() => void downloadFile(f)} disabled={downloadingId === f.id} className="rounded p-1 text-muted-foreground transition-colors hover:text-hon-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hon-green disabled:opacity-50"><Download className="h-4 w-4" /></button>
+                          )}
+                          <button type="button" aria-label={`Remove ${f.name}`} onClick={() => removeFile(f.id)} className="rounded p-1 text-muted-foreground hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                        </span>
                       </li>
                     );
                   })}

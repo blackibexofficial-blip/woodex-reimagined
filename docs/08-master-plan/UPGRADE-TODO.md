@@ -388,7 +388,7 @@ Everything outstanding after the merge — owner to triage; agent holds code-siz
 
 ## Verification gate (every module)
 
-> **2026-11-08 sync (later):** the suite has grown again — e2e is now **63/63**, rehearsal **93/93** (`npm run test:rehearsal`, after 0013 actuals + 0014 storage), and a11y enforcement is CI-gated at **0/47**. (Earlier same-day: e2e 59/59 · rehearsal 68/68.)
+> **2026-11-08 sync (later):** the suite has grown again — e2e is now **64/64**, rehearsal **93/93** (`npm run test:rehearsal`, after 0013 actuals + 0014 storage), and a11y enforcement is CI-gated at **0/47**. (Earlier same-day: e2e 59/59 · rehearsal 68/68.)
 > and the working branch for all current work is `arena/be885bad-woodex-reimagined` (PR open); step 4's
 > branch/PR reference is historical. Gates 1–3 unchanged.
 

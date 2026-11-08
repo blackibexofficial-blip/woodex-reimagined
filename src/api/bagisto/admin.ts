@@ -955,6 +955,10 @@ export const bagistoAdminApi: AdminApi = {
     throw new BagistoApiError(501, "Project file storage is not wired for Bagisto — Supabase Storage (migration 0014) is the job-file posture.");
   },
 
+  async getProjectFileDownloadUrl(): Promise<string> {
+    throw new BagistoApiError(501, "Project file downloads are not wired for Bagisto — Supabase Storage signed URLs (migration 0014) are the job-file posture.");
+  },
+
   async listBlogPosts(): Promise<AdminBlogPost[]> {
     throw new BagistoApiError(501, "Blog/Journal is demo-managed until the headless CMS panel (Bagisto/TailAdmin) is provisioned — see docs/07-admin-integration §8.");
   },
