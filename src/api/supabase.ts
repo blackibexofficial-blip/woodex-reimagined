@@ -64,7 +64,7 @@ import type {
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
   AdminPageContentItem, AdminPageDoc, AdminPageHistoryEntry, AdminPageSeo, AdminPriceList,
   AdminProduct, AdminProject, AdminPurchaseOrder, AdminPurchaseOrderPatch, AdminQuote,
-  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput, AdminTask, NewTaskInput, AdminClient, MergeCandidate, AdminSiteVisit, NewSiteVisitInput, SiteVisitPatch, SiteVisitStatus,
+  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput, AdminTask, NewTaskInput, AdminClient, MergeCandidate, ClientCrossRefs, AdminSiteVisit, NewSiteVisitInput, SiteVisitPatch, SiteVisitStatus,
   AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
   AdminShowroom, AdminStockMovement, AdminStockTransfer, AdminStockTransferPatch, AdminSupplier,
   AdminSupplierPatch, AdminVirtualShowroomPage, AdminWarrantyPage,
@@ -1570,6 +1570,32 @@ const rowToAdminClient = (r: Row): AdminClient => ({
   updatedAt: String(r.updated_at),
 });
 const CLIENT_COLS = "id,name,company,email,email_norm,phone,phone_norm,city,kind,source,tags,notes,merged_into,created_at,updated_at";
+
+async function updateClientCategory(): Promise<AdminClient | undefined> {
+  // V4 PR-C — the clients.category column does not exist hosted; the migration is an owner-gated decision.
+  throw new Error("Retagging clients needs the owner-gated clients.category migration — do it in the demo build (VITE_API_MODE=demo).");
+}
+
+async function listClientCrossRefs(): Promise<Record<string, ClientCrossRefs>> {
+  guard();
+  try {
+    const { data, error } = await supabase.from("client_links").select("client_id, entity").limit(10000);
+    if (error) { console.warn("listClientCrossRefs:", error.message); return {}; }
+    const out: Record<string, ClientCrossRefs> = {};
+    for (const row of data ?? []) {
+      const r = row as { client_id?: number | string; entity?: string };
+      if (r.entity !== "lead" && r.entity !== "quote") continue; // invoice/order/project links aren't maintained hosted yet
+      const cid = r.client_id === undefined ? undefined : CLIENT_REF(Number(r.client_id));
+      if (!cid) continue;
+      const e = r.entity as "lead" | "quote";
+      (out[cid] ??= {})[e] = (out[cid][e] ?? 0) + 1;
+    }
+    return out;
+  } catch (err) {
+    console.warn("listClientCrossRefs failed", err);
+    return {}; // never break the Clients page on a hosted hiccup
+  }
+}
 
 async function listClients(params?: { includeMerged?: boolean }): Promise<AdminClient[]> {
   guard();
@@ -3965,6 +3991,8 @@ export const supabaseAdminApi: AdminApi = {
   listClients,
   listMergeCandidates,
   mergeClients,
+  updateClientCategory,
+  listClientCrossRefs,
   listSiteVisits,
   createSiteVisit,
   updateSiteVisitStatus,

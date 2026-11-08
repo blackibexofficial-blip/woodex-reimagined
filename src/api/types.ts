@@ -602,8 +602,22 @@ export interface AdminClient {
   notes?: string;
   /** Set when this record was merged into another — retired id, kept for audit. */
   mergedInto?: string;
+  /** Explicit line-of-business tag (V4 P2). Absent for legacy rows — the UI derives furniture/interior/project/retail/business from kind+tags. */
+  category?: ClientCategory;
   createdAt: string;
   updatedAt: string;
+}
+
+/** CRM client category (V4 P2) — furniture/interior/project line of business. Derived at read when unset (kind/tags), explicit when retagged. */
+export type ClientCategory = "furniture" | "interior" | "project" | "retail" | "business";
+export const CLIENT_CATEGORIES: ClientCategory[] = ["furniture", "interior", "project", "retail", "business"];
+
+export interface ClientCrossRefs {
+  lead?: number;
+  quote?: number;
+  invoice?: number;
+  order?: number;
+  project?: number;
 }
 
 export interface AdminClientLink {
@@ -1913,6 +1927,10 @@ export interface AdminApi {
   listClients(params?: { includeMerged?: boolean }): Promise<AdminClient[]>;
   listMergeCandidates(): Promise<MergeCandidate[]>;
   mergeClients(intoId: string, fromId: string): Promise<AdminClient>;
+  /** Set an explicit category (owner retag). Hosted adapters reject until the clients.category column ships (owner-gated migration). */
+  updateClientCategory(id: string, category: ClientCategory): Promise<AdminClient | undefined>;
+  /** Cross-entity reference counts per client id (lead/quote/invoice/order/project). Hosted-supabase computes from client_links only; Bagisto returns {}. */
+  listClientCrossRefs(): Promise<Record<string, ClientCrossRefs>>;
 
   /** CRM site visits — scheduling + outcome tracking against leads (0001 site_visits). */
   listSiteVisits(leadId?: string): Promise<AdminSiteVisit[]>;

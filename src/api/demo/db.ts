@@ -7,6 +7,7 @@
  */
 import { idbDeleteMany, idbGetAll, idbPutMany } from "@/api/demo/mediaStore";
 import { DEFAULT_TEAM } from "@/lib/team";
+import { deriveClientCategory } from "@/lib/clientCategory";
 import { products, categoryGroups } from "@/data/products";
 import { optionSetIdsFor, OPTION_SETS } from "@/data/options";
 import { materials as finishSeed } from "@/data/materials";
@@ -42,6 +43,8 @@ import type {
   DashboardStats,
   AdminClient,
   AdminClientLink,
+  ClientCategory,
+  ClientCrossRefs,
   MergeCandidate,
   AdminSiteVisit,
   ProjectPractice,
@@ -1364,11 +1367,11 @@ function buildSeedClients(): AdminClient[] {
   const t = Date.now();
   const at = (n: number) => new Date(t - n * DAY_MS).toISOString();
   return [
-    { id: "CLI-1001", name: "Bilal Ahmed", company: "Ahmed Interiors", email: "bilal.a@example.com", emailNorm: "bilal.a@example.com", phone: "+92 315 8899007", phoneNorm: "923158899007", city: "Islamabad", kind: "business", source: "site-visit", tags: ["b2b", "interior"], notes: undefined, createdAt: at(90), updatedAt: at(30) },
-    { id: "CLI-1002", name: "Kashif Mirza", company: "Ravi Agro Foods", email: "ops@raviagrofoods.pk", emailNorm: "ops@raviagrofoods.pk", phone: "+92 300 9988776", phoneNorm: "923009988776", city: "Multan", kind: "business", source: "lead", tags: ["b2b", "agri"], notes: undefined, createdAt: at(75), updatedAt: at(5) },
+    { id: "CLI-1001", category: "interior", name: "Bilal Ahmed", company: "Ahmed Interiors", email: "bilal.a@example.com", emailNorm: "bilal.a@example.com", phone: "+92 315 8899007", phoneNorm: "923158899007", city: "Islamabad", kind: "business", source: "site-visit", tags: ["b2b", "interior"], notes: undefined, createdAt: at(90), updatedAt: at(30) },
+    { id: "CLI-1002", category: "business", name: "Kashif Mirza", company: "Ravi Agro Foods", email: "ops@raviagrofoods.pk", emailNorm: "ops@raviagrofoods.pk", phone: "+92 300 9988776", phoneNorm: "923009988776", city: "Multan", kind: "business", source: "lead", tags: ["b2b", "agri"], notes: undefined, createdAt: at(75), updatedAt: at(5) },
     { id: "CLI-1003", name: "Rabia Iqbal", email: "rabia@example.com", emailNorm: "rabia@example.com", phone: "+92 322 4567890", phoneNorm: "923224567890", city: "Karachi", kind: "retail", source: "site-visit", tags: ["retail"], notes: undefined, createdAt: at(60), updatedAt: at(12) },
-    { id: "CLI-1004", name: "B Ahmed", email: "BILAL.A@example.com", emailNorm: "bilal.a@example.com", phone: "+92 301 2223344", phoneNorm: "923012223344", city: "Rawalpindi", kind: "retail", source: "referral", tags: ["retail"], notes: "Walked in, asked for a teak sofa set — no reference to his earlier quote.", createdAt: at(21), updatedAt: at(21) },
-    { id: "CLI-1005", name: "Rabia I", email: "r.iqbal@example.co.uk", emailNorm: "r.iqbal@example.co.uk", phone: "+92 322 4567890", phoneNorm: "923224567890", city: "Karachi", kind: "retail", source: "storefront", tags: [], notes: "Signed up with work email; same mobile as the Karachi sofa enquiry.", createdAt: at(9), updatedAt: at(9) },
+    { id: "CLI-1004", category: "furniture", name: "B Ahmed", email: "BILAL.A@example.com", emailNorm: "bilal.a@example.com", phone: "+92 301 2223344", phoneNorm: "923012223344", city: "Rawalpindi", kind: "retail", source: "referral", tags: ["retail"], notes: "Walked in, asked for a teak sofa set — no reference to his earlier quote.", createdAt: at(21), updatedAt: at(21) },
+    { id: "CLI-1005", category: "furniture", name: "Rabia I", email: "r.iqbal@example.co.uk", emailNorm: "r.iqbal@example.co.uk", phone: "+92 322 4567890", phoneNorm: "923224567890", city: "Karachi", kind: "retail", source: "storefront", tags: [], notes: "Signed up with work email; same mobile as the Karachi sofa enquiry.", createdAt: at(9), updatedAt: at(9) },
     { id: "CLI-1006", name: "Ayesha Khan", email: "ayesha.k@example.com", emailNorm: "ayesha.k@example.com", phone: "+92 333 7778899", phoneNorm: "923337778899", city: "Lahore", kind: "retail", source: "referral", tags: ["retail"], notes: undefined, createdAt: at(40), updatedAt: at(40) },
     { id: "CLI-1007", name: "B. Ahmed", email: "bilal.a@example.com", emailNorm: "bilal.a@example.com", phone: "+92 315 8899007", phoneNorm: "923158899007", city: "Islamabad", kind: "business", source: "site-visit", tags: ["b2b"], notes: "Retired during 2026-10-14 review — duplicate of CLI-1001.", mergedInto: "CLI-1001", createdAt: at(120), updatedAt: at(28) },
   ];
@@ -2553,6 +2556,23 @@ export const demoAdminApi: AdminApi = {
         note,
         createdAt: now,
       });
+      // V4 PR-C (§6.3): delivery auto-tags the matching CRM client — products heuristic, never overrides an explicit tag
+      if (from !== "delivered" && status === "delivered") {
+        const line = o.items.map((it) => `${it.name} ${it.sku ?? ""} ${it.customNotes ?? ""}`).join(" | ");
+        const interiorish = /boq|turnkey|fit.?out|interior|demolition|false ceiling|partition|civil work/i.test(line);
+        const furnitureish = /sofa|chair|stool|desk|table|cabinet|wardrobe|bed\b|shelf|shelving|bookcase|workstation|reception|conference|dining|tv unit/i.test(line);
+        if (interiorish || furnitureish) {
+          const oPhone = (o.customerPhone ?? "").replace(/\D/g, "").slice(-10);
+          const oMail = (o.customerEmail ?? "").trim().toLowerCase();
+          for (const c of db.clients) {
+            if (c.mergedInto || c.category) continue;
+            const cPhone = (c.phone ?? "").replace(/\D/g, "").slice(-10);
+            const cMail = (c.email ?? "").trim().toLowerCase();
+            const hit = (oPhone.length >= 10 && cPhone === oPhone) || (!!oMail && !!cMail && cMail === oMail);
+            if (hit) { c.category = interiorish ? "interior" : "furniture"; c.updatedAt = now; }
+          }
+        }
+      }
 
       // stock sync — shipped deducts; cancel only restocks what was already dispatched
       if (from !== "shipped" && status === "shipped") {
@@ -2616,6 +2636,64 @@ export const demoAdminApi: AdminApi = {
     return [...loadDb().clients].filter((c) => includeMerged || !c.mergedInto).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   },
 
+  async updateClientCategory(id: string, category: ClientCategory): Promise<AdminClient | undefined> {
+    let updated: AdminClient | undefined;
+    update((db) => {
+      const c = db.clients.find((x) => x.id === id);
+      if (!c) return;
+      c.category = category; // explicit owner tag — derivation no longer applies
+      c.updatedAt = new Date().toISOString();
+      updated = { ...c };
+    });
+    return updated;
+  },
+
+  async listClientCrossRefs(): Promise<Record<string, ClientCrossRefs>> {
+    const db = loadDb();
+    const out: Record<string, ClientCrossRefs> = {};
+    const bump = (cid: string | undefined, key: keyof ClientCrossRefs, n = 1) => {
+      if (!cid) return;
+      (out[cid] ??= {})[key] = (out[cid][key] ?? 0) + n;
+    };
+    // client_links: the curated CRM graph (lead/quote — only entities written today)
+    const LINK_ENTITIES = new Set<keyof ClientCrossRefs>(["lead", "quote"]);
+    const clientByQuote = new Map<string, string>();
+    for (const l of db.clientLinks) {
+      if (LINK_ENTITIES.has(l.entity as keyof ClientCrossRefs)) bump(l.clientId, l.entity as keyof ClientCrossRefs);
+      if (l.entity === "quote") clientByQuote.set(l.entityId, l.clientId);
+    }
+    // orders: match on normalized contact (orders carry phone/email, never client ids)
+    const normPhone = (v?: string) => { const d = (v ?? "").replace(/\D/g, ""); return d.length >= 10 ? d.slice(-10) : ""; };
+    const normMail = (v?: string) => (v ?? "").trim().toLowerCase();
+    for (const o of db.orders) {
+      const pKey = normPhone(o.customerPhone);
+      const mail = normMail(o.customerEmail);
+      const c = db.clients.find((x) => {
+        if (x.mergedInto) return false;
+        const p = normPhone(x.phone);
+        if (pKey && p && p === pKey) return true;
+        const m = normMail(x.email);
+        return !!mail && !!m && m === mail;
+      });
+      bump(c?.id, "order");
+    }
+    // invoices: reached via the quote graph; invoices have no contact fields
+    for (const inv of db.invoices ?? []) {
+      if (inv.quoteId) bump(clientByQuote.get(inv.quoteId), "invoice");
+    }
+    // projects: portfolio rows carry a free-text client name — match company or name (heuristic, display-only)
+    for (const proj of db.projects ?? []) {
+      const hay = proj.client.toLowerCase();
+      const c = db.clients.find((x) => {
+        if (x.mergedInto) return false;
+        if (x.company && hay.includes(x.company.toLowerCase())) return true;
+        return x.name.length >= 5 && hay.includes(x.name.toLowerCase());
+      });
+      bump(c?.id, "project");
+    }
+    return out;
+  },
+
   async listMergeCandidates(): Promise<MergeCandidate[]> {
     const out: MergeCandidate[] = [];
     const active = loadDb().clients.filter((c) => !c.mergedInto);
@@ -2648,10 +2726,11 @@ export const demoAdminApi: AdminApi = {
       if (into.mergedInto) throw new Error(`${intoId} is already merged into ${into.mergedInto}.`);
       if (from.mergedInto) throw new Error(`${fromId} is already merged into ${from.mergedInto}.`);
       db.clientLinks = db.clientLinks.map((l) => (l.clientId === fromId ? { ...l, clientId: intoId } : l));
+      into.category = into.category ?? from.category; // winner's explicit tag wins; loser only fills a gap
       from.mergedInto = intoId;
       from.updatedAt = new Date().toISOString();
       into.updatedAt = new Date().toISOString();
-      merged = { ...into };
+      merged = { ...into, category: deriveClientCategory(into) };
     });
     return merged as AdminClient;
   },
