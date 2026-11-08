@@ -8,7 +8,7 @@ Local evidence that IS available right now:
   `0001…0014` applies clean, catalogue seed applies, RLS matrix for draft orders,
   exchanges/claims, actuals, projects bucket and roles holds (run it again to reproduce).
 - `npm run test:ai-eval` → 19/19 (offline sales-agent engine) · `npm run test:payments` → 15/15.
-- Demo build (this branch) verified end-to-end via Playwright: e2e 104/104, a11y 0/54.
+- Demo build (this branch) verified end-to-end via Playwright: e2e 108/108, a11y 0/54.
 
 Every step below is mandatory before the storefront index flips to live data.
 
@@ -65,8 +65,26 @@ On staging, with a **staff** account created in Supabase Auth:
 4. Confirm the projects bucket is private and capped at 50 MB.
 
 ## 5. Rehearse the flip in a Vercel/preview deploy
-Set on the **preview** env (never prod inline): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
-`VITE_API_MODE=supabase` (if/when the supabase client mode ships) — per the milestone notes.
+Set on the **preview** env (never prod inline): `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`,
+`VITE_API_MODE=supabase` — the supabase adapter is wired in code (`src/api/supabase.ts`) but has
+**never been executed against a hosted project**; the preview walk is its first real run.
+Expect surfaces that 501-gate or throw `SupabaseUnsupportedError` (unwired features, below);
+log every one you hit — that list is the cutover fix-list, not a surprise.
+
+**What the flip does — and does NOT do.** `VITE_API_MODE=supabase` re-points only the
+**admin** plane: the admin adapter (`src/api/supabase.ts`) and the staff sign-in path
+(`loginWithSupabase`, Supabase Auth email+password). The **public storefront keeps rendering
+the bundled 148-product seed catalogue** (`@/data/products`) — flipping the preview will NOT
+make the storefront serve live catalogue rows, and the money path on the storefront still
+cannot charge anyone. Do not read a clean preview walk as "the store is live".
+
+**Known unwired surfaces in supabase mode** (by design — these throw
+`SupabaseUnsupportedError` or are absent, not faked): companies (B2B master), page folders,
+delivery-zone ETA/COD config, `assignMediaToProduct`, `createProduct` / `duplicateProduct` /
+`deleteProduct` / `importProductsCsv` (catalogue authoring goes through seed/migrations),
+`getChannelSales` (no channel attribution column yet), `resetDemoData` (never destructive),
+invoice operations (EF-first; no AdminApi methods). If any of these throw during the walk,
+that is the designed behaviour — record it, don't "fix" it during the flip.
 Walk the money-path checklist: login → orders → quote WI-10204 prints (75/25 callout,
 policy wording, acceptance block) → chat bubble → lead capture → invoice flow.
 
