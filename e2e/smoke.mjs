@@ -236,6 +236,16 @@ async function adminSuite(browser) {
   await page.goto(`${ADMIN}/dashboard`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Revenue — last 30 days", 20000);
   ok("dashboard still renders", true);
+  // ── notification bell — present on every admin route; popover lists the four queues ──
+  const bell = await page.waitForSelector('button[aria-haspopup="dialog"][aria-controls]', { timeout: 10000 }).catch(() => null);
+  ok("notification bell renders in the admin topbar", !!bell);
+  if (bell) {
+    await bell.click();
+    const panel = await page.waitForSelector('[role="dialog"][aria-label="Notifications"]', { timeout: 8000 }).catch(() => null);
+    const panelText = panel ? await panel.evaluate((el) => el.textContent || "") : "";
+    ok("notification popover lists unread chats · stale leads · low stock · overdue tasks", /unread chats/i.test(panelText) && /stale/i.test(panelText) && /low stock/i.test(panelText) && /overdue tasks/i.test(panelText));
+    await page.keyboard.press("Escape");
+  }
   await clickByText("a", "Pages");
   await page.waitForFunction(() => location.pathname.endsWith("/admin/pages"), { timeout: 10000 }).catch(() => {});
   ok("sidebar Pages link routes to /admin/pages", await page.evaluate(() => location.pathname.endsWith("/admin/pages")));
@@ -564,6 +574,16 @@ async function chatSuite(browser) {
   });
   await admin.waitForFunction((t) => document.body.innerText.includes(t), { timeout: 10000 }, agentReply).catch(() => {});
   ok("agent reply posts into the thread", (await admin.evaluate(() => document.body.innerText)).includes(agentReply));
+  // ── offline AI draft — suggestion lands in the composer for review, never auto-sent ──
+  const suggestBtn = await admin.waitForSelector('button[aria-label="Suggest reply (AI)"]', { timeout: 8000 }).catch(() => null);
+  ok("inbox shows the offline AI draft button", !!suggestBtn);
+  if (suggestBtn) {
+    await suggestBtn.click();
+    await new Promise((r) => setTimeout(r, 400));
+    const draftValue = await admin.$eval("#chat-reply", (el) => el.value).catch(() => "");
+    ok("Suggest reply inserts a grounded AI draft into the composer", draftValue.trim().length > 0);
+    await admin.evaluate(() => { const el = document.querySelector("#chat-reply"); const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set; setter.call(el, ""); el.dispatchEvent(new Event("input", { bubbles: true })); });
+  }
 
   /* 3 — visitor sees the agent reply in the bubble (same tab, poll) */
   await sf.bringToFront();

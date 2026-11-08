@@ -9,6 +9,7 @@ import { isDemoMode, isSupabaseConfigured } from "@/config/env";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAdminApi } from "@/api";
+import NotificationBell from "@/admin/components/layout/NotificationBell";
 
 const NAV_GROUPS: Array<{
   label: string;
@@ -259,6 +260,7 @@ export default function AdminLayout() {
               <span className={cn("h-1.5 w-1.5 rounded-full", isSupabaseConfigured ? "bg-hon-green" : "bg-muted-foreground")} />
               {isSupabaseConfigured ? "Supabase" : isDemoMode ? "Demo data" : "Bagisto live"}
             </span>
+            <NotificationBell />
             <Link
               to="/"
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm transition hover:border-accent hover:text-hon-green-dark"

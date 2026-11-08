@@ -257,6 +257,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   deliveryNote: "Free delivery inside city limits on orders above Rs 150,000. 3–5 working days anywhere in Pakistan.",
   taxRate: 0,
   team: DEFAULT_TEAM,
+  aiOfflineDraftsEnabled: true,
 };
 
 const stripGlyph = (s: string) => s.replace(/^[↳▸»-]\s*/, "").trim();

@@ -1657,6 +1657,13 @@ export interface StoreSettings {
   storeLogo?: string;
   /** Lead assignee roster — drives Leads rows + the Mine / Unassigned filters. Demo-seeded with the sales team. */
   team?: string[];
+  /**
+   * Offline AI draft replies in the inbox composer ("Suggest reply" — the
+   * retrieval-grounded local draft, NOT the hosted model). Defaults to true.
+   * The hosted OpenAI-compatible path stays disabled until the owner deploys
+   * supabase/functions/ai-agent with AI_AGENT_API_KEY.
+   */
+  aiOfflineDraftsEnabled?: boolean;
 }
 
 export interface Paginated<T> {
