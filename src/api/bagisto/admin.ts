@@ -29,6 +29,7 @@ import type {
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
   AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, AdminTask, AdminClient, MergeCandidate, AdminSiteVisit, NewSiteVisitInput, SiteVisitPatch,
+  ChatConversation, ChatMessage, ChatMode,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -1088,6 +1089,60 @@ export const bagistoAdminApi: AdminApi = {
 
   async deleteDeliveryZone() {
     throw new BagistoApiError(501, "Delivery zone deletion is not wired for Bagisto yet. See docs/07-admin-integration.");
+  },
+
+  async listChatConversations(): Promise<ChatConversation[]> {
+    // Live chat needs a realtime layer — not in Bagisto core; demo mode is authoritative for the inbox.
+    return [];
+  },
+
+  async getChatConversation() {
+    return undefined;
+  },
+
+  async postChatVisitorMessage(): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
+    throw new BagistoApiError(501, "Storefront live chat is not wired for Bagisto — the bubble works in demo mode, or as offline capture + WhatsApp hand-off. See docs/07-admin-integration.");
+  },
+
+  async postChatAgentMessage(): Promise<ChatMessage | undefined> {
+    throw new BagistoApiError(501, "The live chat inbox is demo-only in this release — see docs/07-admin-integration.");
+  },
+
+  async captureChatOffline(input: { name: string; phone: string; message: string; consent: boolean; consentVersion?: string; page?: string }): Promise<{ conversation: ChatConversation; leadId: string }> {
+    if (!input.consent) throw new BagistoApiError(501, "Consent is required before we store a callback request.");
+    const leadInput: NewLeadInput = { type: "chat", name: input.name, phone: input.phone, email: "", summary: `Chat callback — ${input.message.slice(0, 160)}`, consent: true, consentAt: new Date().toISOString(), consentVersion: input.consentVersion ?? "lead-privacy-v1", landingPath: input.page, utmSource: "storefront_chat" };
+    try {
+      await request(`/woodex/leads`, { method: "POST", body: JSON.stringify(leadInput) }, "shop");
+    } catch (err) {
+      console.warn("[woodex] live lead capture failed — queued in local outbox:", err);
+      outboxPush("lead", leadInput);
+    }
+    const lead = localLeadFrom(leadInput);
+    const now = new Date().toISOString();
+    return {
+      conversation: { id: `CH-${lead.id}`, page: input.page, visitorName: input.name, visitorPhone: input.phone, visitorConsent: true, visitorConsentAt: now, status: "open", unread: 1, createdAt: now, lastMessageAt: now, leadId: lead.id },
+      leadId: lead.id,
+    };
+  },
+
+  async setChatStatus() {
+    return undefined;
+  },
+
+  async markChatRead() {
+    return undefined;
+  },
+
+  async countOpenChats(): Promise<number> {
+    return 0;
+  },
+
+  async getChatMode(): Promise<ChatMode> {
+    return "offline";
+  },
+
+  async setChatMode(): Promise<ChatMode> {
+    return "offline";
   },
 
   async resetDemoData() {

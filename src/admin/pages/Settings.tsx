@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { CheckCircle2, XCircle, Loader2, Save, AlertTriangle, RotateCcw, Plug, Database, Server, Upload, X } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Save, AlertTriangle, RotateCcw, Plug, Database, Server, Upload, X, MessagesSquare, Inbox } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { StoreSettings } from "@/api/types";
+import type { StoreSettings, ChatMode } from "@/api/types";
 import { config, isDemoMode, isSupabaseConfigured, isBagistoShopConfigured, isBagistoAdminConfigured } from "@/config/env";
 import { SectionCard } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Link } from "react-router-dom";
 
 const FIELD = "mb-1 block text-xs font-medium text-muted-foreground";
 
@@ -17,10 +18,22 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode | null>(null);
+  const [chatModeBusy, setChatModeBusy] = useState(false);
 
   useEffect(() => {
     api.getSettings().then(setSettings).catch(console.error);
+    api.getChatMode().then(setChatMode).catch(() => setChatMode("offline"));
   }, [api]);
+
+  const chooseChatMode = (mode: ChatMode) => {
+    if (!isDemoMode || chatModeBusy) return;
+    setChatModeBusy(true);
+    api.setChatMode(mode)
+      .then((saved) => { setChatMode(saved); toast.success(`Storefront live chat set to “${saved === "off" ? "Hidden" : saved === "live" ? "Live — agents answer" : "Offline — capture callbacks"}”.`); })
+      .catch((err) => { console.error(err); toast.error("Could not save the chat mode — please try again."); })
+      .finally(() => setChatModeBusy(false));
+  };
 
   const set = <K extends keyof StoreSettings>(key: K, value: StoreSettings[K]) =>
     setSettings((s) => (s ? { ...s, [key]: value } : s));
@@ -156,6 +169,42 @@ export default function AdminSettings() {
 
       {/* ── integrations + danger zone ─────────────────────────────────── */}
       <div className="space-y-6 lg:col-span-2">
+        <SectionCard title="Storefront live chat" action={<MessagesSquare className="h-4 w-4 text-muted-foreground" />}>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Controls the bubble on the storefront. Visitors either chat with the team (you answer in{" "}
+            <Link to="/admin/chat" className="font-semibold text-accent underline-offset-2 hover:underline">/admin/chat</Link>) or leave a name + number and we call back.
+            Consent is captured with every message; nothing is sent to third parties.
+          </p>
+          <div role="group" aria-label="Storefront live chat mode" className="mt-3 grid grid-cols-3 gap-1.5">
+            {([
+              { value: "off", label: "Off", hint: "No bubble anywhere" },
+              { value: "offline", label: "Offline capture", hint: "Default — callbacks as leads" },
+              { value: "live", label: "Live", hint: "Agents answer in the inbox" },
+            ] as Array<{ value: ChatMode; label: string; hint: string }>).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                disabled={!isDemoMode || chatModeBusy || chatMode === null}
+                aria-pressed={chatMode === opt.value}
+                onClick={() => chooseChatMode(opt.value)}
+                title={opt.hint}
+                className={`rounded-lg border px-2 py-2 text-[11px] font-semibold leading-tight transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${chatMode === opt.value ? "border-accent bg-accent text-accent-foreground shadow-sm" : "border-border bg-background text-muted-foreground hover:border-accent hover:text-foreground"}`}
+              >
+                {opt.label}
+                <span className="mt-0.5 block text-[9px] font-semibold">{opt.hint}</span>
+              </button>
+            ))}
+          </div>
+          {!isDemoMode && (
+            <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
+              Read-only on this backend — the switch persists in the demo build. Hosted chat rollout is an owner-gated migration; visitor callbacks still arrive as leads either way.
+            </p>
+          )}
+          <Link to="/admin/chat" className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-accent hover:underline">
+            <Inbox className="h-3.5 w-3.5" aria-hidden /> Open the inbox →
+          </Link>
+        </SectionCard>
+
         <SectionCard title="Integration status" action={<Plug className="h-4 w-4 text-muted-foreground" />}>
           <ul className="space-y-3">
             {integrations.map((item) => (

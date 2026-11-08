@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
-  Armchair, Receipt, ClipboardCheck, GitMerge, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, FileText,
+  Armchair, Receipt, ClipboardCheck, GitMerge, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, MessagesSquare, FileText,
   Image, Settings, LogOut, ArrowLeft, Menu, X, Megaphone, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, SlidersHorizontal, Layers, BadgeCheck, LayoutTemplate, PenTool, Monitor,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
 import { isDemoMode, isSupabaseConfigured } from "@/config/env";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAdminApi } from "@/api";
 
 const NAV_GROUPS: Array<{
   label: string;
-  items: Array<{ to: string; label: string; icon: React.ComponentType<{ className?: string }> }>;
+  items: Array<{ to: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }>;
 }> = [
   {
     label: "Overview",
@@ -61,6 +62,7 @@ const NAV_GROUPS: Array<{
     label: "Engage",
     items: [
       { to: "/admin/leads", label: "Leads", icon: ClipboardList },
+      { to: "/admin/chat", label: "Live Chat", icon: MessagesSquare },
       { to: "/admin/tasks", label: "Tasks", icon: ClipboardCheck },
       { to: "/admin/campaigns", label: "Campaigns", icon: Megaphone },
       { to: "/admin/blog", label: "Blog", icon: Newspaper },
@@ -79,7 +81,7 @@ const NAV_GROUPS: Array<{
 function pageTitle(pathname: string) {
   const seg = pathname.split("/")[2] ?? "dashboard";
   const map: Record<string, string> = {
-    dashboard: "Dashboard", analytics: "Analytics", products: "Products", categories: "Categories",
+    dashboard: "Dashboard", analytics: "Analytics", chat: "Live Chat — Storefront Inbox", products: "Products", categories: "Categories",
     invoices: "Invoices & Payments",
     tasks: "Tasks & Follow-ups",
     campaigns: "Campaigns",
@@ -95,8 +97,19 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatBadge, setChatBadge] = useState(0);
 
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
+
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      getAdminApi().countOpenChats().then((n) => { if (alive) setChatBadge(n); }).catch(() => { if (alive) setChatBadge(0); });
+    };
+    load();
+    const t = window.setInterval(load, 15000);
+    return () => { alive = false; window.clearInterval(t); };
+  }, [location.pathname]);
 
   if (!user) return <Navigate to="/admin/login" state={{ from: location }} replace />;
 
@@ -126,22 +139,32 @@ export default function AdminLayout() {
           <div key={group.label} className="mb-5">
             <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{group.label}</p>
             <ul className="space-y-0.5">
-              {group.items.map(({ to, label, icon: Icon }) => (
-                <li key={to}>
-                  <NavLink
-                    to={to}
-                    className={({ isActive }) =>
-                      cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
-                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                      )
-                    }
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {label}
-                  </NavLink>
-                </li>
-              ))}
+              {group.items.map((item) => {
+                const { to, label, icon: Icon } = item;
+                const badge = to === "/admin/chat" && chatBadge > 0 ? chatBadge : undefined;
+                return (
+                  <li key={to}>
+                    <NavLink
+                      to={to}
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
+                          isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )
+                      }
+                      aria-label={badge ? `${label} — ${badge} unread` : undefined}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {label}
+                      {badge !== undefined && (
+                        <span aria-hidden className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[10px] font-bold text-white">
+                          {badge > 9 ? "9+" : badge}
+                        </span>
+                      )}
+                    </NavLink>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ))}

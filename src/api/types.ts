@@ -8,8 +8,11 @@
 
 export type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "cancelled";
 export type PaymentMethod = "cod" | "bank-transfer" | "easypaisa" | "jazzcash" | "card";
-export type LeadType = "quote" | "b2b";
+export type LeadType = "quote" | "b2b" | "chat";
 export type LeadStatus = "new" | "contacted" | "quoted" | "won" | "lost";
+/** Live chat availability for the storefront bubble. Demo adapter persists it; hosted adapters are read-only stubs this phase. */
+export type ChatMode = "off" | "offline" | "live";
+export type ChatStatus = "open" | "closed";
 export type StockStatus = "in_stock" | "out_of_stock" | "made_to_order";
 export type StockMovementType = "inbound" | "outbound" | "return" | "damage" | "adjustment" | "transfer";
 
@@ -684,6 +687,31 @@ export interface AdminLead {
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
+}
+
+/** Live chat — storefront bubble ↔ admin inbox (demo adapter this phase; V4 §P0). */
+export interface ChatConversation {
+  id: string;                       // "CH-<n>" (demo: "DEMO-CH-<n>" for seeds)
+  /** Storefront landing path the visitor opened chat from, e.g. "/shop". */
+  page?: string;
+  visitorName?: string;
+  visitorPhone?: string;
+  visitorConsent?: boolean;
+  visitorConsentAt?: string;
+  status: ChatStatus;
+  /** Agent-side unread count (visitor messages not yet seen). */
+  unread: number;
+  createdAt: string;                // ISO
+  lastMessageAt: string;            // ISO
+  /** Set when an offline capture (or inbox conversion) created a lead from this thread. */
+  leadId?: string;
+}
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  role: "visitor" | "agent";
+  body: string;
+  createdAt: string;                // ISO
 }
 
 export interface AdminProduct {
@@ -1826,6 +1854,24 @@ export interface AdminApi {
 
   listLeads(params?: ListParams & { type?: LeadType | "all"; status?: LeadStatus | "all" }): Promise<Paginated<AdminLead>>;
   updateLeadStatus(id: string, status: LeadStatus): Promise<AdminLead | undefined>;
+
+  /** Live chat (V4 P0) — storefront bubble + inbox. Demo adapter is authoritative; hosted adapters are stubs this phase. */
+  listChatConversations(params?: { status?: ChatStatus | "all"; query?: string; unreadOnly?: boolean }): Promise<ChatConversation[]>;
+  getChatConversation(id: string): Promise<{ conversation: ChatConversation; messages: ChatMessage[] } | undefined>;
+  /** Storefront-side: append a visitor message (creates the thread on first send). Path is recorded as `page`. */
+  postChatVisitorMessage(conversationId: string | undefined, input: { body: string; visitorName?: string; visitorPhone?: string; page?: string }): Promise<{ conversation: ChatConversation; message: ChatMessage }>;
+  /** Agent-side reply; optionally closes the thread in the same write. */
+  postChatAgentMessage(conversationId: string, body: string, opts?: { close?: boolean }): Promise<ChatMessage | undefined>;
+  /** Offline capture → creates the thread + a lead with consent; returns both refs. */
+  captureChatOffline(input: { name: string; phone: string; message: string; consent: boolean; consentVersion?: string; page?: string }): Promise<{ conversation: ChatConversation; leadId: string }>;
+  /** Agent opened the thread — clears agent-side unread. */
+  markChatRead(conversationId: string): Promise<ChatConversation | undefined>;
+  /** Close or reopen a thread (agent action). */
+  setChatStatus(conversationId: string, status: ChatStatus): Promise<ChatConversation | undefined>;
+  /** Open + unread badge count for the admin sidebar. */
+  countOpenChats(): Promise<number>;
+  getChatMode(): Promise<ChatMode>;
+  setChatMode(mode: ChatMode): Promise<ChatMode>;
 
   getSettings(): Promise<StoreSettings>;
   saveSettings(settings: StoreSettings): Promise<StoreSettings>;

@@ -7,6 +7,7 @@
  *   seo       — canonical + Organization/WebSite/LocalBusiness JSON-LD sitewide;
  *               Product/Article/Breadcrumb per page; zero lovable.app references (13 checks)
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
+ *   chat      — live chat bubble + offline capture + admin inbox round trip (12 checks)
  *
  * Total: 64 checks (35 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
  */
@@ -407,6 +408,120 @@ async function seoSuite(browser) {
   await page.close();
 }
 
+/**
+ * Live chat round trip (V4 P0):
+ *  1. storefront bubble renders on / and the offline capture card submits a consented request
+ *  2. the capture creates a lead that appears in /admin/leads
+ *  3. agent reply from /admin/chat lands back in the visitor's bubble thread (poll)
+ *  4. Settings' Off mode hides the bubble entirely; Offline restores it
+ */
+async function chatSuite(browser) {
+  const sf = await browser.newPage();
+  const logs = watchErrors(sf);
+  const bodyText = () => sf.evaluate(() => document.body.innerText);
+  const stamp = Date.now().toString(36);
+  const visitorName = `E2E Chat Visitor ${stamp}`;
+  const visitorMessage = `E2E chat capture ${stamp} — need 12 chairs quoted`;
+  const agentReply = `E2E agent reply ${stamp} — quotation on the way`;
+
+  /* 1 — storefront bubble + capture */
+  await sf.goto(`${BASE}/`, { waitUntil: "networkidle2", timeout: 60000 });
+  const bubbleSel = 'button[aria-label^="Open live chat"]';
+  await sf.waitForSelector(bubbleSel, { timeout: 15000 });
+  ok("bubble renders on storefront home", true);
+  await sf.click(bubbleSel);
+  const panelSel = '#woodex-chat-panel[role="dialog"]';
+  await sf.waitForSelector(panelSel, { timeout: 10000 });
+  ok("panel opens with the offline capture card (default mode)", await sf.evaluate(() => document.body.innerText.includes("Request callback") && document.body.innerText.includes("leave your number")));
+  await sf.type("#chat-cap-name", visitorName, { delay: 5 });
+  await sf.type("#chat-cap-phone", "0300 5551234", { delay: 5 });
+  await sf.type("#chat-cap-message", visitorMessage, { delay: 5 });
+  const consentBox = await sf.$$('#woodex-chat-panel input[type="checkbox"]');
+  if (consentBox[0]) await consentBox[0].click();
+  await sf.evaluate(() => {
+    const btns = [...document.querySelectorAll('#woodex-chat-panel button')];
+    const submit = btns.find((b) => b.textContent.includes("Request callback"));
+    submit.click();
+  });
+  await sf.waitForFunction(() => document.body.innerText.includes("will call you back"), { timeout: 10000 }).catch(() => {});
+  ok("capture submit → confirmation 'Team Wwoodex will call you back.'", (await bodyText()).includes("will call you back"));
+
+  /* 2 — admin: inbox shows the thread; leads shows the callback lead */
+  const admin = await browser.newPage();
+  const alogs = watchErrors(admin);
+  const typeIntoA = async (selector, text) => {
+    await admin.click(selector, { clickCount: 1 });
+    await admin.keyboard.down("Control"); await admin.keyboard.press("KeyA"); await admin.keyboard.up("Control"); await admin.keyboard.press("Backspace");
+    await admin.type(selector, text, { delay: 5 });
+  };
+  /* browser context is shared with the admin suite — sign in only if needed */
+  await admin.goto(`${ADMIN}/dashboard`, { waitUntil: "networkidle2", timeout: 60000 });
+  if (admin.url().includes("/admin/login")) {
+    const tabs = await admin.$$('[role="tab"]');
+    for (const t of tabs) { const txt = await t.evaluate((el) => el.textContent ?? ""); if (txt.includes("Demo gate")) { await t.click(); break; } }
+    await typeIntoA("#admin-email", "admin@woodex.pk");
+    await typeIntoA("#admin-password", "woodex-admin");
+    await Promise.all([
+      admin.waitForFunction(() => location.pathname.includes("/admin/dashboard"), { timeout: 20000 }),
+      admin.click('form button[type="submit"]'),
+    ]);
+  }
+  await admin.goto(`${ADMIN}/leads`, { waitUntil: "networkidle2", timeout: 60000 });
+  await new Promise((r) => setTimeout(r, 1500));
+  const leadsText = await admin.evaluate(() => document.body.innerText);
+  ok("chat capture appears as a lead (source: storefront_chat)", leadsText.includes("Chat callback") && leadsText.includes(stamp));
+  await admin.goto(`${ADMIN}/chat`, { waitUntil: "networkidle2", timeout: 60000 });
+  await admin.waitForFunction(() => document.body.innerText.includes("Live Chat"), { timeout: 15000 });
+  const inboxText = await admin.evaluate(() => document.body.innerText);
+  ok("inbox shows the seeded DEMO-CH-1 conversation", inboxText.includes("Demo Visitor"));
+  // open the captured conversation (rows carry data-testid)
+  await admin.waitForSelector('[data-testid="chat-conversation-row"]', { timeout: 15000 });
+  await admin.evaluate((name) => {
+    const rows = [...document.querySelectorAll('[data-testid="chat-conversation-row"]')];
+    const row = rows.find((r) => r.textContent.includes(name));
+    if (!row) throw new Error(`captured conversation row not found for ${name}`);
+    row.click();
+  }, visitorName);
+  await admin.waitForFunction((t) => document.body.innerText.includes(t), { timeout: 10000 }, visitorMessage).catch(() => {});
+  const convoText = await admin.evaluate(() => document.body.innerText);
+  ok("inbox opens the visitor's thread with the captured message", convoText.includes(visitorMessage));
+  await admin.type("#chat-reply", agentReply, { delay: 5 });
+  await admin.evaluate(() => {
+    const btns = [...document.querySelectorAll("button")];
+    btns.find((b) => b.textContent.trim() === "Send")?.click();
+  });
+  await admin.waitForFunction((t) => document.body.innerText.includes(t), { timeout: 10000 }, agentReply).catch(() => {});
+  ok("agent reply posts into the thread", (await admin.evaluate(() => document.body.innerText)).includes(agentReply));
+
+  /* 3 — visitor sees the agent reply in the bubble (same tab, poll) */
+  await sf.bringToFront();
+  await sf.waitForFunction((t) => document.body.innerText.includes(t), { timeout: 12000 }, agentReply).catch(() => {});
+  ok("visitor bubble receives the agent reply (poll round trip)", (await bodyText()).includes(agentReply));
+  ok("no console/page errors (chat flow)", logs.length === 0 && alogs.length === 0);
+
+  /* 4 — hide chat entirely, then restore */
+  const setMode = (m) => sf.evaluate((mode) => {
+    try {
+      const raw = localStorage.getItem("woodex.admin.db.v1");
+      if (!raw) return false;
+      const db = JSON.parse(raw);
+      db.chatMode = mode;
+      localStorage.setItem("woodex.admin.db.v1", JSON.stringify(db));
+      return true;
+    } catch { return false; }
+  }, m);
+  await setMode("off");
+  await sf.goto(`${BASE}/contact`, { waitUntil: "networkidle2", timeout: 60000 });
+  await new Promise((r) => setTimeout(r, 800));
+  ok("chat mode Off hides the bubble completely", await sf.evaluate(() => !document.querySelector('button[aria-label^="Open live chat"]')));
+  await setMode("offline");
+  await sf.goto(`${BASE}/contact`, { waitUntil: "networkidle2", timeout: 60000 });
+  await new Promise((r) => setTimeout(r, 800));
+  ok("chat mode Offline restores the bubble", await sf.evaluate(() => !!document.querySelector('button[aria-label^="Open live chat"]')));
+  await admin.close();
+  await sf.close();
+}
+
 async function lazySuite(browser) {
   const page = await browser.newPage();
   const logs = watchErrors(page);
@@ -431,6 +546,7 @@ process.exit(await withServer(async () => {
     await adminSuite(browser);
     await seoSuite(browser);
     await lazySuite(browser);
+    await chatSuite(browser);
   } finally {
     await browser.close();
   }

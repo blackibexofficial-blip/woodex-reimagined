@@ -46,6 +46,10 @@ import type {
   NewSiteVisitInput,
   SiteVisitPatch,
   ListParams,
+  ChatConversation,
+  ChatMessage,
+  ChatMode,
+  ChatStatus,
   NewAdminProductInput,
   ProductImportResult,
   ProductImportRow,
@@ -199,6 +203,10 @@ interface DemoDb {
   /** Relational Job-costing ledger (migration 0013 shape) — demo mirror. */
   costCodes: ProjectCostCode[];
   actuals: ProjectActualLine[];
+  chatConversations: ChatConversation[];
+  chatMessages: ChatMessage[];
+  /** Storefront live chat availability (V4 P0). */
+  chatMode: ChatMode;
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -2030,10 +2038,32 @@ function buildSeed(): DemoDb {
   });
 
   const seedQuotes = buildSeedQuotes(adminProducts);
+  const seedChat = buildSeedChat();
   return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: seedQuotes,
     invoices: buildSeedInvoices(seedQuotes),
     payments: buildSeedPayments(),
-    tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), siteVisits: buildSeedSiteVisits(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [], costCodes: buildSeedCostCodes(), actuals: buildSeedActuals() };
+    tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), siteVisits: buildSeedSiteVisits(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [], costCodes: buildSeedCostCodes(), actuals: buildSeedActuals(),
+    chatConversations: seedChat.conversations, chatMessages: seedChat.messages, chatMode: "offline" as ChatMode };
+}
+
+/* ── live chat seed (V4 P0) — fictitious DEMO identities, never real customers ── */
+function buildSeedChat(): { conversations: ChatConversation[]; messages: ChatMessage[] } {
+  const now = Date.now();
+  const iso = (msAgo: number) => new Date(now - msAgo).toISOString();
+  const H = 3600000;
+  const conversations: ChatConversation[] = [
+    { id: "DEMO-CH-1", page: "/shop", visitorName: "Demo Visitor · Gulberg", visitorPhone: "+92 300 0000011", visitorConsent: true, visitorConsentAt: iso(2 * H), status: "open", unread: 1, createdAt: iso(2 * H), lastMessageAt: iso(35 * 60000) },
+    { id: "DEMO-CH-2", page: "/contact", visitorName: "Demo Client · Model Town", visitorPhone: "+92 300 0000022", visitorConsent: true, visitorConsentAt: iso(26 * H), status: "closed", unread: 0, createdAt: iso(26 * H), lastMessageAt: iso(25 * H) },
+  ];
+  const messages: ChatMessage[] = [
+    { id: "cm-demo-1a", conversationId: "DEMO-CH-1", role: "visitor", body: "Salam! I saw the Z-Lift ergonomic chair on your shop page — is it in stock for Gulberg, and how fast is delivery?", createdAt: iso(2 * H) },
+    { id: "cm-demo-1b", conversationId: "DEMO-CH-1", role: "agent", body: "Walaikum salam! Yes, in stock — Gulberg delivery is usually 2–4 working days.", createdAt: iso(90 * 60000) },
+    { id: "cm-demo-1c", conversationId: "DEMO-CH-1", role: "visitor", body: "Great. Can you WhatsApp me a quotation for 12 chairs? Need it for our office wing.", createdAt: iso(35 * 60000) },
+    { id: "cm-demo-2a", conversationId: "DEMO-CH-2", role: "visitor", body: "Do you open on Sunday? Coming from Model Town to see sofas.", createdAt: iso(26 * H) },
+    { id: "cm-demo-2b", conversationId: "DEMO-CH-2", role: "agent", body: "We're closed on Sundays — but open Saturday 9am–7pm. See you then!", createdAt: iso(25.4 * H) },
+    { id: "cm-demo-2c", conversationId: "DEMO-CH-2", role: "visitor", body: "Perfect, visiting Saturday. Shukria!", createdAt: iso(25 * H) },
+  ];
+  return { conversations, messages };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -2062,6 +2092,12 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.tasks)) db.tasks = [];
       if (!Array.isArray(db.costCodes)) db.costCodes = buildSeedCostCodes();
       if (!Array.isArray(db.actuals)) db.actuals = buildSeedActuals();
+      if (!Array.isArray(db.chatConversations) || !Array.isArray(db.chatMessages)) {
+        const seed = buildSeedChat();
+        if (!Array.isArray(db.chatConversations)) db.chatConversations = seed.conversations;
+        if (!Array.isArray(db.chatMessages)) db.chatMessages = seed.messages;
+      }
+      if (db.chatMode !== "off" && db.chatMode !== "offline" && db.chatMode !== "live") db.chatMode = "offline";
       if (!Array.isArray(db.clients)) db.clients = buildSeedClients();
       if (!Array.isArray(db.clientLinks)) db.clientLinks = buildSeedClientLinks();
       if (!Array.isArray(db.siteVisits)) db.siteVisits = buildSeedSiteVisits();
@@ -2142,6 +2178,16 @@ const update = (fn: (db: DemoDb) => void) => {
   fn(db);
   persist(db);
 };
+
+/* Cross-tab freshness: the demo DB is one localStorage snapshot per tab. When another
+   tab writes (e.g. the admin inbox posts a chat reply), this tab's cached copy must be
+   discarded or the storefront never sees it. The 'storage' event fires only in OTHER
+   tabs/windows of the same origin — exactly the case we need. */
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key === DB_KEY || event.key === null) memory = null;
+  });
+}
 
 /* ── query helpers ──────────────────────────────────────────────────────── */
 const matchQuery = (q: string | undefined, haystacks: Array<string | undefined>) => {
@@ -5610,6 +5656,142 @@ export const demoAdminApi: AdminApi = {
     });
     if (!created) throw new Error("Failed to create lead");
     return created;
+  },
+
+  /* ── live chat (V4 P0) ─────────────────────────────────────────────────── */
+  async listChatConversations(params: { status?: ChatStatus | "all"; query?: string; unreadOnly?: boolean } = {}): Promise<ChatConversation[]> {
+    const db = loadDb();
+    let items = [...db.chatConversations].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
+    if (params.status && params.status !== "all") items = items.filter((c) => c.status === params.status);
+    if (params.unreadOnly) items = items.filter((c) => c.unread > 0);
+    if (params.query?.trim()) {
+      const q = params.query.trim().toLowerCase();
+      items = items.filter((c) => [c.visitorName, c.visitorPhone, c.page, c.id].some((h) => h?.toLowerCase().includes(q)));
+    }
+    return items.map((c) => ({ ...c }));
+  },
+
+  async getChatConversation(id: string) {
+    const db = loadDb();
+    const conversation = db.chatConversations.find((c) => c.id === id);
+    if (!conversation) return undefined;
+    const messages = db.chatMessages.filter((m) => m.conversationId === id).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+    return { conversation: { ...conversation }, messages: messages.map((m) => ({ ...m })) };
+  },
+
+  async postChatVisitorMessage(conversationId: string | undefined, input: { body: string; visitorName?: string; visitorPhone?: string; page?: string }) {
+    const body = input.body.trim();
+    if (!body) throw new Error("Message cannot be empty.");
+    let out: { conversation: ChatConversation; message: ChatMessage } | undefined;
+    update((db) => {
+      const now = new Date().toISOString();
+      let conv = conversationId ? db.chatConversations.find((c) => c.id === conversationId) : undefined;
+      if (!conv) {
+        conv = { id: `CH-${Date.now().toString(36).toUpperCase()}`, page: input.page, visitorName: input.visitorName, visitorPhone: input.visitorPhone, status: "open", unread: 0, createdAt: now, lastMessageAt: now };
+        db.chatConversations.push(conv);
+      } else {
+        if (input.page && !conv.page) conv.page = input.page;
+        if (input.visitorName && !conv.visitorName) conv.visitorName = input.visitorName;
+        if (input.visitorPhone && !conv.visitorPhone) conv.visitorPhone = input.visitorPhone;
+      }
+      const message: ChatMessage = { id: `cm-${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`, conversationId: conv.id, role: "visitor", body: body.slice(0, 2000), createdAt: now };
+      db.chatMessages.push(message);
+      conv.lastMessageAt = now;
+      conv.unread += 1;
+      if (conv.status === "closed") conv.status = "open"; // a returning visitor reopens the thread
+      out = { conversation: { ...conv }, message: { ...message } };
+    });
+    if (!out) throw new Error("Live chat: failed to persist the visitor message.");
+    return out;
+  },
+
+  async postChatAgentMessage(conversationId: string, body: string, opts?: { close?: boolean }) {
+    const text = body.trim();
+    if (!text) throw new Error("Reply cannot be empty.");
+    let created: ChatMessage | undefined;
+    update((db) => {
+      const conv = db.chatConversations.find((c) => c.id === conversationId);
+      if (!conv) return;
+      const now = new Date().toISOString();
+      const message: ChatMessage = { id: `cm-${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`, conversationId, role: "agent", body: text.slice(0, 2000), createdAt: now };
+      db.chatMessages.push(message);
+      conv.lastMessageAt = now;
+      if (opts?.close) conv.status = "closed";
+      created = { ...message };
+    });
+    return created;
+  },
+
+  async captureChatOffline(input: { name: string; phone: string; message: string; consent: boolean; consentVersion?: string; page?: string }) {
+    if (!input.consent) throw new Error("Consent is required before we store a callback request.");
+    const name = input.name.trim();
+    const phone = input.phone.trim();
+    const message = input.message.trim();
+    if (!name || !phone || !message) throw new Error("Name, phone and message are all required.");
+    let out: { conversation: ChatConversation; leadId: string } | undefined;
+    update((db) => {
+      const now = new Date().toISOString();
+      const suffix = Date.now().toString(36);
+      const conv: ChatConversation = { id: `CH-${suffix.toUpperCase()}`, page: input.page, visitorName: name, visitorPhone: phone, visitorConsent: true, visitorConsentAt: now, status: "open", unread: 1, createdAt: now, lastMessageAt: now };
+      db.chatConversations.push(conv);
+      db.chatMessages.push({ id: `cm-${suffix}v`, conversationId: conv.id, role: "visitor", body: message.slice(0, 2000), createdAt: now });
+      const lead: AdminLead = {
+        id: `lead-web-${suffix}`,
+        type: "chat",
+        name,
+        email: "",
+        phone,
+        summary: `Chat callback — ${message.slice(0, 160)}`,
+        status: "new",
+        createdAt: now,
+        consent: true,
+        consentAt: now,
+        consentVersion: input.consentVersion ?? "lead-privacy-v1",
+        landingPath: input.page,
+        utmSource: "storefront_chat",
+      };
+      db.leads.push(lead);
+      conv.leadId = lead.id;
+      out = { conversation: { ...conv }, leadId: lead.id };
+    });
+    if (!out) throw new Error("Live chat: failed to store the callback request.");
+    return out;
+  },
+
+  async markChatRead(conversationId: string) {
+    let out: ChatConversation | undefined;
+    update((db) => {
+      const conv = db.chatConversations.find((c) => c.id === conversationId);
+      if (!conv) return;
+      conv.unread = 0;
+      out = { ...conv };
+    });
+    return out;
+  },
+
+  async setChatStatus(conversationId: string, status: ChatStatus) {
+    let out: ChatConversation | undefined;
+    update((db) => {
+      const conv = db.chatConversations.find((c) => c.id === conversationId);
+      if (!conv) return;
+      conv.status = status;
+      out = { ...conv };
+    });
+    return out;
+  },
+
+  async countOpenChats() {
+    const db = loadDb();
+    return db.chatConversations.filter((c) => c.status === "open" && c.unread > 0).length;
+  },
+
+  async getChatMode(): Promise<ChatMode> {
+    return loadDb().chatMode;
+  },
+
+  async setChatMode(mode: ChatMode): Promise<ChatMode> {
+    update((db) => { db.chatMode = mode; });
+    return mode;
   },
 
   async resetDemoData() {
