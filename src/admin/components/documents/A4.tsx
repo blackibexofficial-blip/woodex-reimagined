@@ -35,6 +35,11 @@ const PRINT_CSS = `
     width: auto !important; min-height: 297mm !important; box-shadow: none !important;
     border-radius: 0 !important; border: none !important; margin: 0 !important; padding: 12mm 13mm 10mm !important;
   }
+  /* Pagination guards: repeat the items-table header on page 2, never split a row,
+     and keep the signature/footer block whole. */
+  .a4-page thead { display: table-header-group; }
+  .a4-page tr { break-inside: avoid; page-break-inside: avoid; }
+  .a4-page footer { break-inside: avoid; page-break-inside: avoid; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 `;

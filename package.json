@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "e2e": "bash e2e/run.sh",
     "e2e:a11y": "node e2e/a11y.mjs",
+    "test:print": "node scripts/print-preflight.mjs",
     "test:rehearsal": "node rehearsal/rehearsal.mjs",
     "test:db": "node scripts/db-local-test.mjs",
     "test:ai-eval": "node rehearsal/ai-eval.mjs",

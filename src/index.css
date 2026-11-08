@@ -184,7 +184,14 @@
     visibility: hidden !important;
   }
   .print-invoice,
-  .print-invoice * {
+  .print-invoice *,
+  /* Admin A4 print engine (quotation / invoice / order / PO / return / exchange) —
+     without this the whole sheet stays invisible and Chromium prints blank pages. */
+  .a4doc,
+  .a4doc *,
+  /* Classic admin quotation (Quote.tsx "classic" template) */
+  .quote-sheet,
+  .quote-sheet * {
     visibility: visible !important;
   }
   .print-invoice {

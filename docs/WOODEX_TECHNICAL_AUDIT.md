@@ -230,13 +230,14 @@ Severity: P0 business/security failure · P1 broken path for daily use · P2 imp
 | B-08 | P2 | Build churn | `mcp/index.ts` + `sitemap.xml` regenerate every build | dirty working tree; risk of accidental commit of generated diff | conventional `git checkout --` after builds (documented); or ownership step S-08 | git status clean | OPEN (hygiene) |
 | B-09 | P2 | Bundle | chunk >500 kB warning (puck/recharts/vendor) | slower first load on weak connections | `manualChunks` vendor split; measure | build log; preview CWV | OPEN |
 | B-10 | P2 | `AI hosted path` | EF undeployed; no key | "AI agent" only works as offline draft | CREDENTIAL-BLOCKED §8 sequence | staging rehearsal + evals | OPEN (blocked) |
-| B-11 | P2 | Physical A4 print | never printed by a human | spacing/widows/font embedding unverified on paper | owner prints WI-10204 from preview; fix reported deltas | owner sign-off | OPEN (owner action) |
+| B-11 | P2 | Physical A4 print | never printed by a human | preflight tooling landed this cycle (`scripts/print-preflight.mjs`): sheet geometry, print-media visibility (found + fixed B-18), border-box, chrome hiding, Chromium PDF page truth — all PASS; paper itself still unverified | owner prints WI-10204 from preview; fix reported deltas | **preflight PASS; owner sign-off still required** |
 | B-12 | P3 | `robots.txt` + sitemap | no host awareness | SEO canonical confusion on preview | S-14 fix | inspect head tags | OPEN |
 | B-13 | P3 | a11y scope | print routes (`.a4-page`) not in axe route list | low risk (print CSS) | add print route scans | a11y suite | OPEN |
 | B-14 | P3 | `e2e/smoke.mjs` | covers smoke/CRUD paths, not exhaustive CRUD×hosted-matrix | acceptable for smoke; regressions in rare pages may escape | grow checks where bugs found | CI | OPEN |
 | B-15 | **FIXED ✅** | 9 taxonomy pages → `/admin/taxonomy`; sidebar 44→36 collapsible groups | consolidation delivered step 2 | sidebar noise, duplication | — | e2e 99→108, a11y 0/54 | **FIXED (this branch)** |
 | B-16 | **FIXED ✅** | Furniture A4 advance math hardcoded 75/25; wording static | parameterized by template (`advancePct`, EN/UR terms, acceptance block, footer variants) | printed quotes wrong for non-75% deals | — | e2e ×5, build green | **FIXED (this branch)** |
 | B-17 | **FIXED ✅** | No admin notification surface | NotificationBell (chat/leads/low-stock/tasks) | invisible backlog | — | e2e bell asserts ×2 | **FIXED (this branch)** |
+| B-18 | **FIXED ✅** | Legacy `@media print { body * { visibility: hidden } }` (`src/index.css`) un-hid only `.print-invoice` — every admin A4/classic printable printed **blank** (confirmed: 1.4 KB two-page PDF, empty content streams) | carve-out extended to `.a4doc` **and** `.quote-sheet` trees; A4 PRINT_CSS gained pagination guards (`thead` repeat, `tr`/`footer` break-inside avoid); new gate `scripts/print-preflight.mjs` + `npm run test:print` | silent blank PDFs across all 7 printable admin routes | — | print-preflight 35/35 across 7 routes (WI-10204 → 2 pages by content, EXC-1001 → 2); PDFs 41–72 KB with painted content | **FIXED (this branch, 2026-11-08)** |
 
 ## 8. Missing functionality register (vs MASTER prompt Parts 3–21)
 
@@ -324,6 +325,7 @@ Order = dependency + risk. **Nothing starts without the owner's word; every step
 
 ## 12. Changelog
 
+- **v2.1 (2026-11-08, this branch):** B-18 found during roadmap #1 (A4 print sign-off) preflight — legacy print CSS hid every admin printable; fixed (visibility carve-outs + pagination guards). New gate `npm run test:print` (print-preflight): 35/35 across the 7 printable admin routes; PDFs paint. B-11 stays OPEN for the owner's physical print. Runbook §5 corrected (env trio, flip scope = admin plane, storefront stays seeded, unwired-surface list) — `a3db451`.
 - **v2 (2026-11-08, 84aad29):** post-merge rewrite. Baseline re-run (e2e 108/108, axe 0/54, rehearsal 93/0, main CI green). AI status changed from "absent" to "offline-verified, hosted UNVERIFIED". A4 furniture print, taxonomy consolidation, NotificationBell added as FIXED items. §4 inventory and §5 DB map added in requested deliverable form. v1's P1-6/P2-1/B-register statuses updated accordingly; v1 issue numbering preserved where still valid.
 - **v1 (2026-11-08, 608f966):** initial Phase 0 audit.
 
