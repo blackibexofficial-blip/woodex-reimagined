@@ -8,7 +8,7 @@
  *               Product/Article/Breadcrumb per page; zero lovable.app references (13 checks)
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
  *
- * Total: 54 checks (30 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
+ * Total: 59 checks (35 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -31,6 +31,14 @@ async function adminSuite(browser) {
     }, selector, text);
   const waitText = (t, timeout = 15000) =>
     page.waitForFunction((s) => document.body.innerText.toLowerCase().includes(s.toLowerCase()), { timeout }, t);
+  const clickTab = async (label) => {
+    const tabs = await page.$$('[role="tab"]');
+    for (const t of tabs) {
+      const txt = await t.evaluate((el) => el.textContent ?? "");
+      if (txt.includes(label)) { await t.click(); return true; }
+    }
+    return false;
+  };
 
   await page.goto(`${ADMIN}/login`, { waitUntil: "networkidle2", timeout: 60000 });
   const toggleVisible = await page.evaluate(() => [...document.querySelectorAll('[role="tab"]')].map((n) => n.textContent.trim()));
@@ -191,6 +199,33 @@ async function adminSuite(browser) {
   await page.waitForFunction(() => !document.querySelector("#visit-at"), { timeout: 8000 }).catch(() => {});
   ok("visit dialog closes cleanly", await page.evaluate(() => !document.querySelector("#visit-at")));
 
+  // kanban board — synthetic drag New→Quoted (Danish Hussain)
+  await page.goto(`${ADMIN}/leads`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForSelector('input[placeholder*="Search name"]', { timeout: 15000 });
+  await clickByText("button", "Board");
+  await page.waitForFunction(() => document.querySelectorAll('[aria-label^="Column "]').length === 5, { timeout: 15000 }).catch(() => {});
+  const drag = await page.evaluate(() => {
+    const card = document.querySelector('li[draggable="true"]');
+    const quoted = document.querySelector('[aria-label="Column quoted"]');
+    if (!card || !quoted) return { ok: false };
+    const name = card.querySelector("p")?.textContent ?? "";
+    const dt = new DataTransfer();
+    card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: dt }));
+    quoted.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt }));
+    quoted.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt }));
+    return { ok: true, name };
+  });
+  await new Promise((r) => setTimeout(r, 800));
+  const quotedCol = await page.evaluate(() => [...document.querySelectorAll('[aria-label="Column quoted"] li p.truncate')].map((p) => p.textContent));
+  ok(`kanban synthetic drag moves a card New→Quoted (${drag.name})`, drag.ok && quotedCol.includes(drag.name));
+
+  // client-merge review (CRM identity) — loads with seeded candidates + audit trail
+  await page.goto(`${ADMIN}/client-merge`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("Merge history", 20000);
+  const mergeBody = (await bodyText()).toLowerCase();
+  ok("merge review shows the seeded Bilal email-collision pair (Bilal Ahmed / B Ahmed)", mergeBody.includes("bilal ahmed") && mergeBody.includes("b ahmed"));
+  ok("merge audit trail lists the retired record (CLI-1007, tombstoned into CLI-1001)", mergeBody.includes("cli-1007") && mergeBody.includes("cli-1001"));
+
   // interior projects — practice workspace (BOQ · milestones · files)
   await page.goto(`${ADMIN}/projects`, { waitUntil: "networkidle2", timeout: 60000 });
   await page.waitForSelector('button[aria-label^="Practice workspace for"]', { timeout: 20000 });
@@ -205,6 +240,19 @@ async function adminSuite(browser) {
   }
   await page.waitForFunction(() => document.body.innerText.includes("mep-asbuilt-schematic.pdf"), { timeout: 10000 }).catch(() => {});
   ok("practice workspace Files tab lists the seeded drawing (mep-asbuilt-schematic.pdf)", (await bodyText()).includes("mep-asbuilt-schematic.pdf"));
+
+  // BOQ qty edit recomputes the planned total (demo: first row was 3,500 sqft @ Rs 180)
+  const boqTabbed = await clickTab("BOQ");
+  await page.waitForSelector('[role="dialog"] input[aria-label="Qty"]', { timeout: 10000 });
+  ok("BOQ tab activates and renders qty inputs", boqTabbed);
+  await page.evaluate(() => {
+    const input = document.querySelector('[role="dialog"] input[aria-label="Qty"]');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    setter.call(input, "4000");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForFunction(() => document.body.innerText.includes("7,567,500"), { timeout: 10000 }).catch(() => {});
+  ok("BOQ qty edit recomputes planned total (3,500→4,000 => Rs 7,567,500)", (await bodyText()).includes("7,567,500"));
 
   // --- Wave 2: Library rail + Layers outline + lab render ---
   const clickRail = (text) =>
