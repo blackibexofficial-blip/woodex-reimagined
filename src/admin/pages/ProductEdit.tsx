@@ -11,14 +11,14 @@
  * patch the shared catalog). It never rewrites the static storefront bundle —
  * the storefront catalogue is built from src/data/products.ts.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, Check, Eye, Loader2, Package, Plus, Save, Trash2, X,
+  ArrowLeft, Check, ChevronLeft, ChevronRight, Eye, Images, Loader2, Package, Plus, Save, Star, Trash2, Upload, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { AdminCollection, AdminOptionSet, AdminProduct } from "@/api/types";
+import type { AdminCollection, AdminMediaAsset, AdminOptionSet, AdminProduct } from "@/api/types";
 import { categories, categoryGroups, seriesList } from "@/data/products";
 import { cn } from "@/lib/utils";
 import { SectionCard, formatPKR } from "@/admin/components";
@@ -49,7 +49,8 @@ interface FormState {
   weightKg: string;
   shortDescription: string;
   description: string;
-  images: string; // one URL per line — first becomes the primary thumbnail
+  images: string[];
+  primary: string; // URL of the pinned primary thumbnail (empty = first image)
   optionSetIds: string[];
   specs: Array<{ label: string; value: string }>;
 }
@@ -70,7 +71,8 @@ const EMPTY_FORM: FormState = {
   weightKg: "",
   shortDescription: "",
   description: "",
-  images: "",
+  images: [],
+  primary: "",
   optionSetIds: [],
   specs: [],
 };
@@ -91,12 +93,48 @@ const toForm = (p: AdminProduct): FormState => ({
   weightKg: p.weightKg !== undefined ? String(p.weightKg) : "",
   shortDescription: p.shortDescription ?? "",
   description: p.description ?? "",
-  images: (p.images ?? (p.image ? [p.image] : [])).join("\n"),
+  /* seeded rows carry duplicated URLs — dedupe at load (add/remove stays clean) */
+  images: [...new Set(p.images ?? (p.image ? [p.image] : []))],
+  primary: p.image ?? p.images?.[0] ?? "",
   optionSetIds: p.optionSetIds ?? [],
   specs: p.specs ?? [],
 });
 
-const imageUrls = (s: string) => s.split("\n").map((u) => u.trim()).filter(Boolean).slice(0, 12);
+const IMAGE_LIMIT = 12;
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // matches the media library budget
+const DOWNSCALE_EDGE = 1280; // keeps the demo DB (localStorage) lean — seeds are webps anyway
+const readAsDataURL = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+/** Downscale large photos client-side (webp q0.82, jpeg fallback) — storefront renders ≤1280px anyway. */
+async function downscaleImage(file: File): Promise<{ url: string; mime: string; size: number }> {
+  const original = await readAsDataURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new window.Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = original;
+    });
+    const scale = Math.min(1, DOWNSCALE_EDGE / Math.max(img.width, img.height));
+    if (scale >= 1) return { url: original, mime: file.type, size: file.size };
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return { url: original, mime: file.type, size: file.size };
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const webp = canvas.toDataURL("image/webp", 0.82);
+    const url = webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", 0.82);
+    return { url, mime: url.startsWith("data:image/webp") ? "image/webp" : "image/jpeg", size: Math.round((url.length * 3) / 4) };
+  } catch {
+    return { url: original, mime: file.type, size: file.size };
+  }
+}
 const parseIntSafe = (s: string) => { const n = Math.floor(Number(s)); return Number.isFinite(n) && n >= 0 ? n : 0; };
 const parseNum = (s: string) => { const n = Number(s); return Number.isFinite(n) && s.trim() !== "" ? n : NaN; };
 
@@ -125,6 +163,12 @@ export default function AdminProductEdit() {
   const [membership, setMembership] = useState<Set<string> | null>(null);
   const [seriesOptions, setSeriesOptions] = useState<Array<{ id: string; name: string; active: boolean }>>(seriesList.map(({ id, name }) => ({ id, name, active: true })));
   const [brandOptions, setBrandOptions] = useState<Array<{ id: string; name: string; active: boolean }>>([{ id: "woodex", name: "Woodex", active: true }]);
+  const [uploading, setUploading] = useState(false);
+  const [urlDraft, setUrlDraft] = useState("");
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [assets, setAssets] = useState<AdminMediaAsset[] | null>(null);
+  const [railIndex, setRailIndex] = useState(0);
+  const uploadRef = useRef<HTMLInputElement>(null);
 
   /* reference data — same sources the old dialog used */
   useEffect(() => {
@@ -147,6 +191,10 @@ export default function AdminProductEdit() {
         if (!found) { setLoadError("That product could not be found — it may have been deleted."); return; }
         setOriginal(found);
         setForm(toForm(found));
+        /* open the rail on the pinned primary, not just the first image */
+        const imgs = [...new Set(found.images ?? (found.image ? [found.image] : []))];
+        const prim = found.image ?? imgs[0] ?? "";
+        setRailIndex(Math.max(0, imgs.indexOf(prim)));
       })
       .catch(() => { if (alive) setLoadError("Could not load this product. Try again, or go back to the catalogue."); })
       .finally(() => { if (alive) setLoading(false); });
@@ -157,12 +205,89 @@ export default function AdminProductEdit() {
     setForm((f) => ({ ...f, [key]: value }));
   }, []);
 
-  const previewUrls = imageUrls(form.images);
+  const previewUrls = form.images;
+  const effectivePrimary = form.images.includes(form.primary) ? form.primary : (form.images[0] ?? "");
+  const railSrc = previewUrls.length > 0 ? previewUrls[Math.min(railIndex, previewUrls.length - 1)] : "";
+  /* keep the rail index valid when images are removed or reordered */
+  useEffect(() => { setRailIndex((i) => Math.min(i, Math.max(0, form.images.length - 1))); }, [form.images.length]);
   const price = parseNum(form.price);
   const compareAt = form.compareAtPrice.trim() === "" ? undefined : parseNum(form.compareAtPrice);
   const salePercent = compareAt !== undefined && Number.isFinite(compareAt) && price > 0 && compareAt > price
     ? Math.round(((compareAt - price) / compareAt) * 100) : null;
   const chip = statusChip(form.stockStatus);
+
+  /* ── image actions ─────────────────────────────────────────── */
+  const addImages = (urls: string[]) => {
+    const cleaned = urls.map((u) => u.trim()).filter(Boolean);
+    if (cleaned.length === 0) return;
+    const room = IMAGE_LIMIT - form.images.length;
+    if (room <= 0) { toast.error(`Limit ${IMAGE_LIMIT} images per product.`); return; }
+    const incoming = cleaned.filter((u) => !form.images.includes(u)).slice(0, room);
+    if (incoming.length < cleaned.length) toast.error(`Some images were skipped — limit ${IMAGE_LIMIT} per product, duplicates ignored.`);
+    setForm((f) => {
+      const images = [...f.images, ...incoming];
+      return { ...f, images, primary: f.primary && images.includes(f.primary) ? f.primary : (images[0] ?? "") };
+    });
+  };
+  const onAddUrlField = () => {
+    if (!urlDraft.trim()) return;
+    addImages(urlDraft.split(/[\n,]+/));
+    setUrlDraft("");
+  };
+  const onUploadImages = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploading(true);
+    const uploaded: string[] = [];
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/")) { toast.error(`“${file.name}” is not an image — skipped.`); continue; }
+      if (file.size > MAX_UPLOAD_BYTES) { toast.error(`“${file.name}” is over 10 MB — skipped.`); continue; }
+      try {
+        const { url, mime, size } = await downscaleImage(file);
+        /* keep the media library the source of truth — the product then references the asset URL */
+        const asset = await api.addMediaAsset({ name: file.name, url, mime, size, folder: "Products" });
+        uploaded.push(asset.url);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : `Could not upload “${file.name}”.`);
+      }
+    }
+    if (uploaded.length > 0) toast.success(`${uploaded.length} image${uploaded.length === 1 ? "" : "s"} added (optimised ≤${DOWNSCALE_EDGE}px).`);
+    addImages(uploaded);
+    setUploading(false);
+    if (uploadRef.current) uploadRef.current.value = "";
+  };
+  const openLibrary = async () => {
+    setLibraryOpen(true);
+    if (assets === null) {
+      try { setAssets(await api.listMediaAssets()); }
+      catch { toast.error("Could not load the media library."); setAssets([]); }
+    }
+  };
+  const toggleAsset = (asset: AdminMediaAsset) => {
+    setForm((f) => {
+      if (f.images.includes(asset.url)) {
+        const images = f.images.filter((u) => u !== asset.url);
+        return { ...f, images, primary: f.primary === asset.url ? (images[0] ?? "") : f.primary };
+      }
+      if (f.images.length >= IMAGE_LIMIT) { toast.error(`Limit ${IMAGE_LIMIT} images per product.`); return f; }
+      const images = [...f.images, asset.url];
+      return { ...f, images, primary: f.primary || images[0] };
+    });
+  };
+  const removeImageAt = (i: number) =>
+    setForm((f) => {
+      const images = f.images.filter((_, j) => j !== i);
+      return { ...f, images, primary: images.includes(f.primary) ? f.primary : (images[0] ?? "") };
+    });
+  const moveImage = (i: number, dir: -1 | 1) =>
+    setForm((f) => {
+      const j = i + dir;
+      if (j < 0 || j >= f.images.length) return f;
+      const images = [...f.images];
+      const [item] = images.splice(i, 1);
+      images.splice(j, 0, item);
+      return { ...f, images };
+    });
+  const pinPrimary = (url: string) => setForm((f) => ({ ...f, primary: url }));
 
   const validate = (): string | null => {
     if (!form.name.trim()) return "Name is required.";
@@ -185,8 +310,8 @@ export default function AdminProductEdit() {
     specs: form.specs.map((r) => ({ label: r.label.trim(), value: r.value.trim() })).filter((r) => r.label && r.value),
     shortDescription: form.shortDescription.trim() || undefined,
     description: form.description.trim() || undefined,
-    images: previewUrls,
-    image: previewUrls[0] ?? original?.image,
+    images: previewUrls.slice(0, IMAGE_LIMIT),
+    image: effectivePrimary || original?.image,
     subcategory: form.subcategory.trim() || undefined,
     seriesId: form.seriesId || undefined,
     brandId: form.brandId || undefined,
@@ -460,16 +585,53 @@ export default function AdminProductEdit() {
           </SectionCard>
 
           <SectionCard title="Images & merchandising">
-            <label className={fieldLabel} htmlFor="pe-images">Image URLs (one per line) — first is the primary thumbnail</label>
-            <Textarea id="pe-images" rows={3} value={form.images} onChange={(e) => set("images", e.target.value)} placeholder="chair-product.webp" className="font-mono text-[10px]" />
-            {previewUrls.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {previewUrls.slice(0, 6).map((src, i) => (
-                  <img key={i} src={src} alt="" loading="lazy" className="h-12 w-12 rounded-md border border-border object-cover" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
-                ))}
-                {previewUrls.length > 6 && <span className="self-center text-[10px] text-muted-foreground">+{previewUrls.length - 6} more</span>}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className={cn(fieldLabel, "mb-0")}>Product images <span className="font-normal text-muted-foreground">({form.images.length}/{IMAGE_LIMIT})</span></span>
+              <div className="flex items-center gap-1.5">
+                <input ref={uploadRef} type="file" accept="image/*" multiple hidden onChange={(e) => onUploadImages(e.target.files)} aria-hidden="true" tabIndex={-1} />
+                <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => uploadRef.current?.click()} disabled={uploading}>
+                  {uploading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1 h-3.5 w-3.5" />} Upload
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="h-7" onClick={openLibrary}>
+                  <Images className="mr-1 h-3.5 w-3.5" /> From library
+                </Button>
               </div>
+            </div>
+            <p className="mb-2 mt-1 text-[10px] leading-4 text-muted-foreground">
+              Upload, paste URLs or attach from the media library. Star an image to pin the <span className="font-semibold text-foreground">primary</span> — it drives cards, the PDP hero, the summary preview and CSV exports.
+            </p>
+            {form.images.length === 0 ? (
+              <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-[11px] text-muted-foreground">No images yet — upload one, attach from the library, or paste a URL below.</p>
+            ) : (
+              <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                {form.images.map((src, i) => {
+                  const isPrimary = src === effectivePrimary;
+                  return (
+                    <li key={src} className={cn("overflow-hidden rounded-lg border bg-secondary", isPrimary ? "border-emerald-600 ring-2 ring-emerald-600" : "border-border")}>
+                      <img src={src} alt={`Product image ${i + 1}${isPrimary ? " (primary)" : ""}`} loading="lazy" className="h-20 w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
+                      {isPrimary && <span className="block bg-emerald-700 px-1 py-0.5 text-center text-[8px] font-bold uppercase tracking-wide text-white">Primary</span>}
+                      <span className="flex items-center justify-center gap-0.5 bg-black/60 py-1">
+                        <button type="button" aria-label={isPrimary ? `Image ${i + 1} is the primary` : `Set image ${i + 1} as primary`} aria-pressed={isPrimary} onClick={() => pinPrimary(src)} className="rounded p-1 text-amber-300 transition-colors hover:bg-white/15"><Star className={cn("h-4 w-4", isPrimary && "fill-amber-400")} /></button>
+                        <button type="button" aria-label={`Move image ${i + 1} earlier`} disabled={i === 0} onClick={() => moveImage(i, -1)} className="rounded p-1 text-white transition-colors hover:bg-white/15 disabled:opacity-25"><ChevronLeft className="h-4 w-4" /></button>
+                        <button type="button" aria-label={`Move image ${i + 1} later`} disabled={i === form.images.length - 1} onClick={() => moveImage(i, 1)} className="rounded p-1 text-white transition-colors hover:bg-white/15 disabled:opacity-25"><ChevronRight className="h-4 w-4" /></button>
+                        <button type="button" aria-label={`Remove image ${i + 1}`} onClick={() => removeImageAt(i)} className="rounded p-1 text-rose-300 transition-colors hover:bg-white/15"><Trash2 className="h-4 w-4" /></button>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
+            <div className="mt-2 flex gap-1.5">
+              <Input
+                value={urlDraft}
+                onChange={(e) => setUrlDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onAddUrlField(); } }}
+                placeholder="Paste image URL(s) — separate multiples with commas or new lines"
+                aria-label="Add image URL"
+                className="font-mono text-[10px]"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={onAddUrlField} aria-label="Add image URL"><Plus className="h-4 w-4" /></Button>
+            </div>
 
             {optionSets.length > 0 && (
               <div className="mt-4">
@@ -547,20 +709,30 @@ export default function AdminProductEdit() {
         <aside className="lg:col-span-2 lg:sticky lg:top-4">
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-secondary">
-              {previewUrls[0] ? (
+              {railSrc ? (
                 <img
-                  src={previewUrls[0]}
-                  alt={form.name || "Product image"}
+                  src={railSrc}
+                  alt={railSrc === effectivePrimary ? form.name || "Product image" : `Product image ${Math.min(railIndex, previewUrls.length - 1) + 1} of ${previewUrls.length}`}
                   className="h-full w-full object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }}
                 />
               ) : null}
-              {!previewUrls[0] && <Package className="h-16 w-16 text-muted-foreground/40" aria-hidden="true" />}
+              {!railSrc && <Package className="h-16 w-16 text-muted-foreground/40" aria-hidden="true" />}
               <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
                 <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", chip.cls)}>{chip.label}</span>
                 {form.isBestSeller && <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-semibold text-amber-950">Best Seller</span>}
                 {salePercent !== null && <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-semibold text-white">Save {salePercent}%</span>}
               </div>
+              {previewUrls.length > 1 && (
+                <>
+                  <button type="button" aria-label="Previous image" onClick={() => setRailIndex((i) => (i - 1 + previewUrls.length) % previewUrls.length)} className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/55 p-1.5 text-white transition-colors hover:bg-black/80"><ChevronLeft className="h-4 w-4" /></button>
+                  <button type="button" aria-label="Next image" onClick={() => setRailIndex((i) => (i + 1) % previewUrls.length)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/55 p-1.5 text-white transition-colors hover:bg-black/80"><ChevronRight className="h-4 w-4" /></button>
+                  <span className="absolute bottom-2 left-2 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-semibold tabular-nums text-white">{Math.min(railIndex, previewUrls.length - 1) + 1} / {previewUrls.length}{railSrc === effectivePrimary ? " · primary" : ""}</span>
+                </>
+              )}
+              {railSrc && railSrc !== effectivePrimary && (
+                <button type="button" onClick={() => pinPrimary(railSrc)} className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-amber-950 shadow transition-colors hover:bg-amber-300"><Star className="h-3 w-3 fill-amber-950" /> Pin as primary</button>
+              )}
             </div>
             <div className="space-y-3 p-4">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -573,7 +745,7 @@ export default function AdminProductEdit() {
                 {salePercent !== null && compareAt !== undefined && <span className="text-sm text-muted-foreground line-through">{formatPKR(compareAt)}</span>}
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <Eye className="h-3.5 w-3.5" aria-hidden="true" /> {previewUrls.length} image{previewUrls.length === 1 ? "" : "s"}
+                <Eye className="h-3.5 w-3.5" aria-hidden="true" /> {previewUrls.length} image{previewUrls.length === 1 ? "" : "s"} · primary pinned
                 <span aria-hidden="true">·</span>
                 <span className="font-mono">{productId}</span>
               </div>
@@ -598,6 +770,48 @@ export default function AdminProductEdit() {
           </div>
         </aside>
       </div>
+
+      {/* media library picker */}
+      <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Attach from media library{assets ? ` · ${assets.length} ${assets.length === 1 ? "asset" : "assets"}` : ""}</DialogTitle>
+          </DialogHeader>
+          {assets === null ? (
+            <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading media library" /></div>
+          ) : assets.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">The library is empty — use Upload to add images to this product and the library.</p>
+          ) : (
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {assets.map((asset) => {
+                const attached = form.images.includes(asset.url);
+                return (
+                  <li key={asset.id}>
+                    <button
+                      type="button"
+                      aria-pressed={attached}
+                      onClick={() => toggleAsset(asset)}
+                      className={cn(
+                        "group block w-full overflow-hidden rounded-lg border text-left transition-shadow",
+                        attached ? "border-emerald-600 ring-2 ring-emerald-600" : "border-border hover:shadow-md",
+                      )}
+                    >
+                      <span className="relative block h-24 w-full overflow-hidden bg-secondary">
+                        <img src={asset.url} alt={asset.alt ?? asset.name} loading="lazy" className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
+                        {attached && <span className="absolute right-1 top-1 rounded-full bg-emerald-700 p-1 text-white"><Check className="h-3.5 w-3.5" /></span>}
+                      </span>
+                      <span className="block truncate px-1.5 py-1 text-[10px] text-muted-foreground" title={asset.name}>{asset.name}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLibraryOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* delete confirm */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

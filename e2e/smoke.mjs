@@ -284,6 +284,12 @@ async function adminSuite(browser) {
   await page.waitForFunction(() => document.body.innerText.toLowerCase().includes("product identity"), { timeout: 15000 }).catch(() => {});
   const editBody = (await bodyText()).toLowerCase();
   ok("products grid Edit opens the full-page editor (identity + pricing sections)", editClicked && editBody.includes("product identity") && editBody.includes("pricing & stock"));
+  const imageControls = await page.evaluate(() => ({
+    pin: document.querySelectorAll('[aria-label^="Set image"], [aria-pressed="true"][aria-label*="primary"]').length,
+    upload: [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Upload"),
+    library: [...document.querySelectorAll("button")].some((b) => b.textContent.includes("From library")),
+  }));
+  ok("full-page editor renders the image manager (pin primary · Upload · From library)", imageControls.pin >= 1 && imageControls.upload && imageControls.library);
 
   // --- Wave 2: Library rail + Layers outline + lab render ---
   const clickRail = (text) =>
