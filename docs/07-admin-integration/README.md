@@ -196,10 +196,52 @@ describe everything the UI needs).
   The Files tab shows a real **Upload** control only under `VITE_API_MODE=supabase`.
 
 Both files are **rehearsed offline under pglite** (`npm run test:rehearsal` — 93/93) but have **NOT**
-been applied to the hosted project (no Supabase egress in the authoring environment). Hosted apply is
-an owner-gated deploy step: apply 0013 then 0014, regenerate
-`src/integrations/supabase/types.ts` (`supabase gen types typescript --local` replaces the hand-extended
-blocks), and only then enable real uploads/variance there. Demo mode is unaffected either way.
+been applied to the hosted project (no Supabase egress in the authoring environment). Demo mode is
+unaffected either way.
+
+**Migration numbering:** `0013` = ledger · `0014` = storage bucket. Ad-spend stays `0015` (queued);
+0014/0013 must not be renumbered or edited once applied anywhere. `0001–0012` are immutable.
+
+### Hosted apply runbook — 0013 then 0014 (owner-gated)
+
+Order matters. Nothing in the app breaks before this runs (demo and supabase modes both tolerate the
+missing tables — the Actuals tab shows its inline error + retry; the upload control simply
+fails with a clear toast). Apply when you're ready, in one sitting:
+
+1. **Snapshot first.** Take a PITR snapshot / manual backup marker of the project, or at minimum note
+   the current migration head (`select version from supabase_migrations.schema_migrations order by version desc limit 1;`
+   — or the equivalent in your deploy tool). This makes rollback a restore, not surgery.
+2. **Apply 0013** — `supabase/migrations/20261107000013_project_actuals.sql` via the SQL editor or
+   `supabase db push` if the CLI is wired to the hosted project. Verify before moving on:
+   - `select tablename from pg_tables where schemaname='public' and tablename in ('project_cost_codes','project_actuals');` → 2 rows
+   - `select relname, relrowsecurity from pg_class where relname in ('project_cost_codes','project_actuals');` → both `t`
+   - `select policyname, cmd from pg_policies where tablename in ('project_cost_codes','project_actuals') order by 1;` → 8 rows (read×2, insert/update/delete×2 each for the write cap)
+   - `select conname from pg_constraint where conname = 'project_actuals_code_fkey';` → 1 row (the composite FK; RESTRICT on delete of a referenced code)
+   - `select column_name, is_generated from information_schema.columns where table_name='project_actuals' and column_name='amount';` → `ALWAYS`
+3. **Apply 0014** — `supabase/migrations/20261108000014_storage_projects_bucket.sql`. Verify:
+   - `select id, public, file_size_limit from storage.buckets where id='projects';` → `public = false`, `file_size_limit = 52428800`
+   - `select policyname, cmd from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'projects_bucket_%';` → 4 rows
+   - `select proname from pg_proc where proname = 'has_cap';` → 1 row (shared cap helper from 0001)
+4. **Regenerate types** — `supabase gen types typescript --local > src/integrations/supabase/types.ts`
+   (needs the CLI against the hosted/local project). This replaces the two hand-extended blocks
+   (`project_cost_codes`, `project_actuals`) added 2026-11-08 and drops the header caveat lines.
+   Then: `npx tsc --noEmit -p tsconfig.app.json` → rc=0.
+5. **Smoke the real thing** (10 minutes): sign in as a `crm.manage` user → open a seeded job's
+   Practice workspace → **Actuals** tab loads, add a cost code + actual line, confirm the generated
+   amount (`qty × rate`); upload a small file from the Files tab → confirm it appears in the bucket
+   (`<projectId>/<timestamp>-<name>`) → click the signed-URL download (2 min TTL) → file downloads.
+   Sign in as `finance.manage` → Actuals loads read-only (writes fail with RLS), Files shows no
+   upload control and no rows (storage posture is crm.manage only). Sign in as viewer → Actuals tab
+   shows the inline error state.
+6. **Rebuild/redeploy** the frontend with the regenerated types. Demo mode is unaffected throughout.
+7. **Rollback** (only if something is fundamentally wrong; stop at the first failing step):
+   - 0014: `drop policy projects_bucket_read on storage.objects; drop policy projects_bucket_insert on storage.objects; drop policy projects_bucket_update on storage.objects; drop policy projects_bucket_delete on storage.objects;`
+     then empty + remove the bucket: `delete from storage.objects where bucket_id='projects'; delete from storage.buckets where id='projects';`
+   - 0013: `drop table public.project_actuals; drop table public.project_cost_codes;` — **destructive
+     to any ledger data entered since apply**; fine pre-launch, a restore-from-snapshot question after.
+     Neither rollback touches any other table (orders/quotes/invoices/payments/returns are untouched).
+8. **Not part of this apply:** ad-spend (0015) · zone rates · any `0001–0012` change · QC server-side
+   enforcement trigger (separate sign-off).
 
 Practice-workspace additions on top of 0013/0014 (same PR): the Production tab gates dispatch client-side —
 with QC not passed, the dispatch stage/date/vehicle/driver/phone/challan inputs are disabled, a `role=status`
