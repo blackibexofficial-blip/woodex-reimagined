@@ -44,7 +44,7 @@ owner-gated; migrations are immutable once committed; dual-source parity
 | Turnstile anti-bot gate — EFs verify pre-RPC; action-pinned; fail-open when unconfigured, **fail-closed 503 on transport error**; demo/preview builds render nothing; 8/8 `node --test` | slice 12 (PR #14 open — see pending) | `_shared/turnstile.mjs`, EFs, `src/lib/turnstile.ts` |
 | Aborts-on-misconfig posture for optional gates; consent contract (`lead-privacy-v1`) byte-locked across clients/EF | slices 3–12 | runbook + EFs |
 | Rehearsal harness rebuilt (`/tmp/pglite-hub/run-next.mjs`) — **66/66 PASS** (0001–0009 + seed double-apply + seeded end-to-end + zone lookups + draft/exchange/claim cap matrices + CHECK constraints + `record_order_event` grants + singleton roundtrip). Figures 68/68, 68/75, 36/36 & 43/43 **permanently retired** | current | rehearsal harness |
-| E2E smoke **59/59 PASS** · eslint 0 errors (34 pre-existing warnings) · tsc rc=0 · build green | per push | CI / local |
+| E2E smoke **59/59 PASS** · eslint 0 errors (33 pre-existing warnings — all `react-refresh/only-export-components`, accepted shadcn/builder pattern; `react-hooks/exhaustive-deps` fixed 2026-11-08) · tsc rc=0 · build green | per push | CI / local |
 | Order intake dual guards: EF → RPC ordering (limiter/challenge before writes) | slices 9/10/12 | EFs |
 | `mcp/index.ts` bundler churn reverted before every commit; `sitemap.xml` churn reverted | practice | repo |
 
@@ -164,6 +164,12 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 
 - **The last agent-code-sized, no-owner-input-needed item on the upgrade registry is closed.** `src/` contains zero `console.log`/`info`/`debug`/`trace`/`table`/`dir` calls (only deliberate `console.error`/`console.warn` error paths). `.node-version` deliberately **not** added — CI is intentionally unpinned (`oven-sh/setup-bun@v2`); README now carries a toolchain note instead (Node 20+ for the e2e/rehearsal Node scripts; Bun for install/build; sitemap regeneration is the only Bun-dependent build step).
 - **Stale docs fixed** — README: e2e 33→**59** checks, a11y description now matches enforcement (report-only locally; critical/serious = 0 in CI), the "sitemap.xml deliberately omitted until a generator exists" paragraph (false since the generator landed) replaced with the current build-time generation truth. UPGRADE-TODO.md: A4 marked superseded by P3.1 · B4 pending-registry line corrected (DONE 2026-11-07 — was listed as pending) · PB-1/PB-2 marked done / PB-3+ flagged owner-gated · housekeeping checkbox closed with evidence · Verification-gate section carries a 2026-11-08 sync note (59/59 · rehearsal 68/68 · branch ref historical). Docs-only; no `src/` changes.
+
+### DONE 2026-11-08 — Lint debt sweep: last react-hooks warning eliminated (branch `arena/9b72a091-woodex-reimagined`; this PR)
+
+- **`src/pages/Shop.tsx` no longer trips `react-hooks/exhaustive-deps`** — the category→URL sync effect was writing `searchParams` **in place** (mutating the shared `URLSearchParams` instance) and unconditionally replacing the history entry on every category selection. It now builds a fresh `URLSearchParams`, and skips the navigation entirely when nothing would change (no-op on mount/re-renders). The intentional dep omission (effect must react only to `selectedCategory`; URL→state sync is owned by the `[searchParams]` effect) is documented inline with a targeted `eslint-disable-next-line` naming the exact reason — browser Back/Forward semantics unchanged.
+- **Warnings 34 → 33.** The remainder are all `react-refresh/only-export-components` (33×): the accepted shadcn/ui + pages-builder pattern of co-locating cva variants/hooks/contexts with components — dev-HMR-only concern, zero runtime impact, deliberately kept (shadcn upstream compat). Nothing is swept under `--max-warnings`; 0 errors, genuinely.
+- Gates: tsc rc=0 · lint rc=0 · build ✓ · e2e **59/59** · rehearsal unchanged **68/68** (no RLS). Environment note: the sandbox re-wiped `node_modules`/`dist`/`/tmp/bin` again — `npm ci` (throttled flags) + the /tmp bun shim (dispatcher: `run generate-sitemap` → prebuilt bundle; `bun run <bin>` → `node_modules/.bin/<bin>`) were recreated; verified end-to-end by the green e2e.
 
 ### HOLD — deliberately parked
 

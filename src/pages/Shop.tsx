@@ -144,12 +144,21 @@ const Shop = () => {
 
   useEffect(() => {
     // SeoContentBlock owns <title>, <meta description>, canonical, JSON-LD.
+    // Deliberately keyed on selectedCategory only: the URL is the source of
+    // truth in the other direction (the [searchParams] effect below). Also
+    // writes a fresh URLSearchParams instead of mutating searchParams in place,
+    // and skips the navigation when nothing would change (typing into the
+    // category tree used to unconditionally replace the history entry).
+    const next = new URLSearchParams(searchParams);
     if (selectedCategory === "all") {
-      searchParams.delete("category");
+      next.delete("category");
     } else {
-      searchParams.set("category", selectedCategory);
+      next.set("category", selectedCategory);
     }
-    setSearchParams(searchParams, { replace: true });
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- must react only to the category selection; re-running on every params change would fight Back/Forward navigation and the [searchParams] effect below owns the reverse sync
   }, [selectedCategory]);
 
   useEffect(() => {
