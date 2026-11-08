@@ -27,3 +27,6 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Local file-backed test database (npm run test:db) — never commit
+.local-db/
