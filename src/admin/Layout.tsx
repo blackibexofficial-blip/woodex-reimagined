@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
-  ContactRound, Armchair, Receipt, ClipboardCheck, GitMerge, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, MessagesSquare, FileText,
-  Image, Settings, LogOut, ArrowLeft, Menu, X, Megaphone, Store, Warehouse, LayoutGrid, BadgePercent, Boxes, RadioTower, ListChecks, Palette, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, SlidersHorizontal, Layers, BadgeCheck, LayoutTemplate, PenTool, Monitor, FileUp,
+  ContactRound, Armchair, Receipt, ChevronDown, ClipboardCheck, GitMerge, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, MessagesSquare, FileText,
+  Image, Settings, LogOut, ArrowLeft, Menu, X, Megaphone, Store, Warehouse, ListChecks, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, LayoutTemplate, PenTool, Monitor, FileUp,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
 import { isDemoMode, isSupabaseConfigured } from "@/config/env";
@@ -25,18 +25,10 @@ const NAV_GROUPS: Array<{
     label: "Commerce",
     items: [
       { to: "/admin/products", label: "Products", icon: Package },
-      { to: "/admin/categories", label: "Categories", icon: Tags },
-      { to: "/admin/collections", label: "Collections", icon: LayoutGrid },
-      { to: "/admin/series", label: "Series", icon: Layers },
-      { to: "/admin/brands", label: "Brands", icon: BadgeCheck },
+      { to: "/admin/taxonomy", label: "Taxonomy", icon: Tags },
       { to: "/admin/homepage", label: "Homepage", icon: LayoutTemplate },
       { to: "/admin/showrooms", label: "Showrooms", icon: Store },
-      { to: "/admin/materials", label: "Materials & Colors", icon: Palette },
-      { to: "/admin/options", label: "Options", icon: SlidersHorizontal },
       { to: "/admin/projects", label: "Projects", icon: Briefcase },
-      { to: "/admin/price-lists", label: "Price Lists", icon: BadgePercent },
-      { to: "/admin/bundles", label: "Bundles", icon: Boxes },
-      { to: "/admin/sales-channels", label: "Channels & Markets", icon: RadioTower },
       { to: "/admin/bulk-editor", label: "Bulk Editor", icon: ListChecks },
       { to: "/admin/inventory", label: "Inventory", icon: Warehouse },
       { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
@@ -82,7 +74,7 @@ const NAV_GROUPS: Array<{
 function pageTitle(pathname: string) {
   const seg = pathname.split("/")[2] ?? "dashboard";
   const map: Record<string, string> = {
-    dashboard: "Dashboard", analytics: "Analytics", chat: "Live Chat — Storefront Inbox", products: "Products", categories: "Categories",
+    taxonomy: "Taxonomy", dashboard: "Dashboard", analytics: "Analytics", chat: "Live Chat — Storefront Inbox", products: "Products", categories: "Categories",
     invoices: "Invoices & Payments",
     tasks: "Tasks & Follow-ups",
     campaigns: "Campaigns",
@@ -99,8 +91,31 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatBadge, setChatBadge] = useState(0);
+  const [openGroups, setOpenGroups] = useState<string[]>(() => {
+    try {
+      const raw = window.localStorage.getItem("woodex.admin.navOpen");
+      if (raw) {
+        const parsed = JSON.parse(raw) as unknown;
+        if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === "string");
+      }
+    } catch { /* default */ }
+    return ["Overview"];
+  });
 
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
+
+  /* Auto-open the group owning the active route (never force-closes what the user opened). */
+  useEffect(() => {
+    const active = NAV_GROUPS.find((g) => g.items.some((i) => location.pathname === i.to || location.pathname.startsWith(i.to + "/")));
+    if (!active) return;
+    setOpenGroups((prev) => (prev.includes(active.label) ? prev : [...prev, active.label]));
+  }, [location.pathname]);
+
+  const toggleGroup = (label: string) => setOpenGroups((prev) => {
+    const next = prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label];
+    try { window.localStorage.setItem("woodex.admin.navOpen", JSON.stringify(next)); } catch { /* ignore */ }
+    return next;
+  });
 
   useEffect(() => {
     let alive = true;
@@ -136,10 +151,22 @@ export default function AdminLayout() {
 
       {/* nav */}
       <nav aria-label="Admin navigation" className="flex-1 overflow-y-auto px-3 py-4">
-        {NAV_GROUPS.map((group) => (
-          <div key={group.label} className="mb-5">
-            <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{group.label}</p>
-            <ul className="space-y-0.5">
+        {NAV_GROUPS.map((group) => {
+          const open = openGroups.includes(group.label);
+          const panelId = `nav-group-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+          return (
+          <div key={group.label} className="mb-2">
+            <button
+              type="button"
+              onClick={() => toggleGroup(group.label)}
+              aria-expanded={open}
+              aria-controls={panelId}
+              className="flex w-full items-center justify-between rounded-md px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <span>{group.label}</span>
+              <ChevronDown aria-hidden className={cn("h-3.5 w-3.5 transition-transform duration-200", open ? "rotate-0" : "-rotate-90")} />
+            </button>
+            <ul id={panelId} hidden={!open} className="mt-1 space-y-0.5">
               {group.items.map((item) => {
                 const { to, label, icon: Icon } = item;
                 const badge = to === "/admin/chat" && chatBadge > 0 ? chatBadge : undefined;
@@ -153,7 +180,6 @@ export default function AdminLayout() {
                           isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                         )
                       }
-                      aria-label={badge ? `${label} — ${badge} unread` : undefined}
                     >
                       <Icon className="h-4 w-4 shrink-0" />
                       {label}
@@ -162,13 +188,15 @@ export default function AdminLayout() {
                           {badge > 9 ? "9+" : badge}
                         </span>
                       )}
+                      {badge !== undefined && <span className="sr-only">{` ${badge > 9 ? "9+" : badge} unread messages`}</span>}
                     </NavLink>
                   </li>
                 );
               })}
             </ul>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* footer */}

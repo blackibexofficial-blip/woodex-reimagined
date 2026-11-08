@@ -97,6 +97,7 @@ async function adminSuite(browser) {
   await waitText("E2E Acoustic Pods", 10000);
   ok("new category appears in the table", true);
 
+
   await page.evaluate(() => {
     const sw = [...document.querySelectorAll('[role="switch"]')].find((n) => (n.getAttribute("aria-label") || "").includes("E2E Acoustic Pods"));
     sw && sw.click();
@@ -127,6 +128,12 @@ async function adminSuite(browser) {
   await new Promise((r) => setTimeout(r, 1200));
   const rowGone = await page.evaluate(() => ![...document.querySelectorAll("td p")].some((n) => n.textContent.trim() === "E2E Disposable Corner"));
   ok("unused category deleted", rowGone);
+
+  // V5 consolidation — legacy route deep-links into the unified Taxonomy page
+  await page.goto(`${ADMIN}/series`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("Ek Series", 20000);
+  const landedUrl = await page.evaluate(() => window.location.pathname + window.location.search);
+  ok("/admin/series redirects into the unified Taxonomy page (series section)", landedUrl.startsWith("/admin/taxonomy") && landedUrl.includes("series"));
 
   await page.goto(`${ADMIN}/media`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("stored on-device", 20000);

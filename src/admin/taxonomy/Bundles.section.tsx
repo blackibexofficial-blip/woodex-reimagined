@@ -23,7 +23,7 @@ const productById = new Map(catalogue.map((p) => [p.id, p]));
 
 type EditorState = null | { mode: "create" } | { mode: "edit"; bundle: AdminBundle };
 
-export default function AdminBundles() {
+export function BundlesSection() {
   const api = useMemo(() => getAdminApi(), []);
   const [rows, setRows] = useState<AdminBundle[]>([]);
   const [loading, setLoading] = useState(true);

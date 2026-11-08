@@ -18,7 +18,7 @@ type ValueRow = { id?: string; label: string; priceDelta: string; skuSuffix: str
 
 const emptyRow = (): ValueRow => ({ label: "", priceDelta: "0", skuSuffix: "" });
 
-export default function AdminOptions() {
+export function OptionsSection() {
   const api = useMemo(() => getAdminApi(), []);
 
   const [sets, setSets] = useState<AdminOptionSet[]>([]);

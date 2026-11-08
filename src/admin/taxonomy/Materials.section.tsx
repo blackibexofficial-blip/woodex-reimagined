@@ -77,7 +77,7 @@ function SwatchPreview({ m }: { m: AdminMaterial }) {
   );
 }
 
-export default function AdminMaterials() {
+export function MaterialsSection() {
   const api = useMemo(() => getAdminApi(), []);
   const [items, setItems] = useState<AdminMaterial[]>([]);
   const [loading, setLoading] = useState(true);

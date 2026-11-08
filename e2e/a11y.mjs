@@ -23,12 +23,12 @@ const VERBOSE = process.argv.includes("--verbose");
 
 const ROUTES = ["/", "/shop", "/shop/ballmer-executive-desk", "/quotation", "/contact", "/blog", "/admin/login"];
 const ADMIN_ROUTES = [
-  "/dashboard", "/analytics", "/blog", "/brands", "/bulk-editor", "/bundles", "/campaigns",
-  "/categories", "/claims", "/client-merge", "/collections", "/content", "/custom-design",
+  "/dashboard", "/analytics", "/blog", "/taxonomy?section=brands", "/bulk-editor", "/taxonomy?section=bundles", "/campaigns",
+  "/taxonomy?section=categories", "/claims", "/client-merge", "/taxonomy?section=collections", "/content", "/custom-design",
   "/customers", "/drafts", "/exchanges", "/homepage", "/inventory", "/invoices", "/leads",
-  "/materials", "/media", "/options", "/orders", "/orders/new", "/invoices/new", "/chat", "/import", "/clients", "/pages", "/price-lists",
+  "/taxonomy?section=materials", "/media", "/taxonomy?section=options", "/orders", "/orders/new", "/invoices/new", "/chat", "/import", "/clients", "/pages", "/taxonomy?section=price-lists",
   "/products", "/products/acoustic-desk-panel-48/edit", "/products/new",
-  "/projects", "/purchase-orders", "/returns", "/sales-channels", "/series", "/services",
+  "/projects", "/purchase-orders", "/returns", "/taxonomy?section=sales-channels", "/taxonomy?section=series", "/services",
   "/settings", "/showrooms", "/suppliers", "/tasks", "/transfers", "/virtual-showroom", "/warranty",
 ];
 

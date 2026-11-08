@@ -20,7 +20,7 @@ const STEPS = ["Details", "Audience", "Products", "Pricing", "Review"] as const;
 
 type WizardState = null | { mode: "create" } | { mode: "edit"; list: AdminPriceList };
 
-export default function AdminPriceLists() {
+export function PriceListsSection() {
   const api = useMemo(() => getAdminApi(), []);
   const [rows, setRows] = useState<AdminPriceList[]>([]);
   const [companies, setCompanies] = useState<AdminCompany[]>([]);
