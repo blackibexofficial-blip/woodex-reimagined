@@ -160,6 +160,11 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 
 - **Closes the last browser-coverage flags** — merge-review page now asserted in-CI (seeded Bilal email-collision pair renders; retired CLI-1007 audit row visible), kanban synthetic HTML5 drag moves a card New→Quoted, BOQ tab activates, and editing the first Qty (3,500→4,000) recomputes the planned total (Rs 7,567,500). e2e **59/59** (+5 vs 54/54 at the practice-workspace slice). tsc rc=0 · lint rc=0 · build ✓ · rehearsal unchanged **68/68** (no RLS).
 
+### DONE 2026-11-08 — Housekeeping sweep (branch `arena/be885bad-woodex-reimagined`; this PR)
+
+- **The last agent-code-sized, no-owner-input-needed item on the upgrade registry is closed.** `src/` contains zero `console.log`/`info`/`debug`/`trace`/`table`/`dir` calls (only deliberate `console.error`/`console.warn` error paths). `.node-version` deliberately **not** added — CI is intentionally unpinned (`oven-sh/setup-bun@v2`); README now carries a toolchain note instead (Node 20+ for the e2e/rehearsal Node scripts; Bun for install/build; sitemap regeneration is the only Bun-dependent build step).
+- **Stale docs fixed** — README: e2e 33→**59** checks, a11y description now matches enforcement (report-only locally; critical/serious = 0 in CI), the "sitemap.xml deliberately omitted until a generator exists" paragraph (false since the generator landed) replaced with the current build-time generation truth. UPGRADE-TODO.md: A4 marked superseded by P3.1 · B4 pending-registry line corrected (DONE 2026-11-07 — was listed as pending) · PB-1/PB-2 marked done / PB-3+ flagged owner-gated · housekeeping checkbox closed with evidence · Verification-gate section carries a 2026-11-08 sync note (59/59 · rehearsal 68/68 · branch ref historical). Docs-only; no `src/` changes.
+
 ### HOLD — deliberately parked
 
 14. `HOLD` **Zone-rate admin screen** — SQL edits acceptable at current volume; revisit when ops edits zones weekly.
