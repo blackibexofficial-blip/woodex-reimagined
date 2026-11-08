@@ -219,6 +219,14 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 - Gates: tsc rc=0 · eslint 0 errors/warnings on touched files · build ✓ · **e2e 78/78** (+2: PO row action; dialog opens with PO ref) · verified end-to-end headlessly on the preview (PO-1002 → Gents Grooming Lounge, Ordered basis → 2 lines × JNR posted, ledger shows PO-1002 @ Rs 145/380 = Rs 72,500 + Rs 114,000 = Rs 186,500).
 - Not done (flagged): BOQ-row precision (option B — explicit words required, would take **0016**); PO receipt-time auto-post (deliberately manual — user stays in the loop); duplicate-line granularity (guard is poRef-level, not per-line-id — delete duplicates in the Actuals tab before re-posting).
 
+### DONE 2026-11-08 — PR #23 merged (branch `arena/ea76e5b6-woodex-reimagined`; milestone, not code)
+
+- **Owner granted the merge explicitly** (2026-11-08 question round: "Merge now"). GitHub: `state: MERGED`, merge commit `ce894b6`, merged 2026-11-08T12:51:53Z, CI run 42475889033 (3m13s) green. Local branch fast-forwarded to origin/main (`ce894b6`). Option C now on `main`.
+
+### PENDING — owner "start" required (branch `arena/ea76e5b6-woodex-reimagined`; mega-plan v4)
+
+- **`docs/08-master-plan/UPGRADE-MASTER-PLAN-V4.md` — Wwoodex live-chat → complete-e-comm → client categories → Lead-2026 parity → quotation upgrade (furniture A4 first, Interior BOQ second) → invoice polish → income/expense GL parity.** Grounded in the owner's Google Drive ground truth (`Lead 2026`, `IncomevsExpense old data.xlsx`, WI-10204 quotation doc). Demo-adapter first; **no hosted Supabase writes, no new migrations**; real client data stays Drive/local-only; importers (§8) parse in browser. Build order: PR-A foundation(importer+types) → **PR-B live chat (first visible module)** → P2 clients → P3 leads → P4.1 furniture A4 (WI-10204 terms) → P1 e-comm pass → P6 ledger → P5 invoices → P4.2 Interior BOQ. **Awaiting the owner's literal "start".**
+
 ### HOLD — deliberately parked
 
 14. `HOLD` **Zone-rate admin screen** — SQL edits acceptable at current volume; revisit when ops edits zones weekly.
