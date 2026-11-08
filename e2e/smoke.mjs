@@ -270,6 +270,21 @@ async function adminSuite(browser) {
   ok("actuals tab opens with the seeded ledger lines (Walnut panelling · PO-1044)", actualsTabbed && actBody.includes("walnut panelling") && actBody.includes("po-1044"));
   ok("actuals grand total renders the seeded ledger spend (4,958,000)", actBody.includes("4,958,000"));
 
+  // /admin/products — redesigned catalog grid (KPI strip + full-page editor)
+  await page.goto(`${ADMIN}/products`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForFunction(() => document.body.innerText.toLowerCase().includes("avg. price"), { timeout: 15000 }).catch(() => {});
+  const catBody = (await bodyText()).toLowerCase();
+  ok("products catalog renders the KPI strip (avg. price · subcategories)", catBody.includes("avg. price") && catBody.includes("subcategories"));
+  const editClicked = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('a')].find((a) => (a.getAttribute("href") ?? "").match(/^\/admin\/products\/[^/]+\/edit$/));
+    if (!el) return false;
+    el.click();
+    return true;
+  });
+  await page.waitForFunction(() => document.body.innerText.toLowerCase().includes("product identity"), { timeout: 15000 }).catch(() => {});
+  const editBody = (await bodyText()).toLowerCase();
+  ok("products grid Edit opens the full-page editor (identity + pricing sections)", editClicked && editBody.includes("product identity") && editBody.includes("pricing & stock"));
+
   // --- Wave 2: Library rail + Layers outline + lab render ---
   const clickRail = (text) =>
     page.evaluate((t) => {
