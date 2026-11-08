@@ -705,6 +705,17 @@ export interface AdminLead {
   note?: string;
 }
 
+/** Patch for the CRM parity fields (V4 P3). Empty string clears the field. Hosted wires assignedTo→owner + note only — the rest need the owner-gated migration. */
+export interface AdminLeadPatch {
+  assignedTo?: string;
+  leadSource?: LeadSource | "";
+  quotationRef?: string;
+  /** ISO datetime; "" clears. */ lastContact?: string;
+  /** ISO datetime; "" clears. */ meetingAt?: string;
+  nextAction?: string;
+  note?: string;
+}
+
 /* ── Lead import (V4 PR-A) — parse happens client-side; adapter only persists ── */
 export interface LeadImportRow {
   /** 1-based line number in the source file (for issue reporting). */
@@ -1616,6 +1627,8 @@ export interface StoreSettings {
    * change is needed. When set, it outranks a template's own logo.
    */
   storeLogo?: string;
+  /** Lead assignee roster — drives Leads rows + the Mine / Unassigned filters. Demo-seeded with the sales team. */
+  team?: string[];
 }
 
 export interface Paginated<T> {
@@ -1906,8 +1919,10 @@ export interface AdminApi {
   createSiteVisit(input: NewSiteVisitInput): Promise<AdminSiteVisit>;
   updateSiteVisitStatus(id: string, patch: SiteVisitPatch): Promise<AdminSiteVisit | undefined>;
 
-  listLeads(params?: ListParams & { type?: LeadType | "all"; status?: LeadStatus | "all" }): Promise<Paginated<AdminLead>>;
+  listLeads(params?: ListParams & { type?: LeadType | "all"; status?: LeadStatus | "all"; assignee?: string; unassigned?: boolean; staleDays?: number }): Promise<Paginated<AdminLead>>;
   updateLeadStatus(id: string, status: LeadStatus): Promise<AdminLead | undefined>;
+  /** Patch CRM parity fields (V4 P3). */
+  updateLead(id: string, patch: AdminLeadPatch): Promise<AdminLead | undefined>;
   /** Bulk import (Lead 2026 parity). Demo-authoritative; hosted adapters reject rows with a reason (owner-gated programme). */
   importLeads(input: LeadImportInput): Promise<LeadImportResult>;
 

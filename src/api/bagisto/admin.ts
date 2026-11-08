@@ -614,6 +614,9 @@ export const bagistoAdminApi: AdminApi = {
     return paginateLocal(params);
   },
 
+  async updateLead(): Promise<AdminLead | undefined> {
+    throw new BagistoApiError(501, "Lead detail editing is demo-only in this release. Use VITE_API_MODE=demo.");
+  },
   async updateLeadStatus() {
     throw new BagistoApiError(501, "Lead pipeline is not backed by Bagisto core — keep VITE_API_MODE=demo or add a custom package. See docs/07-admin-integration.");
   },

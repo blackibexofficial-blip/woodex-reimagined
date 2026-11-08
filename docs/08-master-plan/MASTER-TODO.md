@@ -282,3 +282,12 @@ Analysis 2026-11-07 (23 pages cross-checked). **Owner constraint (2026-11-07): t
 PR #10 (checkout+admin money path, merged), PR #12 (CI un-red + migration 0006 + catalogue seed, **merged 2026-11-07**), PR #13 (anti-abuse brief, open), PR #14 (Turnstile slice + zone-rate brief + Track B fixes + Wave 2/2b/3 + this master plan, open), rehearsal 66/66, e2e 42/42, catalogue seed, zone-rate brief.
 
 *Track B figures come from read-only API/content inspection on 2026-11-07 (no repo writes made). Track A evidence lives in the repo: `supabase/migrations/*`, `docs/08-master-plan/*`. Nothing anywhere has run against a hosted Supabase project — every "works" above means "rehearsed + typechecked + e2e", not "deployed and proven".*
+
+### DONE 2026-11-08 — V4 PR-D: Lead parity UI — team roster, My/Unassigned/Stale lens, lead details, CSV (this branch)
+
+- **`/admin/leads` lens chips** — All · Mine (pick who you are once; remembered in localStorage) · Unassigned · **Stale > 7d** (ages from `lastContact`, falls back to `createdAt`; won/lost excluded — mirrors the sheet's ageing pain). Applied in table, board, pagination and search; adapter-side filter (`assignee` / `unassigned` / `staleDays`), hosted-supabase post-filters on the same contract (no new hosted columns).
+- **Lead details dialog** (per-row sliders button, table + board) — Assignee (team roster) · Lead source (furniture/interior/project/website/storefront_chat/referral) · Quotation ref (with “Open quotes” shortcut) · Last contact datetime + one-tap **Contacted now** stamp · Meeting scheduled · Next action · Note. Empty string clears a field; adapter contract `AdminLeadPatch`; hosted-supabase wires `owner` + `note` and **rejects the rest with a named owner-gated-migration error before writing**; Bagisto = 501 stub; demo is authoritative.
+- **Settings → Team** card — edit the demo roster (seeded Abdullah · Nabeel · Imtiaz); initials rendered on lead rows alongside source and a stale dot; saved via the existing settings blob.
+- **CSV export** — current view (search/status/lens) → `woodex-leads-<lens>.csv`, BOM-prefixed, Sheets/Excel-clean columns ID…Note.
+- **Demo seeds** carry the parity fields (assignees rotated across the roster, refs QOT-1001/1002, lastContact spread so Stale>7d shows a realistic cohort, 2 meetings scheduled).
+- **Gates:** tsc rc=0 · eslint 0 errors · build ✓ · e2e **94/94** (+5 lens/CSV asserts) · a11y **0/53** · merge-note: PR-C (#27) touches the same adapters; textual merge expected clean except possibly the MASTER-TODO DONE block.

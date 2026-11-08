@@ -6,6 +6,7 @@
  * interface is served by src/api/bagisto/* instead — no UI changes required.
  */
 import { idbDeleteMany, idbGetAll, idbPutMany } from "@/api/demo/mediaStore";
+import { DEFAULT_TEAM } from "@/lib/team";
 import { products, categoryGroups } from "@/data/products";
 import { optionSetIdsFor, OPTION_SETS } from "@/data/options";
 import { materials as finishSeed } from "@/data/materials";
@@ -26,6 +27,7 @@ import type {
   AdminInventoryItem,
   AdminCustomer,
   AdminLead,
+  AdminLeadPatch,
   AdminCollection,
   AdminCollectionRule,
   AdminMediaAsset,
@@ -251,6 +253,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   currency: "PKR",
   deliveryNote: "Free delivery inside city limits on orders above Rs 150,000. 3–5 working days anywhere in Pakistan.",
   taxRate: 0,
+  team: DEFAULT_TEAM,
 };
 
 const stripGlyph = (s: string) => s.replace(/^[↳▸»-]\s*/, "").trim();
@@ -2040,6 +2043,22 @@ function buildSeed(): DemoDb {
     const consentAt = rest.consent ? new Date(Date.now() - daysAgo * 86400000 - 1800000).toISOString() : undefined;
     return { ...rest, consentAt, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
+  /* V4 PR-D — seed the CRM parity fields (assignee / source / refs / contact cadence) on the demo pipeline */
+  const leadParity: Record<string, Partial<AdminLead>> = {
+    "lead-1001": { assignedTo: "Abdullah", leadSource: "furniture", lastContact: new Date(Date.now() - 0 * 86400000).toISOString(), nextAction: "Call back with the executive cabin quote", note: "Wants manager tables first, defers the 10-seater decision" },
+    "lead-1002": { assignedTo: "Nabeel", leadSource: "interior", lastContact: new Date(Date.now() - 1 * 86400000).toISOString(), nextAction: "Send company profile + 3 sales-centre references", note: "Wants staged delivery per floor; decision by mid-Dec" },
+    "lead-1003": { leadSource: "furniture", nextAction: "Send the home-office bundle pricing" },
+    "lead-1004": { assignedTo: "Imtiaz", leadSource: "project", lastContact: new Date(Date.now() - 3 * 86400000).toISOString(), nextAction: "Factory-visit invite after drawings sign-off" },
+    "lead-1005": { assignedTo: "Abdullah", leadSource: "furniture", quotationRef: "QOT-1001", lastContact: new Date(Date.now() - 4 * 86400000).toISOString(), nextAction: "Chase the boardroom quote — valid 30 days", meetingAt: new Date(Date.now() + 3 * 86400000).toISOString() },
+    "lead-1006": { leadSource: "interior" },
+    "lead-1007": { assignedTo: "Nabeel", leadSource: "interior", lastContact: new Date(Date.now() - 9 * 86400000).toISOString(), nextAction: "Awaiting Ravi Agro's vendor list expansion", note: "Ageing since early Nov — weekly nudge scheduled" },
+    "lead-1008": { leadSource: "furniture", lastContact: new Date(Date.now() - 11 * 86400000).toISOString() },
+    "lead-1009": { assignedTo: "Imtiaz", leadSource: "project", quotationRef: "QOT-1002", lastContact: new Date(Date.now() - 12 * 86400000).toISOString(), nextAction: "Sign-off on phase-1 delivery schedule", meetingAt: new Date(Date.now() + 6 * 86400000).toISOString(), note: "Owner prefers Sunday deliveries" },
+    "lead-1010": { leadSource: "furniture", lastContact: new Date(Date.now() - 17 * 86400000).toISOString() },
+    "lead-1011": { assignedTo: "Abdullah", leadSource: "furniture", lastContact: new Date(Date.now() - 18 * 86400000).toISOString() },
+    "lead-1012": { assignedTo: "Nabeel", leadSource: "interior", lastContact: new Date(Date.now() - 23 * 86400000).toISOString() },
+  };
+  for (const l of leads) Object.assign(l, leadParity[l.id] ?? {});
 
   const seedQuotes = buildSeedQuotes(adminProducts);
   const seedChat = buildSeedChat();
@@ -2705,7 +2724,13 @@ export const demoAdminApi: AdminApi = {
     let items = [...db.leads].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     if (params.type && params.type !== "all") items = items.filter((l) => l.type === params.type);
     if (params.status && params.status !== "all") items = items.filter((l) => l.status === params.status);
-    items = items.filter((l) => matchQuery(params.query, [l.name, l.company, l.city, l.phone, l.summary]));
+    if (params.assignee) items = items.filter((l) => (l.assignedTo ?? "") === params.assignee);
+    if (params.unassigned) items = items.filter((l) => !l.assignedTo);
+    if (params.staleDays && params.staleDays > 0) {
+      const cutoff = Date.now() - params.staleDays * 86400000;
+      items = items.filter((l) => new Date(l.lastContact ?? l.createdAt).getTime() < cutoff);
+    }
+    items = items.filter((l) => matchQuery(params.query, [l.name, l.company, l.city, l.phone, l.summary, l.assignedTo, l.quotationRef, l.nextAction]));
     return paginate(items, { page: params.page, perPage: params.perPage ?? 10 });
   },
 
@@ -2714,6 +2739,25 @@ export const demoAdminApi: AdminApi = {
     update((db) => {
       const l = db.leads.find((x) => x.id === id);
       if (l) { l.status = status; updated = { ...l }; }
+    });
+    return updated;
+  },
+
+  async updateLead(id: string, patch: AdminLeadPatch): Promise<AdminLead | undefined> {
+    let updated: AdminLead | undefined;
+    const setText = (v?: string) => { const t = (v ?? "").trim(); return t ? t : undefined; };
+    const setDate = (v?: string) => { const t = (v ?? "").trim(); return t ? new Date(t).toISOString() : undefined; };
+    update((db) => {
+      const l = db.leads.find((x) => x.id === id);
+      if (!l) return;
+      if (patch.assignedTo !== undefined) l.assignedTo = setText(patch.assignedTo);
+      if (patch.leadSource !== undefined) l.leadSource = (patch.leadSource || undefined) as AdminLead["leadSource"];
+      if (patch.quotationRef !== undefined) l.quotationRef = setText(patch.quotationRef);
+      if (patch.lastContact !== undefined) l.lastContact = setDate(patch.lastContact);
+      if (patch.meetingAt !== undefined) l.meetingAt = setDate(patch.meetingAt);
+      if (patch.nextAction !== undefined) l.nextAction = setText(patch.nextAction);
+      if (patch.note !== undefined) l.note = setText(patch.note);
+      updated = { ...l };
     });
     return updated;
   },

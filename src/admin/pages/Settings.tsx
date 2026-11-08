@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { CheckCircle2, XCircle, Loader2, Save, AlertTriangle, RotateCcw, Plug, Database, Server, Upload, X, MessagesSquare, Inbox } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Save, AlertTriangle, RotateCcw, Plug, Database, Server, Upload, X, MessagesSquare, Inbox, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { StoreSettings, ChatMode } from "@/api/types";
@@ -20,6 +20,7 @@ export default function AdminSettings() {
   const [resetting, setResetting] = useState(false);
   const [chatMode, setChatMode] = useState<ChatMode | null>(null);
   const [chatModeBusy, setChatModeBusy] = useState(false);
+  const [newMember, setNewMember] = useState("");
 
   useEffect(() => {
     api.getSettings().then(setSettings).catch(console.error);
@@ -37,6 +38,19 @@ export default function AdminSettings() {
 
   const set = <K extends keyof StoreSettings>(key: K, value: StoreSettings[K]) =>
     setSettings((s) => (s ? { ...s, [key]: value } : s));
+
+  const team = settings?.team ?? [];
+  const addMember = (e: { preventDefault(): void }) => {
+    e.preventDefault();
+    const name = newMember.trim().replace(/\s+/g, " ");
+    if (!name) return;
+    if (name.length > 40) { toast.error("Keep team names under 40 characters."); return; }
+    if (team.some((t) => t.toLowerCase() === name.toLowerCase())) { toast.error(`${name} is already on the roster.`); return; }
+    set("team", [...team, name]);
+    setNewMember("");
+    toast.success(`${name} added — save changes to persist.`);
+  };
+  const removeMember = (name: string) => set("team", team.filter((t) => t !== name));
 
   const onLogoFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -203,6 +217,26 @@ export default function AdminSettings() {
           <Link to="/admin/chat" className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-accent hover:underline">
             <Inbox className="h-3.5 w-3.5" aria-hidden /> Open the inbox →
           </Link>
+        </SectionCard>
+
+        <SectionCard title="Team — lead assignees" action={<UsersRound className="h-4 w-4 text-muted-foreground" />}>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Who can own a lead. Powers the assignee column on every lead, the <span className="font-mono">Mine</span> flag and the merge/attribution review. Demo roster: Abdullah · Nabeel · Imtiaz — add yours, then hit <span className="font-semibold text-foreground">Save changes</span>.
+          </p>
+          <ul className="mt-3 divide-y divide-muted overflow-hidden rounded-lg border border-border">
+            {team.length === 0 && <li className="px-3 py-2.5 text-xs text-muted-foreground">No teammates yet — add the sales roster below.</li>}
+            {team.map((name) => (
+              <li key={name} className="flex items-center gap-2.5 bg-white px-3 py-2">
+                <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[9px] font-bold uppercase text-foreground">{name.trim().split(/\s+/).slice(0, 2).map((w) => (w[0] ?? "").toUpperCase()).join("")}</span>
+                <span className="flex-1 text-xs font-medium text-foreground">{name}</span>
+                <button type="button" onClick={() => removeMember(name)} aria-label={`Remove ${name} from the team`} className="rounded p-1 text-muted-foreground hover:bg-border hover:text-foreground"><X className="h-3.5 w-3.5" aria-hidden /></button>
+              </li>
+            ))}
+          </ul>
+          <form onSubmit={addMember} className="mt-2 flex gap-2">
+            <Input value={newMember} onChange={(e) => setNewMember(e.target.value)} placeholder="Add teammate — e.g. Abdullah" aria-label="New team member" className="h-8 text-xs bg-white" />
+            <Button type="submit" size="sm" variant="outline" className="h-8">Add</Button>
+          </form>
         </SectionCard>
 
         <SectionCard title="Integration status" action={<Plug className="h-4 w-4 text-muted-foreground" />}>

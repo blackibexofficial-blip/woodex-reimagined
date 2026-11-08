@@ -254,6 +254,27 @@ async function adminSuite(browser) {
   const quotedCol = await page.evaluate(() => [...document.querySelectorAll('[aria-label="Column quoted"] li p.truncate')].map((p) => p.textContent));
   ok(`kanban synthetic drag moves a card New→Quoted (${drag.name})`, drag.ok && quotedCol.includes(drag.name));
 
+  // V4 PR-D — lead lens chips (Mine / Unassigned / Stale > 7d) + CSV export
+  await page.goto(`${ADMIN}/leads`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForSelector('input[placeholder*="Search name"]', { timeout: 15000 });
+  const clickExact = (label) => page.evaluate((t) => { const el = [...document.querySelectorAll("button")].find((n) => n.textContent.trim() === t); if (!el) return false; el.click(); return true; }, label);
+  await clickByText("button", "Unassigned");
+  await new Promise((r) => setTimeout(r, 500));
+  const unassignedBody = (await bodyText());
+  ok("Unassigned lens shows unassigned seeded leads (Hira Zainab) and hides assigned ones (Danish Hussain)", unassignedBody.includes("Hira Zainab") && !unassignedBody.includes("Danish Hussain"));
+  await clickByText("button", "Mine");
+  await new Promise((r) => setTimeout(r, 500));
+  const mineBody = (await bodyText());
+  ok("Mine lens defaults to the seeded roster (Abdullah) and narrows the list", mineBody.includes("Danish Hussain") && !mineBody.includes("Sana Malik"));
+  await clickByText("button", "Stale > 7d") || await clickByText("button", "Stale");
+  await new Promise((r) => setTimeout(r, 500));
+  const staleBody = (await bodyText());
+  ok("Stale > 7d lens shows ageing leads (Kashif Mirza) and hides fresh ones (Danish Hussain)", staleBody.includes("Kashif Mirza") && !staleBody.includes("Danish Hussain"));
+  await clickExact("All");
+  await new Promise((r) => setTimeout(r, 500));
+  ok("All lens restores the full pipeline", (await bodyText()).includes("Danish Hussain"));
+  ok("Export CSV action is present on the leads page", (await bodyText()).includes("Export CSV"));
+
   // client-merge review (CRM identity) — loads with seeded candidates + audit trail
   await page.goto(`${ADMIN}/client-merge`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Merge history", 20000);

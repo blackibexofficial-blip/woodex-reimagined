@@ -58,7 +58,7 @@ import type { Database, Json, TablesInsert, TablesUpdate } from "@/integrations/
 import type {
   AdminApi,
   ChatConversation, ChatMessage, ChatMode,
-  LeadImportInput, LeadImportResult,
+  LeadImportInput, LeadImportResult, AdminLeadPatch,
   AdminBlogPost, AdminBrand, AdminBundle, AdminCategory, AdminCollection, AdminCollectionKind,
   AdminCustomDesignPage, AdminCustomer, AdminDeliveryZone, AdminHomepageSections, AdminInventoryItem, AdminLead,
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
@@ -2021,7 +2021,7 @@ const toCustomerRef = (row: Row): AdminCustomer => ({
 /* leads: capture must go through the lead-capture EF (anon cannot insert by
  * design); the admin lead pipeline reads/updates go through the clients/leads
  * capability policies. */
-async function listLeads(params?: ListParams & { status?: AdminLead["status"] | "all"; type?: AdminLead["type"] | "all" }): Promise<Paginated<AdminLead>> {
+async function listLeads(params?: ListParams & { status?: AdminLead["status"] | "all"; type?: AdminLead["type"] | "all"; assignee?: string; unassigned?: boolean; staleDays?: number }): Promise<Paginated<AdminLead>> {
   guard();
   const page = Math.max(1, params?.page ?? 1);
   const perPage = Math.max(1, Math.min(100, params?.perPage ?? 20));
@@ -2032,6 +2032,13 @@ async function listLeads(params?: ListParams & { status?: AdminLead["status"] | 
   if (q) rows = rows.filter((r) => [r.name, r.company, r.contact, r.email, r.utm_campaign].some((v) => String(v ?? "").toLowerCase().includes(q)));
   if (params?.status && params.status !== "all") rows = rows.filter((r) => String(r.status ?? "new") === params.status);
   if (params?.type && params.type !== "all") rows = rows.filter((r) => String(r.type ?? "quote") === params.type);
+  if (params?.assignee) rows = rows.filter((r) => String(r.owner ?? "").trim() === params.assignee);
+  if (params?.unassigned) rows = rows.filter((r) => !String(r.owner ?? "").trim());
+  if (params?.staleDays && params.staleDays > 0) {
+    // hosted has no last_contact column — age from created_at until the owner-gated migration ships
+    const cutoff = Date.now() - params.staleDays * 86400000;
+    rows = rows.filter((r) => new Date(String(r.created_at)).getTime() < cutoff);
+  }
   const total = rows.length;
   const items = rows.slice((page - 1) * perPage, page * perPage).map(rowToAdminLead);
   return pagenate(items, total, page, perPage);
@@ -2056,7 +2063,30 @@ const rowToAdminLead = (r: Row): AdminLead => ({
   ...(r.utm_campaign ? { utmCampaign: r.utm_campaign } : {}),
   ...(r.landing_path ? { landingPath: r.landing_path } : {}),
   ...(r.referrer ? { referrer: r.referrer } : {}),
+  ...(r.owner ? { assignedTo: String(r.owner) } : {}),
+  ...(r.note ? { note: String(r.note) } : {}),
 });
+const LEAD_PATCH_HOSTED_GAPS = ["leadSource", "quotationRef", "lastContact", "meetingAt", "nextAction"] as const;
+async function updateLead(id: string, patch: AdminLeadPatch): Promise<AdminLead | undefined> {
+  guard();
+  // V4 PR-D — the hosted leads table carries owner + note only; the rest need the owner-gated migration.
+  const gaps = LEAD_PATCH_HOSTED_GAPS.filter((k) => patch[k] !== undefined);
+  if (gaps.length) throw new Error(`Hosted leads table has no columns for ${gaps.join(", ")} — owner-gated migration. Edit those in the demo build.`);
+  const num = Number(String(id).replace(/^lead-/, ""));
+  if (!Number.isFinite(num)) return undefined;
+  const row: TablesUpdate<"leads"> = { updated_at: new Date().toISOString() };
+  if (patch.assignedTo !== undefined) row.owner = (patch.assignedTo ?? "").trim() || null;
+  if (patch.note !== undefined) row.note = (patch.note ?? "").trim() || null;
+  if (Object.keys(row).length === 1) {
+    const { data, error } = await supabase.from("leads").select("*").eq("id", num).maybeSingle();
+    if (error) fail("updateLead", error);
+    return data ? rowToAdminLead(data as Row) : undefined;
+  }
+  const { data, error } = await supabase.from("leads").update(row).eq("id", num).select("*").maybeSingle();
+  if (error) fail("updateLead", error);
+  return data ? rowToAdminLead(data as Row) : undefined;
+}
+
 async function updateLeadStatus(id: string, status: AdminLead["status"], patch?: Partial<Pick<AdminLead, "summary">>): Promise<AdminLead | undefined> {
   guard();
   const num = Number(String(id).replace(/^lead-/, ""));
@@ -3966,6 +3996,7 @@ export const supabaseAdminApi: AdminApi = {
   getCustomer,
   listLeads,
   updateLeadStatus,
+  updateLead,
   createLead,
   importLeads,
   listChatConversations,
