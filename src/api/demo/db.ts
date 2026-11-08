@@ -19,6 +19,10 @@ import type {
   AdminApi,
   AdminCategory,
   AdminDeliveryZone,
+  ProjectCostCode,
+  ProjectActualLine,
+  ProjectActualSource,
+  ProjectFileItem,
   AdminInventoryItem,
   AdminCustomer,
   AdminLead,
@@ -141,7 +145,7 @@ import type {
   NewTaskInput,
   StoreSettings,
 } from "@/api/types";
-import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
+import { BUILTIN_TEMPLATES, isBuiltinTemplateId } from "@/api/quote-templates";
 
 const DB_KEY = "woodex.admin.db.v1";
 
@@ -192,6 +196,9 @@ interface DemoDb {
   purchaseOrders: AdminPurchaseOrder[];
   stockTransfers: AdminStockTransfer[];
   optionSets: AdminOptionSet[];
+  /** Relational Job-costing ledger (migration 0013 shape) — demo mirror. */
+  costCodes: ProjectCostCode[];
+  actuals: ProjectActualLine[];
 }
 
 /* ── deterministic RNG so every fresh session seeds identically ─────────── */
@@ -519,6 +526,47 @@ function buildSeedMaterials(): AdminMaterial[] {
 }
 
 /** Practice workspaces seeded for the two live jobs (BOQ = planned cost; files = metadata-only). */
+/* ── project actuals seeds — mirror of the 0013 relational ledger ───────── */
+function buildSeedCostCodes(): ProjectCostCode[] {
+  const mk = (id: number, projectId: string, code: string, boqSection: string | null, description: string): ProjectCostCode => ({
+    id, projectId, code, boqSection, description, createdAt: "2025-10-01T09:00:00.000Z",
+  });
+  return [
+    mk(1001, "7", "DEM", "Demolition & prep", "Demolition, strips & waterproofing"),
+    mk(1002, "7", "JNR", "Joinery & panelling", "Joinery, veneer & fabrication"),
+    mk(1003, "7", "ELEC", "Electrical & lighting", "Lighting & electrical"),
+    mk(1004, "7", "PLMB", "Plumbing", "Plumbing & drainage"),
+    mk(1005, "7", "FURN", "Furniture", "Furniture supply & install"),
+    mk(1006, "7", "LAB", null, "Site + factory labour"),
+    mk(1007, "7", "MISC", null, "Consumables & sundries"),
+    mk(1008, "1", "EXE", "Executive floors", "C-suite works & task chairs"),
+    mk(1009, "1", "MTG", "Meeting & collaboration", "Boardroom & benching works"),
+    mk(1010, "1", "LAB", null, "Installation crew"),
+  ];
+}
+function buildSeedActuals(): ProjectActualLine[] {
+  const mk = (id: number, projectId: string, costCode: string, description: string, qty: number, unit: string, rate: number, source: ProjectActualSource, incurredOn: string, opts: { poRef?: string; note?: string } = {}): ProjectActualLine => ({
+    id, projectId, costCode, description, qty, unit, rate, amount: Math.round(qty * rate * 100) / 100,
+    source, poRef: opts.poRef ?? null, incurredOn, note: opts.note ?? "", createdAt: `${incurredOn}T09:00:00.000Z`,
+  });
+  return [
+    // project 7 — Gents Grooming Lounge (mid-production; some spend not yet incurred)
+    mk(1101, "7", "DEM", "Strip-out & disposal (contractor)", 3500, "sqft", 178, "po", "2025-10-03", { poRef: "PO-1041" }),
+    mk(1102, "7", "JNR", "Walnut panelling + veneer pressing (batch 1)", 420, "sqft", 3100, "po", "2025-10-29", { poRef: "PO-1044", note: "Rate +8.8% vs BOQ 2,850 — walnut up" }),
+    mk(1103, "7", "JNR", "Barber consoles — CNC + edging", 6, "units", 192000, "po", "2025-11-08", { poRef: "PO-1044" }),
+    mk(1104, "7", "ELEC", "Edison pendant grid (partial delivery)", 1, "lot", 615000, "po", "2025-11-10", { poRef: "PO-1046", note: "Remainder due w/c 24 Nov" }),
+    mk(1105, "7", "LAB", "Site fit-out crew + factory joiners (Oct wks 4–6)", 1, "lot", 980000, "labor", "2025-11-01"),
+    mk(1106, "7", "PLMB", "Drainage rework — as planned", 1, "lot", 240000, "subcontract", "2025-10-12"),
+    mk(1107, "7", "MISC", "Site PPE, consumables, dust sheets", 1, "lot", 46000, "manual", "2025-10-05"),
+    // project 1 — DHA Corporate Tower (complete; one overage story to inspect)
+    mk(1201, "1", "EXE", "C-suite modular workstations", 15, "units", 288000, "po", "2024-04-02", { poRef: "PO-0971", note: "Rate +1.1% on currency movement" }),
+    mk(1202, "1", "EXE", "ErgoMax task chairs", 250, "units", 42000, "po", "2024-04-02", { poRef: "PO-0971" }),
+    mk(1203, "1", "MTG", "Board conference tables (walnut)", 3, "units", 1275000, "po", "2024-04-15", { poRef: "PO-0971" }),
+    mk(1204, "1", "MTG", "Workstation benching", 120, "units", 95000, "po", "2024-04-15", { poRef: "PO-0971" }),
+    mk(1205, "1", "LAB", "Installation crew — 6 floors", 1, "lot", 1800000, "labor", "2024-05-20"),
+  ];
+}
+
 function buildSeedProjectPractices(): Record<string, ProjectPractice> {
   return {
     "7": {
@@ -551,6 +599,17 @@ function buildSeedProjectPractices(): Record<string, ProjectPractice> {
         { id: "file-g7-3", name: "mep-asbuilt-schematic.pdf", size: 1_200_000, kind: "document", uploadedBy: "Site engineer", uploadedAt: "2025-11-05T11:20:00.000Z" },
         { id: "file-g7-4", name: "barber-chair-spec-sheet.pdf", size: 640_000, kind: "document", uploadedBy: "You", uploadedAt: "2025-10-26T16:45:00.000Z" },
       ],
+      production: {
+        stages: [
+          { id: "prod-g7-1", stage: "material_prep", pct: 100, note: "Walnut + brass stock received" },
+          { id: "prod-g7-2", stage: "fabrication", pct: 75, note: "Barber consoles on CNC; shelving edged" },
+          { id: "prod-g7-3", stage: "finishing", pct: 15, note: "Veneer presses booked w/c 17 Nov" },
+          { id: "prod-g7-4", stage: "qc", pct: 0, note: "QC gate — dispatch blocked until passed" },
+          { id: "prod-g7-5", stage: "dispatch", pct: 0, note: "" },
+        ],
+        qc: { result: "pending", defectNote: "", inspectedBy: "", inspectedAt: "" },
+        dispatch: { date: "", vehicle: "", driver: "", driverPhone: "", challanRef: "" },
+      },
     },
     "1": {
       boq: [
@@ -569,6 +628,17 @@ function buildSeedProjectPractices(): Record<string, ProjectPractice> {
         { id: "file-d1-1", name: "DHA-corporate-tower-floor6-plan.dwg", size: 3_100_000, kind: "drawing", uploadedBy: "Site engineer", uploadedAt: "2024-02-18T10:05:00.000Z" },
         { id: "file-d1-2", name: "csuite-render-v4.png", size: 9_400_000, kind: "image", uploadedBy: "Design team", uploadedAt: "2024-02-22T12:30:00.000Z" },
       ],
+      production: {
+        stages: [
+          { id: "prod-d1-1", stage: "material_prep", pct: 100, note: "" },
+          { id: "prod-d1-2", stage: "fabrication", pct: 100, note: "All 6 floors manufactured & delivered" },
+          { id: "prod-d1-3", stage: "finishing", pct: 100, note: "" },
+          { id: "prod-d1-4", stage: "qc", pct: 100, note: "Passed — 2 minor snags reworked on site" },
+          { id: "prod-d1-5", stage: "dispatch", pct: 100, note: "" },
+        ],
+        qc: { result: "passed", defectNote: "", inspectedBy: "Site engineer", inspectedAt: "2024-06-02" },
+        dispatch: { date: "2024-05-28", vehicle: "WDX-Delivery-04", driver: "Imran", driverPhone: "+92 300 1234567", challanRef: "DC-2024-0181" },
+      },
     },
   };
 }
@@ -610,6 +680,7 @@ function cloneProjectPractice(p: ProjectPractice | undefined): ProjectPractice |
     boq: p.boq.map((r) => ({ ...r })),
     milestones: p.milestones.map((m) => ({ ...m })),
     files: p.files.map((f) => ({ ...f })),
+    ...(p.production ? { production: { stages: p.production.stages.map((s) => ({ ...s })), qc: { ...p.production.qc }, dispatch: { ...p.production.dispatch } } } : {}),
   };
 }
 
@@ -1962,7 +2033,7 @@ function buildSeed(): DemoDb {
   return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: seedQuotes,
     invoices: buildSeedInvoices(seedQuotes),
     payments: buildSeedPayments(),
-    tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), siteVisits: buildSeedSiteVisits(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
+    tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), siteVisits: buildSeedSiteVisits(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [], costCodes: buildSeedCostCodes(), actuals: buildSeedActuals() };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1989,6 +2060,8 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.invoices)) db.invoices = [];
       if (!Array.isArray(db.payments)) db.payments = [];
       if (!Array.isArray(db.tasks)) db.tasks = [];
+      if (!Array.isArray(db.costCodes)) db.costCodes = buildSeedCostCodes();
+      if (!Array.isArray(db.actuals)) db.actuals = buildSeedActuals();
       if (!Array.isArray(db.clients)) db.clients = buildSeedClients();
       if (!Array.isArray(db.clientLinks)) db.clientLinks = buildSeedClientLinks();
       if (!Array.isArray(db.siteVisits)) db.siteVisits = buildSeedSiteVisits();
@@ -3542,7 +3615,128 @@ export const demoAdminApi: AdminApi = {
       const i = arr.findIndex((x) => x.id === id);
       if (i === -1) return;
       arr.splice(i, 1);
+      // relational ledger rows cascade with the job (mirrors migration 0013 ON DELETE CASCADE)
+      db.costCodes = (db.costCodes ?? []).filter((c) => c.projectId !== id);
+      db.actuals = (db.actuals ?? []).filter((a) => a.projectId !== id);
       ok = true;
+    });
+    return ok;
+  },
+
+  async uploadProjectFile(): Promise<ProjectFileItem> {
+    throw new Error("Real file upload needs the hosted Supabase bucket (migration 0014) applied on the project — in demo mode files stay simulated metadata only. See docs/07-admin-integration.");
+  },
+
+  async getProjectFileDownloadUrl(): Promise<string> {
+    throw new Error("Signed download URLs need the hosted Supabase bucket (migration 0014) — not available in demo mode.");
+  },
+
+  /* ── project actuals ledger (migration 0013 mirror — demo, in-memory) ── */
+  async listProjectCostCodes(projectId) {
+    const db = loadDb();
+    return [...(db.costCodes ??= [])].filter((c) => c.projectId === projectId).sort((a, b) => a.code.localeCompare(b.code)).map((c) => ({ ...c }));
+  },
+
+  async upsertProjectCostCode(input) {
+    const code = String(input.code ?? "").trim().toUpperCase();
+    if (!/^[A-Z0-9][A-Z0-9_-]{0,31}$/.test(code)) throw new Error(`Cost code "${input.code}" is invalid — use A–Z, 0–9, - and _ (max 32 chars).`);
+    const clean = { boqSection: input.boqSection?.trim() ? input.boqSection.trim() : null, description: String(input.description ?? "").trim().slice(0, 200) };
+    const nowIso = new Date().toISOString();
+    let out: ProjectCostCode | undefined;
+    update((db) => {
+      (db.costCodes ??= []);
+      const existing = db.costCodes.find((c) => c.projectId === input.projectId && c.code === code);
+      if (existing) {
+        existing.boqSection = clean.boqSection;
+        existing.description = clean.description;
+        out = { ...existing };
+      } else {
+        out = { id: db.costCodes.reduce((m, c) => Math.max(m, c.id), 1000) + 1, projectId: input.projectId, code, boqSection: clean.boqSection, description: clean.description, createdAt: nowIso };
+        db.costCodes.push(out);
+      }
+    });
+    return out!;
+  },
+
+  async deleteProjectCostCode(projectId, code) {
+    let ok = false;
+    update((db) => {
+      (db.actuals ??= []);
+      if (db.actuals.some((a) => a.projectId === projectId && a.costCode === code)) {
+        throw new Error(`Cost code ${code} has actuals against it — delete or re-cost those lines first (FK RESTRICT).`);
+      }
+      const before = db.costCodes.length;
+      db.costCodes = db.costCodes.filter((c) => !(c.projectId === projectId && c.code === code));
+      ok = db.costCodes.length < before;
+    });
+    return ok;
+  },
+
+  async listProjectActuals(projectId) {
+    const db = loadDb();
+    return [...(db.actuals ??= [])].filter((a) => a.projectId === projectId).sort((a, b) => a.incurredOn.localeCompare(b.incurredOn) || a.id - b.id).map((a) => ({ ...a }));
+  },
+
+  async addProjectActual(input) {
+    const db0 = loadDb();
+    if (!(db0.costCodes ??= []).some((c) => c.projectId === input.projectId && c.code === input.costCode)) {
+      throw new Error(`Cost code ${input.costCode} is not defined for this job — add it to the cost-code master first.`);
+    }
+    const qty = Math.max(0, Number(input.qty) || 0);
+    const rate = Math.max(0, Number(input.rate) || 0);
+    const nowIso = new Date().toISOString();
+    const today = nowIso.slice(0, 10);
+    let out: ProjectActualLine | undefined;
+    update((db) => {
+      (db.actuals ??= []);
+      out = {
+        id: db.actuals.reduce((m, a) => Math.max(m, a.id), 1000) + 1,
+        projectId: input.projectId,
+        costCode: input.costCode,
+        description: String(input.description ?? "").trim().slice(0, 300) || "Untitled actual",
+        qty, unit: String(input.unit ?? "lot").trim().slice(0, 12) || "lot",
+        rate, amount: Math.round(qty * rate * 100) / 100,
+        source: (["po", "labor", "subcontract", "manual"] as ProjectActualSource[]).includes(input.source) ? input.source : "manual",
+        poRef: input.poRef?.trim() ? input.poRef.trim().slice(0, 40) : null,
+        incurredOn: /^\d{4}-\d{2}-\d{2}$/.test(input.incurredOn ?? "") ? (input.incurredOn as string) : today,
+        note: String(input.note ?? "").trim().slice(0, 300),
+        createdAt: nowIso,
+      };
+      db.actuals.push(out);
+    });
+    return out!;
+  },
+
+  async updateProjectActual(id, projectId, patch) {
+    let out: ProjectActualLine | undefined;
+    update((db) => {
+      (db.actuals ??= []);
+      const a = db.actuals.find((x) => x.id === id && x.projectId === projectId);
+      if (!a) return;
+      if (patch.costCode !== undefined) {
+        if (!(db.costCodes ??= []).some((c) => c.projectId === projectId && c.code === patch.costCode)) throw new Error(`Cost code ${patch.costCode} is not defined for this job.`);
+        a.costCode = patch.costCode;
+      }
+      if (patch.description !== undefined) a.description = String(patch.description).trim().slice(0, 300) || a.description;
+      if (patch.qty !== undefined) a.qty = Math.max(0, Number(patch.qty) || 0);
+      if (patch.unit !== undefined) a.unit = String(patch.unit).trim().slice(0, 12) || a.unit;
+      if (patch.rate !== undefined) a.rate = Math.max(0, Number(patch.rate) || 0);
+      a.amount = Math.round(a.qty * a.rate * 100) / 100;
+      if (patch.source !== undefined) a.source = (["po", "labor", "subcontract", "manual"] as ProjectActualSource[]).includes(patch.source) ? patch.source : a.source;
+      if (patch.poRef !== undefined) a.poRef = patch.poRef?.trim() ? patch.poRef.trim().slice(0, 40) : null;
+      if (patch.incurredOn !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(patch.incurredOn)) a.incurredOn = patch.incurredOn;
+      if (patch.note !== undefined) a.note = String(patch.note).trim().slice(0, 300);
+      out = { ...a };
+    });
+    return out;
+  },
+
+  async deleteProjectActual(id, projectId) {
+    let ok = false;
+    update((db) => {
+      const before = (db.actuals ??= []).length;
+      db.actuals = db.actuals.filter((a) => !(a.id === id && a.projectId === projectId));
+      ok = db.actuals.length < before;
     });
     return ok;
   },
@@ -4314,15 +4508,15 @@ export const demoAdminApi: AdminApi = {
   },
 
   async listQuoteTemplates() {
-    const custom = (loadDb().quoteTemplates ?? []).filter((t) => t.id !== DEFAULT_QUOTE_TEMPLATE.id);
-    return [DEFAULT_QUOTE_TEMPLATE, ...custom];
+    const custom = (loadDb().quoteTemplates ?? []).filter((t) => !isBuiltinTemplateId(t.id));
+    return [...BUILTIN_TEMPLATES, ...custom];
   },
 
   async saveQuoteTemplate(template: AdminQuoteTemplate) {
     const name = template.name.trim();
     if (!name) throw new Error("Template name is required.");
     let saved: AdminQuoteTemplate = { ...template, name, builtIn: false };
-    if (!saved.id || saved.id === DEFAULT_QUOTE_TEMPLATE.id || template.builtIn) {
+    if (!saved.id || isBuiltinTemplateId(saved.id) || template.builtIn) {
       saved = { ...saved, id: `tpl-${Date.now().toString(36)}` };
     }
     update((db) => {
@@ -4440,7 +4634,7 @@ export const demoAdminApi: AdminApi = {
   },
 
   async deleteQuoteTemplate(id: string) {
-    if (id === DEFAULT_QUOTE_TEMPLATE.id) return false;
+    if (isBuiltinTemplateId(id)) return false;
     let ok = false;
     update((db) => {
       const before = (db.quoteTemplates ??= []).length;

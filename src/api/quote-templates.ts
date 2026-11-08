@@ -1,9 +1,16 @@
 /**
- * Built-in quotation template — the printable artefact WOODEX hands to a
- * customer before an order exists. Code-owned: the "Woodex classic" default
- * cannot be deleted or mutated through the admin; editing it clones a custom
- * template instead. Required wording is locked (it protects the commercial
- * posture negotiated with the owner, 2026-11).
+ * Built-in quotation templates — the printable artefacts WOODEX hands to a
+ * customer before an order exists. Code-owned: builtin templates cannot be
+ * deleted or mutated through the admin; editing one clones a custom template
+ * instead. Required wording on the classic template is locked (it protects
+ * the commercial posture negotiated with the owner, 2026-11).
+ *
+ * Built-ins:
+ *  - "Woodex classic" (default) — original formal quotation sheet.
+ *  - "Woodex A4" (new, 2026-11) — redesigned A4 letterhead artefact matching
+ *    the owner's attached target document: brand green #347647, masthead with
+ *    brand block + document identity, PREPARED FOR/LOCATION/ATTENTION grid,
+ *    green-header items table, 75/25 advance callout, terms grid, icon footer.
  */
 import type { AdminQuoteTemplate } from "@/api/types";
 
@@ -14,6 +21,7 @@ export const DEFAULT_QUOTE_TEMPLATE: AdminQuoteTemplate = {
   name: "Woodex classic",
   brandColor: "#318b45",
   builtIn: true,
+  layout: "classic",
   header: [
     { id: "letterhead", type: "letterhead", label: "Letterhead", content: "WOODEX · woodexfurniture.pk", visible: true },
     { id: "doc-ref", type: "doc-ref", label: "Document ref", content: "Quote {ref} · version {version}", visible: true },
@@ -26,8 +34,48 @@ export const DEFAULT_QUOTE_TEMPLATE: AdminQuoteTemplate = {
   ],
 };
 
+/**
+ * "Woodex A4" — the redesigned owner-target sheet. The letterhead block is
+ * the single source of truth for the brand block: first line = wordmark,
+ * following lines = address / contact, shown in both the masthead and the
+ * icon footer. Edit any block in the template designer to customise.
+ */
+export const WOODEX_A4_TEMPLATE: AdminQuoteTemplate = {
+  id: "builtin-woodex-a4",
+  name: "Woodex A4",
+  brandColor: "#347647",
+  builtIn: true,
+  layout: "a4",
+  header: [
+    {
+      id: "letterhead",
+      type: "letterhead",
+      label: "Letterhead (wordmark + contact lines)",
+      content: "Woodex Furniture\nLG 89, Zainab Tower, Model Town, Lahore\n+92 322 4000768 · info@woodex.com.pk",
+      visible: true,
+    },
+    { id: "doc-title", type: "doc-title", label: "Document title", content: "Quotation", visible: true },
+    { id: "doc-ref", type: "doc-ref", label: "Document ref", content: "Ref {ref} · v{version}", visible: true },
+    { id: "validity", type: "validity", label: "Validity line", content: "Valid until {validUntil}", visible: true },
+  ],
+  footer: [
+    { id: "payment-note", type: "payment-note", label: "Payment schedule", content: "75% advance with order confirmation · 25% balance on completion, against final site measurements.", visible: true },
+    { id: "delivery", type: "custom", label: "Delivery timeline", content: "14–21 working days from advance receipt and confirmed site measurements.", visible: true },
+    { id: "warranty", type: "custom", label: "Warranty terms", content: "1 year workmanship & structure against manufacturing defects.", visible: true },
+    { id: "validity", type: "custom", label: "Validity", content: "Prices honoured until {validUntil}.", visible: true },
+    { id: "terms", type: "terms", label: "Terms", content: "Prices in PKR. Delivery timeline is indicative and is confirmed in writing at order confirmation. Warranty and installation are covered per line item where stated.", visible: true },
+    { id: "thanks", type: "custom", label: "Thank-you line", content: "Thank you for choosing Woodex Furniture", visible: true },
+  ],
+};
+
+/** Every code-owned builtin, classic first (it stays the default selection). */
+export const BUILTIN_TEMPLATES: AdminQuoteTemplate[] = [DEFAULT_QUOTE_TEMPLATE, WOODEX_A4_TEMPLATE];
+
+export const isBuiltinTemplateId = (id: string | undefined): boolean =>
+  !!id && BUILTIN_TEMPLATES.some((t) => t.id === id);
+
 export const findTemplate = (list: AdminQuoteTemplate[], id: string | undefined): AdminQuoteTemplate =>
-  (id ? list.find((t) => t.id === id) : undefined) ?? DEFAULT_QUOTE_TEMPLATE;
+  (id ? (list.find((t) => t.id === id) ?? BUILTIN_TEMPLATES.find((t) => t.id === id)) : undefined) ?? DEFAULT_QUOTE_TEMPLATE;
 
 /** Compact engineering-dimension string for a quote line, e.g. "900 × 450 × 700 mm". Empty when no dims. */
 export function dimSpec(item: { width?: number; height?: number; depth?: number; unit?: string }): string {
@@ -52,4 +100,15 @@ export const renderBlock = (
 ): string => {
   const block = [...template.header, ...template.footer].find((b) => b.id === blockId);
   return block ? renderBlockContent(block.content, vars) : "";
+};
+
+/** Visible, single-line content of a template block (by id), e.g. for the A4 terms grid. */
+export const renderGridBlock = (
+  template: AdminQuoteTemplate,
+  blockId: string,
+  vars: TemplateVars,
+): string | undefined => {
+  const block = template.footer.find((b) => b.id === blockId);
+  if (!block || !block.visible) return undefined;
+  return renderBlockContent(block.content, vars).replace(/\s*\n\s*/g, " · ").trim();
 };

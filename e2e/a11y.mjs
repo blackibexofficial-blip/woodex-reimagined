@@ -26,7 +26,8 @@ const ADMIN_ROUTES = [
   "/dashboard", "/analytics", "/blog", "/brands", "/bulk-editor", "/bundles", "/campaigns",
   "/categories", "/claims", "/client-merge", "/collections", "/content", "/custom-design",
   "/customers", "/drafts", "/exchanges", "/homepage", "/inventory", "/invoices", "/leads",
-  "/materials", "/media", "/options", "/orders", "/pages", "/price-lists", "/products",
+  "/materials", "/media", "/options", "/orders", "/orders/new", "/invoices/new", "/pages", "/price-lists",
+  "/products", "/products/acoustic-desk-panel-48/edit", "/products/new",
   "/projects", "/purchase-orders", "/returns", "/sales-channels", "/series", "/services",
   "/settings", "/showrooms", "/suppliers", "/tasks", "/transfers", "/virtual-showroom", "/warranty",
 ];

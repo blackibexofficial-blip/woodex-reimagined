@@ -55,6 +55,11 @@ const asRole = async (db, roleName, uid) => { await db.exec(`set role ${roleName
   await db.exec(`create schema auth;
     create table auth.users (id uuid primary key default gen_random_uuid(), email text);
     create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('app.test_uid', true), '')::uuid $$;`);
+  // Storage stub — mirrors the subset of Supabase Storage's built-in schema our migration touches.
+  await db.exec(`create schema storage;
+    create table storage.buckets (id text primary key, name text not null, public boolean not null default false, file_size_limit bigint, allowed_mime_types text[], created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+    create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text not null references storage.buckets(id) on delete cascade, name text not null, owner text, created_at timestamptz not null default now(), updated_at timestamptz not null default now(), metadata jsonb, unique (bucket_id, name));
+    alter table storage.objects enable row level security;`);
   for (const f of MIGS) {
     try { await db.exec(fs.readFileSync(path.join(MIGDIR, f), 'utf8')); }
     catch (e) { console.log('MIGRATION FAIL ' + f + ': ' + e.message); process.exit(2); }
@@ -418,6 +423,131 @@ const asRole = async (db, roleName, uid) => { await db.exec(`set role ${roleName
   await db.exec('reset role');
   const svOutcome = await db.query(`select status, outcome from public.site_visits where ref = $1`, [svRef]);
   ok('site visits: sales may record the visit outcome (status → Completed)', svOutcome.rows[0]?.status === 'Completed' && String(svOutcome.rows[0]?.outcome ?? '').startsWith('Measured'));
+
+  // ── 0013 project cost codes + actuals ledger ───────────────────────────
+  await db.exec(`insert into public.projects (id, payload) values ('rehearsal-actuals-job', '{"practice":{"boq":[]}}'::jsonb) on conflict (id) do update set payload = excluded.payload`);
+  const ccIns = await db.query(`insert into public.project_cost_codes (project_id, code, boq_section, description) values ('rehearsal-actuals-job', 'JNR', 'Joinery & panelling', 'Joinery works') returning id`);
+  const ccId = first(ccIns);
+  ok('0013 fresh project + superuser cost-code seed for fixture', ccId >= 1001);
+
+  await asRole(db, 'authenticated', S);
+  const salesCc = await db.query(`insert into public.project_cost_codes (project_id, code, boq_section, description) values ('rehearsal-actuals-job', 'LAB', null, 'Site labour') returning id`);
+  await db.exec('reset role');
+  ok('0013 sales may insert cost codes (crm.manage)', first(salesCc) >= 1001);
+
+  let finCcIns = false;
+  try { await asRole(db, 'authenticated', F); await db.query(`insert into public.project_cost_codes (project_id, code) values ('rehearsal-actuals-job', 'FIN')`); } catch { finCcIns = true; }
+  await db.exec('reset role');
+  ok('0013 finance may NOT insert cost codes', finCcIns);
+
+  await asRole(db, 'authenticated', F);
+  const finCcRead = await db.query(`select count(*)::int as c from public.project_cost_codes where project_id = 'rehearsal-actuals-job'`);
+  await db.exec('reset role');
+  ok('0013 finance may READ cost codes', first(finCcRead) >= 1);
+
+  await asRole(db, 'authenticated', V);
+  const vCc = await db.query(`select count(*)::int as c from public.project_cost_codes where project_id = 'rehearsal-actuals-job'`);
+  await db.exec('reset role');
+  ok('0013 viewer sees 0 cost codes (crm.manage/finance.manage required)', first(vCc) === 0);
+
+  await asRole(db, 'authenticated', S);
+  const actIns = await db.query(`insert into public.project_actuals (project_id, cost_code, description, qty, unit, rate, source, po_ref) values ('rehearsal-actuals-job', 'JNR', 'Walnut stock + veneer', 42, 'sqft', 3100, 'po', 'PO-1001') returning id, amount`);
+  await db.exec('reset role');
+  const actRow = actIns.rows[0] ?? {};
+  ok('0013 sales may insert actuals (amount GENERATED as qty*rate = 130,200)', Number(actRow.id) >= 1001 && Number(actRow.amount) === 130200);
+
+  let finActIns = false;
+  try { await asRole(db, 'authenticated', F); await db.query(`insert into public.project_actuals (project_id, cost_code, description) values ('rehearsal-actuals-job', 'JNR', 'finance intrusion')`); } catch { finActIns = true; }
+  await db.exec('reset role');
+  ok('0013 finance may NOT insert actuals', finActIns);
+
+  await asRole(db, 'authenticated', S);
+  const actUpd = await db.query(`update public.project_actuals set note = 'veneer pressing batch 2' where cost_code = 'JNR' and project_id = 'rehearsal-actuals-job' returning id`);
+  await db.exec('reset role');
+  ok('0013 sales may update actuals', (actUpd.affectedRows ?? actUpd.rows?.length ?? 0) >= 1);
+
+  await asRole(db, 'authenticated', F);
+  const finActUpd = await db.query(`update public.project_actuals set note = 'finance edit' where project_id = 'rehearsal-actuals-job'`);
+  await db.exec('reset role');
+  ok('0013 finance UPDATE affects 0 rows', (finActUpd.affectedRows ?? 0) === 0);
+
+  await asRole(db, 'authenticated', V);
+  const vAct = await db.query(`select count(*)::int as c from public.project_actuals where project_id = 'rehearsal-actuals-job'`);
+  await db.exec('reset role');
+  ok('0013 viewer sees 0 actual rows (crm.manage/finance.manage required)', first(vAct) === 0);
+
+  await asRole(db, 'authenticated', F);
+  const finActRead = await db.query(`select count(*)::int as c from public.project_actuals where project_id = 'rehearsal-actuals-job'`);
+  await db.exec('reset role');
+  ok('0013 finance may READ actuals', first(finActRead) === 1);
+
+  let badCode = false;
+  try { await asRole(db, 'authenticated', S); await db.query(`insert into public.project_actuals (project_id, cost_code) values ('rehearsal-actuals-job', 'NOPE')`); } catch { badCode = true; }
+  await db.exec('reset role');
+  ok('0013 actuals FK rejects unknown cost codes', badCode);
+
+  let restrictBlocks = false;
+  try { await asRole(db, 'authenticated', S); await db.query(`delete from public.project_cost_codes where project_id = 'rehearsal-actuals-job' and code = 'JNR'`); } catch { restrictBlocks = true; }
+  await db.exec('reset role');
+  ok('0013 cost code referenced by actuals cannot be deleted (FK RESTRICT)', restrictBlocks);
+
+  const projDel = await db.query(`delete from public.projects where id = 'rehearsal-actuals-job'`);
+  ok('0013 project delete cascades its codes + actuals', (projDel.affectedRows ?? 0) === 1);
+
+  // ── 0014 projects storage bucket (private, 50 MB cap, crm.manage only) ──
+  const bucket = await db.query(`select public, file_size_limit::int as cap from storage.buckets where id = 'projects'`);
+  ok('0014 projects bucket exists, private, 50 MB cap', bucket.rows[0]?.public === false && Number(bucket.rows[0]?.cap) === 52428800);
+
+  await asRole(db, 'authenticated', S);
+  const sIns = await db.query(`insert into storage.objects (bucket_id, name) values ('projects', 'rehearsal-job/drawing.dwg') returning id`);
+  await db.exec('reset role');
+  ok('0014 sales may upload into the projects bucket (crm.manage)', !!first(sIns));
+
+  await asRole(db, 'authenticated', S);
+  const sRead = await db.query(`select count(*)::int as c from storage.objects where bucket_id = 'projects' and name = 'rehearsal-job/drawing.dwg'`);
+  await db.exec('reset role');
+  ok('0014 sales may read the projects bucket', first(sRead) === 1);
+
+  await asRole(db, 'authenticated', F);
+  const fRead = await db.query(`select count(*)::int as c from storage.objects where bucket_id = 'projects'`);
+  await db.exec('reset role');
+  ok('0014 finance sees 0 storage rows (storage posture is crm.manage only)', first(fRead) === 0);
+
+  let fIns = false;
+  try { await asRole(db, 'authenticated', F); await db.query(`insert into storage.objects (bucket_id, name) values ('projects', 'rehearsal-job/fin.dwg')`); } catch { fIns = true; }
+  await db.exec('reset role');
+  ok('0014 finance may NOT upload into the projects bucket', fIns);
+
+  await asRole(db, 'authenticated', F);
+  const fDelR = await db.query(`delete from storage.objects where bucket_id = 'projects'`);
+  await db.exec('reset role');
+  ok('0014 finance DELETE affects 0 storage rows', (fDelR.affectedRows ?? 0) === 0);
+
+  await asRole(db, 'authenticated', V);
+  const vRead = await db.query(`select count(*)::int as c from storage.objects where bucket_id = 'projects'`);
+  await db.exec('reset role');
+  ok('0014 viewer sees 0 storage rows', first(vRead) === 0);
+
+  let vIns = false;
+  try { await asRole(db, 'authenticated', V); await db.query(`insert into storage.objects (bucket_id, name) values ('projects', 'rehearsal-job/viewer.dwg')`); } catch { vIns = true; }
+  await db.exec('reset role');
+  ok('0014 viewer may NOT upload into the projects bucket', vIns);
+
+  await asRole(db, 'anon', V);
+  let aRead = -1;
+  try { const ar = await db.query(`select count(*)::int as c from storage.objects where bucket_id = 'projects'`); aRead = first(ar) === null ? 0 : 0; } catch { aRead = -1; }
+  await db.exec('reset role');
+  ok('0014 anon has no storage access', aRead === -1 || aRead === 0);
+
+  let otherIns = false;
+  try { await asRole(db, 'authenticated', S); await db.query(`insert into storage.objects (bucket_id, name) values ('not-projects', 'x.dwg')`); } catch { otherIns = true; }
+  await db.exec('reset role');
+  ok('0014 projects policies do not leak into other buckets (no policy = deny)', otherIns);
+
+  await asRole(db, 'authenticated', S);
+  const sDel = await db.query(`delete from storage.objects where bucket_id = 'projects' and name = 'rehearsal-job/drawing.dwg' returning id`);
+  await db.exec('reset role');
+  ok('0014 sales may delete job files (crm.manage)', (sDel.affectedRows ?? sDel.rows?.length ?? 0) === 1);
 
   const pass = results.filter(r => r[1]).length, fail = results.length - pass;
   console.log(`\nFRESH REHEARSAL (test:rehearsal): ${pass} passed, ${fail} failed`);

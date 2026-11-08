@@ -388,7 +388,9 @@ Everything outstanding after the merge — owner to triage; agent holds code-siz
 
 ## Verification gate (every module)
 
-> **2026-11-08 sync:** the suite has grown — e2e is now **59/59**, rehearsal **68/68** (`npm run test:rehearsal`),
+> **2026-11-08 sync (later still):** document family overhaul landed in the same PR — e2e is now **76/76** (+9 document-suite asserts), a11y **0/51 routes**, quotes page carries the pipeline tracker (KPI strip + chips + ≤7d expiry chips). New printable family: Order · Purchase Order · Return · Exchange (Chrome-free A4 routes) + Woodex A4 built-in quotation template + invoice-document restyle; new creation pages /admin/orders/new + /admin/invoices/new. (Earlier same-day: e2e 67/67 · rehearsal 93/93 · a11y 0/49.)
+
+> **2026-11-08 sync (later):** the suite has grown again — e2e is now **67/67**, rehearsal **93/93** (`npm run test:rehearsal`, after 0013 actuals + 0014 storage + catalog redesign asserts), and a11y enforcement is CI-gated at **0/49** (products + products/new + products/:id/edit all clean). (Earlier same-day: e2e 59/59 → 64/64 · rehearsal 68/68.)
 > and the working branch for all current work is `arena/be885bad-woodex-reimagined` (PR open); step 4's
 > branch/PR reference is historical. Gates 1–3 unchanged.
 

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, XCircle, Loader2, Save, AlertTriangle, RotateCcw, Plug, Database, Server } from "lucide-react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { CheckCircle2, XCircle, Loader2, Save, AlertTriangle, RotateCcw, Plug, Database, Server, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { StoreSettings } from "@/api/types";
@@ -24,6 +24,20 @@ export default function AdminSettings() {
 
   const set = <K extends keyof StoreSettings>(key: K, value: StoreSettings[K]) =>
     setSettings((s) => (s ? { ...s, [key]: value } : s));
+
+  const onLogoFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 200 * 1024) {
+      toast.error("Logo must be 200 KB or smaller — it travels inside the settings record.");
+      e.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => { if (typeof reader.result === "string") set("storeLogo", reader.result); };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
 
   const save = async () => {
     if (!settings) return;
@@ -116,6 +130,26 @@ export default function AdminSettings() {
           <div className="sm:col-span-2">
             <label htmlFor="s-delivery" className={FIELD}>Delivery note (shown at checkout)</label>
             <Textarea id="s-delivery" rows={2} value={settings.deliveryNote} onChange={(e) => set("deliveryNote", e.target.value)} />
+          </div>
+          {/* store logo — one image, every printable document */}
+          <div className="sm:col-span-2 rounded-lg border border-dashed border-border p-4">
+            <span className={FIELD}>Company logo — every printable document</span>
+            <div className="mt-2 flex items-center gap-4">
+              {settings.storeLogo ? (
+                <>
+                  <img src={settings.storeLogo} alt="Company logo preview" className="h-14 w-14 shrink-0 rounded-md border border-border object-contain p-1" />
+                  <Button type="button" variant="outline" size="sm" onClick={() => set("storeLogo", undefined)}>
+                    <X className="mr-1 h-3.5 w-3.5" /> Remove logo
+                  </Button>
+                </>
+              ) : (
+                <label htmlFor="s-logo" className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-hon-green hover:text-foreground">
+                  <Upload className="h-4 w-4" /> Upload logo…
+                  <input id="s-logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="sr-only" onChange={onLogoFile} />
+                </label>
+              )}
+            </div>
+            <p className="mt-2 text-[10px] leading-snug text-muted-foreground">PNG, JPG, WebP or SVG, ≤ 200 KB. Shown on the quotation, invoice, order, purchase order, return and exchange sheets (A4 masthead and the classic WOODEX masthead). When set, it takes precedence over a template&apos;s own logo.</p>
           </div>
         </div>
       </SectionCard>

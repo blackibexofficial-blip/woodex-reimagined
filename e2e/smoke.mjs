@@ -8,7 +8,7 @@
  *               Product/Article/Breadcrumb per page; zero lovable.app references (13 checks)
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
  *
- * Total: 59 checks (35 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
+ * Total: 64 checks (35 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -162,6 +162,30 @@ async function adminSuite(browser) {
     ![...document.querySelectorAll("figure p[title]")].some((n) => (n.getAttribute("title") || "").includes("e2e-pixel.png")));
   ok("uploaded asset deleted", assetGone);
 
+  // ── printable document family + creation flows (2026-11 overhaul) ──
+  for (const [route, marker] of [
+    ["/order/WDX-1001", "LG 89, Zainab Tower"],
+    ["/invoice-document/INV-1001", "LG 89, Zainab Tower"],
+    ["/purchase-order/PO-1001", "Pak Wood"],
+    ["/return/RMA-1001", "Hassan"],
+    ["/exchange/EXC-1001", "Exchange"],
+    ["/quote/QOT-1001", "quotation"],
+  ]) {
+    await page.goto(`${ADMIN}${route}`, { waitUntil: "networkidle2", timeout: 60000 });
+    await page.waitForSelector(".a4-page", { timeout: 15000 }).catch(() => {});
+    const docText = (await bodyText()).toLowerCase();
+    ok(`printable ${route.split("/")[1]} renders (A4 sheet, letterhead)`, docText.includes(marker.toLowerCase()));
+  }
+  await page.goto(`${ADMIN}/orders/new`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("New order", 15000).catch(() => {});
+  ok("New order page renders with totals rail", (await bodyText()).includes("Create order"));
+  await page.goto(`${ADMIN}/invoices/new`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("New invoice", 15000).catch(() => {});
+  ok("New invoice wizard renders", (await bodyText()).includes("Issue invoice"));
+  await page.goto(`${ADMIN}/quotes`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("Open pipeline", 15000).catch(() => {});
+  ok("quotes page shows the KPI pipeline strip", (await bodyText()).toLowerCase().includes("open pipeline"));
+
   await page.goto(`${ADMIN}/dashboard`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Revenue — last 30 days", 20000);
   ok("dashboard still renders", true);
@@ -253,6 +277,43 @@ async function adminSuite(browser) {
   });
   await page.waitForFunction(() => document.body.innerText.includes("7,567,500"), { timeout: 10000 }).catch(() => {});
   ok("BOQ qty edit recomputes planned total (3,500→4,000 => Rs 7,567,500)", (await bodyText()).includes("7,567,500"));
+
+  // production tab — seeded mid-production state (Grooming Lounge: fabrication at 75%)
+  const productionTabbed = await clickTab("Production");
+  await page.waitForSelector('[role="dialog"] input[aria-label="Fabrication percent"]', { timeout: 10000 }).catch(() => {});
+  const prodBody = (await bodyText()).toLowerCase();
+  ok("production tab activates with the seeded shop-floor stages", productionTabbed && prodBody.includes("material prep") && prodBody.includes("fabrication") && prodBody.includes("qc inspection"));
+  ok("seeded fabrication stage renders its 75% in-progress badge", prodBody.includes("in progress · 75%"));
+  const lockedDispatch = await page.$('[role="dialog"] fieldset[aria-label="Dispatch details"][disabled]');
+  ok("QC gate locks the dispatch block while QC is pending (banner + disabled date)", prodBody.includes("dispatch blocked") && lockedDispatch !== null);
+
+  // actuals tab — relational job-costing ledger (migration 0013 mirror) vs BOQ plan
+  const actualsTabbed = await clickTab("Actuals");
+  await page.waitForSelector('[role="dialog"] input[aria-label="Actual description"]', { timeout: 10000 }).catch(() => {});
+  const actBody = (await bodyText()).toLowerCase();
+  ok("actuals tab opens with the seeded ledger lines (Walnut panelling · PO-1044)", actualsTabbed && actBody.includes("walnut panelling") && actBody.includes("po-1044"));
+  ok("actuals grand total renders the seeded ledger spend (4,958,000)", actBody.includes("4,958,000"));
+
+  // /admin/products — redesigned catalog grid (KPI strip + full-page editor)
+  await page.goto(`${ADMIN}/products`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForFunction(() => document.body.innerText.toLowerCase().includes("avg. price"), { timeout: 15000 }).catch(() => {});
+  const catBody = (await bodyText()).toLowerCase();
+  ok("products catalog renders the KPI strip (avg. price · subcategories)", catBody.includes("avg. price") && catBody.includes("subcategories"));
+  const editClicked = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('a')].find((a) => (a.getAttribute("href") ?? "").match(/^\/admin\/products\/[^/]+\/edit$/));
+    if (!el) return false;
+    el.click();
+    return true;
+  });
+  await page.waitForFunction(() => document.body.innerText.toLowerCase().includes("product identity"), { timeout: 15000 }).catch(() => {});
+  const editBody = (await bodyText()).toLowerCase();
+  ok("products grid Edit opens the full-page editor (identity + pricing sections)", editClicked && editBody.includes("product identity") && editBody.includes("pricing & stock"));
+  const imageControls = await page.evaluate(() => ({
+    pin: document.querySelectorAll('[aria-label^="Set image"], [aria-pressed="true"][aria-label*="primary"]').length,
+    upload: [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Upload"),
+    library: [...document.querySelectorAll("button")].some((b) => b.textContent.includes("From library")),
+  }));
+  ok("full-page editor renders the image manager (pin primary · Upload · From library)", imageControls.pin >= 1 && imageControls.upload && imageControls.library);
 
   // --- Wave 2: Library rail + Layers outline + lab render ---
   const clickRail = (text) =>

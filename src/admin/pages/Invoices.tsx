@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Search, Loader2, RefreshCw, Printer, Receipt, Landmark, BadgeCheck, Clock,
+  Search, Loader2, RefreshCw, Printer, Receipt, Landmark, BadgeCheck, Clock, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
@@ -30,6 +31,7 @@ const STATUS_PILL: Record<InvoiceStatus, string> = {
 };
 
 export default function AdminInvoices() {
+  const navigate = useNavigate();
   const api = useMemo(() => getAdminApi(), []);
 
   /* list state */
@@ -148,8 +150,11 @@ export default function AdminInvoices() {
           <Button variant="outline" onClick={load} aria-label="Refresh">
             <RefreshCw className="mr-1.5 h-4 w-4" /> Refresh
           </Button>
-          <Button onClick={openConvert} className="bg-accent hover:bg-accent/90 text-accent-foreground whitespace-nowrap">
+          <Button variant="outline" onClick={openConvert} className="whitespace-nowrap">
             <Receipt className="mr-1.5 h-4 w-4" /> Invoice from quote
+          </Button>
+          <Button onClick={() => navigate("/admin/invoices/new")} className="bg-hon-green-dark text-white hover:bg-hon-green-dark whitespace-nowrap">
+            <Plus className="mr-1.5 h-4 w-4" /> New invoice
           </Button>
         </div>
       </div>

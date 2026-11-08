@@ -1,32 +1,45 @@
+/**
+ * WOODEX admin — /admin/products
+ * "Furniture Catalog" — KPI strip, filter bar, image-card grid.
+ *
+ * Redesign (2026-11-08) following the woodex-2030 "Catalog" reference layout,
+ * mapped onto this repo's adapter (demo DB / Supabase / Bagisto).
+ * Retained from the previous table page: CSV import/export, duplicate,
+ * bulk-editor entry, admin-side stock toggle via the editor routes.
+ *
+ * Honest-data notes:
+ *  - The grid reads the shared catalog through the admin adapter only.
+ *    The storefront is a static build of src/data/products.ts — it does NOT
+ *    refresh when admin edits here. No copy on this page may claim otherwise.
+ *  - The "live · 30s sync" pill is real: it re-reads the adapter every 30s
+ *    (skipped while the tab is hidden). It does not imply a storefront push.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { X, Check,
-  Copy, Download, ChevronLeft, ChevronRight, Loader2, Package, PackageSearch, Pencil, Plus, Star, Trash2, Upload,
+import {
+  Boxes, Check, Copy, Download, ChevronLeft, ChevronRight, Loader2, Package, PackageSearch,
+  Percent, Plus, Star, Trash2, Upload, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { AdminCollection, AdminProduct, AdminOptionSet, NewAdminProductInput, ProductImportRow, ProductImportResult } from "@/api/types";
-import { categories, seriesList } from "@/data/products";
-import { formatPKR, formatNumber, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
+import type { AdminProduct, ProductImportRow, ProductImportResult } from "@/api/types";
+import { formatPKR, formatNumber, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-const PER_PAGE = 10;
+const PER_PAGE = 12;
+const FETCH_LIMIT = 500; // catalogue is ~150 rows; single page keeps filters instant
 
 const SORT_OPTIONS = [
-  { value: "reviews:desc", label: "Reviews · high→low" },
-  { value: "name:asc", label: "Name · A→Z" },
-  { value: "name:desc", label: "Name · Z→A" },
+  { value: "featured", label: "Featured" },
+  { value: "rating", label: "Top rated" },
   { value: "price:asc", label: "Price · low→high" },
   { value: "price:desc", label: "Price · high→low" },
+  { value: "name:asc", label: "Name · A→Z" },
   { value: "stock:asc", label: "Stock · low→high" },
-  { value: "stock:desc", label: "Stock · high→low" },
-  { value: "rating:desc", label: "Rating · high→low" },
 ] as const;
 type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
@@ -128,219 +141,140 @@ function rowsFromCsv(text: string): { rows: ProductImportRow[]; errors: { row: n
       return idx >= 0 ? (cells[idx] ?? "").trim() : undefined;
     };
     const getRaw = (keys: string[]) => {
-      for (const k of keys) {
-        const idx = headers.indexOf(k);
+      for (const key of keys) {
+        const idx = headers.findIndex((h) => h === key);
         if (idx >= 0) return (cells[idx] ?? "").trim();
       }
       return undefined;
     };
-    const name = get("name") ?? getRaw(["name", "title"]);
-    const price = toNumber(get("price") ?? "");
-    if (price !== undefined && Number.isNaN(price)) errors.push({ row: i + 1, message: `“${name || "row"}”: price “${get("price")}” is not a number` });
-    const compareAtPrice = toNumber(get("compareAtPrice") ?? "");
-    if (compareAtPrice !== undefined && Number.isNaN(compareAtPrice)) errors.push({ row: i + 1, message: `“${name || "row"}”: compare_at_price is not a number` });
-    const stock = toNumber(get("stock") ?? "");
-    if (stock !== undefined && Number.isNaN(stock)) errors.push({ row: i + 1, message: `“${name || "row"}”: stock is not a number` });
-    const rating = toNumber(get("rating") ?? "");
-    const reviews = toNumber(get("reviews") ?? "");
-    const weightKg = toNumber(get("weightKg") ?? "");
-    const inStockRaw = getRaw(["in_stock", "instock"]);
-    const inStock = inStockRaw !== undefined && inStockRaw !== "" ? toBool(inStockRaw) : undefined;
-    const isBestSellerRaw = getRaw(["is_best_seller", "best_seller", "featured"]);
-    const isBestSeller = isBestSellerRaw !== undefined && isBestSellerRaw !== "" ? toBool(isBestSellerRaw) : undefined;
-    const statusRaw = (getRaw(["stock_status", "status"]) ?? "").toLowerCase().replace(/\s+/g, " ").trim();
-    const stockStatus = statusRaw ? STATUS_MAP[statusRaw] : undefined;
-    if (statusRaw && !stockStatus) errors.push({ row: i + 1, message: `“${name || "row"}”: unknown stock_status “${statusRaw}”` });
-    if (errors.length > rowErrorsBefore) continue; // row-level parse error → skip the row entirely
-    rows.push({
-      id: get("id") || undefined,
-      sku: get("sku") || undefined,
-      name: name ?? "",
-      category: (get("category") || undefined)?.toLowerCase(),
-      subcategory: get("subcategory") || undefined,
-      price: price === undefined || Number.isNaN(price) ? undefined : price,
-      compareAtPrice: compareAtPrice === undefined || Number.isNaN(compareAtPrice) ? undefined : compareAtPrice,
-      stock: stock === undefined || Number.isNaN(stock) ? undefined : Math.max(0, Math.trunc(stock)),
-      inStock,
-      rating: rating === undefined || Number.isNaN(rating) ? undefined : rating,
-      reviews: reviews === undefined || Number.isNaN(reviews) ? undefined : Math.max(0, Math.trunc(reviews)),
-      stockStatus,
-      isBestSeller,
-      dimensions: get("dimensions") || undefined,
-      weightKg: weightKg === undefined || Number.isNaN(weightKg) ? undefined : weightKg,
-    });
+    const row: ProductImportRow = { name: "" };
+    const id = get("id"); if (id) row.id = id;
+    const sku = get("sku"); if (sku) row.sku = sku;
+    const name = get("name"); if (name) row.name = name;
+    const category = get("category"); if (category) row.category = category;
+    const subcategory = get("subcategory"); if (subcategory) row.subcategory = subcategory;
+    const price = toNumber(get("price") ?? ""); if (price !== undefined) { if (Number.isNaN(price)) errors.push({ row: i + 1, message: `price “${get("price")}” is not a number` }); else row.price = price; }
+    const compareAt = toNumber(getRaw(["compareatprice", "compare_at_price", "compare_at"]) ?? ""); if (compareAt !== undefined) { if (Number.isNaN(compareAt)) errors.push({ row: i + 1, message: "compare-at price is not a number" }); else row.compareAtPrice = compareAt; }
+    const stock = toNumber(get("stock") ?? ""); if (stock !== undefined) { if (Number.isNaN(stock)) errors.push({ row: i + 1, message: "stock is not a number" }); else row.stock = stock; }
+    const rating = toNumber(get("rating") ?? ""); if (rating !== undefined && !Number.isNaN(rating)) row.rating = rating;
+    const reviews = toNumber(get("reviews") ?? ""); if (reviews !== undefined && !Number.isNaN(reviews)) row.reviews = reviews;
+    const status = get("stockStatus"); if (status) { const norm = STATUS_MAP[normalizeHeader(status)]; if (norm) row.stockStatus = norm; else errors.push({ row: i + 1, message: `stock_status “${status}” not recognised` }); }
+    const best = toBool(getRaw(["is_best_seller", "best_seller", "featured"]) ?? ""); if (best !== undefined) row.isBestSeller = best;
+    const bestBoolAlt = toBool(getRaw(["bestseller"]) ?? ""); if (bestBoolAlt !== undefined) row.isBestSeller = bestBoolAlt;
+    const dimensions = getRaw(["dimensions"]); if (dimensions) row.dimensions = dimensions;
+    const weight = toNumber(getRaw(["weight_kg", "weight"]) ?? ""); if (weight !== undefined && !Number.isNaN(weight)) row.weightKg = weight;
+    if (errors.length === rowErrorsBefore) rows.push(row);
   }
   return { rows, errors };
 }
 
-const emptyDraft: NewAdminProductInput = { name: "", category: "", price: 0, stock: 0, isBestSeller: false };
+const materialOf = (p: AdminProduct) => p.specs?.find((r) => r.label.trim().toLowerCase() === "material")?.value?.trim();
+const salePercent = (p: AdminProduct) =>
+  p.compareAtPrice !== undefined && p.compareAtPrice > p.price && p.compareAtPrice > 0
+    ? Math.round(((p.compareAtPrice - p.price) / p.compareAtPrice) * 100)
+    : null;
 
 export default function AdminProducts() {
   const api = useMemo(() => getAdminApi(), []);
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [category, setCategory] = useState<string>("all");
-  const [stockFilter, setStockFilter] = useState<string>("all");
-  const [brandFilter, setBrandFilter] = useState<string>("all");
-  const [sortValue, setSortValue] = useState<SortValue>("reviews:desc");
+  const [subcategory, setSubcategory] = useState<string>("all");
+  const [material, setMaterial] = useState<string>("all");
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [sortValue, setSortValue] = useState<SortValue>("featured");
   const [page, setPage] = useState(1);
-  const [rows, setRows] = useState<AdminProduct[]>([]);
-  const [total, setTotal] = useState(0);
+  const [all, setAll] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<AdminProduct | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [draft, setDraft] = useState<NewAdminProductInput>({ ...emptyDraft });
-  const [creating, setCreating] = useState(false);
-  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [pendingDelete, setPendingDelete] = useState<AdminProduct | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importReport, setImportReport] = useState<(ProductImportResult & { parseErrors: { row: number; message: string }[] }) | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
 
+  /* debounce the search box */
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(query), 250);
-    return () => clearTimeout(t);
+    const t = window.setTimeout(() => setDebounced(query.trim().toLowerCase()), 250);
+    return () => window.clearTimeout(t);
   }, [query]);
 
+  /* load the full catalogue once (~150 rows); re-used by filters, KPIs and pagination */
   const load = useCallback(async () => {
-    setLoading(true);
     try {
-      const [sort, direction] = sortValue.split(":") as [
-        "name" | "price" | "stock" | "rating" | "reviews",
-        "asc" | "desc",
-      ];
-      const res = await api.listProducts({
-        query: debounced || undefined,
-        category: category === "all" ? undefined : category,
-        brandId: brandFilter === "all" ? undefined : brandFilter,
-        inStock: stockFilter === "all" ? undefined : stockFilter === "in",
-        page,
-        perPage: PER_PAGE,
-        sort,
-        direction,
-      });
-      setRows(res.items);
-      setTotal(res.total);
+      const res = await api.listProducts({ perPage: FETCH_LIMIT });
+      setAll(res.items);
+      setLastSynced(new Date());
     } catch (e) {
-      console.error(e);
-      toast.error("Could not load products.");
+      toast.error(e instanceof Error ? e.message : "Could not load products.");
     } finally {
       setLoading(false);
     }
-  }, [api, debounced, category, brandFilter, stockFilter, page, sortValue]);
-
-  const [optionSets, setOptionSets] = useState<AdminOptionSet[]>([]);
-  const [seriesOptions, setSeriesOptions] = useState<Array<{ id: string; name: string; active: boolean }>>(seriesList.map(({ id, name }) => ({ id, name, active: true })));
-  const [brandOptions, setBrandOptions] = useState<Array<{ id: string; name: string; active: boolean }>>([{ id: "woodex", name: "Woodex", active: true }]);
-  const [collections, setCollections] = useState<AdminCollection[]>([]);
-  /* Manual-collection membership — null = derive from collections each render; set once the user toggles a chip. */
-  const [membership, setMembership] = useState<Set<string> | null>(null);
-  useEffect(() => {
-    api.listOptionSets().then(setOptionSets).catch(() => setOptionSets([]));
-    api.listCollections().then(setCollections).catch(() => setCollections([]));
-    api.listSeries().then((rows) => setSeriesOptions(rows.map(({ id, name, active }) => ({ id, name, active })))).catch(() => { /* static seriesList fallback already in place */ });
-    api.listBrands().then((rows) => setBrandOptions(rows.map(({ id, name, active }) => ({ id, name, active })))).catch(() => { /* woodex fallback already in place */ });
   }, [api]);
 
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [debounced, category, brandFilter, stockFilter, sortValue]);
+  useEffect(() => { void load(); }, [load]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
-  const categoryOptions = useMemo(() => categories.filter((c: { id: string; name: string }) => c.id !== "all").map((c: { id: string; name: string }) => ({ value: c.id, label: c.name })), []);
+  /* honest 30s re-sync of the admin view — paused while the tab is hidden */
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 30_000);
+    return () => window.clearInterval(t);
+  }, [load]);
 
-  const saveEdit = async () => {
-    if (!editing) return;
-    setSaving(true);
-    try {
-      await api.updateProduct(editing.id, {
-        name: editing.name,
-        price: editing.price,
-        compareAtPrice: editing.compareAtPrice,
-        stock: Number(editing.stock) || 0,
-        inStock: editing.inStock,
-        isBestSeller: editing.isBestSeller,
-        stockStatus: editing.stockStatus,
-        dimensions: editing.dimensions?.trim() || undefined,
-        weightKg: editing.weightKg === undefined || Number.isNaN(editing.weightKg) ? undefined : editing.weightKg,
-        optionSetIds: editing.optionSetIds ?? [],
-        specs: (editing.specs ?? []).map((r) => ({ label: r.label.trim(), value: r.value.trim() })).filter((r) => r.label && r.value),
-        shortDescription: editing.shortDescription?.trim() || undefined,
-        description: editing.description?.trim() || undefined,
-        images: (editing.images ?? []).map((u) => u.trim()).filter(Boolean).slice(0, 12),
-        image: (editing.images ?? []).map((u) => u.trim()).filter(Boolean)[0] ?? editing.image,
-        seriesId: editing.seriesId,
-        brandId: editing.brandId,
-      });
-      /* sync manual-collection membership diffs */
-      const manualCols = collections.filter((c) => c.kind === "manual");
-      const finalSet = membership ?? new Set(manualCols.filter((c) => c.productIds.includes(editing.id)).map((c) => c.id));
-      const membershipUpdates = manualCols
-        .filter((c) => c.productIds.includes(editing.id) !== finalSet.has(c.id))
-        .map((c) => {
-          const nextIds = finalSet.has(c.id)
-            ? [...c.productIds.filter((id) => id !== editing.id), editing.id]
-            : c.productIds.filter((id) => id !== editing.id);
-          return api.updateCollection(c.id, { productIds: nextIds });
-        });
-      if (membershipUpdates.length > 0) {
-        try {
-          await Promise.all(membershipUpdates);
-          setCollections(await api.listCollections());
-        } catch {
-          toast.error("Product saved, but updating collection membership failed.");
-        }
+  useEffect(() => { setPage(1); }, [debounced, subcategory, material, inStockOnly, sortValue]);
+
+  const subcategoryOptions = useMemo(
+    () => [...new Set(all.map((p) => p.subcategory).filter((s): s is string => Boolean(s)))].sort(),
+    [all],
+  );
+  const materialOptions = useMemo(
+    () => [...new Set(all.map(materialOf).filter((m): m is string => Boolean(m)))].sort(),
+    [all],
+  );
+
+  const kpis = useMemo(() => {
+    const total = all.length;
+    const inStock = all.filter((p) => p.inStock).length;
+    const subcats = new Set(all.map((p) => p.subcategory).filter(Boolean)).size;
+    const avg = total > 0 ? Math.round(all.reduce((sum, p) => sum + p.price, 0) / total) : 0;
+    return { total, inStock, inStockPct: total > 0 ? Math.round((inStock / total) * 100) : 0, subcats, avg };
+  }, [all]);
+
+  const filtered = useMemo(() => {
+    const list = all.filter((p) => {
+      if (subcategory !== "all" && p.subcategory !== subcategory) return false;
+      if (material !== "all" && materialOf(p) !== material) return false;
+      if (inStockOnly && !p.inStock) return false;
+      if (debounced) {
+        const hay = `${p.name} ${p.sku} ${p.id} ${p.category} ${p.subcategory ?? ""} ${p.shortDescription ?? ""}`.toLowerCase();
+        if (!hay.includes(debounced)) return false;
       }
-      setMembership(null);
-      setEditing(null);
-      toast.success("Product updated.");
-      load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save product.");
-    } finally {
-      setSaving(false);
+      return true;
+    });
+    const sorted = [...list];
+    switch (sortValue) {
+      case "price:asc": sorted.sort((a, b) => a.price - b.price); break;
+      case "price:desc": sorted.sort((a, b) => b.price - a.price); break;
+      case "name:asc": sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
+      case "stock:asc": sorted.sort((a, b) => a.stock - b.stock); break;
+      case "rating": sorted.sort((a, b) => b.rating - a.rating || b.reviews - a.reviews); break;
+      case "featured": sorted.sort((a, b) => b.reviews - a.reviews || b.rating - a.rating); break;
     }
-  };
+    return sorted;
+  }, [all, debounced, subcategory, material, inStockOnly, sortValue]);
 
-  const toggleStock = async (p: AdminProduct, value: boolean) => {
-    setRows((rs) => rs.map((r) => (r.id === p.id ? { ...r, inStock: value, stock: value && r.stock === 0 ? 12 : r.stock } : r)));
-    await api.updateProduct(p.id, { inStock: value, stock: value && p.stock === 0 ? 12 : p.stock });
-    toast.success(value ? "Marked in stock." : "Marked out of stock.");
-  };
-
-  const createProduct = async () => {
-    const name = draft.name.trim();
-    if (!name) { toast.error("Name is required."); return; }
-    if (!draft.category) { toast.error("Pick a category."); return; }
-    if (!Number.isFinite(draft.price) || draft.price < 0) { toast.error("Price must be a number ≥ 0."); return; }
-    setCreating(true);
-    try {
-      const created = await api.createProduct({
-        ...draft,
-        name,
-        price: Number(draft.price) || 0,
-        stock: Math.max(0, Math.trunc(Number(draft.stock) || 0)),
-        dimensions: draft.dimensions?.trim() || undefined,
-        weightKg: draft.weightKg === undefined || Number.isNaN(draft.weightKg) ? undefined : draft.weightKg,
-      });
-      setCreateOpen(false);
-      setDraft({ ...emptyDraft });
-      toast.success(`Created “${created.name}” (${created.sku}). It appears in the catalogue now.`);
-      load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not create product.");
-    } finally {
-      setCreating(false);
-    }
-  };
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const pageSafe = Math.min(page, totalPages);
+  const pageRows = filtered.slice((pageSafe - 1) * PER_PAGE, pageSafe * PER_PAGE);
+  const hasActiveFilters = debounced !== "" || subcategory !== "all" || material !== "all" || inStockOnly;
 
   const duplicateProduct = async (p: AdminProduct) => {
     setDuplicatingId(p.id);
     try {
       const copy = await api.duplicateProduct(p.id);
       toast[copy ? "success" : "error"](copy ? `Duplicated as “${copy.name}” (${copy.sku}) — stock 0.` : "Could not duplicate product.");
-      load();
+      void load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not duplicate product.");
     } finally {
@@ -355,7 +289,7 @@ export default function AdminProducts() {
       const ok = await api.deleteProduct(pendingDelete.id);
       toast[ok ? "success" : "error"](ok ? `“${pendingDelete.name}” deleted.` : "Could not delete product.");
       setPendingDelete(null);
-      load();
+      void load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete product.");
     } finally {
@@ -374,7 +308,7 @@ export default function AdminProducts() {
       setImportReport({ ...result, parseErrors: errors });
       const errCount = result.errors.length + errors.length;
       toast.success(`Import: ${result.created} created · ${result.updated} updated · ${result.skipped} skipped${errCount ? ` · ${errCount} rows had issues` : ""}.`);
-      load();
+      void load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Import failed.");
     } finally {
@@ -385,439 +319,214 @@ export default function AdminProducts() {
 
   const reportErrors = importReport ? [...importReport.parseErrors, ...importReport.errors] : [];
 
+  const kpiCard = (icon: React.ReactNode, label: string, value: string, hint?: string) => (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-accent-foreground">{icon}</div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="truncate text-lg font-bold leading-tight text-foreground">{value}</p>
+        {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
+      </div>
+    </div>
+  );
+
+  const starRating = (p: AdminProduct) => (
+    <span className="flex items-center gap-1" role="img" aria-label={`Rated ${p.rating.toFixed(1)} out of 5 from ${p.reviews} reviews`}>
+      <span className="flex" aria-hidden="true">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Star key={i} className={cn("h-3 w-3", i < Math.round(p.rating) ? "fill-amber-400 text-amber-400" : "text-slate-300")} />
+        ))}
+      </span>
+      <span className="text-[10px] text-muted-foreground">({p.reviews})</span>
+    </span>
+  );
+
+  const stockLine = (p: AdminProduct) => {
+    if (p.stockStatus === "made_to_order") return <span className="flex items-center gap-1 text-[11px] font-medium text-sky-700"><Check className="h-3.5 w-3.5" aria-hidden="true" /> Made to order</span>;
+    if (p.stockStatus === "out_of_stock" || !p.inStock) return <span className="flex items-center gap-1 text-[11px] font-medium text-rose-700"><X className="h-3.5 w-3.5" aria-hidden="true" /> Out of stock</span>;
+    return <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700"><Check className="h-3.5 w-3.5" aria-hidden="true" /> {p.stock} in stock</span>;
+  };
+
   return (
     <div className="space-y-4">
-      {/* toolbar */}
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <Input placeholder="Search products, categories, IDs, SKUs…" value={query} onChange={(e) => setQuery(e.target.value)} className="sm:max-w-xs bg-white" aria-label="Search products" />
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-full sm:w-48 bg-white" aria-label="Filter by category"><SelectValue placeholder="All categories" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              {categoryOptions.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={brandFilter} onValueChange={setBrandFilter}>
-            <SelectTrigger className="w-full sm:w-40 bg-white" aria-label="Filter by brand"><SelectValue placeholder="All brands" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All brands</SelectItem>
-              {brandOptions.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={stockFilter} onValueChange={setStockFilter}>
-            <SelectTrigger className="w-full sm:w-40 bg-white" aria-label="Filter by stock"><SelectValue placeholder="Stock" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All stock</SelectItem>
-              <SelectItem value="in">In stock</SelectItem>
-              <SelectItem value="out">Out of stock</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sortValue} onValueChange={(v) => setSortValue(v as SortValue)}>
-            <SelectTrigger className="w-full sm:w-44 bg-white" aria-label="Sort products"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+      {/* page toolbar */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">
+            {formatNumber(kpis.total)} SKUs · edits update the shared admin catalog — the storefront is a static build and does not refresh at runtime.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input ref={importRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => onImportFile(e.target.files?.[0])} />
           <Button variant="outline" onClick={() => importRef.current?.click()} disabled={importing} className="bg-white">
             {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />} Import CSV
           </Button>
-          <Button variant="outline" onClick={() => exportCsv(rows)} className="bg-white">
+          <Button variant="outline" onClick={() => exportCsv(filtered)} className="bg-white">
             <Download className="mr-2 h-4 w-4" /> Export CSV
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-hon-green-dark">
-            <Plus className="mr-2 h-4 w-4" /> Add product
+          <Button asChild variant="outline" className="bg-white">
+            <Link to="/admin/quotes">Build quotation</Link>
+          </Button>
+          <Button asChild className="bg-[#15803d] font-semibold text-white hover:bg-[#166534]">
+            <Link to="/admin/products/new"><Plus className="mr-2 h-4 w-4" /> New product</Link>
           </Button>
         </div>
       </div>
 
-      <SectionCard title={`${formatNumber(total)} product${total === 1 ? "" : "s"}`}>
-        {loading ? (
-          <SectionSkeleton rows={8} />
-        ) : rows.length === 0 ? (
-          <EmptyState icon={PackageSearch} title="No products match your filters" hint="Clear the search or choose a different category." />
-        ) : (
-          <>
-            <div className="overflow-x-auto -mx-5 -mb-5">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-muted text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                    <th className="px-5 py-2.5">Product</th>
-                    <th className="px-5 py-2.5">Category</th>
-                    <th className="px-5 py-2.5 text-right">Price</th>
-                    <th className="px-5 py-2.5 text-right">Stock</th>
-                    <th className="px-5 py-2.5">Rating</th>
-                    <th className="px-5 py-2.5">In stock</th>
-                    <th className="px-5 py-2.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-muted">
-                  {rows.map((p) => (
-                    <tr key={p.id} className="hover:bg-secondary">
-                      <td className="px-5 py-2.5">
-                        <div className="flex items-center gap-3">
-                          {p.image && <img src={p.image} alt="" loading="lazy" className="h-12 w-12 rounded-md object-cover" />}
-                          <div className="min-w-0">
-                            <p className="flex max-w-[240px] items-center gap-1.5 truncate font-medium text-foreground">
-                              {p.isBestSeller && <Star className="h-3.5 w-3.5 shrink-0 fill-hon-green-light text-accent" />}
-                              <span className="truncate">{p.name}</span>
-                            </p>
-                            <p className="font-mono text-[10px] uppercase text-muted-foreground" title={p.id}>{p.sku}{p.dimensions ? ` · ${p.dimensions}` : ""}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-2.5 text-xs capitalize text-muted-foreground">{p.category.replace(/-/g, " ")}</td>
-                      <td className="px-5 py-2.5 text-right">
-                        <span className="font-semibold">{formatPKR(p.price)}</span>
-                        {p.compareAtPrice && p.compareAtPrice > p.price && (
-                          <span className="block text-[11px] text-muted-foreground"><span className="line-through">{formatPKR(p.compareAtPrice)}</span><span className="ml-1 rounded bg-rose-600 px-1 align-middle text-[9px] font-bold text-white">SALE</span></span>
-                        )}
-                      </td>
-                      <td className="px-5 py-2.5 text-right">
-                        <span className={p.stock < 10 ? "font-semibold text-rose-600" : "text-foreground"}>{p.stock}</span>
-                      </td>
-                      <td className="px-5 py-2.5 text-xs text-muted-foreground">{p.rating.toFixed(1)} <span className="text-muted-foreground">({p.reviews})</span></td>
-                      <td className="px-5 py-2.5"><Switch checked={p.inStock} onCheckedChange={(v) => toggleStock(p, v)} aria-label="Toggle in stock" /></td>
-                      <td className="px-5 py-2.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => { setMembership(null); setEditing({ ...p }); }} aria-label="Edit product" title="Edit product">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => duplicateProduct(p)} disabled={duplicatingId === p.id} aria-label={`Duplicate ${p.name}`} title="Duplicate product">
-                            {duplicatingId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => setPendingDelete(p)} aria-label={`Delete ${p.name}`} title="Delete product">
-                            <Trash2 className="h-4 w-4 text-rose-500" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {kpiCard(<Package className="h-5 w-5" aria-hidden="true" />, "Products", formatNumber(kpis.total))}
+        {kpiCard(<Check className="h-5 w-5" aria-hidden="true" />, "In stock", `${formatNumber(kpis.inStock)}`, `${kpis.inStockPct}% of catalogue`)}
+        {kpiCard(<Boxes className="h-5 w-5" aria-hidden="true" />, "Subcategories", formatNumber(kpis.subcats))}
+        {kpiCard(<Percent className="h-5 w-5" aria-hidden="true" />, "Avg. price", formatPKR(kpis.avg))}
+      </div>
 
-            {/* pagination */}
-            <div className="flex items-center justify-between border-t border-muted px-1 pt-4">
-              <p className="text-xs text-muted-foreground">Page {page} of {totalPages}</p>
-              <div className="flex gap-2">
-                <Button size="icon" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="Previous page"><ChevronLeft className="h-4 w-4" /></Button>
-                <Button size="icon" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} aria-label="Next page"><ChevronRight className="h-4 w-4" /></Button>
-              </div>
-            </div>
-          </>
-        )}
-      </SectionCard>
-
-      {/* create dialog */}
-      <Dialog open={createOpen} onOpenChange={(open) => !open && setCreateOpen(false)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add product</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="create-name">Name</label>
-              <Input id="create-name" autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Ballmer Executive Desk — Oak" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="create-category">Category</label>
-              <Select value={draft.category} onValueChange={(v) => setDraft({ ...draft, category: v })}>
-                <SelectTrigger id="create-category" className="bg-white"><SelectValue placeholder="Pick a category" /></SelectTrigger>
-                <SelectContent>
-                  {categoryOptions.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="create-price">Price (PKR)</label>
-                <Input id="create-price" type="number" min={0} value={draft.price} onChange={(e) => setDraft({ ...draft, price: Number(e.target.value) })} />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="create-compare">Compare-at</label>
-                <Input id="create-compare" type="number" min={0} value={draft.compareAtPrice ?? ""} onChange={(e) => setDraft({ ...draft, compareAtPrice: e.target.value === "" ? undefined : Number(e.target.value) })} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="create-stock">Units in stock</label>
-                <Input id="create-stock" type="number" min={0} value={draft.stock} onChange={(e) => setDraft({ ...draft, stock: Number(e.target.value) })} />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="create-status">Fulfilment</label>
-                <Select value={draft.stockStatus ?? ""} onValueChange={(v) => setDraft({ ...draft, stockStatus: v as NewAdminProductInput["stockStatus"] })}>
-                  <SelectTrigger id="create-status" className="bg-white"><SelectValue placeholder="Derived from stock" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="in_stock">In stock</SelectItem>
-                    <SelectItem value="out_of_stock">Out of stock</SelectItem>
-                    <SelectItem value="made_to_order">Made to order</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="create-dimensions">Dimensions</label>
-                <Input id="create-dimensions" value={draft.dimensions ?? ""} onChange={(e) => setDraft({ ...draft, dimensions: e.target.value })} placeholder="180 × 90 × 75 cm" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="create-weight">Weight (kg)</label>
-                <Input id="create-weight" type="number" min={0} step="0.1" value={draft.weightKg ?? ""} onChange={(e) => setDraft({ ...draft, weightKg: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder="42" />
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-foreground"><Switch checked={draft.isBestSeller ?? false} onCheckedChange={(v) => setDraft({ ...draft, isBestSeller: v })} /> Featured</label>
-            </div>
-            <p className="text-[11px] leading-4 text-muted-foreground">SKU and product ID are generated automatically. Fulfilment derives from units in stock unless you pick one explicitly.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={createProduct} disabled={creating} className="bg-accent text-accent-foreground hover:bg-hon-green-dark">
-              {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create product
+      {/* filter bar */}
+      <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-sm lg:flex-row lg:items-center">
+        <Input
+          placeholder={`Search ${kpis.total} products…`}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="bg-white lg:max-w-xs"
+          aria-label="Search products"
+        />
+        <Select value={subcategory} onValueChange={setSubcategory}>
+          <SelectTrigger className="bg-white lg:w-48" aria-label="Filter by subcategory"><SelectValue placeholder="All subcategories" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All subcategories</SelectItem>
+            {subcategoryOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={material} onValueChange={setMaterial}>
+          <SelectTrigger className="bg-white lg:w-56" aria-label="Filter by material"><SelectValue placeholder="Any material" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any material</SelectItem>
+            {materialOptions.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={sortValue} onValueChange={(v) => setSortValue(v as SortValue)}>
+          <SelectTrigger className="bg-white lg:w-40" aria-label="Sort products"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <label className="flex min-h-[36px] cursor-pointer items-center gap-2 rounded-lg border border-border bg-white px-3 text-xs font-medium text-foreground">
+          <input type="checkbox" className="h-4 w-4 accent-[#16a34a]" checked={inStockOnly} onChange={(e) => setInStockOnly(e.target.checked)} />
+          In stock only
+        </label>
+        <div className="ml-auto flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setSubcategory("all"); setMaterial("all"); setInStockOnly(false); }}>
+              Clear filters
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* edit dialog */}
-      <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit product</DialogTitle>
-          </DialogHeader>
-          {editing && (
-            <div className="space-y-4 py-2">
-              <div className="flex items-center gap-3 rounded-lg bg-secondary p-3">
-                {editing.image && <img src={editing.image} alt="" className="h-14 w-14 rounded-md object-cover" />}
-                <p className="text-xs text-muted-foreground">SKU: <span className="font-mono">{editing.sku}</span> · ID: <span className="font-mono">{editing.id}</span></p>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-name">Name</label>
-                <Input id="edit-name" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-price">Price (PKR)</label>
-                  <Input id="edit-price" type="number" min={0} value={editing.price} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-compare">Compare-at</label>
-                  <Input id="edit-compare" type="number" min={0} value={editing.compareAtPrice ?? ""} onChange={(e) => setEditing({ ...editing, compareAtPrice: e.target.value === "" ? undefined : Number(e.target.value) })} />
-                </div>
-              </div>
-              {editing.compareAtPrice !== undefined && editing.compareAtPrice > editing.price ? (
-                <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-800">
-                  Old {formatPKR(editing.compareAtPrice)} → Current {formatPKR(editing.price)} — storefront shows the strike-through and a Save {Math.round(((editing.compareAtPrice - editing.price) / editing.compareAtPrice) * 100)}% badge.
-                </p>
-              ) : (
-                <p className="text-[11px] text-muted-foreground">Set “Compare-at” above the current price to get the Old vs Current price display on the PDP.</p>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-sku">SKU</label>
-                  <Input id="edit-sku" value={editing.sku} readOnly disabled className="bg-muted font-mono text-xs" aria-label="SKU (read-only)" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-status">Fulfilment</label>
-                  <Select value={editing.stockStatus} onValueChange={(v) => setEditing({ ...editing, stockStatus: v as AdminProduct["stockStatus"] })}>
-                    <SelectTrigger id="edit-status" className="bg-white"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="in_stock">In stock</SelectItem>
-                      <SelectItem value="out_of_stock">Out of stock</SelectItem>
-                      <SelectItem value="made_to_order">Made to order</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-stock">Units in stock</label>
-                  <Input id="edit-stock" type="number" min={0} value={editing.stock} onChange={(e) => setEditing({ ...editing, stock: Number(e.target.value) })} />
-                </div>
-                <div className="flex flex-wrap items-end gap-3 pb-2">
-                  <label className="flex items-center gap-2 text-sm text-foreground"><Switch checked={editing.inStock} onCheckedChange={(v) => setEditing({ ...editing, inStock: v })} /> In stock</label>
-                  <label className="flex items-center gap-2 text-sm text-foreground"><Switch checked={editing.isBestSeller} onCheckedChange={(v) => setEditing({ ...editing, isBestSeller: v })} /> Best Seller</label>
-                  <label className="flex items-center gap-2 text-sm text-foreground" title="Sale Item — backed by Compare-at > Current price (single source of truth)"><Switch checked={editing.compareAtPrice !== undefined && editing.compareAtPrice > editing.price} onCheckedChange={(v) => {
-                    if (v) setEditing({ ...editing, compareAtPrice: Math.round((editing.price * 1.15) / 10) * 10 });
-                    else setEditing({ ...editing, compareAtPrice: undefined });
-                  }} /> Sale Item</label>
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-short">Short Description</label>
-                <Input id="edit-short" value={editing.shortDescription ?? ""} onChange={(e) => setEditing({ ...editing, shortDescription: e.target.value })} placeholder="One-liner shown under the title on the PDP" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-desc">Product Details</label>
-                <Textarea id="edit-desc" rows={3} value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} placeholder="Long-form description — materials, build, care, warranty notes…" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-images">Image URLs (one per line) — first is the primary thumbnail</label>
-                <Textarea id="edit-images" rows={2} value={(editing.images ?? (editing.image ? [editing.image] : [])).join("\n")} onChange={(e) => setEditing({ ...editing, images: e.target.value.split("\n").map((u) => u.trim()).filter(Boolean) })} placeholder="chair-product.webp" className="font-mono text-[10px]" />
-                {(editing.images ?? []).length > 0 && (
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {(editing.images ?? []).slice(0, 6).map((src, i) => (
-                      <img key={i} src={src} alt="" loading="lazy" className="h-11 w-11 rounded border border-border object-cover" onError={(e) => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
-                    ))}
-                    {(editing.images ?? []).length > 6 && <span className="self-center text-[10px] text-muted-foreground">+{(editing.images ?? []).length - 6} more</span>}
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-dimensions">Dimensions</label>
-                  <Input id="edit-dimensions" value={editing.dimensions ?? ""} onChange={(e) => setEditing({ ...editing, dimensions: e.target.value })} placeholder="180 × 90 × 75 cm" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-weight">Weight (kg)</label>
-                  <Input id="edit-weight" type="number" min={0} step="0.1" value={editing.weightKg ?? ""} onChange={(e) => setEditing({ ...editing, weightKg: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder="42" />
-                </div>
-              </div>
-              {optionSets.length > 0 && (
-                <div>
-                  <span className="mb-1 block text-xs font-medium text-muted-foreground">Option sets</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {optionSets.map((set) => {
-                      const attached = (editing.optionSetIds ?? []).includes(set.id);
-                      return (
-                        <button
-                          key={set.id}
-                          type="button"
-                          aria-pressed={attached}
-                          onClick={() => setEditing({
-                            ...editing,
-                            optionSetIds: attached
-                              ? (editing.optionSetIds ?? []).filter((id) => id !== set.id)
-                              : [...(editing.optionSetIds ?? []), set.id],
-                          })}
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                            attached
-                              ? "border-accent bg-accent text-accent-foreground"
-                              : "border-border bg-white text-muted-foreground hover:border-accent hover:text-foreground",
-                          )}
-                        >
-                          {attached && <Check className="h-3 w-3" />}
-                          {set.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-1 text-[10px] text-muted-foreground">Attached sets render as selectors on the PDP (see <Link to="/admin/options" className="underline underline-offset-2 hover:text-foreground">Options</Link> for deltas & suffixes).</p>
-                </div>
-              )}
-              {(() => {
-                const manualCols = collections.filter((c) => c.kind === "manual");
-                const memberSet = membership ?? new Set(manualCols.filter((c) => editing.id && c.productIds.includes(editing.id)).map((c) => c.id));
-                if (manualCols.length === 0) return null;
-                return (
-                  <div>
-                    <span className="mb-1 block text-xs font-medium text-muted-foreground">Collections (manual picks — automatic collections derive from rules)</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {manualCols.map((c) => {
-                        const on = memberSet.has(c.id);
-                        return (
-                          <button
-                            key={c.id}
-                            type="button"
-                            aria-pressed={on}
-                            onClick={() => setMembership(new Set((() => { const n = new Set(memberSet); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; })()))}
-                            className={cn(
-                              "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                              on ? "border-accent bg-accent text-accent-foreground" : "border-border bg-white text-muted-foreground hover:border-accent hover:text-foreground",
-                            )}
-                          >
-                            {on && <Check className="h-3 w-3" />}
-                            {c.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className="mt-1 text-[10px] text-muted-foreground">Toggles sync on save — automatic (rule-based) collections are not shown.</p>
-                  </div>
-                );
-              })()}
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-series">Furniture Series</label>
-                <Select value={editing.seriesId ?? "__none__"} onValueChange={(v) => setEditing({ ...editing, seriesId: v === "__none__" ? undefined : v })}>
-                  <SelectTrigger id="edit-series" className="bg-white"><SelectValue placeholder="No series" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">— no series —</SelectItem>
-                    {seriesOptions.filter((s) => s.active).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <p className="mt-1 text-[10px] text-muted-foreground">Matches the storefront /series/:seriesId page.</p>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="edit-brand">Brand</label>
-                <Select value={editing.brandId ?? "__none__"} onValueChange={(v) => setEditing({ ...editing, brandId: v === "__none__" ? undefined : v })}>
-                  <SelectTrigger id="edit-brand" className="bg-white"><SelectValue placeholder="No brand" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">— no brand —</SelectItem>
-                    {brandOptions.filter((b) => b.active).map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <p className="mt-1 text-[10px] text-muted-foreground">Seeded “Woodex” — assign partner brands when they ship.</p>
-              </div>
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Spec table (dimensions · weight · materials · warranty)</span>
-                  <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setEditing({ ...editing, specs: [...(editing.specs ?? []), { label: "", value: "" }] })}>
-                    <Plus className="mr-1 h-3.5 w-3.5" /> Add row
-                  </Button>
-                </div>
-                {(editing.specs ?? []).length === 0 ? (
-                  <p className="rounded-md border border-dashed border-border px-3 py-2 text-center text-[11px] text-muted-foreground">No spec rows — the static storefront carries the factory table; rows you add here persist in the admin demo DB.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {(editing.specs ?? []).map((row, i) => (
-                      <div key={i} className="flex items-center gap-1.5">
-                        <Input
-                          value={row.label}
-                          onChange={(e) => setEditing({ ...editing, specs: (editing.specs ?? []).map((r, j) => (j === i ? { ...r, label: e.target.value } : r)) })}
-                          placeholder="Label (Dimensions)"
-                          className="w-36"
-                          aria-label={`Spec ${i + 1} label`}
-                        />
-                        <Input
-                          value={row.value}
-                          onChange={(e) => setEditing({ ...editing, specs: (editing.specs ?? []).map((r, j) => (j === i ? { ...r, value: e.target.value } : r)) })}
-                          placeholder="Value (e.g. 180 x 90 x 75 cm)"
-                          className="flex-1"
-                          aria-label={`Spec ${i + 1} value`}
-                        />
-                        <button
-                          type="button"
-                          className="shrink-0 text-muted-foreground hover:text-rose-500"
-                          aria-label={`Remove spec ${i + 1}`}
-                          onClick={() => setEditing({ ...editing, specs: (editing.specs ?? []).filter((_, j) => j !== i) })}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
           )}
-          <DialogFooter className="justify-between sm:justify-between">
-            <Link to="/admin/inventory" className="inline-flex items-center gap-1.5 text-xs font-medium text-accent-foreground underline-offset-4 hover:underline">
-              <Package className="h-4 w-4" /> View in Inventory
-            </Link>
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-800"
+            title={`Re-reads the admin catalog every 30s (paused while the tab is hidden)${lastSynced ? `. Last read ${lastSynced.toLocaleTimeString()}.` : ""}`}
+          >
+            <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-600" />
+            </span>
+            live · 30s sync
+          </span>
+        </div>
+      </div>
+
+      {/* grid */}
+      {loading ? (
+        <SectionSkeleton rows={6} />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={PackageSearch} title="No products match these filters" hint="Clear the search or choose a different subcategory." />
+      ) : (
+        <>
+          <p className="text-[11px] text-muted-foreground" aria-live="polite">
+            Showing {(pageSafe - 1) * PER_PAGE + 1}–{Math.min(pageSafe * PER_PAGE, filtered.length)} of {filtered.length}
+            {hasActiveFilters ? " (filtered)" : ""}
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {pageRows.map((p) => {
+              const sale = salePercent(p);
+              return (
+                <article key={p.id} className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
+                  <div className="relative">
+                    <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-secondary">
+                      {p.image ? (
+                        <img src={p.image} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+                      ) : (
+                        <Package className="h-12 w-12 text-muted-foreground/40" aria-hidden="true" />
+                      )}
+                    </div>
+                    <div className="absolute left-2 top-2 flex flex-col gap-1">
+                      {sale !== null && <span className="w-fit rounded-md bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">−{sale}%</span>}
+                      {p.isBestSeller && <span className="w-fit rounded-md bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-amber-950">Bestseller</span>}
+                    </div>
+                    <div className="absolute right-2 top-2 flex gap-1">
+                      <button
+                        type="button"
+                        className="rounded-md bg-white/90 p-1.5 text-muted-foreground shadow backdrop-blur transition-colors hover:text-foreground"
+                        onClick={() => duplicateProduct(p)}
+                        disabled={duplicatingId === p.id}
+                        aria-label={`Duplicate ${p.name}`}
+                        title="Duplicate product"
+                      >
+                        {duplicatingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-md bg-white/90 p-1.5 text-muted-foreground shadow backdrop-blur transition-colors hover:text-rose-600"
+                        onClick={() => setPendingDelete(p)}
+                        aria-label={`Delete ${p.name}`}
+                        title="Delete product"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {p.subcategory && (
+                      <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-white backdrop-blur-sm">{p.subcategory}</span>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 p-3">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{p.category.replace(/-/g, " ")}</p>
+                    <h2 className="truncate text-[13px] font-semibold leading-snug text-foreground" title={p.name}>{p.name}</h2>
+                    {starRating(p)}
+                    {stockLine(p)}
+                    <div className="flex items-baseline gap-1.5 pt-0.5">
+                      <span className="text-base font-extrabold tracking-tight text-foreground">{formatPKR(p.price)}</span>
+                      {sale !== null && p.compareAtPrice !== undefined && <span className="text-[11px] text-muted-foreground line-through">{formatPKR(p.compareAtPrice)}</span>}
+                    </div>
+                    <div className="flex gap-1.5 pt-1">
+                      <Link
+                        to={`/shop/${p.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 rounded-md border border-border bg-white px-2 py-1.5 text-center text-[11px] font-medium text-foreground transition-colors hover:bg-secondary"
+                      >
+                        Details
+                      </Link>
+                      <Link
+                        to={`/admin/products/${p.id}/edit`}
+                        className="flex-1 rounded-md bg-hon-green-dark px-2 py-1.5 text-center text-[11px] font-semibold text-white transition-colors hover:bg-hon-green"
+                      >
+                        Edit
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          {/* pagination */}
+          <div className="flex items-center justify-between border-t border-muted pt-3">
+            <p className="text-xs text-muted-foreground">Page {pageSafe} of {totalPages}</p>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-              <Button onClick={saveEdit} disabled={saving} className="bg-accent text-accent-foreground hover:bg-hon-green-dark">
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save changes
-              </Button>
+              <Button size="icon" variant="outline" disabled={pageSafe <= 1} onClick={() => setPage((p) => p - 1)} aria-label="Previous page"><ChevronLeft className="h-4 w-4" /></Button>
+              <Button size="icon" variant="outline" disabled={pageSafe >= totalPages} onClick={() => setPage((p) => p + 1)} aria-label="Next page"><ChevronRight className="h-4 w-4" /></Button>
             </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </>
+      )}
 
       {/* delete confirm */}
       <Dialog open={pendingDelete !== null} onOpenChange={(open) => { if (!open) setPendingDelete(null); }}>
@@ -870,3 +579,4 @@ export default function AdminProducts() {
     </div>
   );
 }
+

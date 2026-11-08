@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Undo2, Plus, Search, Loader2, PackageCheck, ClipboardCheck, Banknote, Replace, Ban, Minus, Send,
+  Undo2, Plus, Search, Loader2, PackageCheck, ClipboardCheck, Banknote, Replace, Ban, Minus, Send, Printer,
 } from "lucide-react";
 import { getAdminApi } from "@/api";
 import type { AdminOrder, AdminReturn, ReturnReason, ReturnStatus } from "@/api/types";
@@ -485,6 +485,7 @@ export default function AdminReturns() {
                 <p className="text-[10px] text-muted-foreground">Opened {timeAgo(selected.createdAt)} · last updated {timeAgo(selected.updatedAt)}</p>
               </div>
               <DialogFooter>
+                <a href={`/admin/return/${selected.id}`} target="_blank" rel="noreferrer" aria-label="Open printable return document" title="Printable return document" className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border px-4 text-sm font-medium text-foreground hover:border-hon-green-light hover:text-hon-green-dark"><Printer className="h-4 w-4" /> Print document</a>
                 <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
               </DialogFooter>
             </>
