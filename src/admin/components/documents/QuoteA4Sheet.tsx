@@ -5,7 +5,7 @@
  * so every region stays editable in the template designer.
  */
 import type { AdminQuote, AdminQuoteTemplate } from "@/api/types";
-import { renderBlock, renderGridBlock, dimSpec, type TemplateVars } from "@/api/quote-templates";
+import { renderBlock, renderGridBlock, dimSpec, clampAdvancePct, resolvePolicyTerms, FOOTER_PRESETS, type TemplateVars } from "@/api/quote-templates";
 import { formatPKR, formatDate, formatDateTime } from "@/admin/components";
 import { itemCode } from "@/admin/components/documents/letterhead";
 import { A4Page, A4Masthead, A4PartyGrid, A4ItemsTable, A4Summary, A4Terms, A4FooterBlock } from "@/admin/components/documents/A4";
@@ -39,8 +39,25 @@ export default function QuoteA4Sheet({ quote, tDoc, vars, storeLogo }: Props) {
   const hb = new Map(tDoc.header.map((b) => [b.id, b]));
   const fb = new Map(tDoc.footer.map((b) => [b.id, b]));
   const letterhead = hb.get("letterhead")?.visible ? parseLetterhead(hb.get("letterhead")?.content) : undefined;
-  const advance = Math.round(quote.total * 0.75);
+  const advancePct = clampAdvancePct(tDoc.advancePct ?? 75);
+  const balancePct = 100 - advancePct;
+  const advance = Math.round((quote.total * advancePct) / 100);
   const balance = quote.total - advance;
+  const policyTerms = tDoc.termsEn
+    ? resolvePolicyTerms(tDoc.termsEn, { advance, balance, validUntil: vars.validUntil, advancePct })
+    : "";
+  const policyTermsUr = tDoc.termsUr
+    ? resolvePolicyTerms(tDoc.termsUr, { advance, balance, validUntil: vars.validUntil, advancePct })
+    : "";
+  const footerVariant = tDoc.footerVariant ?? "zainab";
+  const footerPreset = footerVariant === "zainab" ? FOOTER_PRESETS.zainab : footerVariant === "store" ? FOOTER_PRESETS.store : undefined;
+  const customLines = (tDoc.footerCustomLines ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const footerContact = footerVariant === "custom"
+    ? { contactLines: customLines.slice(0, 1), addressLines: customLines.slice(1), phone: undefined, email: undefined }
+    : footerPreset
+      ? { contactLines: [...footerPreset.contactLines], addressLines: [...footerPreset.addressLines], phone: footerPreset.phone, email: footerPreset.email }
+      : { contactLines: letterhead?.brandLines, addressLines: letterhead?.addressLines, phone: letterhead?.phone, email: letterhead?.email };
+  const acceptanceBlock = tDoc.acceptanceBlock ?? true;
 
   const specLine = (item: AdminQuote["items"][number]) =>
     [item.category, item.series, item.material, item.finish, dimSpec(item)].filter(Boolean).join(" · ");
@@ -58,6 +75,7 @@ export default function QuoteA4Sheet({ quote, tDoc, vars, storeLogo }: Props) {
   ]);
 
   const terms = [
+    ...(policyTerms ? [{ label: "Payment & policy terms", text: policyTerms.replace(/\n+/g, " · ").replace(/· _+·/g, "·").trim() }] : []),
     { label: "Payment schedule", text: fb.get("payment-note")?.visible ? renderGridBlock(tDoc, "payment-note", vars) ?? "" : "" },
     { label: "Delivery timeline", text: renderGridBlock(tDoc, "delivery", vars) ?? "" },
     { label: "Warranty terms", text: renderGridBlock(tDoc, "warranty", vars) ?? "" },
@@ -128,15 +146,22 @@ export default function QuoteA4Sheet({ quote, tDoc, vars, storeLogo }: Props) {
           { label: "Quotation total", value: formatPKR(quote.total), kind: "total" },
         ]}
         callout={{
-          title: "Payment schedule — 75 / 25",
+          title: `Payment schedule — ${advancePct} / ${balancePct}`,
           rows: [
-            { label: "Advance required (75%)", value: formatPKR(advance) },
-            { label: "Balance due (25%)", value: formatPKR(balance) },
+            { label: `Advance required (${advancePct}%)`, value: formatPKR(advance) },
+            { label: `Balance due (${balancePct}%)`, value: formatPKR(balance) },
           ],
         }}
-        note="Advance computed at 75% of total. Final amount settled against site measurements."
+        note={`Advance computed at ${advancePct}% of total. Final amount settled against site measurements.`}
       />
 
+      {policyTerms && (
+        <section aria-label="Payment and policy terms" className="mt-3 rounded-md border border-[#e3e0d6] bg-[#fbfaf6] px-3 py-2">
+          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#5b6660]">Payment &amp; policy terms</p>
+          <pre className="mt-1 whitespace-pre-wrap font-sans text-[9.5px] leading-relaxed text-[#37433c]">{policyTerms}</pre>
+          {policyTermsUr && <pre dir="rtl" lang="ur" className="mt-1.5 whitespace-pre-wrap font-sans text-[10px] leading-relaxed text-[#37433c]">{policyTermsUr}</pre>}
+        </section>
+      )}
       {extraCustoms.map((b) => (
         <p key={b.id} className="mt-2 text-[10px] leading-relaxed" style={{ color: "#37433c" }}>{b.content}</p>
       ))}
@@ -148,11 +173,11 @@ export default function QuoteA4Sheet({ quote, tDoc, vars, storeLogo }: Props) {
 
       <A4FooterBlock
         accent={accent}
-        contactLines={letterhead?.brandLines}
-        addressLines={letterhead?.addressLines}
-        phone={letterhead?.phone}
-        email={letterhead?.email}
-        signature={fb.get("signature")?.visible ? { left: "Customer acceptance — sign & date", right: "For Woodex — authorised signatory" } : undefined}
+        contactLines={footerContact.contactLines}
+        addressLines={footerContact.addressLines}
+        phone={footerContact.phone}
+        email={footerContact.email}
+        signature={acceptanceBlock ? { left: "CLIENT ACCEPTANCE — Signature & Date", right: "WOODEX — Authorized Signatory & Stamp" } : undefined}
         thanks={fb.get("thanks")?.visible ? fb.get("thanks")?.content : undefined}
         captionLeft="Authorized Quotation Document"
         captionRight={`Issued ${formatDateTime(quote.createdAt)}`}

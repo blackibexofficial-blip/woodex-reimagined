@@ -1312,10 +1312,33 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
   const meeting = bySub("meeting-tables") ?? priced[0];
   const staff = bySub("staff-tables") ?? priced.find((p) => p.id !== meeting.id) ?? priced[1];
   const chair = bySub("chairs") ?? priced.find((p) => p.id !== meeting.id && p.id !== staff.id) ?? priced[2];
+  const reception = bySub("reception-tables") ?? priced[0];
+  const byId = (id: string) => priced.find((p) => p.id === id);
+  // House-document fixtures: pick the premium, owner-approved style lines by id (deterministic, ≈ PKR 1.4M).
+  const throne = byId("throne-executive-desk") ?? priced[0];
+  const boardroom = byId("summit-20-boardroom-table") ?? meeting;
+  const homeSofa = byId("home-sofa-5");
+  const bedSet = byId("king-bed-set");
+  const diningSet = byId("dining-set-6");
+  const dressing = byId("dressing-table");
+  const tvUnit = byId("tv-unit");
+  // Residence turnkey fixture — WI-10204 order of magnitude (≈ Rs 1.427M): home office + living fit-out.
+  const residenceLines: Array<[AdminProduct, number]> = [
+    [throne, 2], [boardroom, 1],
+    ...(homeSofa ? [[homeSofa, 1] as [AdminProduct, number]] : []),
+    ...(bedSet ? [[bedSet, 1] as [AdminProduct, number]] : []),
+    ...(diningSet ? [[diningSet, 1] as [AdminProduct, number]] : []),
+    ...(dressing ? [[dressing, 1] as [AdminProduct, number]] : []),
+    ...(tvUnit ? [[tvUnit, 1] as [AdminProduct, number]] : []),
+  ];
+  // Office BOQ fixture — boardroom + workstations.
+  const dynasty = byId("dynasty-executive-desk-set") ?? throne;
+  const focusPod = byId("meeting-pod-4-person") ?? boardroom;
+
 
   const mk = (
     id: string,
-    leadId: string,
+    leadId: string | undefined,
     customerName: string,
     customerPhone: string,
     customerEmail: string,
@@ -1326,6 +1349,7 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
     validityDays: number,
     status: AdminQuote["status"],
     daysAgo: number,
+    templateId?: string,
   ): AdminQuote => {
     const items = lines.map(([p, quantity]) => ({ id: p.id, name: p.name, image: p.image, price: p.price, quantity }));
     const totals = quoteTotals(items, discountPct, 0); // B2B — free delivery on quotes
@@ -1338,6 +1362,7 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
       status,
       createdAt: t,
       updatedAt: t,
+      templateId,
     };
   };
 
@@ -1346,6 +1371,16 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
        [[meeting, 1], [chair, 12]], 5, 14, "sent", 3),
     mk("QOT-1002", "lead-1007", "Kashif Mirza", "+92 300 9988776", "ops@raviagrofoods.pk", "Ravi Agro Foods", "Multan",
        [[staff, 25], [chair, 50]], 8, 21, "accepted", 5),
+    // ── Owner-approved house documents re-created as DEMO fixtures (synthetic contacts; never the real Drive docs) ──
+    // WI-10204 — luxury residence turnkey ≈ Rs 1.4 M order of magnitude (synthetic contacts)
+    mk("WI-10204", undefined, "Demo Residence Client", "+92 300 0001001", "residence@example.com", undefined, "Lahore",
+       residenceLines, 0, 30, "sent", 6, "builtin-woodex-a4"),
+    // WI-DC-001-26 — daycare interior
+    mk("WI-DC-001-26", undefined, "Demo Daycare Client", "+92 300 0001002", "daycare@example.com", "Demo Daycare Centre", "Karachi",
+       [[staff, 6], [reception, 1], [meeting, 1]], 0, 30, "sent", 4, "builtin-woodex-a4"),
+    // QT-10183 — office BOQ (≈ Rs 1.2M after 10% discount)
+    mk("QT-10183", undefined, "Demo Corporate Client", "+92 300 0001003", "office@example.com", "Demo Corporate Pvt. Ltd.", "Islamabad",
+       [[dynasty, 2], [boardroom, 2], [focusPod, 2]], 10, 30, "accepted", 8, "builtin-woodex-a4"),
   ];
 }
 

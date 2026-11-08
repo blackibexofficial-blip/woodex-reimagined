@@ -184,6 +184,12 @@ async function adminSuite(browser) {
     const docText = (await bodyText()).toLowerCase();
     ok(`printable ${route.split("/")[1]} renders (A4 sheet, letterhead)`, docText.includes(marker.toLowerCase()));
   }
+  // ── Furniture A4 (WI-10204) — policy wording, RTL block, acceptance block ──
+  await page.goto(`${ADMIN}/quote/WI-10204`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForSelector(".a4-page", { timeout: 15000 }).catch(() => {});
+  const a4 = (await bodyText()).toLowerCase();
+  ok("A4 furniture sheet renders the WI-10204 policy wording (75/25)", a4.includes("advance payment policy (75%)") && a4.includes("advance required (75%)"));
+  ok("A4 furniture sheet renders the Urdu policy block + client acceptance signature block", a4.includes("پیشگی ادائیگی") && a4.includes("client acceptance") && a4.includes("authorized signatory"));
   await page.goto(`${ADMIN}/orders/new`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("New order", 15000).catch(() => {});
   ok("New order page renders with totals rail", (await bodyText()).includes("Create order"));
@@ -193,6 +199,29 @@ async function adminSuite(browser) {
   await page.goto(`${ADMIN}/quotes`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Open pipeline", 15000).catch(() => {});
   ok("quotes page shows the KPI pipeline strip", (await bodyText()).toLowerCase().includes("open pipeline"));
+  // ── Quote template designer — WI-10204 advance & policy panel + live A4 preview ──
+  const newQ = await page.evaluateHandle(() => [...document.querySelectorAll('button')].find((b) => /new quote/i.test(b.textContent || ''))).catch(() => null);
+  const newQBtn = newQ && (await newQ.asElement());
+  if (newQBtn) {
+    await newQBtn.click();
+    await page.waitForSelector('button[title="Design the printable template"]', { timeout: 10000 });
+    await page.click('button[title="Design the printable template"]');
+    const designerOk = await page.waitForSelector('[aria-label="Advance payment and policy"]', { timeout: 15000 }).then(() => true).catch(() => false);
+    ok("designer opens with the WI-10204 advance & policy panel", designerOk);
+    if (designerOk) {
+      const adv = await page.$eval('#tpl-advance', (el) => el.value).catch(() => null);
+      const val = await page.$eval('#tpl-validity', (el) => el.value).catch(() => null);
+      const ur = await page.$eval('#tpl-terms-ur', (el) => el.getAttribute('dir')).catch(() => null);
+      const preview = await page.$('aside[aria-label="Live A4 preview"] .a4-page').catch(() => null);
+      ok(`designer carries advance 75 / validity 30 / UR RTL wording (got ${adv}%, ${val}d, dir=${ur})`, adv === "75" && val === "30" && ur === "rtl");
+      ok("designer renders the live A4 preview sheet", !!preview);
+      await page.keyboard.press("Escape"); // close designer
+      await page.keyboard.press("Escape"); // close quote editor
+      await new Promise((r) => setTimeout(r, 600));
+    }
+  } else {
+    ok("New quotation button could not be located — designer smoke skipped", false);
+  }
   // ── PO → job actuals (cost-capture, owner-delegated slice) ──
   await page.goto(`${ADMIN}/purchase-orders`, { waitUntil: "networkidle2", timeout: 60000 });
   const postBtn = await page.waitForSelector('[aria-label*="to job actuals"]', { timeout: 15000 }).catch(() => null);

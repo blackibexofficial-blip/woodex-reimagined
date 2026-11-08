@@ -392,6 +392,20 @@ export interface AdminQuoteTemplate {
   logo?: string;
   /** Print layout: "classic" (original sheet) or "a4" (redesigned Woodex A4 sheet). Defaults to "classic". */
   layout?: "classic" | "a4";
+  /** Advance % due on acceptance (furniture A4 documents). Whole points, clamped 0–100; missing = 75. */
+  advancePct?: number;
+  /** Quotation validity in days (designer default 30). The quote's own `validityDays` stays authoritative at print time. */
+  validityDays?: number;
+  /** Advance/policy wording (EN). Supports {advance} {balance} {advancePct} {balancePct} {validUntil} placeholders — resolved at render. Missing = classic payment-note row only. */
+  termsEn?: string;
+  /** Urdu counterpart — rendered RTL below the EN block. */
+  termsUr?: string;
+  /** Render the client-acceptance signature block (default: true for the A4 layout). */
+  acceptanceBlock?: boolean;
+  /** Signatory footer variant — "zainab" (WI-10204 house doc) | "store" (storefront) | "custom". Missing = zainab behaviour for A4. */
+  footerVariant?: "zainab" | "store" | "custom";
+  /** Custom signatory footer lines (one per line) — used when footerVariant === "custom". */
+  footerCustomLines?: string;
 }
 export type NewQuoteLineInput = NewDraftOrderLineInput;
 export interface NewQuoteInput {

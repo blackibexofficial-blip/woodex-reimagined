@@ -82,7 +82,7 @@ import type {
   ProductImportRow, ProductImportResult,
   ProjectCostCode, ProjectActualLine, ProjectActualSource, ProjectFileItem,
 } from "@/api/types";
-import { BUILTIN_TEMPLATES, isBuiltinTemplateId, DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
+import { BUILTIN_TEMPLATES, isBuiltinTemplateId, DEFAULT_QUOTE_TEMPLATE, clampAdvancePct } from "@/api/quote-templates";
 import { defaultWarrantyPage, defaultCustomDesignPage, defaultVirtualShowroomPage } from "@/api/singleton-defaults";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -1508,6 +1508,13 @@ async function listQuoteTemplates(): Promise<AdminQuoteTemplate[]> {
         builtIn: false,
         logo: typeof tpl.logo === "string" && tpl.logo ? tpl.logo : undefined,
         layout: tpl.layout === "a4" ? ("a4" as const) : ("classic" as const),
+        advancePct: typeof tpl.advancePct === "number" ? clampAdvancePct(tpl.advancePct) : undefined,
+        validityDays: typeof tpl.validityDays === "number" && Number.isFinite(tpl.validityDays) ? Math.max(1, Math.min(365, Math.round(tpl.validityDays))) : undefined,
+        termsEn: typeof tpl.termsEn === "string" && tpl.termsEn.trim() ? tpl.termsEn : undefined,
+        termsUr: typeof tpl.termsUr === "string" && tpl.termsUr.trim() ? tpl.termsUr : undefined,
+        acceptanceBlock: typeof tpl.acceptanceBlock === "boolean" ? tpl.acceptanceBlock : undefined,
+        footerVariant: tpl.footerVariant === "zainab" || tpl.footerVariant === "store" || tpl.footerVariant === "custom" ? tpl.footerVariant : undefined,
+        footerCustomLines: typeof tpl.footerCustomLines === "string" ? tpl.footerCustomLines : undefined,
       } satisfies AdminQuoteTemplate;
     })
     .filter((t) => !isBuiltinTemplateId(t.id));
@@ -1525,7 +1532,11 @@ async function saveQuoteTemplate(template: AdminQuoteTemplate): Promise<AdminQuo
   const row = {
     id: saved.id,
     name: saved.name,
-    template: { brandColor: saved.brandColor, header: saved.header, footer: saved.footer, logo: saved.logo ?? null, layout: saved.layout ?? "classic" } as unknown as Json,
+    template: {
+      brandColor: saved.brandColor, header: saved.header, footer: saved.footer, logo: saved.logo ?? null, layout: saved.layout ?? "classic",
+      advancePct: saved.advancePct, validityDays: saved.validityDays, termsEn: saved.termsEn ?? null, termsUr: saved.termsUr ?? null,
+      acceptanceBlock: saved.acceptanceBlock ?? null, footerVariant: saved.footerVariant ?? null, footerCustomLines: saved.footerCustomLines ?? null,
+    } as unknown as Json,
     updated_at: new Date().toISOString(),
   };
   const { error } = await supabase.from("quote_templates").upsert(row, { onConflict: "id" });
