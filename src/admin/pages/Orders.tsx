@@ -7,7 +7,7 @@ import type { AdminOrder, AdminOrderEvent, OrderStatus } from "@/api/types";
 import { formatPKR, formatDateTime, timeAgo, OrderStatusBadge, paymentLabel, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -169,11 +169,9 @@ export default function AdminOrders() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={status} onValueChange={(v) => setStatus(v as OrderStatus | "all")}>
-          <TabsList className="flex-wrap h-auto">
-            {STATUS_TABS.map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
-          </TabsList>
-        </Tabs>
+        <ToggleGroup type="single" value={status} onValueChange={(v) => v && setStatus(v as OrderStatus | "all")} aria-label="Filter by order status" className="h-auto flex-wrap justify-start rounded-md bg-muted p-1">
+          {STATUS_TABS.map((t) => <ToggleGroupItem key={t.value} value={t.value} className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">{t.label}</ToggleGroupItem>)}
+        </ToggleGroup>
         <Input placeholder="Search order ID, customer, city, phone…" value={query} onChange={(e) => setQuery(e.target.value)} className="sm:max-w-xs bg-white" />
       </div>
 

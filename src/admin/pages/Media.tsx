@@ -322,7 +322,7 @@ export default function AdminMedia() {
           <nav className="space-y-0.5">
             <button
               onClick={() => setActiveFolder("all")}
-              className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition ${activeFolder === "all" ? "bg-accent/15 font-medium text-accent-foreground hover:bg-accent/15" : "text-foreground hover:bg-secondary"}`}
+              className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition ${activeFolder === "all" ? "bg-accent/15 font-medium text-foreground hover:bg-accent/15" : "text-foreground hover:bg-secondary"}`}
             >
               <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4 text-muted-foreground" />All assets</span>
               <span className="text-xs text-muted-foreground">{assets.length}</span>

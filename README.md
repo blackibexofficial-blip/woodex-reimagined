@@ -14,7 +14,9 @@ bun install
 bun run dev        # http://localhost:8080
 ```
 
-Other scripts: `bun run build` (regenerates `sitemap.xml`, then production build → `dist/`) · `bun run typecheck` (strict `tsc --noEmit` gate — clean) · `bun run preview` (serve the build) · `bun run lint` (0 errors; warnings only from fast-refresh hints) · `bun run e2e` (puppeteer smoke — 33 checks: admin, SEO, lazy routes) · `bun run e2e:a11y` (axe-core scan, 7 routes — 0 violations)
+Other scripts: `bun run build` (regenerates `sitemap.xml` from `src/data/*`, then production build → `dist/`) · `bun run typecheck` (strict `tsc --noEmit` gate — clean) · `bun run preview` (serve the build) · `bun run lint` (0 errors; warnings only from fast-refresh hints) · `bun run e2e` (puppeteer smoke — **59 checks**: admin, SEO, lazy routes, vault/coverage asserts) · `bun run e2e:a11y` (axe-core scan, **47 routes** — 7 public + 40 demo-gated admin routes; report-only locally, CI enforces critical/serious = 0)
+
+**Toolchain note:** CI installs Bun via `oven-sh/setup-bun@v2` (unpinned) and runs `bun install --frozen-lockfile`; there is no `.node-version` pin by design. The e2e (`npm run e2e`) and rehearsal (`npm run test:rehearsal`) suites are plain Node scripts (Node 20+ works); sitemap regeneration is the only Bun-dependent build step — if `bun` is unavailable, `npx vite build` still produces a working `dist/` (sitemap.xml then stays at its committed state).
 
 ### Admin panel preview — `/admin`
 

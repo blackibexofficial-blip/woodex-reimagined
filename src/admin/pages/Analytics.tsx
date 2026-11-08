@@ -144,7 +144,7 @@ export default function AdminAnalytics() {
                 <PieChart>
                   <Pie data={derived.statusCounts} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3}>
                     {derived.statusCounts.map((entry) => (
-                      <Cell key={entry.name} fill={STATUS_COLORS[entry.name as OrderStatus] ?? "#a8a29e"} stroke="#fff" strokeWidth={2} />
+                      <Cell key={entry.name} fill={STATUS_COLORS[entry.name as OrderStatus] ?? "#a8a29e"} stroke="#fff" strokeWidth={2} aria-label={`${entry.name}: ${entry.value} orders`} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [formatNumber(value), name]} />
@@ -210,7 +210,7 @@ export default function AdminAnalytics() {
                 <PieChart>
                   <Pie data={derived.paymentSplit} dataKey="value" nameKey="name" outerRadius={85} paddingAngle={3}>
                     {derived.paymentSplit.map((entry, i) => (
-                      <Cell key={entry.name} fill={PAY_COLORS[i % PAY_COLORS.length]} stroke="#fff" strokeWidth={2} />
+                      <Cell key={entry.name} fill={PAY_COLORS[i % PAY_COLORS.length]} stroke="#fff" strokeWidth={2} aria-label={`${entry.name}: ${entry.value} payments`} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [formatNumber(value), name]} />

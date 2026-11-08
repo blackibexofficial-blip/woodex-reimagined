@@ -285,7 +285,7 @@ export default function AdminTransfers() {
               </TableHeader>
               <TableBody>
                 {items.map((t) => (
-                  <TableRow key={t.id} className={t.status === "received" ? "opacity-70 hover:bg-secondary" : "hover:bg-secondary"}>
+                  <TableRow key={t.id} className={t.status === "received" ? "bg-secondary/40 hover:bg-secondary/70" : "hover:bg-secondary"}>
                     <TableCell>
                       <p className="font-mono text-xs font-semibold">{t.id}</p>
                     </TableCell>

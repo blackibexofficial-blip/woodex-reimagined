@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -71,7 +71,8 @@ function SwatchPreview({ m }: { m: AdminMaterial }) {
     <div
       className="h-9 w-14 rounded-sm border border-border"
       style={{ backgroundColor: m.hex ?? "#888888" }}
-      aria-label={m.hex ?? "color swatch"}
+      role="img"
+      aria-label={`Color swatch ${m.hex ?? ""}`.trim()}
     />
   );
 }
@@ -230,15 +231,13 @@ export default function AdminMaterials() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as CategoryFilter)}>
-          <TabsList className="flex-wrap h-auto">
-            {(["all", "wood", "laminate", "metal", "fabric"] as CategoryFilter[]).map((c) => (
-              <TabsTrigger key={c} value={c}>
-                {c === "all" ? `All (${counts.all})` : `${MATERIAL_CATEGORY_LABELS[c]} (${counts[c]})`}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <ToggleGroup type="single" value={tab} onValueChange={(v) => v && setTab(v as CategoryFilter)} aria-label="Filter materials by category" className="h-auto flex-wrap justify-start rounded-md bg-muted p-1">
+          {(["all", "wood", "laminate", "metal", "fabric"] as CategoryFilter[]).map((c) => (
+            <ToggleGroupItem key={c} value={c} className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">
+              {c === "all" ? `All (${counts.all})` : `${MATERIAL_CATEGORY_LABELS[c]} (${counts[c]})`}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
         <div className="flex items-center gap-2">
           <div className="relative sm:max-w-xs w-full">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

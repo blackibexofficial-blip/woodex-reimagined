@@ -8,7 +8,7 @@ import type { AdminProduct, BulkProductPatch, StockStatus } from "@/api/types";
 import { formatPKR, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const STATUS_TONE: Record<StockStatus, string> = {
@@ -391,14 +391,12 @@ export default function AdminBulkEditor() {
             <option value="all">All brands ({brands.length})</option>
             {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
-          <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | StockStatus)}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="in_stock">In stock</TabsTrigger>
-              <TabsTrigger value="made_to_order">Made to order</TabsTrigger>
-              <TabsTrigger value="out_of_stock">Out of stock</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => v && setStatusFilter(v as "all" | StockStatus)} aria-label="Filter by stock status" className="h-10 rounded-md bg-muted p-1">
+            <ToggleGroupItem value="all" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">All</ToggleGroupItem>
+            <ToggleGroupItem value="in_stock" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">In stock</ToggleGroupItem>
+            <ToggleGroupItem value="made_to_order" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Made to order</ToggleGroupItem>
+            <ToggleGroupItem value="out_of_stock" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Out of stock</ToggleGroupItem>
+          </ToggleGroup>
           <span className="text-xs text-muted-foreground ml-auto">{visible.length} shown</span>
           <Button size="sm" variant="outline" onClick={exportCsv} title="Download selected products (or everything shown, if none selected) as CSV"><Download className="h-4 w-4 mr-1.5" />Export CSV</Button>
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} title="Re-import an edited bulk-export CSV — every row is diffed before anything is written"><Upload className="h-4 w-4 mr-1.5" />Import CSV</Button>
@@ -420,7 +418,7 @@ export default function AdminBulkEditor() {
                   <th className="py-2 pr-4">Category</th>
                   <th className="py-2 pr-4 text-right">Price</th>
                   <th className="py-2 pr-4">Stock</th>
-                  <th className="py-2 pr-2 text-center" title="Best seller"><Star className="h-3.5 w-3.5 inline" /></th>
+                  <th className="py-2 pr-2 text-center" title="Best seller"><span className="sr-only">Best seller</span><Star className="h-3.5 w-3.5 inline" aria-hidden /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

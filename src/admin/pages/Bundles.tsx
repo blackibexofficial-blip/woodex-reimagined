@@ -9,7 +9,7 @@ import { products as catalogue } from "@/data/products";
 import { formatDate, formatPKR, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -182,14 +182,12 @@ export default function AdminBundles() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input aria-label="Search bundles" placeholder="Search bundles…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
           </div>
-          <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | BundleStatus)}>
-            <TabsList>
-              <TabsTrigger value="all">All ({rows.length})</TabsTrigger>
-              <TabsTrigger value="active">Activated ({counts.active})</TabsTrigger>
-              <TabsTrigger value="draft">Draft ({counts.draft})</TabsTrigger>
-              <TabsTrigger value="archived">Archived ({counts.archived})</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => v && setStatusFilter(v as "all" | BundleStatus)} aria-label="Filter bundles by status" className="h-10 rounded-md bg-muted p-1">
+            <ToggleGroupItem value="all" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">All ({rows.length})</ToggleGroupItem>
+            <ToggleGroupItem value="active" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Activated ({counts.active})</ToggleGroupItem>
+            <ToggleGroupItem value="draft" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Draft ({counts.draft})</ToggleGroupItem>
+            <ToggleGroupItem value="archived" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Archived ({counts.archived})</ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
         {loading ? (

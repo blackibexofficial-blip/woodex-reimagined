@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -235,13 +235,11 @@ export default function AdminInventory() {
         <StatCard label="Made to order" value={formatNumber(stats.madeToOrder)} sub="built on demand" icon={Hammer} tone="violet" />
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="stock"><Warehouse className="mr-2 h-4 w-4" />Stock</TabsTrigger>
-          <TabsTrigger value="movements"><History className="mr-2 h-4 w-4" />Movements</TabsTrigger>
-          <TabsTrigger value="zones"><Truck className="mr-2 h-4 w-4" />Delivery zones</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <ToggleGroup type="single" value={tab} onValueChange={(v) => v && setTab(v as Tab)} aria-label="Inventory section" className="grid h-10 w-full max-w-md grid-cols-3 rounded-md bg-muted p-1">
+        <ToggleGroupItem value="stock" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"><Warehouse className="mr-2 h-4 w-4" />Stock</ToggleGroupItem>
+        <ToggleGroupItem value="movements" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"><History className="mr-2 h-4 w-4" />Movements</ToggleGroupItem>
+        <ToggleGroupItem value="zones" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"><Truck className="mr-2 h-4 w-4" />Delivery zones</ToggleGroupItem>
+      </ToggleGroup>
 
       {/* ── STOCK TAB ─────────────────────────────────────────────────── */}
       {tab === "stock" && (
@@ -314,7 +312,7 @@ export default function AdminInventory() {
                           </td>
                           <td className="px-5 py-2.5 text-xs text-muted-foreground">{item.location}</td>
                           <td className="px-5 py-2.5 text-right">
-                            <span className={cn("font-semibold", item.quantity === 0 ? "text-rose-600" : isLow ? "text-amber-600" : "text-foreground")}>
+                            <span className={cn("font-semibold", item.quantity === 0 ? "text-rose-600" : isLow ? "text-amber-700" : "text-foreground")}>
                               {formatNumber(item.quantity)}
                             </span>
                           </td>

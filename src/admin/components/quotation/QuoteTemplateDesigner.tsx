@@ -241,7 +241,7 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
             </Button>
             <Button
               onClick={() => { onPick(isNew || !draft.id ? DEFAULT_QUOTE_TEMPLATE.id : (templates.some((t) => t.id === draft.id) ? draft.id : DEFAULT_QUOTE_TEMPLATE.id)); onOpenChange(false); }}
-              className="bg-hon-green text-white hover:bg-hon-green-dark"
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
             >
               <Printer className="mr-1.5 h-4 w-4" /> Use this template
             </Button>

@@ -11,7 +11,7 @@ import { formatPKR, timeAgo, LeadStatusBadge, SectionCard, SectionSkeleton, Empt
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -197,16 +197,14 @@ export default function AdminLeads() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <Tabs value={type} onValueChange={(v) => setType(v as TypeFilter)}>
-            <TabsList>
-              <TabsTrigger value="all">All leads</TabsTrigger>
-              <TabsTrigger value="quote"><FileText className="mr-1.5 h-3.5 w-3.5" />Quotes</TabsTrigger>
-              <TabsTrigger value="b2b"><Handshake className="mr-1.5 h-3.5 w-3.5" />B2B</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <ToggleGroup type="single" value={type} onValueChange={(v) => v && setType(v as TypeFilter)} aria-label="Filter lead types" className="h-10 rounded-md bg-muted p-1">
+              <ToggleGroupItem value="all" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">All leads</ToggleGroupItem>
+              <ToggleGroupItem value="quote" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"><FileText className="mr-1.5 h-3.5 w-3.5" />Quotes</ToggleGroupItem>
+              <ToggleGroupItem value="b2b" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"><Handshake className="mr-1.5 h-3.5 w-3.5" />B2B</ToggleGroupItem>
+            </ToggleGroup>
           {!isBoard && (
             <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
-              <SelectTrigger className="w-40 bg-white"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="w-40 bg-white" aria-label="Filter by status"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
                 {LEAD_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}

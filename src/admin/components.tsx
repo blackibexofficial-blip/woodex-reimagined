@@ -37,7 +37,7 @@ const leadStyles: Record<LeadStatus, string> = {
   contacted: "bg-hon-green-pale text-hon-green-dark border-hon-green-pale",
   quoted: "bg-violet-100 text-violet-800 border-violet-200",
   won: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  lost: "bg-border text-muted-foreground border-muted-foreground",
+  lost: "bg-secondary text-foreground border-border",
 };
 const returnStyles: Record<ReturnStatus, string> = {
   requested: "bg-amber-100 text-amber-800 border-amber-200",
