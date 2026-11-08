@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Search, Plus, Loader2, Pencil, Trash2, PackagePlus, ClipboardCheck, Send, Ban, Minus, X,
+  Search, Plus, Loader2, Pencil, Trash2, PackagePlus, ClipboardCheck, Send, Ban, Minus, X, Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
@@ -325,6 +325,7 @@ export default function AdminPurchaseOrders() {
                     <TableCell className="text-right text-xs text-muted-foreground">{timeAgo(t.updatedAt)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <a href={`/admin/purchase-order/${t.id}`} target="_blank" rel="noreferrer" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-border hover:text-foreground" aria-label={`Print ${t.id}`} title="Printable purchase order"><Printer className="h-4 w-4" /></a>
                         {t.status === "draft" && (
                           <>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)} aria-label={`Edit ${t.id}`} title="Edit PO">

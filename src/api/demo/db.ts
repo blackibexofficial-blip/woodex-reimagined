@@ -145,7 +145,7 @@ import type {
   NewTaskInput,
   StoreSettings,
 } from "@/api/types";
-import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
+import { BUILTIN_TEMPLATES, isBuiltinTemplateId } from "@/api/quote-templates";
 
 const DB_KEY = "woodex.admin.db.v1";
 
@@ -4508,15 +4508,15 @@ export const demoAdminApi: AdminApi = {
   },
 
   async listQuoteTemplates() {
-    const custom = (loadDb().quoteTemplates ?? []).filter((t) => t.id !== DEFAULT_QUOTE_TEMPLATE.id);
-    return [DEFAULT_QUOTE_TEMPLATE, ...custom];
+    const custom = (loadDb().quoteTemplates ?? []).filter((t) => !isBuiltinTemplateId(t.id));
+    return [...BUILTIN_TEMPLATES, ...custom];
   },
 
   async saveQuoteTemplate(template: AdminQuoteTemplate) {
     const name = template.name.trim();
     if (!name) throw new Error("Template name is required.");
     let saved: AdminQuoteTemplate = { ...template, name, builtIn: false };
-    if (!saved.id || saved.id === DEFAULT_QUOTE_TEMPLATE.id || template.builtIn) {
+    if (!saved.id || isBuiltinTemplateId(saved.id) || template.builtIn) {
       saved = { ...saved, id: `tpl-${Date.now().toString(36)}` };
     }
     update((db) => {
@@ -4634,7 +4634,7 @@ export const demoAdminApi: AdminApi = {
   },
 
   async deleteQuoteTemplate(id: string) {
-    if (id === DEFAULT_QUOTE_TEMPLATE.id) return false;
+    if (isBuiltinTemplateId(id)) return false;
     let ok = false;
     update((db) => {
       const before = (db.quoteTemplates ??= []).length;

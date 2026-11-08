@@ -383,6 +383,10 @@ export interface AdminQuoteTemplate {
   footer: QuoteTemplateBlock[];
   /** Builtin templates live in code and are read-only; editing one clones it. */
   builtIn?: boolean;
+  /** Optional logo as a data URL (≤200 KB) — picked in the template designer; renders in the A4 masthead. */
+  logo?: string;
+  /** Print layout: "classic" (original sheet) or "a4" (redesigned Woodex A4 sheet). Defaults to "classic". */
+  layout?: "classic" | "a4";
 }
 export type NewQuoteLineInput = NewDraftOrderLineInput;
 export interface NewQuoteInput {

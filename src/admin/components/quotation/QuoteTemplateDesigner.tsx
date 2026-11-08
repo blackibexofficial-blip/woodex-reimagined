@@ -4,11 +4,11 @@
  * Saving a built-in selection creates a custom copy (Woodex classic is code-owned).
  */
 import { useEffect, useMemo, useState } from "react";
-import { Check, Lock, Loader2, Plus, Printer, Trash2 } from "lucide-react";
+import { Check, Lock, Loader2, Plus, Printer, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminQuoteTemplate, QuoteTemplateBlock } from "@/api/types";
-import { PAYMENT_TERMS_NOTE, DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
+import { PAYMENT_TERMS_NOTE, DEFAULT_QUOTE_TEMPLATE, WOODEX_A4_TEMPLATE, BUILTIN_TEMPLATES, isBuiltinTemplateId } from "@/api/quote-templates";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,7 +47,7 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
         setIsNew(false);
       })
       .catch(() => {
-        setTemplates([DEFAULT_QUOTE_TEMPLATE]);
+        setTemplates(BUILTIN_TEMPLATES);
         setSelectedId(DEFAULT_QUOTE_TEMPLATE.id);
         setDraft(clone(DEFAULT_QUOTE_TEMPLATE));
         toast.error("Could not load templates — showing the built-in.");
@@ -55,7 +55,7 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
       .finally(() => setLoading(false));
   }, [open, api, currentId]);
 
-  const isBuiltin = isNew ? false : (draft.builtIn === true || draft.id === DEFAULT_QUOTE_TEMPLATE.id);
+  const isBuiltin = isNew ? false : (draft.builtIn === true || isBuiltinTemplateId(draft.id));
   const showInList = isNew ? null : selectedId;
 
   const selectTemplate = (id: string) => {
@@ -67,7 +67,7 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
   };
 
   const startNew = () => {
-    const d = { ...clone(DEFAULT_QUOTE_TEMPLATE), id: "", name: "My quotation template", builtIn: false };
+    const d = { ...clone(WOODEX_A4_TEMPLATE), id: "", name: "My quotation template", builtIn: false };
     setDraft(d);
     setSelectedId("");
     setIsNew(true);
@@ -76,13 +76,29 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
   const patchBlock = (region: "header" | "footer", blockId: string, patch: Partial<QuoteTemplateBlock>) =>
     setDraft((d) => ({ ...d, [region]: d[region].map((b) => (b.id === blockId ? { ...b, ...patch } : b)) }));
 
+  const onLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 200 * 1024) {
+      toast.error("Logo must be 200 KB or smaller — it travels inside the template record.");
+      e.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setDraft((d) => ({ ...d, logo: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   const save = async () => {
     if (!draft.name.trim()) return toast.error("Template name is required.");
     setSaving(true);
     try {
       const payload = isBuiltin || isNew ? { ...draft, id: "", builtIn: false } : draft;
       const saved = await api.saveQuoteTemplate(payload);
-      toast.success(isBuiltin ? "Woodex classic is code-owned — saved your changes as a custom copy." : "Template saved.");
+      toast.success(isBuiltin ? "Built-in templates are code-owned — saved your changes as a custom copy." : "Template saved.");
       const list = await api.listQuoteTemplates();
       setTemplates(list);
       const hit = list.find((t) => t.id === saved.id) ?? saved;
@@ -189,7 +205,7 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
             <div className="space-y-3">
               {isBuiltin && (
                 <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-900">
-                  Woodex classic is built in — saving clones it as your own template.
+                  {draft.name || "This template"} is built in — saving clones it as your own template.
                 </p>
               )}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
@@ -216,6 +232,52 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* layout picker */}
+              <div>
+                <p className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Print layout</p>
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Print layout">
+                  {([
+                    { key: "classic" as const, name: "Woodex classic", hint: "Original formal sheet" },
+                    { key: "a4" as const, name: "Woodex A4", hint: "Redesigned letterhead page — advance callout, terms grid, icon footer" },
+                  ]).map((opt) => {
+                    const active = (draft.layout ?? "classic") === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setDraft((d) => ({ ...d, layout: opt.key }))}
+                        aria-pressed={active}
+                        className={`rounded-md border px-3 py-2 text-left transition ${active ? "border-hon-green bg-hon-green-pale/40 ring-1 ring-hon-green" : "border-border hover:border-hon-green/60"}`}
+                      >
+                        <span className="block text-xs font-bold text-foreground">{opt.name}</span>
+                        <span className="mt-0.5 block text-[9px] leading-snug text-muted-foreground">{opt.hint}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* logo upload — A4 masthead */}
+              <div>
+                <p className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Logo — A4 masthead <span className="normal-case text-muted-foreground/70">(optional)</span></p>
+                <div className="flex items-center gap-3">
+                  {draft.logo ? (
+                    <>
+                      <img src={draft.logo} alt="Template logo preview" className="h-12 w-12 rounded-md border border-border object-contain p-0.5" />
+                      <Button type="button" variant="outline" size="sm" onClick={() => setDraft((d) => ({ ...d, logo: undefined }))}>
+                        <X className="mr-1 h-3.5 w-3.5" /> Remove logo
+                      </Button>
+                    </>
+                  ) : (
+                    <label htmlFor="tpl-logo" className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-hon-green hover:text-foreground">
+                      <Upload className="h-4 w-4" /> Upload logo…
+                      <input id="tpl-logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="sr-only" onChange={onLogoFile} />
+                    </label>
+                  )}
+                </div>
+                <p className="mt-1 text-[10px] leading-snug text-muted-foreground">PNG, JPG, WebP or SVG, ≤ 200 KB. Shown on the A4 sheet masthead (the classic sheet stays typographic). Stored with the template record.</p>
               </div>
 
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Header blocks</p>

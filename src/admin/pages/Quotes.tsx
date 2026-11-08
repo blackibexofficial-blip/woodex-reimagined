@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Search, Plus, Loader2, Pencil, Trash2, PackageCheck, Printer, ScrollText, Minus, X,
   History, Send, CheckCheck, RotateCcw, FilePenLine, Ban, BadgeCheck,
+  AlarmClock, Banknote, ScrollText as ScrollTextIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
@@ -10,7 +11,7 @@ import {
   formatPKR, formatDate, timeAgo, paymentLabel,
   QuoteStatusBadge, SectionCard, SectionSkeleton, EmptyState,
 } from "@/admin/components";
-import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
+import { DEFAULT_QUOTE_TEMPLATE, BUILTIN_TEMPLATES } from "@/api/quote-templates";
 import QuoteTemplateDesigner from "@/admin/components/quotation/QuoteTemplateDesigner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,30 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
-const STATUSES: Array<QuoteStatus | "all"> = ["all", "draft", "review", "approval", "sent", "revised", "accepted", "declined", "converted"];
+/** Pipeline view of the quote book — what a WOODEX sales desk actually tracks. */
+type PipelineKey = "all" | "open" | "awaiting" | "expiring" | "won" | "lost";
+const PIPELINE: Array<{ key: PipelineKey; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "open", label: "Open" },
+  { key: "awaiting", label: "Awaiting customer" },
+  { key: "expiring", label: "Expiring ≤7d" },
+  { key: "won", label: "Won" },
+  { key: "lost", label: "Lost" },
+];
+const OPEN_STATUSES: QuoteStatus[] = ["draft", "review", "approval", "revised"];
+const PIPELINE_STATUSES: Record<Exclude<PipelineKey, "all" | "expiring">, QuoteStatus[]> = {
+  open: OPEN_STATUSES,
+  awaiting: ["sent"],
+  won: ["accepted", "converted"],
+  lost: ["declined"],
+};
+const daysLeft = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
+const inPipeline = (t: AdminQuote) => [...OPEN_STATUSES, "sent"].includes(t.status);
+const matchesPipeline = (t: AdminQuote, key: PipelineKey): boolean => {
+  if (key === "all") return true;
+  if (key === "expiring") return inPipeline(t) && daysLeft(t.validUntil) >= 0 && daysLeft(t.validUntil) <= 7;
+  return PIPELINE_STATUSES[key].includes(t.status);
+};
 const EDITABLE_STATUSES: QuoteStatus[] = ["draft", "review", "approval", "sent", "revised", "accepted", "declined"];
 const PAYMENT_METHODS: PaymentMethod[] = ["cod", "bank-transfer", "easypaisa", "jazzcash", "card"];
 
@@ -39,7 +63,7 @@ export default function AdminQuotes() {
   const [items, setItems] = useState<AdminQuote[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<QuoteStatus | "all">("all");
+  const [pipelineFilter, setPipelineFilter] = useState<PipelineKey>("all");
 
   /* editor dialog state (create + edit) */
   const [editorOpen, setEditorOpen] = useState(false);
@@ -58,7 +82,7 @@ export default function AdminQuotes() {
   const [status, setStatus] = useState<QuoteStatus>("draft");
   const [saving, setSaving] = useState(false);
   const [templateId, setTemplateId] = useState<string>(DEFAULT_QUOTE_TEMPLATE.id);
-  const [templates, setTemplates] = useState<AdminQuoteTemplate[]>([DEFAULT_QUOTE_TEMPLATE]);
+  const [templates, setTemplates] = useState<AdminQuoteTemplate[]>(BUILTIN_TEMPLATES);
   const [designerOpen, setDesignerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<AdminQuoteVersion[]>([]);
@@ -86,14 +110,14 @@ export default function AdminQuotes() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.listQuotes({ status: statusFilter, query, perPage: 60 });
+      const res = await api.listQuotes({ status: "all", query, perPage: 60 });
       setItems(res.items);
     } catch {
       toast.error("Could not load quotes.");
     } finally {
       setLoading(false);
     }
-  }, [api, statusFilter, query]);
+  }, [api, query]);
 
   useEffect(() => {
     load();
@@ -248,7 +272,7 @@ export default function AdminQuotes() {
   const dimValue = (raw: string) => (raw === "" ? undefined : Math.max(0, Number(raw) || 0));
 
   const loadTemplates = useCallback(() => {
-    api.listQuoteTemplates().then(setTemplates).catch(() => setTemplates([DEFAULT_QUOTE_TEMPLATE]));
+    api.listQuoteTemplates().then(setTemplates).catch(() => setTemplates(BUILTIN_TEMPLATES));
   }, [api]);
 
   const openHistory = () => {
@@ -299,6 +323,23 @@ export default function AdminQuotes() {
     }
   };
 
+  const visible = useMemo(() => items.filter((t) => matchesPipeline(t, pipelineFilter)), [items, pipelineFilter]);
+  const pipelineCounts = useMemo(() => {
+    const out: Record<PipelineKey, number> = { all: items.length, open: 0, awaiting: 0, expiring: 0, won: 0, lost: 0 };
+    for (const t of items) {
+      for (const key of ["open", "awaiting", "won", "lost"] as const) {
+        if (PIPELINE_STATUSES[key].includes(t.status)) out[key] += 1;
+      }
+      if (matchesPipeline(t, "expiring")) out.expiring += 1;
+    }
+    return out;
+  }, [items]);
+  const openPipelineValue = useMemo(
+    () => items.filter((t) => inPipeline(t) && new Date(t.validUntil).getTime() >= Date.now()).reduce((s, t) => s + t.total, 0),
+    [items],
+  );
+  const expiringSoon = pipelineCounts.expiring;
+
   const linesQty = (t: AdminQuote) => t.items.reduce((s, i) => s + i.quantity, 0);
   const isExpired = (t: AdminQuote) => ["draft", "review", "approval", "revised", "sent"].includes(t.status) && new Date(t.validUntil).getTime() < Date.now();
 
@@ -317,16 +358,49 @@ export default function AdminQuotes() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as QuoteStatus | "all")}>
-            <SelectTrigger className="w-36 bg-white" aria-label="Filter by status"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s === "all" ? "All statuses" : s}</SelectItem>)}
-            </SelectContent>
-          </Select>
           <Button onClick={openCreate} className="bg-accent hover:bg-accent/90 text-accent-foreground whitespace-nowrap">
             <Plus className="mr-1.5 h-4 w-4" /> New quote
           </Button>
         </div>
+      </div>
+
+      {/* KPI strip — open book value, expiry risk, win/loss */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        {[
+          { icon: ScrollTextIcon, label: "Open", value: String(pipelineCounts.open), sub: "Draft · review · approval · revised", tone: "bg-amber-50 text-amber-700" },
+          { icon: AlarmClock, label: "Expiring ≤7d", value: String(expiringSoon), sub: "valid quotes about to lapse", tone: "bg-rose-50 text-rose-700" },
+          { icon: BadgeCheck, label: "Won", value: String(pipelineCounts.won), sub: "accepted + converted", tone: "bg-emerald-50 text-emerald-700" },
+          { icon: Ban, label: "Lost", value: String(pipelineCounts.lost), sub: "declined by customer", tone: "bg-secondary text-muted-foreground" },
+          { icon: Banknote, label: "Open pipeline", value: formatPKR(openPipelineValue), sub: "unexpired open + sent value", tone: "bg-hon-green-pale text-hon-green-dark" },
+        ].map(({ icon: Icon, label, value, sub, tone }) => (
+          <div key={label} className="rounded-xl border border-border bg-card p-3.5">
+            <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+              <span className={`inline-flex h-6 w-6 items-center justify-center rounded-md ${tone}`}><Icon className="h-3.5 w-3.5" /></span>
+              {label}
+            </p>
+            <p className="mt-1.5 truncate text-lg font-black tabular-nums text-foreground">{value}</p>
+            <p className="truncate text-[9px] text-muted-foreground">{sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* pipeline filter chips */}
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Quote pipeline filters">
+        {PIPELINE.map((p) => {
+          const active = pipelineFilter === p.key;
+          return (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => setPipelineFilter(p.key)}
+              aria-pressed={active}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${active ? "border-hon-green bg-hon-green text-white" : "border-border bg-white text-muted-foreground hover:border-hon-green-light hover:text-hon-green-dark"}`}
+            >
+              {p.label}
+              <span className={`rounded-full px-1.5 text-[10px] tabular-nums ${active ? "bg-white/20" : "bg-secondary"}`}>{pipelineCounts[p.key]}</span>
+            </button>
+          );
+        })}
       </div>
 
       <p className="rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-[11px] leading-5 text-muted-foreground">
@@ -338,7 +412,7 @@ export default function AdminQuotes() {
       <SectionCard title="Quotes">
         {loading ? (
           <SectionSkeleton />
-        ) : items.length === 0 ? (
+        ) : visible.length === 0 ? (
           <EmptyState
             icon={ScrollText}
             title="No quotes match"
@@ -360,7 +434,7 @@ export default function AdminQuotes() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((t) => (
+                {visible.map((t) => (
                   <TableRow key={t.id} className={t.status === "converted" ? "opacity-70" : "hover:bg-secondary"}>
                     <TableCell>
                       <p className="font-mono text-xs font-semibold">{t.id}</p>
@@ -377,7 +451,11 @@ export default function AdminQuotes() {
                       {formatPKR(t.total)}
                     </TableCell>
                     <TableCell className={`text-xs ${isExpired(t) ? "font-semibold text-rose-600" : "text-muted-foreground"}`}>
-                      {formatDate(t.validUntil)}{isExpired(t) && <span className="block text-[10px] uppercase">expired</span>}
+                      {formatDate(t.validUntil)}
+                      {isExpired(t) && <span className="block text-[10px] uppercase">expired</span>}
+                      {!isExpired(t) && inPipeline(t) && daysLeft(t.validUntil) <= 7 && (
+                        <span className="mt-0.5 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-900"><AlarmClock className="h-3 w-3" /> {daysLeft(t.validUntil)}d left</span>
+                      )}
                     </TableCell>
                     <TableCell><QuoteStatusBadge status={t.status} /></TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground">{timeAgo(t.updatedAt)}</TableCell>

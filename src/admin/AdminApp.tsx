@@ -17,6 +17,7 @@ import AdminSalesChannels from "@/admin/pages/SalesChannels";
 import AdminBulkEditor from "@/admin/pages/BulkEditor";
 import AdminInventory from "@/admin/pages/Inventory";
 import AdminOrders from "@/admin/pages/Orders";
+import AdminOrderNew from "@/admin/pages/OrderNew";
 import AdminDrafts from "@/admin/pages/Drafts";
 import AdminQuotes from "@/admin/pages/Quotes";
 import AdminSuppliers from "@/admin/pages/Suppliers";
@@ -33,10 +34,15 @@ import AdminExchanges from "@/admin/pages/Exchanges";
 import AdminClaims from "@/admin/pages/Claims";
 import AdminInvoice from "@/admin/pages/Invoice";
 import AdminInvoices from "@/admin/pages/Invoices";
+import AdminInvoiceNew from "@/admin/pages/InvoiceNew";
 import AdminTasks from "@/admin/pages/Tasks";
 import AdminCampaigns from "@/admin/pages/Campaigns";
 import AdminClientMerge from "@/admin/pages/ClientMerge";
 import AdminInvoiceDocument from "@/admin/pages/InvoiceDocument";
+import AdminOrderPrint from "@/admin/pages/OrderPrint";
+import AdminPurchaseOrderPrint from "@/admin/pages/PurchaseOrderPrint";
+import AdminReturnPrint from "@/admin/pages/ReturnPrint";
+import AdminExchangePrint from "@/admin/pages/ExchangePrint";
 import AdminCustomers from "@/admin/pages/Customers";
 import AdminLeads from "@/admin/pages/Leads";
 import AdminContent from "@/admin/pages/Content";
@@ -68,6 +74,14 @@ export default function AdminApp() {
         <Route path="invoice-document/:id" element={<AdminInvoiceDocument />} />
         {/* chrome-free printable quotation — same pattern */}
         <Route path="quote/:id" element={<AdminQuote />} />
+        {/* chrome-free printable order confirmation */}
+        <Route path="order/:id" element={<AdminOrderPrint />} />
+        {/* chrome-free printable purchase order */}
+        <Route path="purchase-order/:id" element={<AdminPurchaseOrderPrint />} />
+        {/* chrome-free printable return authorization (RMA) */}
+        <Route path="return/:id" element={<AdminReturnPrint />} />
+        {/* chrome-free printable exchange authorization */}
+        <Route path="exchange/:id" element={<AdminExchangePrint />} />
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
@@ -85,9 +99,11 @@ export default function AdminApp() {
           <Route path="bulk-editor" element={<AdminBulkEditor />} />
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="orders/new" element={<AdminOrderNew />} />
           <Route path="drafts" element={<AdminDrafts />} />
           <Route path="quotes" element={<AdminQuotes />} />
           <Route path="invoices" element={<AdminInvoices />} />
+          <Route path="invoices/new" element={<AdminInvoiceNew />} />
           <Route path="tasks" element={<AdminTasks />} />
           <Route path="campaigns" element={<AdminCampaigns />} />
           <Route path="client-merge" element={<AdminClientMerge />} />

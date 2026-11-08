@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, Eye, History, Loader2, MessageCircle, Phone, Printer, Save, ShieldCheck, ShoppingCart, Undo2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, Eye, History, Loader2, MessageCircle, Phone, Plus, Printer, Save, ShieldCheck, ShoppingCart, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminOrder, AdminOrderEvent, OrderStatus } from "@/api/types";
@@ -48,6 +48,7 @@ function whatsAppNumber(raw: string) {
 }
 
 export default function AdminOrders() {
+  const navigate = useNavigate();
   const api = useMemo(() => getAdminApi(), []);
   const [status, setStatus] = useState<OrderStatus | "all">("all");
   const [query, setQuery] = useState("");
@@ -172,7 +173,10 @@ export default function AdminOrders() {
         <ToggleGroup type="single" value={status} onValueChange={(v) => v && setStatus(v as OrderStatus | "all")} aria-label="Filter by order status" className="h-auto flex-wrap justify-start rounded-md bg-muted p-1">
           {STATUS_TABS.map((t) => <ToggleGroupItem key={t.value} value={t.value} className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">{t.label}</ToggleGroupItem>)}
         </ToggleGroup>
-        <Input placeholder="Search order ID, customer, city, phone…" value={query} onChange={(e) => setQuery(e.target.value)} className="sm:max-w-xs bg-white" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Input placeholder="Search order ID, customer, city, phone…" value={query} onChange={(e) => setQuery(e.target.value)} className="sm:max-w-xs bg-white" />
+          <Button onClick={() => navigate("/admin/orders/new")} className="bg-hon-green-dark font-semibold text-white hover:bg-hon-green-dark"><Plus className="mr-1.5 h-4 w-4" /> New order</Button>
+        </div>
       </div>
 
       <SectionCard title={`${total} order${total === 1 ? "" : "s"}`}>
@@ -285,6 +289,9 @@ export default function AdminOrders() {
                   <div className="flex items-center gap-1.5">
                     <a href={waHref} target="_blank" rel="noreferrer" aria-label="WhatsApp customer" title="Message customer on WhatsApp" className="flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1.5 text-xs font-medium text-foreground hover:border-hon-green-light hover:text-hon-green-dark">
                       <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                    </a>
+                    <a href={`/admin/order/${selected.id}`} target="_blank" rel="noreferrer" aria-label="Print order" title="Open printable order document" className="flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1.5 text-xs font-medium text-foreground hover:border-hon-green-light hover:text-hon-green-dark">
+                      <Printer className="h-3.5 w-3.5" /> Order
                     </a>
                     <a href={`/admin/invoice/${selected.id}`} target="_blank" rel="noreferrer" aria-label="Print invoice" title="Open printable invoice" className="flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1.5 text-xs font-medium text-foreground hover:border-hon-green-light hover:text-hon-green-dark">
                       <Printer className="h-3.5 w-3.5" /> Invoice

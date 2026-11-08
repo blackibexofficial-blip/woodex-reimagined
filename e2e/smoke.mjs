@@ -162,6 +162,30 @@ async function adminSuite(browser) {
     ![...document.querySelectorAll("figure p[title]")].some((n) => (n.getAttribute("title") || "").includes("e2e-pixel.png")));
   ok("uploaded asset deleted", assetGone);
 
+  // ── printable document family + creation flows (2026-11 overhaul) ──
+  for (const [route, marker] of [
+    ["/order/WDX-1001", "LG 89, Zainab Tower"],
+    ["/invoice-document/INV-1001", "LG 89, Zainab Tower"],
+    ["/purchase-order/PO-1001", "Pak Wood"],
+    ["/return/RMA-1001", "Hassan"],
+    ["/exchange/EXC-1001", "Exchange"],
+    ["/quote/QOT-1001", "quotation"],
+  ]) {
+    await page.goto(`${ADMIN}${route}`, { waitUntil: "networkidle2", timeout: 60000 });
+    await page.waitForSelector(".a4-page", { timeout: 15000 }).catch(() => {});
+    const docText = (await bodyText()).toLowerCase();
+    ok(`printable ${route.split("/")[1]} renders (A4 sheet, letterhead)`, docText.includes(marker.toLowerCase()));
+  }
+  await page.goto(`${ADMIN}/orders/new`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("New order", 15000).catch(() => {});
+  ok("New order page renders with totals rail", (await bodyText()).includes("Create order"));
+  await page.goto(`${ADMIN}/invoices/new`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("New invoice", 15000).catch(() => {});
+  ok("New invoice wizard renders", (await bodyText()).includes("Issue invoice"));
+  await page.goto(`${ADMIN}/quotes`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("Open pipeline", 15000).catch(() => {});
+  ok("quotes page shows the KPI pipeline strip", (await bodyText()).toLowerCase().includes("open pipeline"));
+
   await page.goto(`${ADMIN}/dashboard`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Revenue — last 30 days", 20000);
   ok("dashboard still renders", true);

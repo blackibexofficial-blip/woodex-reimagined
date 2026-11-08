@@ -6,6 +6,8 @@ import { useAdminAuth } from "@/admin/auth";
 import { formatPKR, formatDate, formatDateTime, QuoteStatusBadge } from "@/admin/components";
 import type { AdminQuote, AdminQuoteTemplate, StoreSettings } from "@/api/types";
 import { findTemplate, renderBlock, dimSpec, DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
+import { A4Shell, A4Chrome, A4Notice } from "@/admin/components/documents/A4";
+import QuoteA4Sheet from "@/admin/components/documents/QuoteA4Sheet";
 
 /** Chrome-free printable quotation — mounted at /admin/quote/:id outside the admin layout. */
 export default function AdminQuotePrint() {
@@ -41,6 +43,29 @@ export default function AdminQuotePrint() {
   const bill = settings ?? { storeName: "WOODEX", tagline: "Premium Office & Home Furniture", phone: "+92 300 1234567", whatsapp: "+92 300 1234567", email: "hello@woodex.pk", address: "Showroom & Factory, 12-km Sheikh Zayed Road", city: "Lahore", currency: "PKR", deliveryNote: "", taxRate: 0 };
   const itemQty = quote?.items.reduce((s, i) => s + i.quantity, 0) ?? 0;
   const expired = quote && ["draft", "review", "approval", "revised", "sent"].includes(quote.status) && new Date(quote.validUntil).getTime() < Date.now();
+
+  // Woodex A4 layout — redesigned sheet; classic layout below is untouched.
+  if (tDoc.layout === "a4") {
+    return (
+      <A4Shell>
+        <A4Chrome backTo="/admin/quotes" backLabel="Back to quotes" />
+        {quote === undefined ? (
+          <A4Notice title="Loading quotation…" />
+        ) : quote === null ? (
+          <A4Notice title="Quotation not found" hint={`No quotation exists for ID “${id}”. It may have been removed from the demo store.`} />
+        ) : (
+          <>
+            {expired && (
+              <div className="mx-auto mb-3 w-full max-w-[794px] rounded-md border border-rose-300 bg-rose-50 px-4 py-2 text-[11px] font-semibold text-rose-800">
+                This quotation expired on {formatDate(quote.validUntil)} — request a refreshed quotation.
+              </div>
+            )}
+            <QuoteA4Sheet quote={quote} tDoc={tDoc} vars={vars} />
+          </>
+        )}
+      </A4Shell>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#eceae4] px-4 py-6 sm:py-10 print:bg-white print:p-0">

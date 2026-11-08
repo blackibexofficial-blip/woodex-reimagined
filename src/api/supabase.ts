@@ -80,7 +80,7 @@ import type {
   ProductImportRow, ProductImportResult,
   ProjectCostCode, ProjectActualLine, ProjectActualSource, ProjectFileItem,
 } from "@/api/types";
-import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
+import { BUILTIN_TEMPLATES, isBuiltinTemplateId, DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
 import { defaultWarrantyPage, defaultCustomDesignPage, defaultVirtualShowroomPage } from "@/api/singleton-defaults";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -1504,10 +1504,12 @@ async function listQuoteTemplates(): Promise<AdminQuoteTemplate[]> {
         header: Array.isArray(tpl.header) ? (tpl.header as AdminQuoteTemplate["header"]) : DEFAULT_QUOTE_TEMPLATE.header.map((b) => ({ ...b, id: `${b.id}-c` })),
         footer: Array.isArray(tpl.footer) ? (tpl.footer as AdminQuoteTemplate["footer"]) : DEFAULT_QUOTE_TEMPLATE.footer.map((b) => ({ ...b, id: `${b.id}-c` })),
         builtIn: false,
+        logo: typeof tpl.logo === "string" && tpl.logo ? tpl.logo : undefined,
+        layout: tpl.layout === "a4" ? ("a4" as const) : ("classic" as const),
       } satisfies AdminQuoteTemplate;
     })
-    .filter((t) => t.id !== DEFAULT_QUOTE_TEMPLATE.id);
-  return [DEFAULT_QUOTE_TEMPLATE, ...custom];
+    .filter((t) => !isBuiltinTemplateId(t.id));
+  return [...BUILTIN_TEMPLATES, ...custom];
 }
 
 async function saveQuoteTemplate(template: AdminQuoteTemplate): Promise<AdminQuoteTemplate> {
@@ -1515,13 +1517,13 @@ async function saveQuoteTemplate(template: AdminQuoteTemplate): Promise<AdminQuo
   const name = String(template.name ?? "").trim();
   if (!name) throw new Error("Template name is required.");
   let saved: AdminQuoteTemplate = { ...template, name, builtIn: false };
-  if (!saved.id || saved.id === DEFAULT_QUOTE_TEMPLATE.id || template.builtIn) {
+  if (!saved.id || isBuiltinTemplateId(saved.id) || template.builtIn) {
     saved = { ...saved, id: `tpl-${Date.now().toString(36)}` };
   }
   const row = {
     id: saved.id,
     name: saved.name,
-    template: { brandColor: saved.brandColor, header: saved.header, footer: saved.footer } as unknown as Json,
+    template: { brandColor: saved.brandColor, header: saved.header, footer: saved.footer, logo: saved.logo ?? null, layout: saved.layout ?? "classic" } as unknown as Json,
     updated_at: new Date().toISOString(),
   };
   const { error } = await supabase.from("quote_templates").upsert(row, { onConflict: "id" });
@@ -1531,7 +1533,7 @@ async function saveQuoteTemplate(template: AdminQuoteTemplate): Promise<AdminQuo
 
 async function deleteQuoteTemplate(id: string): Promise<boolean> {
   guard();
-  if (String(id) === DEFAULT_QUOTE_TEMPLATE.id) return false;
+  if (isBuiltinTemplateId(String(id))) return false;
   const { count, error } = await supabase.from("quote_templates").delete({ count: "exact" }).eq("id", String(id));
   if (error) fail("deleteQuoteTemplate", error);
   return (count ?? 0) > 0;
