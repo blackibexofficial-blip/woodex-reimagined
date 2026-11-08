@@ -37,6 +37,10 @@ import type {
   AdminClient,
   AdminClientLink,
   MergeCandidate,
+  AdminSiteVisit,
+  ProjectPractice,
+  NewSiteVisitInput,
+  SiteVisitPatch,
   ListParams,
   NewAdminProductInput,
   ProductImportResult,
@@ -183,6 +187,7 @@ interface DemoDb {
   tasks: AdminTask[];
   clients: AdminClient[];
   clientLinks: AdminClientLink[];
+  siteVisits: AdminSiteVisit[];
   suppliers: AdminSupplier[];
   purchaseOrders: AdminPurchaseOrder[];
   stockTransfers: AdminStockTransfer[];
@@ -513,11 +518,68 @@ function buildSeedMaterials(): AdminMaterial[] {
   return [...finishes, ...swatches];
 }
 
+/** Practice workspaces seeded for the two live jobs (BOQ = planned cost; files = metadata-only). */
+function buildSeedProjectPractices(): Record<string, ProjectPractice> {
+  return {
+    "7": {
+      boq: [
+        { id: "boq-g7-1", section: "Demolition & prep", item: "Strip-out & disposal", qty: 3500, unit: "sqft", rate: 180 },
+        { id: "boq-g7-2", section: "Demolition & prep", item: "Wet-zone waterproofing (shampoo wall)", qty: 650, unit: "sqft", rate: 450 },
+        { id: "boq-g7-3", section: "Joinery & panelling", item: "Walnut feature panelling", qty: 420, unit: "sqft", rate: 2850 },
+        { id: "boq-g7-4", section: "Joinery & panelling", item: "Barber consoles (custom walnut)", qty: 6, unit: "units", rate: 185000 },
+        { id: "boq-g7-5", section: "Joinery & panelling", item: "Retail display shelving", qty: 1, unit: "lot", rate: 950000 },
+        { id: "boq-g7-6", section: "Electrical & lighting", item: "Edison pendant grid with dimmers", qty: 1, unit: "lot", rate: 780000 },
+        { id: "boq-g7-7", section: "Electrical & lighting", item: "Mirror LED defogger pads", qty: 6, unit: "units", rate: 38000 },
+        { id: "boq-g7-8", section: "Plumbing", item: "Shampoo bowl + trap (2 stations)", qty: 2, unit: "units", rate: 165000 },
+        { id: "boq-g7-9", section: "Plumbing", item: "Drainage rework + vent", qty: 1, unit: "lot", rate: 240000 },
+        { id: "boq-g7-10", section: "Furniture", item: "Barber chairs (leather & brass)", qty: 6, unit: "units", rate: 145000 },
+        { id: "boq-g7-11", section: "Furniture", item: "Waiting lounge set (sofas + table)", qty: 1, unit: "lot", rate: 850000 },
+      ],
+      milestones: [
+        { id: "ms-g7-1", phase: "Concept sign-off", owner: "Creative director", due: "2025-09-04", status: "done" },
+        { id: "ms-g7-2", phase: "3D render approval", owner: "Design team", due: "2025-09-18", status: "done" },
+        { id: "ms-g7-3", phase: "Demolition & MEP rework", owner: "Site team", due: "2025-10-02", status: "done" },
+        { id: "ms-g7-4", phase: "Joinery manufacture at factory", owner: "Factory", due: "2025-11-14", status: "in_progress" },
+        { id: "ms-g7-5", phase: "Fit-out & services install", owner: "Site team", due: "2025-11-21", status: "in_progress" },
+        { id: "ms-g7-6", phase: "Signage & retail styling", owner: "Stylist", due: "2025-11-26", status: "not_started" },
+        { id: "ms-g7-7", phase: "Snag list & commissioning", owner: "Site team", due: "2025-11-28", status: "not_started" },
+        { id: "ms-g7-8", phase: "Handover & photoshoot", owner: "Whole team", due: "2025-12-05", status: "not_started" },
+      ],
+      files: [
+        { id: "file-g7-1", name: "GU7-floor-plan-rev3.dwg", size: 2_400_000, kind: "drawing", uploadedBy: "You", uploadedAt: "2025-10-27T09:30:00.000Z" },
+        { id: "file-g7-2", name: "salon-3D-render-final.png", size: 8_100_000, kind: "image", uploadedBy: "Design team", uploadedAt: "2025-10-25T14:10:00.000Z" },
+        { id: "file-g7-3", name: "mep-asbuilt-schematic.pdf", size: 1_200_000, kind: "document", uploadedBy: "Site engineer", uploadedAt: "2025-11-05T11:20:00.000Z" },
+        { id: "file-g7-4", name: "barber-chair-spec-sheet.pdf", size: 640_000, kind: "document", uploadedBy: "You", uploadedAt: "2025-10-26T16:45:00.000Z" },
+      ],
+    },
+    "1": {
+      boq: [
+        { id: "boq-d1-1", section: "Executive floors", item: "C-suite modular workstations", qty: 15, unit: "units", rate: 285000 },
+        { id: "boq-d1-2", section: "Executive floors", item: "ErgoMax task chairs (250)", qty: 250, unit: "units", rate: 42000 },
+        { id: "boq-d1-3", section: "Meeting & collaboration", item: "Board conference tables (walnut)", qty: 3, unit: "units", rate: 1250000 },
+        { id: "boq-d1-4", section: "Meeting & collaboration", item: "Workstation benching (120 units)", qty: 120, unit: "units", rate: 95000 },
+      ],
+      milestones: [
+        { id: "ms-d1-1", phase: "Quantified survey & BOQ", owner: "Site engineer", due: "2024-03-02", status: "done" },
+        { id: "ms-d1-2", phase: "Factory production slots", owner: "Factory", due: "2024-04-12", status: "done" },
+        { id: "ms-d1-3", phase: "Phased floor delivery (6 floors)", owner: "Logistics", due: "2024-05-28", status: "done" },
+        { id: "ms-d1-4", phase: "Handover & close-out docs", owner: "Whole team", due: "2024-06-07", status: "done" },
+      ],
+      files: [
+        { id: "file-d1-1", name: "DHA-corporate-tower-floor6-plan.dwg", size: 3_100_000, kind: "drawing", uploadedBy: "Site engineer", uploadedAt: "2024-02-18T10:05:00.000Z" },
+        { id: "file-d1-2", name: "csuite-render-v4.png", size: 9_400_000, kind: "image", uploadedBy: "Design team", uploadedAt: "2024-02-22T12:30:00.000Z" },
+      ],
+    },
+  };
+}
+
 function buildSeedProjects(): AdminProject[] {
   const now = Date.now();
   const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
+  const practiceSeeds = buildSeedProjectPractices();
   return projectSeed.map((p, i) => ({
     ...p,
+    ...(practiceSeeds[p.id] ? { practice: cloneProjectPractice(practiceSeeds[p.id]) } : {}),
     active: true,
     sortOrder: (i + 1) * 10,
     createdAt: iso(300 - i * 25),
@@ -541,6 +603,14 @@ function buildSeedBlogPosts(): AdminBlogPost[] {
 
 function cloneService<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T;
+}
+function cloneProjectPractice(p: ProjectPractice | undefined): ProjectPractice | undefined {
+  if (!p) return undefined;
+  return {
+    boq: p.boq.map((r) => ({ ...r })),
+    milestones: p.milestones.map((m) => ({ ...m })),
+    files: p.files.map((f) => ({ ...f })),
+  };
 }
 
 function buildSeedServices(): AdminService[] {
@@ -1185,7 +1255,7 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
   return [
     mk("QOT-1001", "lead-1005", "Bilal Ahmed", "+92 315 8899007", "bilal.a@example.com", undefined, "Islamabad",
        [[meeting, 1], [chair, 12]], 5, 14, "sent", 3),
-    mk("QOT-1002", "lead-1008", "Kashif Mirza", "+92 300 9988776", "ops@raviagrofoods.pk", "Ravi Agro Foods", "Multan",
+    mk("QOT-1002", "lead-1007", "Kashif Mirza", "+92 300 9988776", "ops@raviagrofoods.pk", "Ravi Agro Foods", "Multan",
        [[staff, 25], [chair, 50]], 8, 21, "accepted", 5),
   ];
 }
@@ -1222,7 +1292,7 @@ function buildSeedClientLinks(): AdminClientLink[] {
   return [
     { clientId: "CLI-1001", entity: "lead", entityId: "lead-1005" },
     { clientId: "CLI-1001", entity: "quote", entityId: "QOT-1001" },
-    { clientId: "CLI-1002", entity: "lead", entityId: "lead-1008" },
+    { clientId: "CLI-1002", entity: "lead", entityId: "lead-1007" },
     { clientId: "CLI-1002", entity: "quote", entityId: "QOT-1002" },
   ];
 }
@@ -1234,6 +1304,26 @@ export const customerScore = (o: { ordersCount: number; totalSpent: number; type
 };
 const withScore = <C extends { ordersCount: number; totalSpent: number; type: "retail" | "business" }>(c: C): C & { score: number } =>
   ({ ...c, score: customerScore(c) });
+
+const nextClientId = (clients: AdminClient[]): string => {
+  const nums = clients.map((c) => Number(String(c.id).match(/^CLI-(\d+)$/)?.[1] ?? 0)).filter((n) => Number.isFinite(n));
+  return `CLI-${(nums.length ? Math.max(...nums) : 1000) + 1}`;
+};
+
+const nextSiteVisitId = (visits: AdminSiteVisit[]): string => {
+  const nums = visits.map((v) => Number(String(v.id).match(/^SV-(\d+)$/)?.[1] ?? 0)).filter((n) => Number.isFinite(n));
+  return `SV-${(nums.length ? Math.max(...nums) : 1000) + 1}`;
+};
+
+/** Deterministic site-visit seeds: one completed measure-up, one upcoming warehouse visit. */
+function buildSeedSiteVisits(): AdminSiteVisit[] {
+  const t = Date.now();
+  const day = (n: number, h = 10) => { const d = new Date(t + n * DAY_MS); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+  return [
+    { id: "SV-1001", leadId: "lead-1005", clientId: "CLI-1001", scheduledAt: day(-6, 11), address: "House 22, Street 5, F-7/2, Islamabad", owner: "You", status: "Completed", outcome: "Measured lounge + dining wall — 3rd revision drawings shared with the client", notes: "Site access via watchman; pets on ground floor", createdAt: day(-13, 9), updatedAt: day(-6, 12) },
+    { id: "SV-1002", leadId: "lead-1007", clientId: "CLI-1002", scheduledAt: day(3, 9), address: "Ravi Agro Foods warehouse, Lahore Road, Multan", owner: "You", status: "Scheduled", notes: "Bring loading dock dims template + safety vest", createdAt: day(-2, 9), updatedAt: day(-2, 9) },
+  ];
+}
 
 /** Next TSK-#### id for the demo store. */
 const nextTaskId = (tasks: AdminTask[]): string => {
@@ -1856,11 +1946,11 @@ function buildSeed(): DemoDb {
     { daysAgo: 5, type: "quote", name: "Bilal Ahmed", email: "bilal.a@example.com", phone: "+92 315 8899007", city: "Islamabad", summary: "Conference room: 1 boardroom table, 14 recliner chairs, acoustic panels", value: 2100000, status: "quoted", consent: true, consentVersion: "lead-privacy-v1", landingPath: "/quotation", utmSource: "google", utmMedium: "cpc", utmCampaign: "boardroom-nov" },
     { daysAgo: 6, type: "quote", name: "Ayesha Siddiqui", email: "ayesha.s@example.com", phone: "+92 333 2211009", city: "Rawalpindi", summary: "Nursery + home office combo for villa, DHA Phase 5", value: 980000, status: "contacted" },
     { daysAgo: 8, type: "b2b", name: "Kashif Mirza", company: "Ravi Agro Foods", email: "ops@raviagrofoods.pk", phone: "+92 300 9988776", city: "Multan", summary: "Head office canteen + cafeteria furniture, 150 seats", value: 5400000, status: "quoted" },
-    { daysAgo: 11, type: "quote", name: "Fatima Raza", email: "fatima.r@example.com", phone: "+92 308 6655443", city: "Lahore", summary: "2 storage cabinets + 1 L-shaped executive table", value: 520000, status: "won" },
-    { daysAgo: 14, type: "b2b", name: "Omar Qureshi", company: "Nawaab Group of Companies", email: "facilities@nawaabgroup.pk", phone: "+92 312 5566778", city: "Islamabad", summary: "Complete HQ fit-out — 5 floors, ~300 workstations, boardroom, reception", value: 45000000, status: "won" },
-    { daysAgo: 16, type: "quote", name: "Owais Khan", email: "owais.k@example.com", phone: "+92 300 4422118", city: "Faisalabad", summary: "Reception counter + waiting area sofa for clinic", value: 760000, status: "lost" },
-    { daysAgo: 21, type: "quote", name: "Mahnoor Butt", email: "mahnoor.b@example.com", phone: "+92 345 9090901", city: "Lahore", summary: "Study room: 1 desk, task chair, shelving for kids' room", value: 240000, status: "won" },
-    { daysAgo: 26, type: "b2b", name: "Mariam Chaudhry", company: "Crescent Logistics", email: "admin@crescentlogistics.pk", phone: "+92 333 7654321", city: "Karachi", summary: "Branch offices in 6 cities — workstations, chairs, meeting tables", value: 12800000, status: "lost" },
+    { daysAgo: 11, type: "quote", name: "Fatima Raza", email: "fatima.r@example.com", phone: "+92 308 6655443", city: "Lahore", summary: "2 storage cabinets + 1 L-shaped executive table", value: 520000, status: "won", consent: true, consentVersion: "lead-privacy-v1", landingPath: "/quotation", utmSource: "instagram", utmMedium: "organic", utmCampaign: "minimal-home-look" },
+    { daysAgo: 14, type: "b2b", name: "Omar Qureshi", company: "Nawaab Group of Companies", email: "facilities@nawaabgroup.pk", phone: "+92 312 5566778", city: "Islamabad", summary: "Complete HQ fit-out — 5 floors, ~300 workstations, boardroom, reception", value: 45000000, status: "won", consent: true, consentVersion: "lead-privacy-v1", landingPath: "/quotation", utmSource: "linkedin", utmMedium: "organic", utmCampaign: "hq-fit-out-q4" },
+    { daysAgo: 16, type: "quote", name: "Owais Khan", email: "owais.k@example.com", phone: "+92 300 4422118", city: "Faisalabad", summary: "Reception counter + waiting area sofa for clinic", value: 760000, status: "lost", consent: true, consentVersion: "lead-privacy-v1", landingPath: "/quotation", utmSource: "facebook", utmMedium: "cpc", utmCampaign: "reception-counter-boost" },
+    { daysAgo: 21, type: "quote", name: "Mahnoor Butt", email: "mahnoor.b@example.com", phone: "+92 345 9090901", city: "Lahore", summary: "Study room: 1 desk, task chair, shelving for kids' room", value: 240000, status: "won", consent: true, consentVersion: "lead-privacy-v1", landingPath: "/blog/kids-study-room-checklist", utmSource: "youtube", utmMedium: "organic", utmCampaign: "study-room-makeover" },
+    { daysAgo: 26, type: "b2b", name: "Mariam Chaudhry", company: "Crescent Logistics", email: "admin@crescentlogistics.pk", phone: "+92 333 7654321", city: "Karachi", summary: "Branch offices in 6 cities — workstations, chairs, meeting tables", value: 12800000, status: "lost", consent: true, consentVersion: "lead-privacy-v1", landingPath: "/quotation", utmSource: "google", utmMedium: "cpc", utmCampaign: "6-city-rollout" },
   ];
   const leads: AdminLead[] = leadDrafts.map((l, i) => {
     const { daysAgo, ...rest } = l;
@@ -1872,7 +1962,7 @@ function buildSeed(): DemoDb {
   return { products: adminProducts, orders, customers, leads, settings: { ...DEFAULT_SETTINGS }, categories: buildSeedCategories(), media: buildSeedMedia(), inventoryMeta: buildInventoryMeta(adminProducts), movements: buildSeedMovements(adminProducts), zones: buildSeedZones(), orderEvents: buildSeedOrderEvents(orders), collections: buildSeedCollections(adminProducts), companies: buildSeedCompanies(), priceLists: buildSeedPriceLists(), bundles: buildSeedBundles(), salesChannels: buildSeedSalesChannels(), showrooms: buildSeedShowrooms(), series: buildSeedSeries(), brands: buildSeedBrands(), homepageSections: HOMEPAGE_SECTIONS_SEED, warrantyPage: defaultWarrantyPage(), customDesignPage: cloneDoc(defaultCustomDesignPage()), virtualShowroomPage: cloneDoc(defaultVirtualShowroomPage()), pages: buildSeedPages(), pageFolders: buildSeedPageFolders(), materials: buildSeedMaterials(), projects: buildSeedProjects(), blogPosts: buildSeedBlogPosts(), services: buildSeedServices(), returns: buildSeedReturns(orders), exchanges: buildSeedExchanges(orders, adminProducts), claims: buildSeedClaims(orders), draftOrders: buildSeedDraftOrders(adminProducts), quotes: seedQuotes,
     invoices: buildSeedInvoices(seedQuotes),
     payments: buildSeedPayments(),
-    tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
+    tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), siteVisits: buildSeedSiteVisits(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [] };
 }
 
 /* ── persistence (lazy; browser only) ───────────────────────────────────── */
@@ -1901,6 +1991,7 @@ function loadDb(): DemoDb {
       if (!Array.isArray(db.tasks)) db.tasks = [];
       if (!Array.isArray(db.clients)) db.clients = buildSeedClients();
       if (!Array.isArray(db.clientLinks)) db.clientLinks = buildSeedClientLinks();
+      if (!Array.isArray(db.siteVisits)) db.siteVisits = buildSeedSiteVisits();
       if (!Array.isArray(db.collections)) db.collections = buildSeedCollections(db.products);
       if (!Array.isArray(db.companies)) db.companies = buildSeedCompanies();
       if (!Array.isArray(db.priceLists)) db.priceLists = buildSeedPriceLists();
@@ -2407,6 +2498,69 @@ export const demoAdminApi: AdminApi = {
       merged = { ...into };
     });
     return merged as AdminClient;
+  },
+
+  async listSiteVisits(leadId?: string) {
+    return [...loadDb().siteVisits]
+      .filter((v) => !leadId || v.leadId === leadId)
+      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  },
+
+  async createSiteVisit(input: NewSiteVisitInput): Promise<AdminSiteVisit> {
+    if (!input?.leadId) throw new Error("Lead is required.");
+    if (!input?.scheduledAt) throw new Error("Pick a date and time.");
+    if (!input?.address?.trim()) throw new Error("Address is required.");
+    let created: AdminSiteVisit | undefined;
+    update((db) => {
+      // resolve identity: explicit client → link lookup → create client from the lead (0001: client_id NOT NULL)
+      let clientId = input.clientId?.trim() || undefined;
+      if (clientId) {
+        const c = db.clients.find((x) => x.id === clientId);
+        if (!c) throw new Error(`Client ${clientId} not found.`);
+      } else {
+        const link = db.clientLinks.find((l) => l.entity === "lead" && l.entityId === input.leadId);
+        if (link) {
+          clientId = link.clientId;
+        } else {
+          const lead = db.leads.find((l) => l.id === input.leadId);
+          if (!lead) throw new Error(`Lead ${input.leadId} not found.`);
+          clientId = nextClientId(db.clients);
+          const now = new Date().toISOString();
+          db.clients.push({ id: clientId, name: lead.name, company: lead.company, email: lead.email, emailNorm: emailNorm(lead.email), phone: lead.phone, phoneNorm: phoneNorm(lead.phone), city: lead.city, kind: lead.type === "b2b" ? "business" : "retail", source: lead.utmSource ?? "lead", tags: lead.utmCampaign ? [lead.utmCampaign] : [], createdAt: now, updatedAt: now });
+          db.clientLinks.push({ clientId, entity: "lead", entityId: input.leadId });
+        }
+      }
+      const now = new Date().toISOString();
+      const v: AdminSiteVisit = {
+        id: nextSiteVisitId(db.siteVisits),
+        leadId: input.leadId,
+        clientId: clientId as string,
+        scheduledAt: new Date(input.scheduledAt).toISOString(),
+        address: input.address.trim(),
+        owner: input.owner?.trim() || "You",
+        status: "Scheduled",
+        ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
+        createdAt: now,
+        updatedAt: now,
+      };
+      db.siteVisits.push(v);
+      created = { ...v };
+    });
+    return created as AdminSiteVisit;
+  },
+
+  async updateSiteVisitStatus(id: string, patch: SiteVisitPatch): Promise<AdminSiteVisit | undefined> {
+    let updated: AdminSiteVisit | undefined;
+    update((db) => {
+      const v = db.siteVisits.find((x) => x.id === id);
+      if (!v) return;
+      if (patch.status) v.status = patch.status;
+      if (patch.outcome !== undefined) v.outcome = patch.outcome.trim() || undefined;
+      if (patch.notes !== undefined) v.notes = patch.notes.trim() || undefined;
+      v.updatedAt = new Date().toISOString();
+      updated = { ...v };
+    });
+    return updated;
   },
 
   async listLeads(params = {}) {
@@ -3295,7 +3449,7 @@ export const demoAdminApi: AdminApi = {
     const db = loadDb();
     return [...(db.projects ??= [])]
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((r) => ({ ...r, furnitureUsed: [...r.furnitureUsed], testimonial: r.testimonial ? { ...r.testimonial } : undefined }));
+      .map((r) => ({ ...r, furnitureUsed: [...r.furnitureUsed], testimonial: r.testimonial ? { ...r.testimonial } : undefined, practice: cloneProjectPractice(r.practice) }));
   },
 
   async createProject(input) {
@@ -3362,8 +3516,9 @@ export const demoAdminApi: AdminApi = {
       if (patch.rating !== undefined) proj.rating = patch.rating;
       if (patch.active !== undefined) proj.active = patch.active;
       if (patch.sortOrder !== undefined) proj.sortOrder = patch.sortOrder;
+      if (patch.practice !== undefined) proj.practice = cloneProjectPractice(patch.practice);
       proj.updatedAt = new Date().toISOString();
-      updated = { ...proj, furnitureUsed: [...proj.furnitureUsed], testimonial: proj.testimonial ? { ...proj.testimonial } : undefined };
+      updated = { ...proj, furnitureUsed: [...proj.furnitureUsed], testimonial: proj.testimonial ? { ...proj.testimonial } : undefined, practice: cloneProjectPractice(proj.practice) };
     });
     return updated;
   },

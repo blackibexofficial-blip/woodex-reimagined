@@ -613,6 +613,36 @@ export interface MergeCandidate {
   clients: AdminClient[];
 }
 
+/* ── Site visits (0001 public.site_visits — plain RLS, crm.manage; no reminder-task RPC yet) ── */
+export type SiteVisitStatus = "Scheduled" | "Completed" | "No-show" | "Cancelled";
+export interface AdminSiteVisit {
+  id: string;              // "SV-<n>"
+  leadId: string;          // "lead-<n>"
+  clientId: string;        // "CLI-<n>" — mandatory in 0001 (client identity is the CRM master)
+  scheduledAt: string;     // ISO
+  address: string;
+  owner: string;
+  status: SiteVisitStatus;
+  outcome?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface NewSiteVisitInput {
+  leadId: string;
+  scheduledAt: string;
+  address: string;
+  owner?: string;
+  notes?: string;
+  /** Optional explicit client — hosted resolves/creates the client for the lead when omitted. */
+  clientId?: string;
+}
+export interface SiteVisitPatch {
+  status?: SiteVisitStatus;
+  outcome?: string;
+  notes?: string;
+}
+
 export interface AdminCustomer {
   id: string;
   name: string;
@@ -1014,6 +1044,8 @@ export const MATERIAL_PART_LABELS: Record<AdminMaterialPart, string> = {
 /* ── Projects / case studies (admin-managed since P1.3) ─────────────────── */
 export interface AdminProject {
   id: string;
+  /** Practice workspace payload (BOQ / milestones / files) — absent for plain portfolio entries. */
+  practice?: ProjectPractice;
   title: string;
   client: string;
   category: string;
@@ -1037,8 +1069,44 @@ export interface AdminProject {
   updatedAt: string;
 }
 
+/* ── Interior projects — practice workspace (rides the projects payload; no migration) ──
+   BOQ is PLANNED cost only (no actuals/variance — needs owner sign-off on a
+   costing model). Files are metadata-only; no bytes are stored. Milestones use a
+   four-badge status. Everything serializes into `projects.payload`. */
+export type ProjectMilestoneStatus = "not_started" | "in_progress" | "blocked" | "done";
+export const PROJECT_MILESTONE_STATUSES: ProjectMilestoneStatus[] = ["not_started", "in_progress", "blocked", "done"];
+export interface ProjectMilestone {
+  id: string;
+  phase: string;
+  owner: string;
+  due?: string;
+  status: ProjectMilestoneStatus;
+}
+export interface ProjectBoqRow {
+  id: string;
+  section: string;
+  item: string;
+  qty: number;
+  unit: string;
+  rate: number;
+}
+export interface ProjectFileItem {
+  id: string;
+  name: string;
+  size: number;
+  kind: "drawing" | "image" | "document" | "model";
+  uploadedBy: string;
+  uploadedAt: string;
+}
+export interface ProjectPractice {
+  boq: ProjectBoqRow[];
+  milestones: ProjectMilestone[];
+  files: ProjectFileItem[];
+}
+
 export interface NewProjectInput {
   title: string;
+  practice?: ProjectPractice;
   client: string;
   category: string;
   image?: string;
@@ -1655,6 +1723,11 @@ export interface AdminApi {
   listClients(params?: { includeMerged?: boolean }): Promise<AdminClient[]>;
   listMergeCandidates(): Promise<MergeCandidate[]>;
   mergeClients(intoId: string, fromId: string): Promise<AdminClient>;
+
+  /** CRM site visits — scheduling + outcome tracking against leads (0001 site_visits). */
+  listSiteVisits(leadId?: string): Promise<AdminSiteVisit[]>;
+  createSiteVisit(input: NewSiteVisitInput): Promise<AdminSiteVisit>;
+  updateSiteVisitStatus(id: string, patch: SiteVisitPatch): Promise<AdminSiteVisit | undefined>;
 
   listLeads(params?: ListParams & { type?: LeadType | "all"; status?: LeadStatus | "all" }): Promise<Paginated<AdminLead>>;
   updateLeadStatus(id: string, status: LeadStatus): Promise<AdminLead | undefined>;

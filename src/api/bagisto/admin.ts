@@ -28,7 +28,7 @@ import type {
   AdminBrand,
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
-  AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, AdminTask, AdminClient, MergeCandidate,
+  AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, AdminTask, AdminClient, MergeCandidate, AdminSiteVisit, NewSiteVisitInput, SiteVisitPatch,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -470,6 +470,16 @@ export const bagistoAdminApi: AdminApi = {
   async recordInvoicePayment(): Promise<AdminInvoice | undefined> {
     throw new BagistoApiError(501, "Invoice payment recording is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
   },
+  async listSiteVisits(): Promise<AdminSiteVisit[]> {
+    throw new BagistoApiError(501, "Site visits are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async createSiteVisit(): Promise<AdminSiteVisit> {
+    throw new BagistoApiError(501, "Site visits are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+  async updateSiteVisitStatus(): Promise<AdminSiteVisit | undefined> {
+    throw new BagistoApiError(501, "Site visits are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
+
   async listClients(): Promise<AdminClient[]> {
     throw new BagistoApiError(501, "Merge review is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
   },

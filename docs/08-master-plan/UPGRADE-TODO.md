@@ -210,8 +210,8 @@ Spree dashboard map, and the current React build). Not sequenced yet — owner t
   (after Furniture Series) · **Bulk editor**: "Brand" action (set brandId on selected rows) + brand filter column —
   bulk round-trip verified (assign → count 2 → reassign → count 0). Bagisto adapter = 501 stubs. Live check
   35/35 · e2e 33/33 · lint 0 errors · clean rebuild verified. Storefront unchanged (catalogue is Woodex).
-- [ ] **A4** Product Attributes — option sets & values (Finish, Size, Fabric…), values can adjust price and carry
-  SKU suffix. **Overlaps P3.1 — do not duplicate; treat P3.1 as the implementation task.**
+- [x] **A4** Product Attributes — option sets & values (Finish, Size, Fabric…), values can adjust price and carry
+  SKU suffix. **Superseded by P3.1** (implementation shipped 2026-11-06; nothing further to build here).
 - [x] **A5** Category editor upgrade — DONE: `AdminCategory` gains `heroStyle` (standard/split/full-width/minimal),
   `homepageBestSellers` / `homepageCarousel` switches (row chips in the tree), `shortDescription` (hero sub-copy),
   `backgroundImage` (URL + thumbnail preview), `longDescription`. Legacy lbpanel parity block sits in the edit
@@ -355,7 +355,10 @@ legacy 81-page catalogue **stays separate** (furniture site only). See plan §11
 - [ ] **Vercel deployment checklist** — owner-side dashboard work; agent has no Vercel access.
 - [ ] **Known limits (accepted, documented):** demo gate ≠ RBAC; Bagisto writes stay 501 until Phase 3 backend
   provisioning; channel attribution is all-or-nothing at order level; bundles don't stack trade pricing.
-- [ ] **Housekeeping sweep** — remove any `console.log` remnants; `.node-version`/`bun` note in README (optional).
+- [x] **Housekeeping sweep** — DONE 2026-11-08: `console.log`/`info`/`debug`/`trace` remnants in `src/` = none found
+  (only deliberate `console.error`/`console.warn` error paths remain) · `.node-version` deliberately NOT added (CI
+  unpinned by design — `oven-sh/setup-bun@v2`); README carries the toolchain note instead · stale README refs fixed
+  (e2e 33→59 checks, a11y gate description, build-time sitemap text).
 
 ## Pending task registry (consolidated 2026-11-06, post PR #3 merge)
 
@@ -374,9 +377,9 @@ Everything outstanding after the merge — owner to triage; agent holds code-siz
 - [ ] **Vercel deployment checklist** (cPanel/Vercel cutover) — owner-side dashboard work.
 
 **Agent-code sized (no owner input needed)**
-- [ ] **B4 — Custom Design / Virtual Showroom (static)** — last open Phase 4 module; fold into Phase 4 sweep.
-- [ ] **PB-1 … PB-5** — page-builder waves 1–5 (see PB section above); PB-1 starts after the §11 answers.
-- [ ] **Housekeeping sweep** — any `console.log` remnants; `.node-version`/bun note in README (optional).
+- [x] **B4 — Custom Design / Virtual Showroom (static)** — DONE 2026-11-07 (owner-picked; see Phase 4 section — stale line, was listed as pending here).
+- [~] **PB-1 … PB-2** — DONE 2026-11-06/07 (see PB section). **PB-3 … PB-5** — page-builder Waves 3–5 remain, per-wave owner-gated (owner Q3 decision); do not start without owner words.
+- [x] **Housekeeping sweep** — DONE 2026-11-08 (see Cross-cutting section).
 
 **Parked / accepted**
 - [ ] **Known limits (accepted, documented):** demo gate ≠ RBAC; Bagisto writes stay 501 until Phase 3
@@ -384,6 +387,10 @@ Everything outstanding after the merge — owner to triage; agent holds code-siz
 - [ ] **Page-builder literal-all risk review** — revisit R1 (per-page chrome) at Wave 1 kickoff.
 
 ## Verification gate (every module)
+
+> **2026-11-08 sync:** the suite has grown — e2e is now **59/59**, rehearsal **68/68** (`npm run test:rehearsal`),
+> and the working branch for all current work is `arena/be885bad-woodex-reimagined` (PR open); step 4's
+> branch/PR reference is historical. Gates 1–3 unchanged.
 
 1. `npm run build` · `npm run typecheck` (0 errors) · `npm run lint` (0 errors)
 2. `bun run e2e` → **33/33 PASS** (grow the suite when a module adds a new admin surface worth gating)

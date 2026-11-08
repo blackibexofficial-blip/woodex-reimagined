@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Briefcase, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
+import { Briefcase, Pencil, Plus, Ruler, Search, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import { projectCategories } from "@/data/projects";
@@ -15,6 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import ProjectPracticeDialog from "@/admin/pages/ProjectPracticeDialog";
 
 type ProjectForm = {
   title: string;
@@ -79,6 +80,7 @@ export default function AdminProjects() {
 
   const [deleteTarget, setDeleteTarget] = useState<AdminProject | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [practiceProject, setPracticeProject] = useState<AdminProject | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -298,6 +300,9 @@ export default function AdminProjects() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Practice workspace — BOQ · milestones · files" onClick={() => setPracticeProject(p)} aria-label={`Practice workspace for ${p.title}`}>
+                          <Ruler className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)} aria-label={`Edit ${p.title}`}>
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -457,6 +462,15 @@ export default function AdminProjects() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Practice workspace (BOQ · milestones · files) */}
+      {practiceProject && (
+        <ProjectPracticeDialog
+          project={practiceProject}
+          onClose={() => setPracticeProject(null)}
+          onSaved={(updated) => { setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x))); setPracticeProject(updated); }}
+        />
+      )}
     </div>
   );
 }

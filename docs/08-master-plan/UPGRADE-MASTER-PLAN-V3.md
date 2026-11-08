@@ -448,7 +448,7 @@ Legacy screen #16 is delivered in-repo, following the same template as the invoi
 | `tasks` schema + RLS use | ✅ rides 0001 verbatim — `crm.manage` for read/insert/update; **no delete policy** (worked, never deleted); no RPC, no new migration |
 | Sales access | ✅ sales holds `crm.manage` — rehearsed (create + read); viewer denied; editor denied |
 | Hosted gap | ❌ hosted unverified; demo client label is demo-only (hosted mode carries refs, no label column) — documented, not hidden |
-| Rehearsal count | 65/65 (pglite, migrations 0001–0012 + quotation + invoice + tasks + admin_overview casing + client_merge identity suites) |
+| Rehearsal count | 68/68 (pglite, migrations 0001–0012 + quotation + invoice + tasks + admin_overview casing + client_merge identity + site_visits RLS suites) |
 
 **Honesty note:** "parity" here means functional parity of the follow-ups surface (the visible funnel), not byte-copy of legacy internals; nothing in this addendum implies hosted readiness, and hosted activation remains owner-gated per §12.
 
@@ -465,3 +465,21 @@ Legacy screens #6 and #21 delivered as one card: **Pipeline control center** on 
 Legacy CRM depth item closed: **`/admin/client-merge`** — identity-review queue derived from non-merged `clients` grouped by `email_norm`/`phone_norm`; human picks the canonical record per pair (nothing auto-merges); consolidation executes via 0001 `client_merge` (crm.manage, security definer): `client_links` re-pointed, loser tombstoned (`merged_into`) — no deletes, full audit. Customer drawer gains **Source** + derived **Score** (1–99, computed — never stored). Demo seeds CLI-1001…CLI-1007 (email pair, phone pair, one retired record). Rehearsal **65/65** (+3 client_merge asserts).
 
 **Honesty note:** hosted customers are synthesized from orders — `source` surfaces only as hosted `clients` rows exist (merge backfill); score is always derived; hosted verification remains owner-gated. This addendum implies no hosted readiness.
+
+## 19. Addendum — Leads CRM depth: kanban + site visits (2026-11-08, this branch)
+
+Backlog #4 delivered in-repo: **Table/Board toggle on `/admin/leads`** (HTML5 drag-and-drop — no new libraries; five **lowercase** stage columns matched to stored `lead.status`; optimistic move with rollback; board ignores pagination/status-filter) and **site-visit scheduling + outcome capture** (`site_visits` via 0001 plain RLS read/insert/update — crm.manage; the oft-cited `site_visit_schedule` RPC **does not exist** and was not invented; `reminder_task_id` deliberately unlinked this pass). Hosted client resolution disclosed (explicit ref → `client_links` → auto-create identity client, `source: 'lead'`; nothing applied live). Demo corrected for a pre-existing `lead-1008` vs `lead-1007` identity off-by-one affecting Kashif Mirza's quote/link/visit seeds. Rehearsal **68/68** (+3 site-visits asserts); e2e **46/46**; bagisto = 501 stubs. Win-rate analytics deliberately deferred pending an owner-defined metric.
+
+**Honesty note:** nothing in this addendum implies hosted readiness; hosted activation remains owner-gated per §12. Kanban drag polish awaits UX sign-off.
+
+## 20. Addendum — Campaign attribution view shipped (2026-11-08, this branch)
+
+Backlog #1 delivered in-repo, **no schema changes, no pixels**: `/admin/campaigns` rolls captured lead UTM tags into a campaign funnel (leads · consent-OK · B2B · won/lost · win rate · pipeline · won value; Unattributed shown honestly), a recharts Leads-vs-Won bar chart, and source/medium rollups — KPIs: attributed total, open pipeline, won value, win rate. **Honesty constraints held:** first-party only; no pixel/tracker deployed (owner decision); spend/CPA/ROAS deliberately absent (spend storage = owner decision). Demo attribution seeds enriched (8/12 attributed; win rate 60%). e2e **52/52** at that time (+2 campaign + +4 click-through asserts); now **54/54** after §21 (+2 practice-workspace asserts); rehearsal unchanged **68/68**; `isAnimationActive={false}` on the bars (recharts mount animation never painted under headless chromium — hit-testing verified the bars rendered all along).
+
+**Honesty note:** nothing here implies hosted readiness or pixel consent; activation remains owner-gated per §12. Out of scope by design: ROAS math, quote-vs-lead conversion tie, ad-spend persistence.
+
+## 21. Addendum — Interior projects practice workspace (v1) (2026-11-08, this branch)
+
+Backlog #7 (v1) delivered in-repo, **zero migrations**: per-row **Practice workspace** on `/admin/projects` — Overview (planned cost · milestone roll-up % · next due) · **BOQ planned cost only** · **Milestones** (four badges; Done 1 / In-progress 0.5 / Blocked/Not-started 0 roll-up) · **Files** (metadata-only; simulated uploads). Everything serializes into `projects.payload` — hosted `payload jsonb` absorbs it transparently (apply stays owner-gated). Demo seeds: Gents Grooming Lounge id 7 (11 BOQ rows / 8 milestones / 4 files) + DHA Corporate Tower id 1 (all-done). Site visits NOT cross-linked yet. e2e **59/59** (+2 practice-workspace + +5 coverage-pass: kanban synthetic drag, merge-review candidates + audit, BOQ tab, BOQ qty recompute); rehearsal unchanged **68/68**; lint 34 pre-existing warnings.
+
+**Honesty note:** v1 scope was chosen as the low-risk slice — **production/dispatch tab is NOT in v1**; BOQ has no actuals/variance; files are metadata-only, unverified against any hosted storage. No hosted readiness implied; hosted remains owner-gated per §12.

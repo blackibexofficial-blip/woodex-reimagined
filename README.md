@@ -102,7 +102,6 @@ security headers, immutable caching for hashed assets and gzip all ship in this 
 `public/.htaccess` (auto-copied into every build). Deep links like `/shop` and `/quotation` will
 work out of the box on Apache/cPanel; on Nginx replicate the `location / { try_files $uri /index.html; }`
 rule yourself (backend/README §8). Social cards use `public/og-cover.jpg`; `robots.txt` +
-`sitemap.xml` (static top-level routes) ship too — the dynamic product URLs are deliberately
-omitted until a build-time sitemap generator walks `src/data/products.ts`.
+`sitemap.xml` (generated from `src/data/*` on every `bun run build` by `scripts/generate-sitemap.ts` — committed, don't hand-edit) ships too.
 Lovable publishing also works (the project was originally scaffolded there):
 lovable.dev → Share → Publish.
