@@ -9,7 +9,7 @@ import { formatPKR, SectionCard, SectionSkeleton, EmptyState } from "@/admin/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -156,12 +156,10 @@ export default function AdminSalesChannels() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "channels" | "showrooms")}>
-        <TabsList>
-          <TabsTrigger value="channels">Sales Channels ({channels.length})</TabsTrigger>
-          <TabsTrigger value="showrooms">Showrooms &amp; Markets ({rooms.length})</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <ToggleGroup type="single" value={tab} onValueChange={(v) => v && setTab(v as "channels" | "showrooms")} aria-label="Sales channels section" className="h-10 rounded-md bg-muted p-1">
+        <ToggleGroupItem value="channels" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Sales Channels ({channels.length})</ToggleGroupItem>
+        <ToggleGroupItem value="showrooms" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Showrooms &amp; Markets ({rooms.length})</ToggleGroupItem>
+      </ToggleGroup>
 
       {loading ? (
         <SectionCard title="Loading…"><SectionSkeleton rows={6} /></SectionCard>

@@ -145,7 +145,7 @@ export default function AdminInvoices() {
               {STATUS_FILTERS.map((s) => <SelectItem key={s} value={s}>{s === "all" ? "All statuses" : s}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={load} aria-label="Reload">
+          <Button variant="outline" onClick={load} aria-label="Refresh">
             <RefreshCw className="mr-1.5 h-4 w-4" /> Refresh
           </Button>
           <Button onClick={openConvert} className="bg-accent hover:bg-accent/90 text-accent-foreground whitespace-nowrap">

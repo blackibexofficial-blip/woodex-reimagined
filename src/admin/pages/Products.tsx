@@ -392,7 +392,7 @@ export default function AdminProducts() {
         <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Input placeholder="Search products, categories, IDs, SKUs…" value={query} onChange={(e) => setQuery(e.target.value)} className="sm:max-w-xs bg-white" aria-label="Search products" />
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-full sm:w-48 bg-white"><SelectValue placeholder="All categories" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-48 bg-white" aria-label="Filter by category"><SelectValue placeholder="All categories" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All categories</SelectItem>
               {categoryOptions.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
@@ -406,7 +406,7 @@ export default function AdminProducts() {
             </SelectContent>
           </Select>
           <Select value={stockFilter} onValueChange={setStockFilter}>
-            <SelectTrigger className="w-full sm:w-40 bg-white"><SelectValue placeholder="Stock" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-40 bg-white" aria-label="Filter by stock"><SelectValue placeholder="Stock" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All stock</SelectItem>
               <SelectItem value="in">In stock</SelectItem>

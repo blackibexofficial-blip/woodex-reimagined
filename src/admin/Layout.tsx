@@ -121,7 +121,7 @@ export default function AdminLayout() {
       </div>
 
       {/* nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <nav aria-label="Admin navigation" className="flex-1 overflow-y-auto px-3 py-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label} className="mb-5">
             <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{group.label}</p>
@@ -175,13 +175,13 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-secondary text-foreground">
       {/* desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden lg:block">{sidebar}</aside>
+      <aside aria-label="Admin sidebar" className="fixed inset-y-0 left-0 z-30 hidden lg:block">{sidebar}</aside>
 
       {/* mobile sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} aria-label="Close menu" />
-          <aside className="absolute inset-y-0 left-0 shadow-2xl">{sidebar}</aside>
+          <aside aria-label="Admin sidebar (mobile)" className="absolute inset-y-0 left-0 shadow-2xl">{sidebar}</aside>
         </div>
       )}
 

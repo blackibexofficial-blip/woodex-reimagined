@@ -6,7 +6,7 @@ import type { AdminCategory, AdminCompany, AdminPriceList, NewAdminPriceListInpu
 import { formatDate, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -193,20 +193,18 @@ export default function AdminPriceLists() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | PriceListStatus)}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="draft">Draft</TabsTrigger>
-            <TabsTrigger value="archived">Archived</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => v && setStatusFilter(v as "all" | PriceListStatus)} aria-label="Filter price lists by status" className="h-auto flex-wrap justify-start rounded-md bg-muted p-1">
+          <ToggleGroupItem value="all" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">All</ToggleGroupItem>
+          <ToggleGroupItem value="active" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Active</ToggleGroupItem>
+          <ToggleGroupItem value="draft" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Draft</ToggleGroupItem>
+          <ToggleGroupItem value="archived" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Archived</ToggleGroupItem>
+        </ToggleGroup>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Search price lists…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9 sm:w-52 bg-white" aria-label="Search price lists" />
           </div>
-          <Button onClick={openCreate} className="bg-hon-green text-white hover:bg-hon-green-dark"><Plus className="mr-1.5 h-4 w-4" />New price list</Button>
+          <Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent/90"><Plus className="mr-1.5 h-4 w-4" />New price list</Button>
         </div>
       </div>
 
@@ -279,7 +277,7 @@ export default function AdminPriceLists() {
                   const state = n === step ? "current" : n < step ? "done" : "todo";
                   return (
                     <li key={label}>
-                      <button type="button" onClick={() => n <= step && setStep(n)} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition ${state === "current" ? "bg-hon-green text-white font-semibold" : state === "done" ? "text-hon-green-dark hover:bg-hon-green/10" : "text-muted-foreground"}`} aria-current={state === "current" ? "step" : undefined}>
+                      <button type="button" onClick={() => n <= step && setStep(n)} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition ${state === "current" ? "bg-accent text-accent-foreground font-semibold" : state === "done" ? "text-hon-green-dark hover:bg-hon-green/10" : "text-muted-foreground"}`} aria-current={state === "current" ? "step" : undefined}>
                         <span className={`flex h-4 w-4 items-center justify-center rounded-full border text-[9px] ${state === "current" ? "border-white" : state === "done" ? "border-hon-green" : "border-muted-foreground/40"}`}>{state === "done" ? "✓" : n}</span>
                         {label}
                       </button>
@@ -418,9 +416,9 @@ export default function AdminPriceLists() {
                   {step === 1 ? <><X className="mr-1 h-4 w-4" />Cancel</> : <><ChevronLeft className="mr-1 h-4 w-4" />Back</>}
                 </Button>
                 {step < 5 ? (
-                  <Button size="sm" onClick={next} disabled={!canContinue()} className="bg-hon-green text-white hover:bg-hon-green-dark disabled:opacity-40">Continue<ChevronRight className="ml-1 h-4 w-4" /></Button>
+                  <Button size="sm" onClick={next} disabled={!canContinue()} className="bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-40">Continue<ChevronRight className="ml-1 h-4 w-4" /></Button>
                 ) : (
-                  <Button size="sm" onClick={submit} disabled={saving} className="bg-hon-green text-white hover:bg-hon-green-dark">{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{wizard?.mode === "create" ? "Create price list" : "Save changes"}</Button>
+                  <Button size="sm" onClick={submit} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent/90">{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{wizard?.mode === "create" ? "Create price list" : "Save changes"}</Button>
                 )}
               </div>
             </div>

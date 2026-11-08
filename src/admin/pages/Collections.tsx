@@ -13,7 +13,7 @@ import type {
 import { SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -190,19 +190,17 @@ export default function AdminCollections() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={kindFilter} onValueChange={(v) => setKindFilter(v as "all" | AdminCollectionKind)}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="manual">Manual</TabsTrigger>
-            <TabsTrigger value="automatic">Automatic</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <ToggleGroup type="single" value={kindFilter} onValueChange={(v) => v && setKindFilter(v as "all" | AdminCollectionKind)} aria-label="Filter collections by kind" className="h-auto flex-wrap justify-start rounded-md bg-muted p-1">
+          <ToggleGroupItem value="all" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">All</ToggleGroupItem>
+          <ToggleGroupItem value="manual" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Manual</ToggleGroupItem>
+          <ToggleGroupItem value="automatic" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Automatic</ToggleGroupItem>
+        </ToggleGroup>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Search collections…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9 sm:w-56 bg-white" aria-label="Search collections" />
           </div>
-          <Button onClick={openCreate} className="bg-hon-green text-white hover:bg-hon-green-dark"><Plus className="mr-1.5 h-4 w-4" />New collection</Button>
+          <Button onClick={openCreate} className="bg-accent text-accent-foreground hover:bg-accent/90"><Plus className="mr-1.5 h-4 w-4" />New collection</Button>
         </div>
       </div>
 
@@ -330,7 +328,7 @@ export default function AdminCollections() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialog(null)}><X className="mr-1.5 h-4 w-4" />Cancel</Button>
-            <Button onClick={submit} disabled={saving} className="bg-hon-green text-white hover:bg-hon-green-dark">{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{dialog?.mode === "create" ? "Create collection" : "Save changes"}</Button>
+            <Button onClick={submit} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent/90">{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{dialog?.mode === "create" ? "Create collection" : "Save changes"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

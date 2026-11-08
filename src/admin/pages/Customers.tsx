@@ -7,7 +7,7 @@ import { formatPKR, formatDate, SectionCard, SectionSkeleton, EmptyState } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const PER_PAGE = 10;
@@ -51,13 +51,11 @@ export default function AdminCustomers() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={type} onValueChange={(v) => setType(v as TypeFilter)}>
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="retail">Retail</TabsTrigger>
-            <TabsTrigger value="business">Business / B2B</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <ToggleGroup type="single" value={type} onValueChange={(v) => v && setType(v as TypeFilter)} aria-label="Filter customers" className="h-10 rounded-md bg-muted p-1">
+          <ToggleGroupItem value="all" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">All</ToggleGroupItem>
+          <ToggleGroupItem value="retail" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Retail</ToggleGroupItem>
+          <ToggleGroupItem value="business" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Business / B2B</ToggleGroupItem>
+        </ToggleGroup>
         <Input placeholder="Search name, company, city, phone…" value={query} onChange={(e) => setQuery(e.target.value)} className="sm:max-w-xs bg-white" />
       </div>
 
