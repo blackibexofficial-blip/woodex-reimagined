@@ -185,6 +185,16 @@ async function adminSuite(browser) {
   await page.goto(`${ADMIN}/quotes`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Open pipeline", 15000).catch(() => {});
   ok("quotes page shows the KPI pipeline strip", (await bodyText()).toLowerCase().includes("open pipeline"));
+  // ── PO → job actuals (cost-capture, owner-delegated slice) ──
+  await page.goto(`${ADMIN}/purchase-orders`, { waitUntil: "networkidle2", timeout: 60000 });
+  const postBtn = await page.waitForSelector('[aria-label*="to job actuals"]', { timeout: 15000 }).catch(() => null);
+  ok("PO table offers the Post-to-job-actuals action on a committed PO", !!postBtn);
+  if (postBtn) {
+    await postBtn.click();
+    const opened = await page.waitForFunction(() => { const t = document.body.innerText.toLowerCase(); return t.includes("to job actuals") && t.includes("job / project"); }, { timeout: 8000 }).then(() => true).catch(() => false);
+    ok("Post-to-job-actuals dialog opens with the PO reference", opened);
+    await page.keyboard.press("Escape");
+  }
 
   await page.goto(`${ADMIN}/dashboard`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Revenue — last 30 days", 20000);

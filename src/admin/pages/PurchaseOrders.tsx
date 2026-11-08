@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Search, Plus, Loader2, Pencil, Trash2, PackagePlus, ClipboardCheck, Send, Ban, Minus, X, Printer,
+  Search, Plus, Loader2, Pencil, Trash2, PackagePlus, ClipboardCheck, Send, Ban, Minus, X, Printer, ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
@@ -21,6 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import PostPoActualsDialog from "@/admin/components/PostPoActualsDialog";
 
 const STATUSES: Array<PurchaseOrderStatus | "all"> = ["all", "draft", "sent", "partial", "received", "cancelled"];
 
@@ -59,6 +60,8 @@ export default function AdminPurchaseOrders() {
   const [receiveTarget, setReceiveTarget] = useState<AdminPurchaseOrder | null>(null);
   const [receiptQty, setReceiptQty] = useState<Record<string, string>>({});
   const [receiving, setReceiving] = useState(false);
+  /* post-to-job-actuals dialog (PO → ledger, cost-capture only) */
+  const [postTarget, setPostTarget] = useState<AdminPurchaseOrder | null>(null);
 
   /* delete + cancel confirms */
   const [deleteTarget, setDeleteTarget] = useState<AdminPurchaseOrder | null>(null);
@@ -339,6 +342,11 @@ export default function AdminPurchaseOrders() {
                             </Button>
                           </>
                         )}
+                        {(t.status === "sent" || t.status === "partial" || t.status === "received") && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-800 hover:text-amber-900" onClick={() => setPostTarget(t)} aria-label={`Post ${t.id} to job actuals`} title="Post to job actuals (cost-capture — ledger lines at PO prices)">
+                            <ClipboardList className="h-4 w-4" />
+                          </Button>
+                        )}
                         {(t.status === "sent" || t.status === "partial") && (
                           <>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-700 hover:text-emerald-800" onClick={() => openReceive(t)} aria-label={`Receive against ${t.id}`} title="Receive goods">
@@ -482,6 +490,15 @@ export default function AdminPurchaseOrders() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── post-to-job-actuals dialog ──────────────────────────────── */}
+      {postTarget && (
+        <PostPoActualsDialog
+          po={postTarget}
+          onClose={() => setPostTarget(null)}
+          onPosted={() => { void load(); }}
+        />
+      )}
 
       {/* ── receive dialog ─────────────────────────────────────────── */}
       <Dialog open={receiveTarget !== null} onOpenChange={(open) => !open && setReceiveTarget(null)}>

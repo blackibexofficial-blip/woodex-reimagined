@@ -210,6 +210,15 @@ caveat, migration 0001–0009 contents, retired rehearsal figures.
 - **Honesty rails honoured:** quote advance/balance callout is labelled as derived (75/25 schedule), not a stored field; invoice ledger rows recompute read-side; PO "Received" column appears only with real receipt data; no invented schema, no hosted apply, Bagisto untouched (501), storefront untouched, `src/data/products.ts` untouched.
 - Gates: tsc rc=0 · eslint **0 errors / 33 accepted warnings** (one new react-refresh warning avoided by moving `itemCode` out of the component module) · build ✓ · e2e **67/67 → 76/76** (+9: six printable documents render, New order page, New invoice wizard, quotes KPI strip) · rehearsal unchanged **93/93** · **a11y 0 violations across 51 routes** (7 public + 44 admin incl. the two new creation pages; four contrast fixes from the first pass — hon-green→hon-green-dark on text-bearing buttons + the totals-rail caption).
 
+### DONE 2026-11-08 — PO→job-actuals auto-allocation, Option C (branch `arena/ea76e5b6-woodex-reimagined`; this PR)
+
+- **Owner said "Start as you recommend"** (2026-11-08) after the proposal doc landed — recommendation (Option C, A folded in) is what shipped. **Option B (BOQ-row allocation table) NOT built — needs separate explicit words.**
+- **"Post to job actuals" on committed POs** (sent / partial / received; draft/cancelled get no entry point). New dialog `src/admin/components/PostPoActualsDialog.tsx`: pick the job → per-line **cost-code pickers** (or one bulk "apply to all lines") → per-line **rate override** at PO prices → qty basis toggle **Received (default, the honest actuals basis) / Ordered** at point of use → incurred-on date → bulk post. Amounts compute live; unit = `units` (PO vocabulary); `source="po"`, `poRef=PO id`.
+- **Honesty rails:** received-qty default with a visible 0-received warning; zero-basis lines excluded automatically; if the ledger already holds lines with this poRef, every checkbox starts UNCHECKED with an amber banner; partial failure keeps the dialog open with per-line errors — never "posted" on a lie. No re-typing of name/qty/rate; no silent BOQ mapping — the human picks job + codes. No BOQ-row linkage (that's option B, out).
+- **No schema change, no migration, no RLS change** — rides `addProjectActual` / `listProjectCostCodes` / `listProjectActuals` through the same adapters as the manual form.
+- Gates: tsc rc=0 · eslint 0 errors/warnings on touched files · build ✓ · **e2e 78/78** (+2: PO row action; dialog opens with PO ref) · verified end-to-end headlessly on the preview (PO-1002 → Gents Grooming Lounge, Ordered basis → 2 lines × JNR posted, ledger shows PO-1002 @ Rs 145/380 = Rs 72,500 + Rs 114,000 = Rs 186,500).
+- Not done (flagged): BOQ-row precision (option B — explicit words required, would take **0016**); PO receipt-time auto-post (deliberately manual — user stays in the loop); duplicate-line granularity (guard is poRef-level, not per-line-id — delete duplicates in the Actuals tab before re-posting).
+
 ### HOLD — deliberately parked
 
 14. `HOLD` **Zone-rate admin screen** — SQL edits acceptable at current volume; revisit when ops edits zones weekly.
