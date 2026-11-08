@@ -57,6 +57,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import type {
   AdminApi,
+  ChatConversation, ChatMessage, ChatMode,
   AdminBlogPost, AdminBrand, AdminBundle, AdminCategory, AdminCollection, AdminCollectionKind,
   AdminCustomDesignPage, AdminCustomer, AdminDeliveryZone, AdminHomepageSections, AdminInventoryItem, AdminLead,
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
@@ -2065,6 +2066,66 @@ async function updateLeadStatus(id: string, status: AdminLead["status"], patch?:
   if (error) fail("updateLeadStatus", error);
   return data ? rowToAdminLead(data as Row) : undefined;
 }
+
+/* ── Live chat (V4 P0) — demo-authoritative this release; hosted tables are owner-gated ── */
+const CHAT_HOSTED_REASON = "live chat is demo-only in this release — hosted chat tables need the owner's explicit migration decision";
+
+async function listChatConversations(): Promise<ChatConversation[]> {
+  return [];
+}
+
+async function getChatConversation(): Promise<{ conversation: ChatConversation; messages: ChatMessage[] } | undefined> {
+  return undefined;
+}
+
+async function postChatVisitorMessage(): Promise<{ conversation: ChatConversation; message: ChatMessage }> {
+  throw new SupabaseUnsupportedError(CHAT_HOSTED_REASON);
+}
+
+async function postChatAgentMessage(): Promise<ChatMessage | undefined> {
+  throw new SupabaseUnsupportedError(CHAT_HOSTED_REASON);
+}
+
+async function captureChatOffline(input: { name: string; phone: string; message: string; consent: boolean; consentVersion?: string; page?: string }): Promise<{ conversation: ChatConversation; leadId: string }> {
+  if (!input.consent) throw new Error("Consent is required before we store a callback request.");
+  const lead = await createLead({
+    type: "chat",
+    name: input.name.trim(),
+    phone: input.phone.trim(),
+    summary: `Chat callback — ${input.message.trim().slice(0, 160)}`,
+    consent: true,
+    consentAt: new Date().toISOString(),
+    consentVersion: input.consentVersion ?? "lead-privacy-v1",
+    landingPath: input.page,
+    utmSource: "storefront_chat",
+  });
+  const now = new Date().toISOString();
+  return {
+    conversation: { id: `CH-${lead.id}`, page: input.page, visitorName: input.name, visitorPhone: input.phone, visitorConsent: true, visitorConsentAt: now, status: "open", unread: 1, createdAt: now, lastMessageAt: now, leadId: lead.id },
+    leadId: lead.id,
+  };
+}
+
+async function setChatStatus(): Promise<ChatConversation | undefined> {
+  return undefined; // hosted adapters have no chat tables this release
+}
+
+async function markChatRead(): Promise<ChatConversation | undefined> {
+  return undefined;
+}
+
+async function countOpenChats(): Promise<number> {
+  return 0;
+}
+
+async function getChatMode(): Promise<ChatMode> {
+  return "offline";
+}
+
+async function setChatMode(): Promise<ChatMode> {
+  return "offline";
+}
+
 async function createLead(input: NewLeadInput): Promise<AdminLead> {
   guard();
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lead-capture`;
@@ -3896,6 +3957,16 @@ export const supabaseAdminApi: AdminApi = {
   listLeads,
   updateLeadStatus,
   createLead,
+  listChatConversations,
+  getChatConversation,
+  postChatVisitorMessage,
+  postChatAgentMessage,
+  captureChatOffline,
+  markChatRead,
+  setChatStatus,
+  countOpenChats,
+  getChatMode,
+  setChatMode,
   resetDemoData,
   getSettings,
   saveSettings,

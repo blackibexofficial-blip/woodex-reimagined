@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QuoteProvider } from "@/contexts/QuoteContext";
 import { CartProvider } from "@/contexts/CartContext";
 import RouteHead from "@/components/RouteHead";
+import ChatBubble from "@/components/chat/ChatBubble";
 // Landing experience stays eager (LCP); every other storefront route is a separate chunk.
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -56,6 +57,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <RouteHead />
+          <ChatBubble />
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Index />} />
