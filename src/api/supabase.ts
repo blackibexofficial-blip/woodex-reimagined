@@ -78,6 +78,7 @@ import type {
   ExchangeStatus, ClaimStatus, ClaimType, DraftOrderStatus, AdminOrderItem,
   StockTransferReceipt, TransferLocation, PurchaseOrderStatus, PriceListStatus,
   ProductImportRow, ProductImportResult,
+  ProjectCostCode, ProjectActualLine, ProjectActualSource, ProjectFileItem,
 } from "@/api/types";
 import { DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
 import { defaultWarrantyPage, defaultCustomDesignPage, defaultVirtualShowroomPage } from "@/api/singleton-defaults";
@@ -3035,6 +3036,143 @@ async function deleteProject(id: string): Promise<boolean> {
   const { error } = await supabase.from("projects").delete().eq("id", id);
   return !error;
 }
+
+/* ── project actuals ledger (0013: project_cost_codes + project_actuals) ──
+   Cap model: crm.manage write, crm.manage|finance.manage read — enforced by RLS
+   against the caller's JWT; no service-role bypass here. amount is GENERATED
+   server-side (qty * rate). PO→BOQ allocation is manual in this slice. */
+const rowToCostCode = (r: Row): ProjectCostCode => ({
+  id: Number(r.id),
+  projectId: String(r.project_id),
+  code: String(r.code),
+  boqSection: r.boq_section == null ? null : String(r.boq_section),
+  description: String(r.description ?? ""),
+  createdAt: String(r.created_at ?? ""),
+});
+async function listProjectCostCodes(projectId: string): Promise<ProjectCostCode[]> {
+  guard();
+  const { data, error } = await supabase.from("project_cost_codes").select("*").eq("project_id", projectId).order("code", { ascending: true });
+  if (error) fail("listProjectCostCodes", error);
+  return ((data ?? []) as Row[]).map(rowToCostCode);
+}
+async function upsertProjectCostCode(input: { projectId: string; code: string; boqSection?: string | null; description?: string }): Promise<ProjectCostCode> {
+  guard();
+  const code = String(input.code ?? "").trim().toUpperCase();
+  if (!/^[A-Z0-9][A-Z0-9_-]{0,31}$/.test(code)) throw new Error(`Cost code "${input.code}" is invalid — use A–Z, 0–9, - and _ (max 32 chars).`);
+  const row = {
+    project_id: input.projectId,
+    code,
+    boq_section: input.boqSection?.trim() ? input.boqSection.trim() : null,
+    description: String(input.description ?? "").trim().slice(0, 200),
+  };
+  const { data, error } = await supabase.from("project_cost_codes").upsert(row, { onConflict: "project_id,code" }).select("*").single();
+  if (error) fail("upsertProjectCostCode", error);
+  return rowToCostCode(data as Row);
+}
+async function deleteProjectCostCode(projectId: string, code: string): Promise<boolean> {
+  guard();
+  const { error, count } = await supabase.from("project_cost_codes").delete({ count: "exact" }).eq("project_id", projectId).eq("code", code);
+  if (error) {
+    // FK RESTRICT surfaces here (23503) — carry the raw message so the UI can show it
+    throw new Error(`Cost code ${code} could not be removed — ${error.message}`);
+  }
+  return (count ?? 0) > 0;
+}
+const rowToActual = (r: Row): ProjectActualLine => ({
+  id: Number(r.id),
+  projectId: String(r.project_id),
+  costCode: String(r.cost_code),
+  description: String(r.description ?? ""),
+  qty: toNum(r.qty),
+  unit: String(r.unit ?? "lot"),
+  rate: toNum(r.rate),
+  amount: toNum(r.amount),
+  source: (["po", "labor", "subcontract", "manual"] as ProjectActualSource[]).includes(r.source as ProjectActualSource) ? (r.source as ProjectActualSource) : "manual",
+  poRef: r.po_ref == null ? null : String(r.po_ref),
+  incurredOn: String(r.incurred_on ?? "").slice(0, 10),
+  note: String(r.note ?? ""),
+  createdAt: String(r.created_at ?? ""),
+});
+async function listProjectActuals(projectId: string): Promise<ProjectActualLine[]> {
+  guard();
+  const { data, error } = await supabase.from("project_actuals").select("*").eq("project_id", projectId).order("incurred_on", { ascending: true }).order("id", { ascending: true });
+  if (error) fail("listProjectActuals", error);
+  return ((data ?? []) as Row[]).map(rowToActual);
+}
+async function addProjectActual(input: { projectId: string; costCode: string; description: string; qty: number; unit: string; rate: number; source: ProjectActualSource; poRef?: string | null; incurredOn?: string; note?: string }): Promise<ProjectActualLine> {
+  guard();
+  const qty = Math.max(0, Number(input.qty) || 0);
+  const rate = Math.max(0, Number(input.rate) || 0);
+  const row: TablesInsert<"project_actuals"> = {
+    project_id: input.projectId,
+    cost_code: String(input.costCode),
+    description: String(input.description ?? "").trim().slice(0, 300) || "Untitled actual",
+    qty,
+    unit: String(input.unit ?? "lot").trim().slice(0, 12) || "lot",
+    rate,
+    source: (["po", "labor", "subcontract", "manual"] as ProjectActualSource[]).includes(input.source) ? input.source : "manual",
+    po_ref: input.poRef?.trim() ? input.poRef.trim().slice(0, 40) : null,
+    note: String(input.note ?? "").trim().slice(0, 300),
+  };
+  if (input.incurredOn && /^\d{4}-\d{2}-\d{2}$/.test(input.incurredOn)) row.incurred_on = input.incurredOn;
+  const { data, error } = await supabase.from("project_actuals").insert(row).select("*").single();
+  if (error) fail("addProjectActual", error);
+  return rowToActual(data as Row);
+}
+async function updateProjectActual(id: number, projectId: string, patch: Partial<Pick<ProjectActualLine, "costCode" | "description" | "qty" | "unit" | "rate" | "source" | "poRef" | "incurredOn" | "note">>): Promise<ProjectActualLine | undefined> {
+  guard();
+  const row: TablesUpdate<"project_actuals"> = {};
+  if (patch.costCode !== undefined) row.cost_code = String(patch.costCode);
+  if (patch.description !== undefined) row.description = String(patch.description).trim().slice(0, 300);
+  if (patch.qty !== undefined) row.qty = Math.max(0, Number(patch.qty) || 0);
+  if (patch.unit !== undefined) row.unit = String(patch.unit).trim().slice(0, 12);
+  if (patch.rate !== undefined) row.rate = Math.max(0, Number(patch.rate) || 0);
+  if (patch.source !== undefined && (["po", "labor", "subcontract", "manual"] as ProjectActualSource[]).includes(patch.source)) row.source = patch.source;
+  if (patch.poRef !== undefined) row.po_ref = patch.poRef?.trim() ? patch.poRef.trim().slice(0, 40) : null;
+  if (patch.incurredOn !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(patch.incurredOn)) row.incurred_on = patch.incurredOn;
+  if (patch.note !== undefined) row.note = String(patch.note).trim().slice(0, 300);
+  const { data, error } = await supabase.from("project_actuals").update(row).eq("id", id).eq("project_id", projectId).select("*").maybeSingle();
+  if (error) fail("updateProjectActual", error);
+  return data ? rowToActual(data as Row) : undefined;
+}
+async function deleteProjectActual(id: number, projectId: string): Promise<boolean> {
+  guard();
+  const { error } = await supabase.from("project_actuals").delete().eq("id", id).eq("project_id", projectId);
+  return !error;
+}
+
+/* Storage — real job files (0014: private `projects` bucket, 50 MB cap, crm.manage).
+   Object name: <projectId>/<timestamp>-<sanitized>. Demo/Bagisto reject; the payload login carries the metadata entry after upload. */
+const sanitizeFileName = (name: string): string => {
+  const base = String(name).replace(/^.*[\\/]/, "").replace(/[^A-Za-z0-9._ -]/g, "_").replace(/\s+/g, " ").trim().slice(0, 120);
+  return base || "file";
+};
+const kindFromFileName = (name: string): ProjectFileItem["kind"] => {
+  const ext = name.toLowerCase().split(".").pop() ?? "";
+  if (["dwg", "dxf", "skp"].includes(ext)) return "drawing";
+  if (["3ds", "obj", "fbx", "glb", "gltf", "stl", "step"].includes(ext)) return "model";
+  if (["png", "jpg", "jpeg", "webp", "gif", "avif"].includes(ext)) return "image";
+  return "document";
+};
+async function uploadProjectFile(projectId: string, fileName: string, bytes: ArrayBuffer, contentType: string): Promise<ProjectFileItem> {
+  guard();
+  const clean = sanitizeFileName(fileName);
+  const objectPath = `${projectId}/${Date.now().toString(36)}-${clean}`;
+  const { error } = await supabase.storage.from("projects").upload(objectPath, bytes, {
+    contentType: contentType || "application/octet-stream",
+    upsert: false,
+  });
+  if (error) fail("uploadProjectFile", error);
+  return {
+    id: `storage-${objectPath}`,
+    name: clean,
+    size: bytes.byteLength,
+    kind: kindFromFileName(clean),
+    uploadedBy: "You",
+    uploadedAt: new Date().toISOString(),
+    storagePath: objectPath,
+  };
+}
 const rowToBlogPost = (r: Row): AdminBlogPost => ({
   id: r.id,
   ...(asObj(r.payload) as object),
@@ -3816,6 +3954,14 @@ export const supabaseAdminApi: AdminApi = {
   updateProject,
   setProjectActive,
   deleteProject,
+  listProjectCostCodes,
+  upsertProjectCostCode,
+  deleteProjectCostCode,
+  listProjectActuals,
+  addProjectActual,
+  updateProjectActual,
+  deleteProjectActual,
+  uploadProjectFile,
   listBlogPosts,
   createBlogPost,
   updateBlogPost,

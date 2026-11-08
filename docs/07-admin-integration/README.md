@@ -182,6 +182,25 @@ deploy the edge functions, set `VITE_SUPABASE_*` in `.env`, and replace the rele
 methods in `src/api/` with Supabase implementations (the types in `src/api/types.ts` already
 describe everything the UI needs).
 
+### Job-costing ledger & project file bucket (this repo's migrations 0013/0014)
+
+`supabase/migrations/` (0001–0014, apply in lexical order on top of the converged schema) now ends with:
+
+- **`20261107000013_project_actuals.sql`** — `project_cost_codes` + `project_actuals` (relational
+  job-costing ledger behind the projects Practice workspace → **Actuals** tab). Planned BOQ still lives
+  in `projects.payload`; `boq_section` on a cost code joins the payload by section name. RLS: read
+  `crm.manage`|`finance.manage`, write `crm.manage`, viewer/anon nothing. `amount` is GENERATED
+  (`qty*rate`). PO→BOQ allocation is manual (owner decision).
+- **`20261108000014_storage_projects_bucket.sql`** — private `projects` bucket (50 MB cap) +
+  `storage.objects` RLS: `crm.manage` read/write only — finance.manage/viewer/anon get nothing.
+  The Files tab shows a real **Upload** control only under `VITE_API_MODE=supabase`.
+
+Both files are **rehearsed offline under pglite** (`npm run test:rehearsal` — 93/93) but have **NOT**
+been applied to the hosted project (no Supabase egress in the authoring environment). Hosted apply is
+an owner-gated deploy step: apply 0013 then 0014, regenerate
+`src/integrations/supabase/types.ts` (`supabase gen types typescript --local` replaces the hand-extended
+blocks), and only then enable real uploads/variance there. Demo mode is unaffected either way.
+
 ## 10. Phased roadmap
 
 - **Phase 1 ✅** this integration + offline `/admin` demo.

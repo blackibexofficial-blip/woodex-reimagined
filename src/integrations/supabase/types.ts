@@ -5,6 +5,7 @@
 // once the Supabase CLI / staging project is available. Until then, blocks for
 // draft_orders (0008), exchanges and claims (0009) were written by hand from their
 // migrations on 2026-11-07 under the same no-egress constraint — regenerate to reconcile.
+// project_cost_codes and project_actuals (0013) were hand-applied the same way on 2026-11-08.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type Json =
@@ -1616,6 +1617,102 @@ export type Database = {
           created_at?: string
         }
         Relationships: []
+      }
+      project_cost_codes: {
+        Row: {
+          id: number
+          project_id: string
+          code: string
+          boq_section: string | null
+          description: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          project_id: string
+          code: string
+          boq_section?: string | null
+          description?: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          project_id?: string
+          code?: string
+          boq_section?: string | null
+          description?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_cost_codes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_actuals: {
+        Row: {
+          id: number
+          project_id: string
+          cost_code: string
+          description: string
+          qty: number
+          unit: string
+          rate: number
+          amount: number
+          source: string
+          po_ref: string | null
+          incurred_on: string
+          note: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          project_id: string
+          cost_code: string
+          description?: string
+          qty?: number
+          unit?: string
+          rate?: number
+          source?: string
+          po_ref?: string | null
+          incurred_on?: string
+          note?: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          project_id?: string
+          cost_code?: string
+          description?: string
+          qty?: number
+          unit?: string
+          rate?: number
+          source?: string
+          po_ref?: string | null
+          incurred_on?: string
+          note?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_actuals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_actuals_code_fkey"
+            columns: ["project_id", "cost_code"]
+            isOneToOne: false
+            referencedRelation: "project_cost_codes"
+            referencedColumns: ["project_id", "code"]
+          },
+        ]
       }
       tasks: {
         Row: {

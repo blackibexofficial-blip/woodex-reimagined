@@ -1041,6 +1041,47 @@ export const MATERIAL_PART_LABELS: Record<AdminMaterialPart, string> = {
   storage: "Storage",
 };
 
+/* ── Project actuals ledger (migration 0013 — relational, NOT payload) ──
+   The planned BOQ stays inside `projects.payload`. ACTUALS live in
+   public.project_cost_codes + public.project_actuals (cost codes align to BOQ
+   sections by name via boq_section; shop codes LABOR / SUBCON / MISC carry none).
+   Variance is computed client-side per code (planned from payload BOQ section
+   totals vs ledger actuals). PO→BOQ allocation is manual in this slice. */
+export const PROJECT_ACTUAL_SOURCES = ["po", "labor", "subcontract", "manual"] as const;
+export type ProjectActualSource = (typeof PROJECT_ACTUAL_SOURCES)[number];
+export const PROJECT_ACTUAL_SOURCE_LABELS: Record<ProjectActualSource, string> = {
+  po: "Purchase order",
+  labor: "Site labour",
+  subcontract: "Subcontract",
+  manual: "Manual entry",
+};
+export interface ProjectCostCode {
+  id: number;
+  projectId: string;
+  code: string;
+  /** payload BOQ section this code maps to (planned side); null for shop codes */
+  boqSection: string | null;
+  description: string;
+  createdAt: string;
+}
+export interface ProjectActualLine {
+  id: number;
+  projectId: string;
+  costCode: string;
+  description: string;
+  qty: number;
+  unit: string;
+  rate: number;
+  /** qty × rate (server-generated hosted; client-computed in demo) */
+  amount: number;
+  source: ProjectActualSource;
+  poRef: string | null;
+  /** YYYY-MM-DD */
+  incurredOn: string;
+  note: string;
+  createdAt: string;
+}
+
 /* ── Projects / case studies (admin-managed since P1.3) ─────────────────── */
 export interface AdminProject {
   id: string;
@@ -1097,11 +1138,54 @@ export interface ProjectFileItem {
   kind: "drawing" | "image" | "document" | "model";
   uploadedBy: string;
   uploadedAt: string;
+  /** Set when the file lives in the hosted `projects` bucket (migration 0014) — object name `<project-id>/<file>`. Absent in demo (metadata-only). */
+  storagePath?: string;
+}
+/* ── Production / dispatch (rides the same payload; still no migration) ──
+   Five fixed shop-floor stages with per-stage % complete + note; a QC gate
+   (pending/passed/failed + defect note) and a dispatch block (date · vehicle ·
+   driver · challan ref). QC is the hard gate to dispatch in the UI copy; today
+   it is informational, not enforced (no migration to enforce it). */
+export const PROJECT_PRODUCTION_STAGES = ["material_prep", "fabrication", "finishing", "qc", "dispatch"] as const;
+export type ProjectProductionStageKey = (typeof PROJECT_PRODUCTION_STAGES)[number];
+export const PROJECT_PRODUCTION_STAGE_LABELS: Record<ProjectProductionStageKey, string> = {
+  material_prep: "Material prep",
+  fabrication: "Fabrication",
+  finishing: "Finishing",
+  qc: "QC inspection",
+  dispatch: "Dispatch",
+};
+export interface ProjectProductionStage {
+  id: string;
+  stage: ProjectProductionStageKey;
+  pct: number; // 0–100
+  note: string;
+}
+export const PROJECT_QC_RESULTS = ["pending", "passed", "failed"] as const;
+export type ProjectQcResult = (typeof PROJECT_QC_RESULTS)[number];
+export interface ProjectQc {
+  result: ProjectQcResult;
+  defectNote: string;
+  inspectedBy: string;
+  inspectedAt: string; // YYYY-MM-DD
+}
+export interface ProjectDispatch {
+  date: string; // YYYY-MM-DD
+  vehicle: string;
+  driver: string;
+  driverPhone: string;
+  challanRef: string;
+}
+export interface ProjectProduction {
+  stages: ProjectProductionStage[];
+  qc: ProjectQc;
+  dispatch: ProjectDispatch;
 }
 export interface ProjectPractice {
   boq: ProjectBoqRow[];
   milestones: ProjectMilestone[];
   files: ProjectFileItem[];
+  production?: ProjectProduction;
 }
 
 export interface NewProjectInput {
@@ -1809,6 +1893,22 @@ export interface AdminApi {
   updateProject(id: string, patch: Partial<NewProjectInput>): Promise<AdminProject | undefined>;
   setProjectActive(id: string, active: boolean): Promise<AdminProject | undefined>;
   deleteProject(id: string): Promise<boolean>;
+  /** Cost-code master per project (migration 0013). Writes require crm.manage. */
+  listProjectCostCodes(projectId: string): Promise<ProjectCostCode[]>;
+  upsertProjectCostCode(input: { projectId: string; code: string; boqSection?: string | null; description?: string }): Promise<ProjectCostCode>;
+  /** Fails when actuals reference the code (FK RESTRICT) — caller surfaces the message. */
+  deleteProjectCostCode(projectId: string, code: string): Promise<boolean>;
+  /** Actual-cost ledger per project (migration 0013). Finance may read, never write. */
+  listProjectActuals(projectId: string): Promise<ProjectActualLine[]>;
+  addProjectActual(input: { projectId: string; costCode: string; description: string; qty: number; unit: string; rate: number; source: ProjectActualSource; poRef?: string | null; incurredOn?: string; note?: string }): Promise<ProjectActualLine>;
+  updateProjectActual(id: number, projectId: string, patch: Partial<Pick<ProjectActualLine, "costCode" | "description" | "qty" | "unit" | "rate" | "source" | "poRef" | "incurredOn" | "note">>): Promise<ProjectActualLine | undefined>;
+  deleteProjectActual(id: number, projectId: string): Promise<boolean>;
+  /**
+   * Uploads a file into the job's storage bucket (supabase mode, migration 0014).
+   * Object name: `<projectId>/<timestamp>-<sanitized-name>`. Demo/Bagisto reject with
+   * an explanatory error (demo keeps simulated metadata-only uploads).
+   */
+  uploadProjectFile(projectId: string, fileName: string, bytes: ArrayBuffer, contentType: string): Promise<ProjectFileItem>;
   listBlogPosts(): Promise<AdminBlogPost[]>;
   createBlogPost(input: NewBlogPostInput): Promise<AdminBlogPost>;
   updateBlogPost(id: string, patch: Partial<NewBlogPostInput>): Promise<AdminBlogPost | undefined>;

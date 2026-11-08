@@ -8,7 +8,7 @@
  *               Product/Article/Breadcrumb per page; zero lovable.app references (13 checks)
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
  *
- * Total: 59 checks (35 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
+ * Total: 63 checks (35 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -253,6 +253,20 @@ async function adminSuite(browser) {
   });
   await page.waitForFunction(() => document.body.innerText.includes("7,567,500"), { timeout: 10000 }).catch(() => {});
   ok("BOQ qty edit recomputes planned total (3,500→4,000 => Rs 7,567,500)", (await bodyText()).includes("7,567,500"));
+
+  // production tab — seeded mid-production state (Grooming Lounge: fabrication at 75%)
+  const productionTabbed = await clickTab("Production");
+  await page.waitForSelector('[role="dialog"] input[aria-label="Fabrication percent"]', { timeout: 10000 }).catch(() => {});
+  const prodBody = (await bodyText()).toLowerCase();
+  ok("production tab activates with the seeded shop-floor stages", productionTabbed && prodBody.includes("material prep") && prodBody.includes("fabrication") && prodBody.includes("qc inspection"));
+  ok("seeded fabrication stage renders its 75% in-progress badge", prodBody.includes("in progress · 75%"));
+
+  // actuals tab — relational job-costing ledger (migration 0013 mirror) vs BOQ plan
+  const actualsTabbed = await clickTab("Actuals");
+  await page.waitForSelector('[role="dialog"] input[aria-label="Actual description"]', { timeout: 10000 }).catch(() => {});
+  const actBody = (await bodyText()).toLowerCase();
+  ok("actuals tab opens with the seeded ledger lines (Walnut panelling · PO-1044)", actualsTabbed && actBody.includes("walnut panelling") && actBody.includes("po-1044"));
+  ok("actuals grand total renders the seeded ledger spend (4,958,000)", actBody.includes("4,958,000"));
 
   // --- Wave 2: Library rail + Layers outline + lab render ---
   const clickRail = (text) =>

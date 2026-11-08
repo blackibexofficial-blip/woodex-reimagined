@@ -923,6 +923,38 @@ export const bagistoAdminApi: AdminApi = {
     throw new BagistoApiError(501, "Project deletion is not wired for Bagisto yet.");
   },
 
+  async listProjectCostCodes(): Promise<import("@/api/types").ProjectCostCode[]> {
+    throw new BagistoApiError(501, "Project cost codes (Job-costing ledger) are not wired for Bagisto — they live in the Woodex Supabase schema (migration 0013).");
+  },
+
+  async upsertProjectCostCode(): Promise<import("@/api/types").ProjectCostCode> {
+    throw new BagistoApiError(501, "Project cost-code editing is not wired for Bagisto yet.");
+  },
+
+  async deleteProjectCostCode(): Promise<boolean> {
+    throw new BagistoApiError(501, "Project cost-code deletion is not wired for Bagisto yet.");
+  },
+
+  async listProjectActuals(): Promise<import("@/api/types").ProjectActualLine[]> {
+    throw new BagistoApiError(501, "Project actuals (Job-costing ledger) are not wired for Bagisto — they live in the Woodex Supabase schema (migration 0013).");
+  },
+
+  async addProjectActual(): Promise<import("@/api/types").ProjectActualLine> {
+    throw new BagistoApiError(501, "Project actuals entry is not wired for Bagisto yet.");
+  },
+
+  async updateProjectActual(): Promise<import("@/api/types").ProjectActualLine | undefined> {
+    throw new BagistoApiError(501, "Project actuals editing is not wired for Bagisto yet.");
+  },
+
+  async deleteProjectActual(): Promise<boolean> {
+    throw new BagistoApiError(501, "Project actuals deletion is not wired for Bagisto yet.");
+  },
+
+  async uploadProjectFile(): Promise<import("@/api/types").ProjectFileItem> {
+    throw new BagistoApiError(501, "Project file storage is not wired for Bagisto — Supabase Storage (migration 0014) is the job-file posture.");
+  },
+
   async listBlogPosts(): Promise<AdminBlogPost[]> {
     throw new BagistoApiError(501, "Blog/Journal is demo-managed until the headless CMS panel (Bagisto/TailAdmin) is provisioned — see docs/07-admin-integration §8.");
   },
