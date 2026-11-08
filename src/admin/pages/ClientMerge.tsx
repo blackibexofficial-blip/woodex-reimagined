@@ -5,12 +5,13 @@ import {
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminClient, MergeCandidate } from "@/api/types";
-import { formatDate, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
+import { formatDate, SectionCard, SectionSkeleton, EmptyState, ClientCategoryBadge } from "@/admin/components";
+import { deriveClientCategory } from "@/lib/clientCategory";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const filled = (c: AdminClient) =>
-  [c.company, c.email, c.phone, c.city, c.source, c.tags.length ? "t" : ""].filter(Boolean).length;
+  [c.company, c.email, c.phone, c.city, c.source, c.tags.length ? "t" : "", c.category ?? ""].filter(Boolean).length;
 const defaultCanonical = (members: AdminClient[]): string =>
   [...members].sort((a, b) => (b.kind === "business" ? 1 : 0) - (a.kind === "business" ? 1 : 0) || filled(b) - filled(a) || a.createdAt.localeCompare(b.createdAt))[0]?.id;
 
@@ -78,6 +79,7 @@ export default function AdminClientMerge() {
         {c.email && <li className="flex items-center gap-1.5 truncate"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{c.email}</span></li>}
         {c.phone && <li className="flex items-center gap-1.5"><Phone className="h-3 w-3 shrink-0" /> {c.phone}</li>}
         {c.city && <li className="flex items-center gap-1.5"><MapPin className="h-3 w-3 shrink-0" /> {c.city}</li>}
+        <li className="flex items-center gap-1.5"><Tag className="h-3 w-3 shrink-0" /><ClientCategoryBadge category={deriveClientCategory(c)} />{!c.category && <span className="text-[9px] text-muted-foreground">(derived)</span>}</li>
         {c.source && <li className="flex items-center gap-1.5"><Tag className="h-3 w-3 shrink-0" /> <span className="capitalize">{c.source}</span></li>}
       </ul>
       <p className="mt-2 border-t border-muted pt-1.5 text-[9px] text-muted-foreground">on file since {formatDate(c.createdAt)}</p>

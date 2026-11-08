@@ -261,6 +261,21 @@ async function adminSuite(browser) {
   ok("merge review shows the seeded Bilal email-collision pair (Bilal Ahmed / B Ahmed)", mergeBody.includes("bilal ahmed") && mergeBody.includes("b ahmed"));
   ok("merge audit trail lists the retired record (CLI-1007, tombstoned into CLI-1001)", mergeBody.includes("cli-1007") && mergeBody.includes("cli-1001"));
 
+  // V4 PR-C — clients by category: KPI strip, filter chips, CSV export
+  await page.goto(`${ADMIN}/clients`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("Active clients", 20000);
+  await waitText("Export all CSV", 15000);
+  const clientsBody = (await bodyText());
+  ok("clients page renders the CRM database with KPI strip + category chips (Furniture / Interior / Retail)", ["Furniture (", "Interior (", "Retail (", "Business ("].every((t) => clientsBody.includes(t)));
+  await clickByText("button", "Furniture (");
+  await new Promise((r) => setTimeout(r, 400));
+  const furnitureBody = (await bodyText());
+  ok("Furniture chip narrows the list to seeded furniture clients (B Ahmed / Rabia I)", furnitureBody.includes("B Ahmed") && furnitureBody.includes("Rabia I") && !furnitureBody.includes("Kashif Mirza"));
+  ok("Furniture chip shows per-category CSV export action", furnitureBody.includes("Export Furniture CSV"));
+  await clickByText("button", "All (");
+  await new Promise((r) => setTimeout(r, 400));
+  ok("All chip restores the full list", (await bodyText()).includes("Kashif Mirza"));
+
   // interior projects — practice workspace (BOQ · milestones · files)
   await page.goto(`${ADMIN}/projects`, { waitUntil: "networkidle2", timeout: 60000 });
   await page.waitForSelector('button[aria-label^="Practice workspace for"]', { timeout: 20000 });
