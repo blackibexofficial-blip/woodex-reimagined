@@ -14,6 +14,8 @@ interface Props {
   quote: AdminQuote;
   tDoc: AdminQuoteTemplate;
   vars: TemplateVars;
+  /** Store-level logo (Settings → Documents) — outranks the template's own logo. */
+  storeLogo?: string;
 }
 
 /** Split the letterhead block into wordmark / address / phone / email groups. */
@@ -32,7 +34,7 @@ function parseLetterhead(content: string | undefined): { brandLines: string[]; a
   };
 }
 
-export default function QuoteA4Sheet({ quote, tDoc, vars }: Props) {
+export default function QuoteA4Sheet({ quote, tDoc, vars, storeLogo }: Props) {
   const accent = tDoc.brandColor || "#347647";
   const hb = new Map(tDoc.header.map((b) => [b.id, b]));
   const fb = new Map(tDoc.footer.map((b) => [b.id, b]));
@@ -69,7 +71,7 @@ export default function QuoteA4Sheet({ quote, tDoc, vars }: Props) {
       {hb.get("letterhead")?.visible !== false && letterhead && (
         <A4Masthead
           accent={accent}
-          logo={tDoc.logo}
+          logo={storeLogo ?? tDoc.logo}
           brandLines={letterhead.brandLines}
           docTitle={hb.get("doc-title")?.visible ? renderBlock(tDoc, "doc-title", vars) : "Quotation"}
           refRows={[

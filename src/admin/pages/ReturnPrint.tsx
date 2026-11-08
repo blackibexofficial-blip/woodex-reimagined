@@ -8,6 +8,7 @@ import { WOODEX_LETTERHEAD, woodexThankYou, itemCode } from "@/admin/components/
 import {
   A4Shell, A4Chrome, A4Page, A4Notice, A4Masthead, A4PartyGrid, A4ItemsTable, A4Summary, A4Terms, A4FooterBlock,
 } from "@/admin/components/documents/A4";
+import { useStoreLogo } from "@/admin/components/documents/useStoreLogo";
 
 const REASON_LABELS: Record<ReturnReason, string> = {
   damaged: "Damaged in transit",
@@ -41,6 +42,7 @@ export default function AdminReturnPrint() {
     return () => { alive = false; };
   }, [id]);
 
+  const storeLogo = useStoreLogo();
   if (!user) return <Navigate to="/admin/login" replace />;
 
   const returnValue = ret?.items.reduce((s, i) => s + i.price * i.quantity, 0) ?? 0;
@@ -58,6 +60,7 @@ export default function AdminReturnPrint() {
       ) : (
         <A4Page>
           <A4Masthead
+            logo={storeLogo}
             accent="#347647"
             brandLines={[...WOODEX_LETTERHEAD.lines]}
             docTitle="Return"

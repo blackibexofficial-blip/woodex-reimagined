@@ -8,6 +8,7 @@ import { WOODEX_LETTERHEAD, woodexThankYou, itemCode } from "@/admin/components/
 import {
   A4Shell, A4Chrome, A4Page, A4Notice, A4Masthead, A4PartyGrid, A4ItemsTable, A4Summary, A4Terms, A4FooterBlock,
 } from "@/admin/components/documents/A4";
+import { useStoreLogo } from "@/admin/components/documents/useStoreLogo";
 
 const STATUS_LABELS: Record<AdminExchange["status"], string> = {
   requested: "Requested",
@@ -32,6 +33,7 @@ export default function AdminExchangePrint() {
     return () => { alive = false; };
   }, [id]);
 
+  const storeLogo = useStoreLogo();
   if (!user) return <Navigate to="/admin/login" replace />;
 
   const incomingValue = ex?.incoming.reduce((s, i) => s + i.price * i.quantity, 0) ?? 0;
@@ -69,6 +71,7 @@ export default function AdminExchangePrint() {
       ) : (
         <A4Page>
           <A4Masthead
+            logo={storeLogo}
             accent="#347647"
             brandLines={[...WOODEX_LETTERHEAD.lines]}
             docTitle="Exchange"

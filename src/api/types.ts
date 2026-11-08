@@ -1527,6 +1527,13 @@ export interface StoreSettings {
   currency: string;
   deliveryNote: string;
   taxRate: number; // percent
+  /**
+   * Store-level logo shown on every printable document (quotation, invoice,
+   * order, purchase order, return, exchange). Data URL (PNG/JPG/WebP/SVG,
+   * ≤ 200 KB) — persisted inside the app_settings `store` blob, so no schema
+   * change is needed. When set, it outranks a template's own logo.
+   */
+  storeLogo?: string;
 }
 
 export interface Paginated<T> {

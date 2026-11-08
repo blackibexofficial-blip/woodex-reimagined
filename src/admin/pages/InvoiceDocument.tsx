@@ -8,6 +8,7 @@ import { WOODEX_LETTERHEAD, woodexThankYou, itemCode } from "@/admin/components/
 import {
   A4Shell, A4Chrome, A4Page, A4Notice, A4Masthead, A4PartyGrid, A4ItemsTable, A4Summary, A4Terms, A4FooterBlock,
 } from "@/admin/components/documents/A4";
+import { useStoreLogo } from "@/admin/components/documents/useStoreLogo";
 
 /** Chrome-free printable invoice — mounted at /admin/invoice-document/:id outside the admin layout. */
 export default function AdminInvoiceDocument() {
@@ -25,6 +26,7 @@ export default function AdminInvoiceDocument() {
     return () => { alive = false; };
   }, [id]);
 
+  const storeLogo = useStoreLogo();
   if (!user) return <Navigate to="/admin/login" replace />;
 
   const overdue = invoice && invoice.status !== "Paid" && invoice.status !== "Cancelled" && invoice.balance > 0 && !!invoice.due && Date.parse(invoice.due) < Date.now();
@@ -42,6 +44,7 @@ export default function AdminInvoiceDocument() {
       ) : (
         <A4Page>
           <A4Masthead
+            logo={storeLogo}
             accent="#347647"
             brandLines={[...WOODEX_LETTERHEAD.lines]}
             docTitle="Invoice"

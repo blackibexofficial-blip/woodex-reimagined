@@ -9,6 +9,7 @@ import { dimSpec } from "@/api/quote-templates";
 import {
   A4Shell, A4Chrome, A4Page, A4Notice, A4Masthead, A4PartyGrid, A4ItemsTable, A4Summary, A4Terms, A4FooterBlock,
 } from "@/admin/components/documents/A4";
+import { useStoreLogo } from "@/admin/components/documents/useStoreLogo";
 
 /** Chrome-free printable order confirmation — /admin/order/:id */
 export default function AdminOrderPrint() {
@@ -25,6 +26,7 @@ export default function AdminOrderPrint() {
     return () => { alive = false; };
   }, [id]);
 
+  const storeLogo = useStoreLogo();
   if (!user) return <Navigate to="/admin/login" replace />;
 
   const hasDiscount = !!order && ((order.discountPct ?? 0) > 0 || (order.discountAmount ?? 0) > 0);
@@ -42,6 +44,7 @@ export default function AdminOrderPrint() {
       ) : (
         <A4Page>
           <A4Masthead
+            logo={storeLogo}
             accent="#347647"
             brandLines={[...WOODEX_LETTERHEAD.lines]}
             docTitle="Order"

@@ -8,6 +8,7 @@ import { WOODEX_LETTERHEAD, woodexThankYou } from "@/admin/components/documents/
 import {
   A4Shell, A4Chrome, A4Page, A4Notice, A4Masthead, A4PartyGrid, A4ItemsTable, A4Summary, A4Terms, A4FooterBlock,
 } from "@/admin/components/documents/A4";
+import { useStoreLogo } from "@/admin/components/documents/useStoreLogo";
 
 const SUPPLIER_TERMS_LABEL: Record<AdminSupplier["paymentTerms"], string> = {
   advance: "100% advance with order confirmation",
@@ -36,6 +37,7 @@ export default function AdminPurchaseOrderPrint() {
     return () => { alive = false; };
   }, [id]);
 
+  const storeLogo = useStoreLogo();
   if (!user) return <Navigate to="/admin/login" replace />;
 
   const anyReceived = !!po && po.lines.some((l) => (l.receivedQuantity ?? 0) > 0);
@@ -52,6 +54,7 @@ export default function AdminPurchaseOrderPrint() {
       ) : (
         <A4Page>
           <A4Masthead
+            logo={storeLogo}
             accent="#347647"
             brandLines={[...WOODEX_LETTERHEAD.lines]}
             docTitle="Purchase Order"

@@ -67,12 +67,17 @@ export default function AdminInvoice() {
         <main className="invoice-sheet mx-auto max-w-[820px] rounded-xl border border-[#e3e0d6] bg-white p-6 shadow-lg sm:p-10 print:p-0">
           {/* masthead */}
           <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-hon-green pb-6">
-            <div>
-              <p className="text-2xl font-black tracking-[0.28em] text-hon-green-dark">WOODEX</p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">{bill.tagline}</p>
-              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-                {bill.address}<br />{bill.city}, Pakistan<br />{bill.phone} · {bill.email}
-              </p>
+            <div className="flex items-start gap-4">
+              {settings?.storeLogo && (
+                <img src={settings.storeLogo} alt={bill.storeName} className="h-14 w-14 shrink-0 rounded-md border border-border object-contain p-1" />
+              )}
+              <div>
+                <p className="text-2xl font-black tracking-[0.28em] text-hon-green-dark">WOODEX</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{bill.tagline}</p>
+                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                  {bill.address}<br />{bill.city}, Pakistan<br />{bill.phone} · {bill.email}
+                </p>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-lg font-bold uppercase tracking-widest text-foreground">Invoice</p>

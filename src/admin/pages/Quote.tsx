@@ -60,7 +60,7 @@ export default function AdminQuotePrint() {
                 This quotation expired on {formatDate(quote.validUntil)} — request a refreshed quotation.
               </div>
             )}
-            <QuoteA4Sheet quote={quote} tDoc={tDoc} vars={vars} />
+            <QuoteA4Sheet quote={quote} tDoc={tDoc} vars={vars} storeLogo={settings?.storeLogo} />
           </>
         )}
       </A4Shell>
@@ -104,12 +104,17 @@ export default function AdminQuotePrint() {
           {/* masthead — rendered from the quote's print template blocks */}
           <header className="flex flex-wrap items-start justify-between gap-6 border-b-2 pb-6" style={{ borderColor: brand }}>
             {hb.get("letterhead")?.visible && (
-              <div>
-                <p className="text-2xl font-black tracking-[0.28em]" style={{ color: brand }}>WOODEX</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">{bill.tagline}</p>
-                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-                  {bill.address}<br />{bill.city}, Pakistan<br />{bill.phone} · {bill.email}
-                </p>
+              <div className="flex items-start gap-4">
+                {settings?.storeLogo && (
+                  <img src={settings.storeLogo} alt={bill.storeName} className="h-14 w-14 shrink-0 rounded-md border border-border object-contain p-1" />
+                )}
+                <div>
+                  <p className="text-2xl font-black tracking-[0.28em]" style={{ color: brand }}>WOODEX</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{bill.tagline}</p>
+                  <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                    {bill.address}<br />{bill.city}, Pakistan<br />{bill.phone} · {bill.email}
+                  </p>
+                </div>
               </div>
             )}
             <div className="text-right">

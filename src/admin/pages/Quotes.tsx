@@ -11,7 +11,7 @@ import {
   formatPKR, formatDate, timeAgo, paymentLabel,
   QuoteStatusBadge, SectionCard, SectionSkeleton, EmptyState,
 } from "@/admin/components";
-import { DEFAULT_QUOTE_TEMPLATE, BUILTIN_TEMPLATES } from "@/api/quote-templates";
+import { DEFAULT_QUOTE_TEMPLATE, BUILTIN_TEMPLATES, WOODEX_A4_TEMPLATE } from "@/api/quote-templates";
 import QuoteTemplateDesigner from "@/admin/components/quotation/QuoteTemplateDesigner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,7 +81,9 @@ export default function AdminQuotes() {
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<QuoteStatus>("draft");
   const [saving, setSaving] = useState(false);
-  const [templateId, setTemplateId] = useState<string>(DEFAULT_QUOTE_TEMPLATE.id);
+  // Owner decision 2026-11-08: NEW quotations default to the redesigned "Woodex A4" sheet.
+  // Existing quotes keep their saved template (classic stays the print fallback) — never unilaterally.
+  const [templateId, setTemplateId] = useState<string>(WOODEX_A4_TEMPLATE.id);
   const [templates, setTemplates] = useState<AdminQuoteTemplate[]>(BUILTIN_TEMPLATES);
   const [designerOpen, setDesignerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -148,7 +150,7 @@ export default function AdminQuotes() {
     setName(""); setPhone(""); setEmail(""); setCompany(""); setCity(""); setAddress("");
     setLines([]); setDiscountPct("0"); setValidityDays("14"); setShipping("0"); setNotes(""); setStatus("draft");
     setCatQuery(""); setCatResults([]); setFreeName(""); setFreePrice(""); setFreeQty("1");
-    setTemplateId(DEFAULT_QUOTE_TEMPLATE.id); loadTemplates();
+    setTemplateId(WOODEX_A4_TEMPLATE.id); loadTemplates(); // owner decision 2026-11-08 — new quotations default to the redesigned A4 sheet
     setEditorOpen(true);
   };
 
