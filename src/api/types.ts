@@ -9,7 +9,9 @@
 export type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "cancelled";
 export type PaymentMethod = "cod" | "bank-transfer" | "easypaisa" | "jazzcash" | "card";
 export type LeadType = "quote" | "b2b" | "chat";
-export type LeadStatus = "new" | "contacted" | "quoted" | "won" | "lost";
+export type LeadStatus = "new" | "contacted" | "quoted" | "won" | "lost" | "meeting" | "not_responding";
+/** Lead acquisition source — "furniture" | "interior" | "project" mirror the owner's Lead 2026 sheet; the rest are app-origin. */
+export type LeadSource = "furniture" | "interior" | "project" | "website" | "storefront_chat" | "referral";
 /** Live chat availability for the storefront bubble. Demo adapter persists it; hosted adapters are read-only stubs this phase. */
 export type ChatMode = "off" | "offline" | "live";
 export type ChatStatus = "open" | "closed";
@@ -687,6 +689,58 @@ export interface AdminLead {
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
+  /* Lead 2026 parity (import + CRM depth) */
+  /** Free text — e.g. "Abdullah", "Nabeel", "Imtiaz" from the sheet's "Assassin to" column. */
+  assignedTo?: string;
+  leadSource?: LeadSource;
+  /** Reference to a quote document (e.g. "WI-10204") when the lead is linked. */
+  quotationRef?: string;
+  /** ISO date of last outbound touch. */
+  lastContact?: string;
+  /** ISO datetime of the scheduled meeting. */
+  meetingAt?: string;
+  /** Free text next step ("Monday visit", "Expecting call"). */
+  nextAction?: string;
+  /** Sheet's trailing Note column. */
+  note?: string;
+}
+
+/* ── Lead import (V4 PR-A) — parse happens client-side; adapter only persists ── */
+export interface LeadImportRow {
+  /** 1-based line number in the source file (for issue reporting). */
+  row: number;
+  date?: string;        // ISO after parse
+  company?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  designation?: string;
+  location?: string;
+  leadSource?: LeadSource;
+  status?: LeadStatus;
+  assignedTo?: string;
+  quotationRef?: string;
+  lastContact?: string;
+  nextAction?: string;
+  meetingAt?: string;
+  note?: string;
+}
+export interface LeadImportIssue {
+  row: number;
+  reason: string;
+  name?: string;
+  phone?: string;
+}
+export interface LeadImportResult {
+  /** Leads created (or, with dryRun, that WOULD be created). */
+  created: number;
+  duplicates: LeadImportIssue[];
+  rejected: LeadImportIssue[];
+}
+export interface LeadImportInput {
+  rows: LeadImportRow[];
+  /** true = simulate only, nothing is written. */
+  dryRun?: boolean;
 }
 
 /** Live chat — storefront bubble ↔ admin inbox (demo adapter this phase; V4 §P0). */
@@ -1854,6 +1908,8 @@ export interface AdminApi {
 
   listLeads(params?: ListParams & { type?: LeadType | "all"; status?: LeadStatus | "all" }): Promise<Paginated<AdminLead>>;
   updateLeadStatus(id: string, status: LeadStatus): Promise<AdminLead | undefined>;
+  /** Bulk import (Lead 2026 parity). Demo-authoritative; hosted adapters reject rows with a reason (owner-gated programme). */
+  importLeads(input: LeadImportInput): Promise<LeadImportResult>;
 
   /** Live chat (V4 P0) — storefront bubble + inbox. Demo adapter is authoritative; hosted adapters are stubs this phase. */
   listChatConversations(params?: { status?: ChatStatus | "all"; query?: string; unreadOnly?: boolean }): Promise<ChatConversation[]>;

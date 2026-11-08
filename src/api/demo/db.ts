@@ -50,6 +50,10 @@ import type {
   ChatMessage,
   ChatMode,
   ChatStatus,
+  LeadImportInput,
+  LeadImportIssue,
+  LeadImportResult,
+  LeadImportRow,
   NewAdminProductInput,
   ProductImportResult,
   ProductImportRow,
@@ -2188,6 +2192,20 @@ if (typeof window !== "undefined") {
     if (event.key === DB_KEY || event.key === null) memory = null;
   });
 }
+
+/** Phone comparison key: last 10 digits (PK mobiles — strips +92 / 0092 / trunk 0). */
+const leadPhoneKey = (raw: string | undefined): string => {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : digits;
+};
+
+const importSummary = (r: LeadImportRow): string => {
+  const bits = [`Lead 2026 import · ${r.company?.trim() || "—"}`];
+  if (r.designation?.trim()) bits.push(r.designation.trim());
+  if (r.nextAction?.trim()) bits.push(`Next: ${r.nextAction.trim()}`);
+  if (r.note?.trim()) bits.push(r.note.trim());
+  return bits.join(" · ").slice(0, 200);
+};
 
 /* ── query helpers ──────────────────────────────────────────────────────── */
 const matchQuery = (q: string | undefined, haystacks: Array<string | undefined>) => {
@@ -5792,6 +5810,52 @@ export const demoAdminApi: AdminApi = {
   async setChatMode(mode: ChatMode): Promise<ChatMode> {
     update((db) => { db.chatMode = mode; });
     return mode;
+  },
+
+  async importLeads({ rows, dryRun = false }: LeadImportInput): Promise<LeadImportResult> {
+    const rejected: LeadImportIssue[] = [];
+    const duplicates: LeadImportIssue[] = [];
+    let created = 0;
+    const db = loadDb();
+    const existingKeys = new Set(db.leads.map((l) => leadPhoneKey(l.phone)).filter((k) => k.length >= 10));
+    const batchKeys = new Set<string>();
+    const now = Date.now();
+    const toInsert: AdminLead[] = [];
+    for (const r of rows) {
+      if (!r.name || r.name.trim().length < 2) {
+        rejected.push({ row: r.row, reason: "Missing or too-short name", phone: r.phone });
+        continue;
+      }
+      const phone = (r.phone ?? "").trim();
+      const key = leadPhoneKey(phone);
+      if (key.length >= 10 && (existingKeys.has(key) || batchKeys.has(key))) {
+        duplicates.push({ row: r.row, reason: "Duplicate phone — already in the CRM", name: r.name, phone });
+        continue;
+      }
+      if (key.length >= 10) batchKeys.add(key);
+      toInsert.push({
+        id: `lead-imp-${now.toString(36)}-${r.row}`,
+        type: r.company?.trim() ? "b2b" : "quote",
+        name: r.name.trim(),
+        company: r.company?.trim() || undefined,
+        email: r.email?.trim() ?? "",
+        phone: phone || "—",
+        city: r.location?.trim() || undefined,
+        summary: importSummary(r),
+        status: r.status ?? "new",
+        createdAt: r.date ?? new Date().toISOString(),
+        assignedTo: r.assignedTo?.trim() || undefined,
+        leadSource: r.leadSource,
+        quotationRef: r.quotationRef?.trim() || undefined,
+        lastContact: r.lastContact,
+        meetingAt: r.meetingAt,
+        nextAction: r.nextAction?.trim() || undefined,
+        note: r.note?.trim() || undefined,
+      });
+      created += 1;
+    }
+    if (!dryRun && toInsert.length > 0) update((d) => { d.leads.push(...toInsert); });
+    return { created, duplicates, rejected };
   },
 
   async resetDemoData() {

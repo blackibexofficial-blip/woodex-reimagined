@@ -46,6 +46,7 @@ import AdminExchangePrint from "@/admin/pages/ExchangePrint";
 import AdminCustomers from "@/admin/pages/Customers";
 import AdminLeads from "@/admin/pages/Leads";
 import AdminChatInbox from "@/admin/pages/ChatInbox";
+import AdminImport from "@/admin/pages/Import";
 import AdminContent from "@/admin/pages/Content";
 import AdminWarranty from "@/admin/pages/Warranty";
 import AdminCustomDesign from "@/admin/pages/CustomDesign";
@@ -122,6 +123,7 @@ export default function AdminApp() {
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="leads" element={<AdminLeads />} />
           <Route path="chat" element={<AdminChatInbox />} />
+          <Route path="import" element={<AdminImport />} />
           <Route path="services" element={<AdminServices />} />
           <Route path="blog" element={<AdminBlog />} />
           <Route path="content" element={<AdminContent />} />

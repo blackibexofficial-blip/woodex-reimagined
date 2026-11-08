@@ -7,7 +7,7 @@ import {
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminLead, AdminSiteVisit, LeadStatus, LeadType, SiteVisitStatus } from "@/api/types";
-import { formatPKR, timeAgo, LeadStatusBadge, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
+import { formatPKR, timeAgo, LeadStatusBadge, SectionCard, SectionSkeleton, EmptyState, leadStatusLabel } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,11 +18,13 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 const PER_PAGE = 10;
 type TypeFilter = LeadType | "all";
 type StatusFilter = LeadStatus | "all";
-const LEAD_STATUSES: LeadStatus[] = ["new", "contacted", "quoted", "won", "lost"];
+const LEAD_STATUSES: LeadStatus[] = ["new", "contacted", "meeting", "not_responding", "quoted", "won", "lost"];
 const VISIT_STATUSES: SiteVisitStatus[] = ["Scheduled", "Completed", "No-show", "Cancelled"];
 const COLUMN_TONE: Record<LeadStatus, string> = {
   new: "border-sky-200 bg-sky-50",
   contacted: "border-amber-200 bg-amber-50",
+  meeting: "border-cyan-200 bg-cyan-50",
+  not_responding: "border-stone-200 bg-stone-50",
   quoted: "border-violet-200 bg-violet-50",
   won: "border-emerald-200 bg-emerald-50",
   lost: "border-rose-200 bg-rose-50",
@@ -30,6 +32,8 @@ const COLUMN_TONE: Record<LeadStatus, string> = {
 const COLUMN_DOT: Record<LeadStatus, string> = {
   new: "bg-sky-500",
   contacted: "bg-amber-500",
+  meeting: "bg-cyan-500",
+  not_responding: "bg-stone-400",
   quoted: "bg-violet-500",
   won: "bg-emerald-500",
   lost: "bg-rose-500",
@@ -207,7 +211,7 @@ export default function AdminLeads() {
               <SelectTrigger className="w-40 bg-white" aria-label="Filter by status"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
-                {LEAD_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                {LEAD_STATUSES.map((s) => <SelectItem key={s} value={s}>{leadStatusLabel(s)}</SelectItem>)}
               </SelectContent>
             </Select>
           )}
@@ -222,7 +226,7 @@ export default function AdminLeads() {
 
       {isBoard ? (
         /* ── kanban board ─────────────────────────────────────────────── */
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
           {LEAD_STATUSES.map((colStatus) => {
             const members = board.get(colStatus) ?? [];
             return (
@@ -238,7 +242,7 @@ export default function AdminLeads() {
                 aria-label={`Column ${colStatus}`}
               >
                 <p className="flex items-center justify-between gap-2 px-1.5 pb-2 pt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  <span className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${COLUMN_DOT[colStatus]}`} />{colStatus}</span>
+                  <span className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${COLUMN_DOT[colStatus]}`} />{leadStatusLabel(colStatus)}</span>
                   <span className="rounded-full border border-border bg-white px-1.5 py-0.5 font-mono">{members.length}</span>
                 </p>
                 <ul className="space-y-2">
@@ -331,7 +335,7 @@ export default function AdminLeads() {
                           <LeadStatusBadge status={lead.status} />
                         </SelectTrigger>
                         <SelectContent>
-                          {LEAD_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                          {LEAD_STATUSES.map((s) => <SelectItem key={s} value={s}>{leadStatusLabel(s)}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>

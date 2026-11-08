@@ -29,7 +29,7 @@ import type {
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
   AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, AdminTask, AdminClient, MergeCandidate, AdminSiteVisit, NewSiteVisitInput, SiteVisitPatch,
-  ChatConversation, ChatMessage, ChatMode,
+  ChatConversation, ChatMessage, ChatMode, LeadImportInput, LeadImportResult,
 } from "@/api/types";
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
@@ -1143,6 +1143,15 @@ export const bagistoAdminApi: AdminApi = {
 
   async setChatMode(): Promise<ChatMode> {
     return "offline";
+  },
+
+  async importLeads({ rows }: LeadImportInput): Promise<LeadImportResult> {
+    // Hosted lead import is an owner-gated programme; the demo build is authoritative for imports.
+    return {
+      created: 0,
+      duplicates: [],
+      rejected: rows.map((r) => ({ row: r.row, reason: "Hosted lead import is an owner-gated programme — import in the demo build instead", name: r.name, phone: r.phone })),
+    };
   },
 
   async resetDemoData() {

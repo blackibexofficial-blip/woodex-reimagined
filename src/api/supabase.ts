@@ -58,6 +58,7 @@ import type { Database, Json, TablesInsert, TablesUpdate } from "@/integrations/
 import type {
   AdminApi,
   ChatConversation, ChatMessage, ChatMode,
+  LeadImportInput, LeadImportResult,
   AdminBlogPost, AdminBrand, AdminBundle, AdminCategory, AdminCollection, AdminCollectionKind,
   AdminCustomDesignPage, AdminCustomer, AdminDeliveryZone, AdminHomepageSections, AdminInventoryItem, AdminLead,
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
@@ -2067,6 +2068,15 @@ async function updateLeadStatus(id: string, status: AdminLead["status"], patch?:
   return data ? rowToAdminLead(data as Row) : undefined;
 }
 
+
+async function importLeads({ rows }: LeadImportInput): Promise<LeadImportResult> {
+  return {
+    created: 0,
+    duplicates: [],
+    rejected: rows.map((r) => ({ row: r.row, reason: "Hosted lead import is an owner-gated programme — import in the demo build instead", name: r.name, phone: r.phone })),
+  };
+}
+
 /* ── Live chat (V4 P0) — demo-authoritative this release; hosted tables are owner-gated ── */
 const CHAT_HOSTED_REASON = "live chat is demo-only in this release — hosted chat tables need the owner's explicit migration decision";
 
@@ -3957,6 +3967,7 @@ export const supabaseAdminApi: AdminApi = {
   listLeads,
   updateLeadStatus,
   createLead,
+  importLeads,
   listChatConversations,
   getChatConversation,
   postChatVisitorMessage,
