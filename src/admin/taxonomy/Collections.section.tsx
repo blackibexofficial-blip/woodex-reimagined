@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 
 const KIND_LABEL: Record<AdminCollectionKind, string> = { manual: "Manual", automatic: "Automatic" };
 
-export default function AdminCollections() {
+export function CollectionsSection() {
   const api = useMemo(() => getAdminApi(), []);
   const [rows, setRows] = useState<AdminCollection[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});

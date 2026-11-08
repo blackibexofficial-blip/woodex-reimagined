@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { MessagesSquare, Phone, MapPin, ShieldCheck, ShieldEllipsis, SendHorizontal, CircleCheck, RotateCcw, XCircle, Settings } from "lucide-react";
+import { MessagesSquare, Phone, MapPin, ShieldCheck, ShieldEllipsis, SendHorizontal, CircleCheck, RotateCcw, XCircle, Settings, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { ChatConversation, ChatMessage, ChatMode } from "@/api/types";
 import { isDemoMode } from "@/config/env";
 import { CHAT_AGENT_TEMPLATES, CHAT_POLL_MS, relativeTime } from "@/lib/chat";
+import { draftAgentReply, type AgentPriceRecord } from "@/lib/ai/agent";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "open" | "unread" | "closed";
@@ -30,6 +31,8 @@ export default function ChatInbox() {
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<ChatMode | null>(null);
+  const [priceRecords, setPriceRecords] = useState<AgentPriceRecord[]>([]);
+  const [aiDraftsEnabled, setAiDraftsEnabled] = useState(true);
   const threadRef = useRef<HTMLDivElement | null>(null);
 
   const selected = useMemo(() => conversations.find((c) => c.id === selectedId) ?? null, [conversations, selectedId]);
@@ -57,6 +60,10 @@ export default function ChatInbox() {
   useEffect(() => {
     void loadList();
     getAdminApi().getChatMode().then(setMode).catch(() => setMode("offline"));
+    // catalogue for grounded price quotes + the offline-draft toggle (default on).
+    // Records stay in memory only — never rendered except as the approved Rs figure.
+    getAdminApi().listProducts({ perPage: 200 }).then((res) => setPriceRecords(res.items.map((p) => ({ id: p.id, name: p.name, sku: p.sku, price: p.price })))).catch(() => setPriceRecords([]));
+    getAdminApi().getSettings().then((s2) => setAiDraftsEnabled(s2.aiOfflineDraftsEnabled !== false)).catch(() => setAiDraftsEnabled(true));
     const t = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
       void loadList();
@@ -72,6 +79,14 @@ export default function ChatInbox() {
     setMessages([]);
     try { await getAdminApi().markChatRead(id); } catch { /* badge self-corrects on next poll */ }
     void loadDetail(id);
+  };
+
+  const suggestReply = () => {
+    const lastVisitor = [...messages].reverse().find((m) => m.role === "visitor")?.body;
+    if (!lastVisitor) { toast.info("No visitor message yet — the draft needs something to answer."); return; }
+    const draft = draftAgentReply(lastVisitor, { records: priceRecords });
+    setReply((r) => (r.trim() ? `${r.trimEnd()} ${draft.reply}` : draft.reply));
+    toast.info(draft.confidence === "high" ? "AI draft inserted — review before sending." : `AI draft inserted (confidence: ${draft.confidence}) — review before sending; the sales team confirms prices.`);
   };
 
   const counts = useMemo(() => ({
@@ -248,13 +263,18 @@ export default function ChatInbox() {
                 ))}
               </div>
 
-              {/* quick templates */}
-              <div className="flex flex-wrap gap-1.5 border-t border-border px-3 pt-2.5">
+              {/* quick templates + offline AI draft */}
+              <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-3 pt-2.5">
                 {CHAT_AGENT_TEMPLATES.map((t) => (
                   <button key={t.slice(0, 24)} type="button" onClick={() => setReply((r) => (r ? `${r} ${t}` : t))} className="max-w-[280px] truncate rounded-full border border-border bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-accent hover:text-accent" title={t}>
                     {t}
                   </button>
                 ))}
+                {aiDraftsEnabled && (
+                  <button type="button" onClick={suggestReply} className="ml-auto inline-flex items-center gap-1 rounded-full border border-accent/50 bg-accent/5 px-2.5 py-1 text-[11px] font-semibold text-hon-green-dark transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title="Offline AI draft — grounded on WOODEX business facts; prices only from catalogue records. Review before sending." aria-label="Suggest reply (AI)">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden /> Suggest reply (AI)
+                  </button>
+                )}
               </div>
 
               {/* composer */}

@@ -6,6 +6,8 @@
  * interface is served by src/api/bagisto/* instead — no UI changes required.
  */
 import { idbDeleteMany, idbGetAll, idbPutMany } from "@/api/demo/mediaStore";
+import { DEFAULT_TEAM } from "@/lib/team";
+import { deriveClientCategory } from "@/lib/clientCategory";
 import { products, categoryGroups } from "@/data/products";
 import { optionSetIdsFor, OPTION_SETS } from "@/data/options";
 import { materials as finishSeed } from "@/data/materials";
@@ -26,6 +28,7 @@ import type {
   AdminInventoryItem,
   AdminCustomer,
   AdminLead,
+  AdminLeadPatch,
   AdminCollection,
   AdminCollectionRule,
   AdminMediaAsset,
@@ -40,6 +43,8 @@ import type {
   DashboardStats,
   AdminClient,
   AdminClientLink,
+  ClientCategory,
+  ClientCrossRefs,
   MergeCandidate,
   AdminSiteVisit,
   ProjectPractice,
@@ -251,6 +256,8 @@ const DEFAULT_SETTINGS: StoreSettings = {
   currency: "PKR",
   deliveryNote: "Free delivery inside city limits on orders above Rs 150,000. 3–5 working days anywhere in Pakistan.",
   taxRate: 0,
+  team: DEFAULT_TEAM,
+  aiOfflineDraftsEnabled: true,
 };
 
 const stripGlyph = (s: string) => s.replace(/^[↳▸»-]\s*/, "").trim();
@@ -1306,10 +1313,33 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
   const meeting = bySub("meeting-tables") ?? priced[0];
   const staff = bySub("staff-tables") ?? priced.find((p) => p.id !== meeting.id) ?? priced[1];
   const chair = bySub("chairs") ?? priced.find((p) => p.id !== meeting.id && p.id !== staff.id) ?? priced[2];
+  const reception = bySub("reception-tables") ?? priced[0];
+  const byId = (id: string) => priced.find((p) => p.id === id);
+  // House-document fixtures: pick the premium, owner-approved style lines by id (deterministic, ≈ PKR 1.4M).
+  const throne = byId("throne-executive-desk") ?? priced[0];
+  const boardroom = byId("summit-20-boardroom-table") ?? meeting;
+  const homeSofa = byId("home-sofa-5");
+  const bedSet = byId("king-bed-set");
+  const diningSet = byId("dining-set-6");
+  const dressing = byId("dressing-table");
+  const tvUnit = byId("tv-unit");
+  // Residence turnkey fixture — WI-10204 order of magnitude (≈ Rs 1.427M): home office + living fit-out.
+  const residenceLines: Array<[AdminProduct, number]> = [
+    [throne, 2], [boardroom, 1],
+    ...(homeSofa ? [[homeSofa, 1] as [AdminProduct, number]] : []),
+    ...(bedSet ? [[bedSet, 1] as [AdminProduct, number]] : []),
+    ...(diningSet ? [[diningSet, 1] as [AdminProduct, number]] : []),
+    ...(dressing ? [[dressing, 1] as [AdminProduct, number]] : []),
+    ...(tvUnit ? [[tvUnit, 1] as [AdminProduct, number]] : []),
+  ];
+  // Office BOQ fixture — boardroom + workstations.
+  const dynasty = byId("dynasty-executive-desk-set") ?? throne;
+  const focusPod = byId("meeting-pod-4-person") ?? boardroom;
+
 
   const mk = (
     id: string,
-    leadId: string,
+    leadId: string | undefined,
     customerName: string,
     customerPhone: string,
     customerEmail: string,
@@ -1320,6 +1350,7 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
     validityDays: number,
     status: AdminQuote["status"],
     daysAgo: number,
+    templateId?: string,
   ): AdminQuote => {
     const items = lines.map(([p, quantity]) => ({ id: p.id, name: p.name, image: p.image, price: p.price, quantity }));
     const totals = quoteTotals(items, discountPct, 0); // B2B — free delivery on quotes
@@ -1332,6 +1363,7 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
       status,
       createdAt: t,
       updatedAt: t,
+      templateId,
     };
   };
 
@@ -1340,6 +1372,16 @@ function buildSeedQuotes(products: AdminProduct[]): AdminQuote[] {
        [[meeting, 1], [chair, 12]], 5, 14, "sent", 3),
     mk("QOT-1002", "lead-1007", "Kashif Mirza", "+92 300 9988776", "ops@raviagrofoods.pk", "Ravi Agro Foods", "Multan",
        [[staff, 25], [chair, 50]], 8, 21, "accepted", 5),
+    // ── Owner-approved house documents re-created as DEMO fixtures (synthetic contacts; never the real Drive docs) ──
+    // WI-10204 — luxury residence turnkey ≈ Rs 1.4 M order of magnitude (synthetic contacts)
+    mk("WI-10204", undefined, "Demo Residence Client", "+92 300 0001001", "residence@example.com", undefined, "Lahore",
+       residenceLines, 0, 30, "sent", 6, "builtin-woodex-a4"),
+    // WI-DC-001-26 — daycare interior
+    mk("WI-DC-001-26", undefined, "Demo Daycare Client", "+92 300 0001002", "daycare@example.com", "Demo Daycare Centre", "Karachi",
+       [[staff, 6], [reception, 1], [meeting, 1]], 0, 30, "sent", 4, "builtin-woodex-a4"),
+    // QT-10183 — office BOQ (≈ Rs 1.2M after 10% discount)
+    mk("QT-10183", undefined, "Demo Corporate Client", "+92 300 0001003", "office@example.com", "Demo Corporate Pvt. Ltd.", "Islamabad",
+       [[dynasty, 2], [boardroom, 2], [focusPod, 2]], 10, 30, "accepted", 8, "builtin-woodex-a4"),
   ];
 }
 
@@ -1361,11 +1403,11 @@ function buildSeedClients(): AdminClient[] {
   const t = Date.now();
   const at = (n: number) => new Date(t - n * DAY_MS).toISOString();
   return [
-    { id: "CLI-1001", name: "Bilal Ahmed", company: "Ahmed Interiors", email: "bilal.a@example.com", emailNorm: "bilal.a@example.com", phone: "+92 315 8899007", phoneNorm: "923158899007", city: "Islamabad", kind: "business", source: "site-visit", tags: ["b2b", "interior"], notes: undefined, createdAt: at(90), updatedAt: at(30) },
-    { id: "CLI-1002", name: "Kashif Mirza", company: "Ravi Agro Foods", email: "ops@raviagrofoods.pk", emailNorm: "ops@raviagrofoods.pk", phone: "+92 300 9988776", phoneNorm: "923009988776", city: "Multan", kind: "business", source: "lead", tags: ["b2b", "agri"], notes: undefined, createdAt: at(75), updatedAt: at(5) },
+    { id: "CLI-1001", category: "interior", name: "Bilal Ahmed", company: "Ahmed Interiors", email: "bilal.a@example.com", emailNorm: "bilal.a@example.com", phone: "+92 315 8899007", phoneNorm: "923158899007", city: "Islamabad", kind: "business", source: "site-visit", tags: ["b2b", "interior"], notes: undefined, createdAt: at(90), updatedAt: at(30) },
+    { id: "CLI-1002", category: "business", name: "Kashif Mirza", company: "Ravi Agro Foods", email: "ops@raviagrofoods.pk", emailNorm: "ops@raviagrofoods.pk", phone: "+92 300 9988776", phoneNorm: "923009988776", city: "Multan", kind: "business", source: "lead", tags: ["b2b", "agri"], notes: undefined, createdAt: at(75), updatedAt: at(5) },
     { id: "CLI-1003", name: "Rabia Iqbal", email: "rabia@example.com", emailNorm: "rabia@example.com", phone: "+92 322 4567890", phoneNorm: "923224567890", city: "Karachi", kind: "retail", source: "site-visit", tags: ["retail"], notes: undefined, createdAt: at(60), updatedAt: at(12) },
-    { id: "CLI-1004", name: "B Ahmed", email: "BILAL.A@example.com", emailNorm: "bilal.a@example.com", phone: "+92 301 2223344", phoneNorm: "923012223344", city: "Rawalpindi", kind: "retail", source: "referral", tags: ["retail"], notes: "Walked in, asked for a teak sofa set — no reference to his earlier quote.", createdAt: at(21), updatedAt: at(21) },
-    { id: "CLI-1005", name: "Rabia I", email: "r.iqbal@example.co.uk", emailNorm: "r.iqbal@example.co.uk", phone: "+92 322 4567890", phoneNorm: "923224567890", city: "Karachi", kind: "retail", source: "storefront", tags: [], notes: "Signed up with work email; same mobile as the Karachi sofa enquiry.", createdAt: at(9), updatedAt: at(9) },
+    { id: "CLI-1004", category: "furniture", name: "B Ahmed", email: "BILAL.A@example.com", emailNorm: "bilal.a@example.com", phone: "+92 301 2223344", phoneNorm: "923012223344", city: "Rawalpindi", kind: "retail", source: "referral", tags: ["retail"], notes: "Walked in, asked for a teak sofa set — no reference to his earlier quote.", createdAt: at(21), updatedAt: at(21) },
+    { id: "CLI-1005", category: "furniture", name: "Rabia I", email: "r.iqbal@example.co.uk", emailNorm: "r.iqbal@example.co.uk", phone: "+92 322 4567890", phoneNorm: "923224567890", city: "Karachi", kind: "retail", source: "storefront", tags: [], notes: "Signed up with work email; same mobile as the Karachi sofa enquiry.", createdAt: at(9), updatedAt: at(9) },
     { id: "CLI-1006", name: "Ayesha Khan", email: "ayesha.k@example.com", emailNorm: "ayesha.k@example.com", phone: "+92 333 7778899", phoneNorm: "923337778899", city: "Lahore", kind: "retail", source: "referral", tags: ["retail"], notes: undefined, createdAt: at(40), updatedAt: at(40) },
     { id: "CLI-1007", name: "B. Ahmed", email: "bilal.a@example.com", emailNorm: "bilal.a@example.com", phone: "+92 315 8899007", phoneNorm: "923158899007", city: "Islamabad", kind: "business", source: "site-visit", tags: ["b2b"], notes: "Retired during 2026-10-14 review — duplicate of CLI-1001.", mergedInto: "CLI-1001", createdAt: at(120), updatedAt: at(28) },
   ];
@@ -2040,6 +2082,22 @@ function buildSeed(): DemoDb {
     const consentAt = rest.consent ? new Date(Date.now() - daysAgo * 86400000 - 1800000).toISOString() : undefined;
     return { ...rest, consentAt, id: `lead-${1001 + i}`, createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString() };
   });
+  /* V4 PR-D — seed the CRM parity fields (assignee / source / refs / contact cadence) on the demo pipeline */
+  const leadParity: Record<string, Partial<AdminLead>> = {
+    "lead-1001": { assignedTo: "Abdullah", leadSource: "furniture", lastContact: new Date(Date.now() - 0 * 86400000).toISOString(), nextAction: "Call back with the executive cabin quote", note: "Wants manager tables first, defers the 10-seater decision" },
+    "lead-1002": { assignedTo: "Nabeel", leadSource: "interior", lastContact: new Date(Date.now() - 1 * 86400000).toISOString(), nextAction: "Send company profile + 3 sales-centre references", note: "Wants staged delivery per floor; decision by mid-Dec" },
+    "lead-1003": { leadSource: "furniture", nextAction: "Send the home-office bundle pricing" },
+    "lead-1004": { assignedTo: "Imtiaz", leadSource: "project", lastContact: new Date(Date.now() - 3 * 86400000).toISOString(), nextAction: "Factory-visit invite after drawings sign-off" },
+    "lead-1005": { assignedTo: "Abdullah", leadSource: "furniture", quotationRef: "QOT-1001", lastContact: new Date(Date.now() - 4 * 86400000).toISOString(), nextAction: "Chase the boardroom quote — valid 30 days", meetingAt: new Date(Date.now() + 3 * 86400000).toISOString() },
+    "lead-1006": { leadSource: "interior" },
+    "lead-1007": { assignedTo: "Nabeel", leadSource: "interior", lastContact: new Date(Date.now() - 9 * 86400000).toISOString(), nextAction: "Awaiting Ravi Agro's vendor list expansion", note: "Ageing since early Nov — weekly nudge scheduled" },
+    "lead-1008": { leadSource: "furniture", lastContact: new Date(Date.now() - 11 * 86400000).toISOString() },
+    "lead-1009": { assignedTo: "Imtiaz", leadSource: "project", quotationRef: "QOT-1002", lastContact: new Date(Date.now() - 12 * 86400000).toISOString(), nextAction: "Sign-off on phase-1 delivery schedule", meetingAt: new Date(Date.now() + 6 * 86400000).toISOString(), note: "Owner prefers Sunday deliveries" },
+    "lead-1010": { leadSource: "furniture", lastContact: new Date(Date.now() - 17 * 86400000).toISOString() },
+    "lead-1011": { assignedTo: "Abdullah", leadSource: "furniture", lastContact: new Date(Date.now() - 18 * 86400000).toISOString() },
+    "lead-1012": { assignedTo: "Nabeel", leadSource: "interior", lastContact: new Date(Date.now() - 23 * 86400000).toISOString() },
+  };
+  for (const l of leads) Object.assign(l, leadParity[l.id] ?? {});
 
   const seedQuotes = buildSeedQuotes(adminProducts);
   const seedChat = buildSeedChat();
@@ -2534,6 +2592,23 @@ export const demoAdminApi: AdminApi = {
         note,
         createdAt: now,
       });
+      // V4 PR-C (§6.3): delivery auto-tags the matching CRM client — products heuristic, never overrides an explicit tag
+      if (from !== "delivered" && status === "delivered") {
+        const line = o.items.map((it) => `${it.name} ${it.sku ?? ""} ${it.customNotes ?? ""}`).join(" | ");
+        const interiorish = /boq|turnkey|fit.?out|interior|demolition|false ceiling|partition|civil work/i.test(line);
+        const furnitureish = /sofa|chair|stool|desk|table|cabinet|wardrobe|bed\b|shelf|shelving|bookcase|workstation|reception|conference|dining|tv unit/i.test(line);
+        if (interiorish || furnitureish) {
+          const oPhone = (o.customerPhone ?? "").replace(/\D/g, "").slice(-10);
+          const oMail = (o.customerEmail ?? "").trim().toLowerCase();
+          for (const c of db.clients) {
+            if (c.mergedInto || c.category) continue;
+            const cPhone = (c.phone ?? "").replace(/\D/g, "").slice(-10);
+            const cMail = (c.email ?? "").trim().toLowerCase();
+            const hit = (oPhone.length >= 10 && cPhone === oPhone) || (!!oMail && !!cMail && cMail === oMail);
+            if (hit) { c.category = interiorish ? "interior" : "furniture"; c.updatedAt = now; }
+          }
+        }
+      }
 
       // stock sync — shipped deducts; cancel only restocks what was already dispatched
       if (from !== "shipped" && status === "shipped") {
@@ -2597,6 +2672,64 @@ export const demoAdminApi: AdminApi = {
     return [...loadDb().clients].filter((c) => includeMerged || !c.mergedInto).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   },
 
+  async updateClientCategory(id: string, category: ClientCategory): Promise<AdminClient | undefined> {
+    let updated: AdminClient | undefined;
+    update((db) => {
+      const c = db.clients.find((x) => x.id === id);
+      if (!c) return;
+      c.category = category; // explicit owner tag — derivation no longer applies
+      c.updatedAt = new Date().toISOString();
+      updated = { ...c };
+    });
+    return updated;
+  },
+
+  async listClientCrossRefs(): Promise<Record<string, ClientCrossRefs>> {
+    const db = loadDb();
+    const out: Record<string, ClientCrossRefs> = {};
+    const bump = (cid: string | undefined, key: keyof ClientCrossRefs, n = 1) => {
+      if (!cid) return;
+      (out[cid] ??= {})[key] = (out[cid][key] ?? 0) + n;
+    };
+    // client_links: the curated CRM graph (lead/quote — only entities written today)
+    const LINK_ENTITIES = new Set<keyof ClientCrossRefs>(["lead", "quote"]);
+    const clientByQuote = new Map<string, string>();
+    for (const l of db.clientLinks) {
+      if (LINK_ENTITIES.has(l.entity as keyof ClientCrossRefs)) bump(l.clientId, l.entity as keyof ClientCrossRefs);
+      if (l.entity === "quote") clientByQuote.set(l.entityId, l.clientId);
+    }
+    // orders: match on normalized contact (orders carry phone/email, never client ids)
+    const normPhone = (v?: string) => { const d = (v ?? "").replace(/\D/g, ""); return d.length >= 10 ? d.slice(-10) : ""; };
+    const normMail = (v?: string) => (v ?? "").trim().toLowerCase();
+    for (const o of db.orders) {
+      const pKey = normPhone(o.customerPhone);
+      const mail = normMail(o.customerEmail);
+      const c = db.clients.find((x) => {
+        if (x.mergedInto) return false;
+        const p = normPhone(x.phone);
+        if (pKey && p && p === pKey) return true;
+        const m = normMail(x.email);
+        return !!mail && !!m && m === mail;
+      });
+      bump(c?.id, "order");
+    }
+    // invoices: reached via the quote graph; invoices have no contact fields
+    for (const inv of db.invoices ?? []) {
+      if (inv.quoteId) bump(clientByQuote.get(inv.quoteId), "invoice");
+    }
+    // projects: portfolio rows carry a free-text client name — match company or name (heuristic, display-only)
+    for (const proj of db.projects ?? []) {
+      const hay = proj.client.toLowerCase();
+      const c = db.clients.find((x) => {
+        if (x.mergedInto) return false;
+        if (x.company && hay.includes(x.company.toLowerCase())) return true;
+        return x.name.length >= 5 && hay.includes(x.name.toLowerCase());
+      });
+      bump(c?.id, "project");
+    }
+    return out;
+  },
+
   async listMergeCandidates(): Promise<MergeCandidate[]> {
     const out: MergeCandidate[] = [];
     const active = loadDb().clients.filter((c) => !c.mergedInto);
@@ -2629,10 +2762,11 @@ export const demoAdminApi: AdminApi = {
       if (into.mergedInto) throw new Error(`${intoId} is already merged into ${into.mergedInto}.`);
       if (from.mergedInto) throw new Error(`${fromId} is already merged into ${from.mergedInto}.`);
       db.clientLinks = db.clientLinks.map((l) => (l.clientId === fromId ? { ...l, clientId: intoId } : l));
+      into.category = into.category ?? from.category; // winner's explicit tag wins; loser only fills a gap
       from.mergedInto = intoId;
       from.updatedAt = new Date().toISOString();
       into.updatedAt = new Date().toISOString();
-      merged = { ...into };
+      merged = { ...into, category: deriveClientCategory(into) };
     });
     return merged as AdminClient;
   },
@@ -2705,7 +2839,13 @@ export const demoAdminApi: AdminApi = {
     let items = [...db.leads].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     if (params.type && params.type !== "all") items = items.filter((l) => l.type === params.type);
     if (params.status && params.status !== "all") items = items.filter((l) => l.status === params.status);
-    items = items.filter((l) => matchQuery(params.query, [l.name, l.company, l.city, l.phone, l.summary]));
+    if (params.assignee) items = items.filter((l) => (l.assignedTo ?? "") === params.assignee);
+    if (params.unassigned) items = items.filter((l) => !l.assignedTo);
+    if (params.staleDays && params.staleDays > 0) {
+      const cutoff = Date.now() - params.staleDays * 86400000;
+      items = items.filter((l) => new Date(l.lastContact ?? l.createdAt).getTime() < cutoff);
+    }
+    items = items.filter((l) => matchQuery(params.query, [l.name, l.company, l.city, l.phone, l.summary, l.assignedTo, l.quotationRef, l.nextAction]));
     return paginate(items, { page: params.page, perPage: params.perPage ?? 10 });
   },
 
@@ -2714,6 +2854,25 @@ export const demoAdminApi: AdminApi = {
     update((db) => {
       const l = db.leads.find((x) => x.id === id);
       if (l) { l.status = status; updated = { ...l }; }
+    });
+    return updated;
+  },
+
+  async updateLead(id: string, patch: AdminLeadPatch): Promise<AdminLead | undefined> {
+    let updated: AdminLead | undefined;
+    const setText = (v?: string) => { const t = (v ?? "").trim(); return t ? t : undefined; };
+    const setDate = (v?: string) => { const t = (v ?? "").trim(); return t ? new Date(t).toISOString() : undefined; };
+    update((db) => {
+      const l = db.leads.find((x) => x.id === id);
+      if (!l) return;
+      if (patch.assignedTo !== undefined) l.assignedTo = setText(patch.assignedTo);
+      if (patch.leadSource !== undefined) l.leadSource = (patch.leadSource || undefined) as AdminLead["leadSource"];
+      if (patch.quotationRef !== undefined) l.quotationRef = setText(patch.quotationRef);
+      if (patch.lastContact !== undefined) l.lastContact = setDate(patch.lastContact);
+      if (patch.meetingAt !== undefined) l.meetingAt = setDate(patch.meetingAt);
+      if (patch.nextAction !== undefined) l.nextAction = setText(patch.nextAction);
+      if (patch.note !== undefined) l.note = setText(patch.note);
+      updated = { ...l };
     });
     return updated;
   },

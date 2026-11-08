@@ -26,7 +26,7 @@ const emptyForm: FormState = {
 const slugify = (name: string) =>
   name.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-export default function AdminSeries() {
+export function SeriesSection() {
   const api = useMemo(() => getAdminApi(), []);
   const [items, setItems] = useState<AdminSeries[]>([]);
   const [loading, setLoading] = useState(true);

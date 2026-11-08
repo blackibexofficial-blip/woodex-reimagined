@@ -36,7 +36,7 @@ const GROUP_ORDER: { key: Group; label: string }[] = [
   { key: "ungrouped", label: "Ungrouped" },
 ];
 
-export default function AdminCategories() {
+export function CategoriesSection() {
   const api = useMemo(() => getAdminApi(), []);
   const [rows, setRows] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);

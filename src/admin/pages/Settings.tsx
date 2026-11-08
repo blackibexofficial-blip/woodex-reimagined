@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { CheckCircle2, XCircle, Loader2, Save, AlertTriangle, RotateCcw, Plug, Database, Server, Upload, X, MessagesSquare, Inbox } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Save, AlertTriangle, RotateCcw, Plug, Database, Server, Upload, X, MessagesSquare, Inbox, UsersRound, Bot, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { StoreSettings, ChatMode } from "@/api/types";
@@ -20,6 +20,7 @@ export default function AdminSettings() {
   const [resetting, setResetting] = useState(false);
   const [chatMode, setChatMode] = useState<ChatMode | null>(null);
   const [chatModeBusy, setChatModeBusy] = useState(false);
+  const [newMember, setNewMember] = useState("");
 
   useEffect(() => {
     api.getSettings().then(setSettings).catch(console.error);
@@ -37,6 +38,20 @@ export default function AdminSettings() {
 
   const set = <K extends keyof StoreSettings>(key: K, value: StoreSettings[K]) =>
     setSettings((s) => (s ? { ...s, [key]: value } : s));
+
+  const team = settings?.team ?? [];
+  const aiEnabled = settings?.aiOfflineDraftsEnabled !== false;
+  const addMember = (e: { preventDefault(): void }) => {
+    e.preventDefault();
+    const name = newMember.trim().replace(/\s+/g, " ");
+    if (!name) return;
+    if (name.length > 40) { toast.error("Keep team names under 40 characters."); return; }
+    if (team.some((t) => t.toLowerCase() === name.toLowerCase())) { toast.error(`${name} is already on the roster.`); return; }
+    set("team", [...team, name]);
+    setNewMember("");
+    toast.success(`${name} added — save changes to persist.`);
+  };
+  const removeMember = (name: string) => set("team", team.filter((t) => t !== name));
 
   const onLogoFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -203,6 +218,76 @@ export default function AdminSettings() {
           <Link to="/admin/chat" className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-accent hover:underline">
             <Inbox className="h-3.5 w-3.5" aria-hidden /> Open the inbox →
           </Link>
+        </SectionCard>
+
+        <SectionCard title="Team — lead assignees" action={<UsersRound className="h-4 w-4 text-muted-foreground" />}>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Who can own a lead. Powers the assignee column on every lead, the <span className="font-mono">Mine</span> flag and the merge/attribution review. Demo roster: Abdullah · Nabeel · Imtiaz — add yours, then hit <span className="font-semibold text-foreground">Save changes</span>.
+          </p>
+          <ul className="mt-3 divide-y divide-muted overflow-hidden rounded-lg border border-border">
+            {team.length === 0 && <li className="px-3 py-2.5 text-xs text-muted-foreground">No teammates yet — add the sales roster below.</li>}
+            {team.map((name) => (
+              <li key={name} className="flex items-center gap-2.5 bg-white px-3 py-2">
+                <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[9px] font-bold uppercase text-foreground">{name.trim().split(/\s+/).slice(0, 2).map((w) => (w[0] ?? "").toUpperCase()).join("")}</span>
+                <span className="flex-1 text-xs font-medium text-foreground">{name}</span>
+                <button type="button" onClick={() => removeMember(name)} aria-label={`Remove ${name} from the team`} className="rounded p-1 text-muted-foreground hover:bg-border hover:text-foreground"><X className="h-3.5 w-3.5" aria-hidden /></button>
+              </li>
+            ))}
+          </ul>
+          <form onSubmit={addMember} className="mt-2 flex gap-2">
+            <Input value={newMember} onChange={(e) => setNewMember(e.target.value)} placeholder="Add teammate — e.g. Abdullah" aria-label="New team member" className="h-8 text-xs bg-white" />
+            <Button type="submit" size="sm" variant="outline" className="h-8">Add</Button>
+          </form>
+        </SectionCard>
+
+        <SectionCard title="AI sales agent" action={<Bot className="h-4 w-4 text-muted-foreground" />}>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Drafts replies from a built-in knowledge corpus (hours, address, warranty tiers, payment policy) and only ever quotes prices from real catalogue records.
+            A draft lands in the composer for staff review — nothing is sent automatically, and no network call leaves this device.
+          </p>
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border bg-white px-3 py-2">
+            <span className="min-w-0">
+              <label htmlFor="ai-offline-toggle" className="block text-xs font-semibold text-foreground">Offline AI drafts in the inbox</label>
+              <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">Enables “Suggest reply (AI)” in the chat composer. Retrieval-grounded on WOODEX business facts.</span>
+            </span>
+            <button
+              id="ai-offline-toggle"
+              type="button"
+              role="switch"
+              aria-checked={aiEnabled}
+              onClick={() => set("aiOfflineDraftsEnabled", !aiEnabled)}
+              aria-label="Toggle offline AI drafts"
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${aiEnabled ? "bg-accent" : "bg-muted"}`}
+            >
+              <span aria-hidden className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${aiEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+          <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-900"><AlertTriangle className="h-3.5 w-3.5" aria-hidden /> Hosted copilot — Not configured</p>
+            <p className="mt-1 text-[11px] leading-4 text-amber-900">
+              The <code className="rounded bg-amber-100 px-1">ai-agent</code> edge function ships in this repository but is <strong>undeployed</strong>.
+              It serves only after the owner applies the owner-gated rollout (deploy <span className="font-mono">ai-agent</span>, set <code className="rounded bg-amber-100 px-1">AI_AGENT_API_KEY</code>, optionally <code className="rounded bg-amber-100 px-1">AI_AGENT_BASE_URL</code> / <code className="rounded bg-amber-100 px-1">AI_AGENT_MODEL</code>).
+              Until then this toggle affects the offline draft only — no hosted model exists, and no conversation ever leaves this browser.
+            </p>
+          </div>
+          <p className="mt-2 text-[10px] leading-4 text-muted-foreground">
+            Honest status (2026-11-08): the offline draft engine is verified offline — <span className="font-mono">npm run test:ai-eval</span> (19/19, retrieval + price-grounding + handoff checks). The hosted path is UNVERIFIED until deployed with a key and rehearsed in staging. See <span className="font-mono">docs/08-master-plan/CREDENTIAL-BLOCKED.md</span>.
+          </p>
+        </SectionCard>
+
+        <SectionCard title="Payment gateway" action={<Wallet className="h-4 w-4 text-muted-foreground" />}>
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-900"><AlertTriangle className="h-3.5 w-3.5" aria-hidden /> Not configured</p>
+            <p className="mt-1 text-[11px] leading-4 text-amber-900">
+              No gateway (JazzCash / Easypaisa / bank link) is connected and no real payment can be taken on this build. Demo checkout stays demo — it never charges anyone.
+            </p>
+          </div>
+          <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-5 text-muted-foreground">
+            <li><strong className="text-foreground">Exists today:</strong> <code className="rounded bg-muted px-1">src/lib/payments/signature.ts</code> — constant-time HMAC-SHA256 verification for the future webhook (<code className="rounded bg-muted px-1">x-woodex-signature</code> over the raw body), verified offline (<span className="font-mono">npm run test:payments</span> · 15/15).</li>
+            <li><strong className="text-foreground">Owner action:</strong> merchant account + live API keys (server-side only), webhook endpoint calling the verifier, sandbox rehearsal with test cards/wallets, then hosted keys — in that order.</li>
+            <li><strong className="text-foreground">Never:</strong> paste keys into this page, the bundle, git, or chat. This card is deliberately read-only.</li>
+          </ul>
+          <p className="mt-2 text-[10px] leading-4 text-muted-foreground">Full checklist incl. what stays blocked after this: <span className="font-mono">docs/08-master-plan/CREDENTIAL-BLOCKED.md</span>. Hosted path remains UNVERIFIED until staging sign-off.</p>
         </SectionCard>
 
         <SectionCard title="Integration status" action={<Plug className="h-4 w-4 text-muted-foreground" />}>

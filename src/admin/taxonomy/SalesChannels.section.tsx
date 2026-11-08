@@ -27,7 +27,7 @@ type ShowroomForm = { name: string; city: string; address: string; phone: string
 const emptyChannel: ChannelForm = { name: "", kind: "web", description: "", enabled: true };
 const emptyShowroom: ShowroomForm = { name: "", city: "", address: "", phone: "", whatsapp: "", hours: "Mon–Sat: 9am–7pm", lat: "", lng: "", isHQ: false, active: true };
 
-export default function AdminSalesChannels() {
+export function SalesChannelsSection() {
   const api = useMemo(() => getAdminApi(), []);
   const [tab, setTab] = useState<"channels" | "showrooms">("channels");
   const [channels, setChannels] = useState<AdminSalesChannel[]>([]);

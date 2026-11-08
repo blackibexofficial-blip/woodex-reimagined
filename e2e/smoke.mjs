@@ -97,6 +97,7 @@ async function adminSuite(browser) {
   await waitText("E2E Acoustic Pods", 10000);
   ok("new category appears in the table", true);
 
+
   await page.evaluate(() => {
     const sw = [...document.querySelectorAll('[role="switch"]')].find((n) => (n.getAttribute("aria-label") || "").includes("E2E Acoustic Pods"));
     sw && sw.click();
@@ -127,6 +128,12 @@ async function adminSuite(browser) {
   await new Promise((r) => setTimeout(r, 1200));
   const rowGone = await page.evaluate(() => ![...document.querySelectorAll("td p")].some((n) => n.textContent.trim() === "E2E Disposable Corner"));
   ok("unused category deleted", rowGone);
+
+  // V5 consolidation — legacy route deep-links into the unified Taxonomy page
+  await page.goto(`${ADMIN}/series`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("Ek Series", 20000);
+  const landedUrl = await page.evaluate(() => window.location.pathname + window.location.search);
+  ok("/admin/series redirects into the unified Taxonomy page (series section)", landedUrl.startsWith("/admin/taxonomy") && landedUrl.includes("series"));
 
   await page.goto(`${ADMIN}/media`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("stored on-device", 20000);
@@ -177,6 +184,12 @@ async function adminSuite(browser) {
     const docText = (await bodyText()).toLowerCase();
     ok(`printable ${route.split("/")[1]} renders (A4 sheet, letterhead)`, docText.includes(marker.toLowerCase()));
   }
+  // ── Furniture A4 (WI-10204) — policy wording, RTL block, acceptance block ──
+  await page.goto(`${ADMIN}/quote/WI-10204`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForSelector(".a4-page", { timeout: 15000 }).catch(() => {});
+  const a4 = (await bodyText()).toLowerCase();
+  ok("A4 furniture sheet renders the WI-10204 policy wording (75/25)", a4.includes("advance payment policy (75%)") && a4.includes("advance required (75%)"));
+  ok("A4 furniture sheet renders the Urdu policy block + client acceptance signature block", a4.includes("پیشگی ادائیگی") && a4.includes("client acceptance") && a4.includes("authorized signatory"));
   await page.goto(`${ADMIN}/orders/new`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("New order", 15000).catch(() => {});
   ok("New order page renders with totals rail", (await bodyText()).includes("Create order"));
@@ -186,6 +199,29 @@ async function adminSuite(browser) {
   await page.goto(`${ADMIN}/quotes`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Open pipeline", 15000).catch(() => {});
   ok("quotes page shows the KPI pipeline strip", (await bodyText()).toLowerCase().includes("open pipeline"));
+  // ── Quote template designer — WI-10204 advance & policy panel + live A4 preview ──
+  const newQ = await page.evaluateHandle(() => [...document.querySelectorAll('button')].find((b) => /new quote/i.test(b.textContent || ''))).catch(() => null);
+  const newQBtn = newQ && (await newQ.asElement());
+  if (newQBtn) {
+    await newQBtn.click();
+    await page.waitForSelector('button[title="Design the printable template"]', { timeout: 10000 });
+    await page.click('button[title="Design the printable template"]');
+    const designerOk = await page.waitForSelector('[aria-label="Advance payment and policy"]', { timeout: 15000 }).then(() => true).catch(() => false);
+    ok("designer opens with the WI-10204 advance & policy panel", designerOk);
+    if (designerOk) {
+      const adv = await page.$eval('#tpl-advance', (el) => el.value).catch(() => null);
+      const val = await page.$eval('#tpl-validity', (el) => el.value).catch(() => null);
+      const ur = await page.$eval('#tpl-terms-ur', (el) => el.getAttribute('dir')).catch(() => null);
+      const preview = await page.$('aside[aria-label="Live A4 preview"] .a4-page').catch(() => null);
+      ok(`designer carries advance 75 / validity 30 / UR RTL wording (got ${adv}%, ${val}d, dir=${ur})`, adv === "75" && val === "30" && ur === "rtl");
+      ok("designer renders the live A4 preview sheet", !!preview);
+      await page.keyboard.press("Escape"); // close designer
+      await page.keyboard.press("Escape"); // close quote editor
+      await new Promise((r) => setTimeout(r, 600));
+    }
+  } else {
+    ok("New quotation button could not be located — designer smoke skipped", false);
+  }
   // ── PO → job actuals (cost-capture, owner-delegated slice) ──
   await page.goto(`${ADMIN}/purchase-orders`, { waitUntil: "networkidle2", timeout: 60000 });
   const postBtn = await page.waitForSelector('[aria-label*="to job actuals"]', { timeout: 15000 }).catch(() => null);
@@ -200,6 +236,16 @@ async function adminSuite(browser) {
   await page.goto(`${ADMIN}/dashboard`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Revenue — last 30 days", 20000);
   ok("dashboard still renders", true);
+  // ── notification bell — present on every admin route; popover lists the four queues ──
+  const bell = await page.waitForSelector('button[aria-haspopup="dialog"][aria-controls]', { timeout: 10000 }).catch(() => null);
+  ok("notification bell renders in the admin topbar", !!bell);
+  if (bell) {
+    await bell.click();
+    const panel = await page.waitForSelector('[role="dialog"][aria-label="Notifications"]', { timeout: 8000 }).catch(() => null);
+    const panelText = panel ? await panel.evaluate((el) => el.textContent || "") : "";
+    ok("notification popover lists unread chats · stale leads · low stock · overdue tasks", /unread chats/i.test(panelText) && /stale/i.test(panelText) && /low stock/i.test(panelText) && /overdue tasks/i.test(panelText));
+    await page.keyboard.press("Escape");
+  }
   await clickByText("a", "Pages");
   await page.waitForFunction(() => location.pathname.endsWith("/admin/pages"), { timeout: 10000 }).catch(() => {});
   ok("sidebar Pages link routes to /admin/pages", await page.evaluate(() => location.pathname.endsWith("/admin/pages")));
@@ -254,12 +300,48 @@ async function adminSuite(browser) {
   const quotedCol = await page.evaluate(() => [...document.querySelectorAll('[aria-label="Column quoted"] li p.truncate')].map((p) => p.textContent));
   ok(`kanban synthetic drag moves a card New→Quoted (${drag.name})`, drag.ok && quotedCol.includes(drag.name));
 
+  // V4 PR-D — lead lens chips (Mine / Unassigned / Stale > 7d) + CSV export
+  await page.goto(`${ADMIN}/leads`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForSelector('input[placeholder*="Search name"]', { timeout: 15000 });
+  const clickExact = (label) => page.evaluate((t) => { const el = [...document.querySelectorAll("button")].find((n) => n.textContent.trim() === t); if (!el) return false; el.click(); return true; }, label);
+  await clickByText("button", "Unassigned");
+  await new Promise((r) => setTimeout(r, 500));
+  const unassignedBody = (await bodyText());
+  ok("Unassigned lens shows unassigned seeded leads (Hira Zainab) and hides assigned ones (Danish Hussain)", unassignedBody.includes("Hira Zainab") && !unassignedBody.includes("Danish Hussain"));
+  await clickByText("button", "Mine");
+  await new Promise((r) => setTimeout(r, 500));
+  const mineBody = (await bodyText());
+  ok("Mine lens defaults to the seeded roster (Abdullah) and narrows the list", mineBody.includes("Danish Hussain") && !mineBody.includes("Sana Malik"));
+  await clickByText("button", "Stale > 7d") || await clickByText("button", "Stale");
+  await new Promise((r) => setTimeout(r, 500));
+  const staleBody = (await bodyText());
+  ok("Stale > 7d lens shows ageing leads (Kashif Mirza) and hides fresh ones (Danish Hussain)", staleBody.includes("Kashif Mirza") && !staleBody.includes("Danish Hussain"));
+  await clickExact("All");
+  await new Promise((r) => setTimeout(r, 500));
+  ok("All lens restores the full pipeline", (await bodyText()).includes("Danish Hussain"));
+  ok("Export CSV action is present on the leads page", (await bodyText()).includes("Export CSV"));
+
   // client-merge review (CRM identity) — loads with seeded candidates + audit trail
   await page.goto(`${ADMIN}/client-merge`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Merge history", 20000);
   const mergeBody = (await bodyText()).toLowerCase();
   ok("merge review shows the seeded Bilal email-collision pair (Bilal Ahmed / B Ahmed)", mergeBody.includes("bilal ahmed") && mergeBody.includes("b ahmed"));
   ok("merge audit trail lists the retired record (CLI-1007, tombstoned into CLI-1001)", mergeBody.includes("cli-1007") && mergeBody.includes("cli-1001"));
+
+  // V4 PR-C — clients by category: KPI strip, filter chips, CSV export
+  await page.goto(`${ADMIN}/clients`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("Active clients", 20000);
+  await waitText("Export all CSV", 15000);
+  const clientsBody = (await bodyText());
+  ok("clients page renders the CRM database with KPI strip + category chips (Furniture / Interior / Retail)", ["Furniture (", "Interior (", "Retail (", "Business ("].every((t) => clientsBody.includes(t)));
+  await clickByText("button", "Furniture (");
+  await new Promise((r) => setTimeout(r, 400));
+  const furnitureBody = (await bodyText());
+  ok("Furniture chip narrows the list to seeded furniture clients (B Ahmed / Rabia I)", furnitureBody.includes("B Ahmed") && furnitureBody.includes("Rabia I") && !furnitureBody.includes("Kashif Mirza"));
+  ok("Furniture chip shows per-category CSV export action", furnitureBody.includes("Export Furniture CSV"));
+  await clickByText("button", "All (");
+  await new Promise((r) => setTimeout(r, 400));
+  ok("All chip restores the full list", (await bodyText()).includes("Kashif Mirza"));
 
   // interior projects — practice workspace (BOQ · milestones · files)
   await page.goto(`${ADMIN}/projects`, { waitUntil: "networkidle2", timeout: 60000 });
@@ -492,6 +574,16 @@ async function chatSuite(browser) {
   });
   await admin.waitForFunction((t) => document.body.innerText.includes(t), { timeout: 10000 }, agentReply).catch(() => {});
   ok("agent reply posts into the thread", (await admin.evaluate(() => document.body.innerText)).includes(agentReply));
+  // ── offline AI draft — suggestion lands in the composer for review, never auto-sent ──
+  const suggestBtn = await admin.waitForSelector('button[aria-label="Suggest reply (AI)"]', { timeout: 8000 }).catch(() => null);
+  ok("inbox shows the offline AI draft button", !!suggestBtn);
+  if (suggestBtn) {
+    await suggestBtn.click();
+    await new Promise((r) => setTimeout(r, 400));
+    const draftValue = await admin.$eval("#chat-reply", (el) => el.value).catch(() => "");
+    ok("Suggest reply inserts a grounded AI draft into the composer", draftValue.trim().length > 0);
+    await admin.evaluate(() => { const el = document.querySelector("#chat-reply"); const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set; setter.call(el, ""); el.dispatchEvent(new Event("input", { bubbles: true })); });
+  }
 
   /* 3 — visitor sees the agent reply in the bubble (same tab, poll) */
   await sf.bringToFront();

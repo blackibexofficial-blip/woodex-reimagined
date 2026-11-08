@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { ClaimStatus, DraftOrderStatus, ExchangeStatus, LeadStatus, OrderStatus, PaymentMethod, PurchaseOrderStatus, QuoteStatus, ReturnStatus, TransferStatus } from "@/api/types";
+import type { ClaimStatus, ClientCategory, DraftOrderStatus, ExchangeStatus, LeadStatus, OrderStatus, PaymentMethod, PurchaseOrderStatus, QuoteStatus, ReturnStatus, TransferStatus } from "@/api/types";
+import { CLIENT_CATEGORY_LABELS } from "@/lib/clientCategory";
 
 /* ── formatters ─────────────────────────────────────────────────────────── */
 export const formatPKR = (n: number) =>
@@ -37,6 +38,13 @@ const leadStatusLabels: Record<LeadStatus, string> = {
   meeting: "Meeting", not_responding: "Not responding",
 };
 export const leadStatusLabel = (status: LeadStatus): string => leadStatusLabels[status] ?? status;
+const clientCategoryStyles: Record<ClientCategory, string> = {
+  furniture: "bg-amber-100 text-amber-900 border-amber-200",
+  interior: "bg-violet-100 text-violet-800 border-violet-200",
+  project: "bg-teal-100 text-teal-800 border-teal-200",
+  retail: "bg-sky-100 text-sky-800 border-sky-200",
+  business: "bg-hon-green-pale text-hon-green-dark border-hon-green-pale",
+};
 const leadStyles: Record<LeadStatus, string> = {
   new: "bg-sky-100 text-sky-800 border-sky-200",
   contacted: "bg-hon-green-pale text-hon-green-dark border-hon-green-pale",
@@ -138,6 +146,9 @@ export const OrderStatusBadge = ({ status }: { status: OrderStatus }) => (
 );
 export const LeadStatusBadge = ({ status }: { status: LeadStatus }) => (
   <Badge variant="outline" className={cn("font-medium", leadStyles[status])}>{leadStatusLabel(status)}</Badge>
+);
+export const ClientCategoryBadge = ({ category }: { category: ClientCategory }) => (
+  <Badge variant="outline" className={cn("font-medium", clientCategoryStyles[category])}>{CLIENT_CATEGORY_LABELS[category]}</Badge>
 );
 export const paymentLabel = (m: PaymentMethod) => paymentLabels[m] ?? m;
 

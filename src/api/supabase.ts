@@ -58,13 +58,13 @@ import type { Database, Json, TablesInsert, TablesUpdate } from "@/integrations/
 import type {
   AdminApi,
   ChatConversation, ChatMessage, ChatMode,
-  LeadImportInput, LeadImportResult,
+  LeadImportInput, LeadImportResult, AdminLeadPatch,
   AdminBlogPost, AdminBrand, AdminBundle, AdminCategory, AdminCollection, AdminCollectionKind,
   AdminCustomDesignPage, AdminCustomer, AdminDeliveryZone, AdminHomepageSections, AdminInventoryItem, AdminLead,
   AdminMaterial, AdminMediaAsset, AdminOptionSet, AdminOrder, AdminOrderEvent, AdminPage,
   AdminPageContentItem, AdminPageDoc, AdminPageHistoryEntry, AdminPageSeo, AdminPriceList,
   AdminProduct, AdminProject, AdminPurchaseOrder, AdminPurchaseOrderPatch, AdminQuote,
-  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput, AdminTask, NewTaskInput, AdminClient, MergeCandidate, AdminSiteVisit, NewSiteVisitInput, SiteVisitPatch, SiteVisitStatus,
+  AdminQuotePatch, AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, InvoiceStatus, NewInvoicePaymentInput, AdminTask, NewTaskInput, AdminClient, MergeCandidate, ClientCrossRefs, AdminSiteVisit, NewSiteVisitInput, SiteVisitPatch, SiteVisitStatus,
   AdminReturn, AdminReturnPatch, AdminSalesChannel, AdminSeries, AdminService,
   AdminShowroom, AdminStockMovement, AdminStockTransfer, AdminStockTransferPatch, AdminSupplier,
   AdminSupplierPatch, AdminVirtualShowroomPage, AdminWarrantyPage,
@@ -82,7 +82,7 @@ import type {
   ProductImportRow, ProductImportResult,
   ProjectCostCode, ProjectActualLine, ProjectActualSource, ProjectFileItem,
 } from "@/api/types";
-import { BUILTIN_TEMPLATES, isBuiltinTemplateId, DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
+import { BUILTIN_TEMPLATES, isBuiltinTemplateId, DEFAULT_QUOTE_TEMPLATE, clampAdvancePct } from "@/api/quote-templates";
 import { defaultWarrantyPage, defaultCustomDesignPage, defaultVirtualShowroomPage } from "@/api/singleton-defaults";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -1508,6 +1508,13 @@ async function listQuoteTemplates(): Promise<AdminQuoteTemplate[]> {
         builtIn: false,
         logo: typeof tpl.logo === "string" && tpl.logo ? tpl.logo : undefined,
         layout: tpl.layout === "a4" ? ("a4" as const) : ("classic" as const),
+        advancePct: typeof tpl.advancePct === "number" ? clampAdvancePct(tpl.advancePct) : undefined,
+        validityDays: typeof tpl.validityDays === "number" && Number.isFinite(tpl.validityDays) ? Math.max(1, Math.min(365, Math.round(tpl.validityDays))) : undefined,
+        termsEn: typeof tpl.termsEn === "string" && tpl.termsEn.trim() ? tpl.termsEn : undefined,
+        termsUr: typeof tpl.termsUr === "string" && tpl.termsUr.trim() ? tpl.termsUr : undefined,
+        acceptanceBlock: typeof tpl.acceptanceBlock === "boolean" ? tpl.acceptanceBlock : undefined,
+        footerVariant: tpl.footerVariant === "zainab" || tpl.footerVariant === "store" || tpl.footerVariant === "custom" ? tpl.footerVariant : undefined,
+        footerCustomLines: typeof tpl.footerCustomLines === "string" ? tpl.footerCustomLines : undefined,
       } satisfies AdminQuoteTemplate;
     })
     .filter((t) => !isBuiltinTemplateId(t.id));
@@ -1525,7 +1532,11 @@ async function saveQuoteTemplate(template: AdminQuoteTemplate): Promise<AdminQuo
   const row = {
     id: saved.id,
     name: saved.name,
-    template: { brandColor: saved.brandColor, header: saved.header, footer: saved.footer, logo: saved.logo ?? null, layout: saved.layout ?? "classic" } as unknown as Json,
+    template: {
+      brandColor: saved.brandColor, header: saved.header, footer: saved.footer, logo: saved.logo ?? null, layout: saved.layout ?? "classic",
+      advancePct: saved.advancePct, validityDays: saved.validityDays, termsEn: saved.termsEn ?? null, termsUr: saved.termsUr ?? null,
+      acceptanceBlock: saved.acceptanceBlock ?? null, footerVariant: saved.footerVariant ?? null, footerCustomLines: saved.footerCustomLines ?? null,
+    } as unknown as Json,
     updated_at: new Date().toISOString(),
   };
   const { error } = await supabase.from("quote_templates").upsert(row, { onConflict: "id" });
@@ -1570,6 +1581,32 @@ const rowToAdminClient = (r: Row): AdminClient => ({
   updatedAt: String(r.updated_at),
 });
 const CLIENT_COLS = "id,name,company,email,email_norm,phone,phone_norm,city,kind,source,tags,notes,merged_into,created_at,updated_at";
+
+async function updateClientCategory(): Promise<AdminClient | undefined> {
+  // V4 PR-C — the clients.category column does not exist hosted; the migration is an owner-gated decision.
+  throw new Error("Retagging clients needs the owner-gated clients.category migration — do it in the demo build (VITE_API_MODE=demo).");
+}
+
+async function listClientCrossRefs(): Promise<Record<string, ClientCrossRefs>> {
+  guard();
+  try {
+    const { data, error } = await supabase.from("client_links").select("client_id, entity").limit(10000);
+    if (error) { console.warn("listClientCrossRefs:", error.message); return {}; }
+    const out: Record<string, ClientCrossRefs> = {};
+    for (const row of data ?? []) {
+      const r = row as { client_id?: number | string; entity?: string };
+      if (r.entity !== "lead" && r.entity !== "quote") continue; // invoice/order/project links aren't maintained hosted yet
+      const cid = r.client_id === undefined ? undefined : CLIENT_REF(Number(r.client_id));
+      if (!cid) continue;
+      const e = r.entity as "lead" | "quote";
+      (out[cid] ??= {})[e] = (out[cid][e] ?? 0) + 1;
+    }
+    return out;
+  } catch (err) {
+    console.warn("listClientCrossRefs failed", err);
+    return {}; // never break the Clients page on a hosted hiccup
+  }
+}
 
 async function listClients(params?: { includeMerged?: boolean }): Promise<AdminClient[]> {
   guard();
@@ -2021,7 +2058,7 @@ const toCustomerRef = (row: Row): AdminCustomer => ({
 /* leads: capture must go through the lead-capture EF (anon cannot insert by
  * design); the admin lead pipeline reads/updates go through the clients/leads
  * capability policies. */
-async function listLeads(params?: ListParams & { status?: AdminLead["status"] | "all"; type?: AdminLead["type"] | "all" }): Promise<Paginated<AdminLead>> {
+async function listLeads(params?: ListParams & { status?: AdminLead["status"] | "all"; type?: AdminLead["type"] | "all"; assignee?: string; unassigned?: boolean; staleDays?: number }): Promise<Paginated<AdminLead>> {
   guard();
   const page = Math.max(1, params?.page ?? 1);
   const perPage = Math.max(1, Math.min(100, params?.perPage ?? 20));
@@ -2032,6 +2069,13 @@ async function listLeads(params?: ListParams & { status?: AdminLead["status"] | 
   if (q) rows = rows.filter((r) => [r.name, r.company, r.contact, r.email, r.utm_campaign].some((v) => String(v ?? "").toLowerCase().includes(q)));
   if (params?.status && params.status !== "all") rows = rows.filter((r) => String(r.status ?? "new") === params.status);
   if (params?.type && params.type !== "all") rows = rows.filter((r) => String(r.type ?? "quote") === params.type);
+  if (params?.assignee) rows = rows.filter((r) => String(r.owner ?? "").trim() === params.assignee);
+  if (params?.unassigned) rows = rows.filter((r) => !String(r.owner ?? "").trim());
+  if (params?.staleDays && params.staleDays > 0) {
+    // hosted has no last_contact column — age from created_at until the owner-gated migration ships
+    const cutoff = Date.now() - params.staleDays * 86400000;
+    rows = rows.filter((r) => new Date(String(r.created_at)).getTime() < cutoff);
+  }
   const total = rows.length;
   const items = rows.slice((page - 1) * perPage, page * perPage).map(rowToAdminLead);
   return pagenate(items, total, page, perPage);
@@ -2056,7 +2100,30 @@ const rowToAdminLead = (r: Row): AdminLead => ({
   ...(r.utm_campaign ? { utmCampaign: r.utm_campaign } : {}),
   ...(r.landing_path ? { landingPath: r.landing_path } : {}),
   ...(r.referrer ? { referrer: r.referrer } : {}),
+  ...(r.owner ? { assignedTo: String(r.owner) } : {}),
+  ...(r.note ? { note: String(r.note) } : {}),
 });
+const LEAD_PATCH_HOSTED_GAPS = ["leadSource", "quotationRef", "lastContact", "meetingAt", "nextAction"] as const;
+async function updateLead(id: string, patch: AdminLeadPatch): Promise<AdminLead | undefined> {
+  guard();
+  // V4 PR-D — the hosted leads table carries owner + note only; the rest need the owner-gated migration.
+  const gaps = LEAD_PATCH_HOSTED_GAPS.filter((k) => patch[k] !== undefined);
+  if (gaps.length) throw new Error(`Hosted leads table has no columns for ${gaps.join(", ")} — owner-gated migration. Edit those in the demo build.`);
+  const num = Number(String(id).replace(/^lead-/, ""));
+  if (!Number.isFinite(num)) return undefined;
+  const row: TablesUpdate<"leads"> = { updated_at: new Date().toISOString() };
+  if (patch.assignedTo !== undefined) row.owner = (patch.assignedTo ?? "").trim() || null;
+  if (patch.note !== undefined) row.note = (patch.note ?? "").trim() || null;
+  if (Object.keys(row).length === 1) {
+    const { data, error } = await supabase.from("leads").select("*").eq("id", num).maybeSingle();
+    if (error) fail("updateLead", error);
+    return data ? rowToAdminLead(data as Row) : undefined;
+  }
+  const { data, error } = await supabase.from("leads").update(row).eq("id", num).select("*").maybeSingle();
+  if (error) fail("updateLead", error);
+  return data ? rowToAdminLead(data as Row) : undefined;
+}
+
 async function updateLeadStatus(id: string, status: AdminLead["status"], patch?: Partial<Pick<AdminLead, "summary">>): Promise<AdminLead | undefined> {
   guard();
   const num = Number(String(id).replace(/^lead-/, ""));
@@ -3935,6 +4002,8 @@ export const supabaseAdminApi: AdminApi = {
   listClients,
   listMergeCandidates,
   mergeClients,
+  updateClientCategory,
+  listClientCrossRefs,
   listSiteVisits,
   createSiteVisit,
   updateSiteVisitStatus,
@@ -3966,6 +4035,7 @@ export const supabaseAdminApi: AdminApi = {
   getCustomer,
   listLeads,
   updateLeadStatus,
+  updateLead,
   createLead,
   importLeads,
   listChatConversations,

@@ -16,6 +16,57 @@ import type { AdminQuoteTemplate } from "@/api/types";
 
 export const PAYMENT_TERMS_NOTE = "Final payment terms will be included in formal quotation.";
 
+/** WOODEX Interior policy wording — the furniture A4 default (owner-approved, WI-10204). */
+export const DEFAULT_TERMS_EN = `PAYMENT & POLICY TERMS
+____________________
+Advance Payment Policy ({advancePct}%): Rs {advance} due upon contract signing.
+Balance Due ({balancePct}%): Rs {balance} payable upon phase completion.
+Validity: Quotation rates are valid for 30 days from the date of issuance ({validUntil}).`;
+
+export const DEFAULT_TERMS_UR = `ادائیگی اور پالیسی کی شرائط
+____________________
+پیشگی ادائیگی کی پالیسی ({advancePct}%): Rs {advance} — معاہدہ دستخط ہوتے ہی واجب الادا۔
+بقایا ادائیگی ({balancePct}%): Rs {balance} — میعاد مکمل ہونے پر قابلِ ادا۔
+میعاد: کوٹیشن کی قیمتیں اجراء کی تاریخ سے 30 دن تک درست ہیں ({validUntil})۔`;
+
+/** Quick-pick advance chips offered in the template designer. */
+export const ADVANCE_CHIPS = [50, 60, 70, 75, 80, 100] as const;
+
+/** Clamp to a whole-point 0–100 advance percentage; garbage ⇒ 75 (the house default). */
+export const clampAdvancePct = (n: unknown): number => {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return 75;
+  return Math.max(0, Math.min(100, Math.round(v)));
+};
+
+/** Resolve the EN/UR policy wording against a quote total. Pure; used by sheet + designer preview. */
+export const resolvePolicyTerms = (
+  template: string,
+  vars: { advance: number; balance: number; validUntil: string; advancePct: number },
+): string =>
+  template
+    .split("{advancePct}").join(String(vars.advancePct))
+    .split("{balancePct}").join(String(100 - vars.advancePct))
+    .split("{advance}").join(vars.advance.toLocaleString("en-PK"))
+    .split("{balance}").join(vars.balance.toLocaleString("en-PK"))
+    .split("{validUntil}").join(vars.validUntil);
+
+/** Signatory footer presets. Zainab Tower = WI-10204 house doc; store = the canonical storefront line (src/config/site.ts). */
+export const FOOTER_PRESETS = {
+  zainab: {
+    contactLines: ["Woodex Furniture"],
+    addressLines: ["LG 89 / M-71 Zainab Tower", "Model Town Link Road, Lahore"],
+    phone: "+92 322 4000768",
+    email: "info@woodex.com.pk",
+  },
+  store: {
+    contactLines: ["WOODEX"],
+    addressLines: ["123 Gulberg III, Main Boulevard", "Lahore"],
+    phone: "+92 300 1234567",
+    email: "info@woodex.pk",
+  },
+} as const;
+
 export const DEFAULT_QUOTE_TEMPLATE: AdminQuoteTemplate = {
   id: "builtin-woodex-classic",
   name: "Woodex classic",
@@ -66,6 +117,12 @@ export const WOODEX_A4_TEMPLATE: AdminQuoteTemplate = {
     { id: "terms", type: "terms", label: "Terms", content: "Prices in PKR. Delivery timeline is indicative and is confirmed in writing at order confirmation. Warranty and installation are covered per line item where stated.", visible: true },
     { id: "thanks", type: "custom", label: "Thank-you line", content: "Thank you for choosing Woodex Furniture", visible: true },
   ],
+  advancePct: 75,
+  validityDays: 30,
+  termsEn: DEFAULT_TERMS_EN,
+  termsUr: DEFAULT_TERMS_UR,
+  acceptanceBlock: true,
+  footerVariant: "zainab",
 };
 
 /** Every code-owned builtin, classic first (it stays the default selection). */

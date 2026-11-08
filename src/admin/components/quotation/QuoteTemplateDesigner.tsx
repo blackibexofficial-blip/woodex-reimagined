@@ -3,18 +3,49 @@
  * Clones built-ins into editable customs; required payment-note wording is locked.
  * Saving a built-in selection creates a custom copy (Woodex classic is code-owned).
  */
-import { useEffect, useMemo, useState } from "react";
-import { Check, Lock, Loader2, Plus, Printer, Trash2, Upload, X } from "lucide-react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { Check, Lock, Loader2, Minus, Plus, Printer, RotateCcw, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { AdminQuoteTemplate, QuoteTemplateBlock } from "@/api/types";
-import { PAYMENT_TERMS_NOTE, DEFAULT_QUOTE_TEMPLATE, WOODEX_A4_TEMPLATE, BUILTIN_TEMPLATES, isBuiltinTemplateId } from "@/api/quote-templates";
+import type { AdminQuote, AdminQuoteTemplate, QuoteTemplateBlock } from "@/api/types";
+import { PAYMENT_TERMS_NOTE, DEFAULT_QUOTE_TEMPLATE, WOODEX_A4_TEMPLATE, BUILTIN_TEMPLATES, isBuiltinTemplateId, DEFAULT_TERMS_EN, DEFAULT_TERMS_UR, ADVANCE_CHIPS, clampAdvancePct } from "@/api/quote-templates";
+import QuoteA4Sheet from "@/admin/components/documents/QuoteA4Sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+/** Synthetic sample quote for the live preview — generic lines, ≈PKR 1.4 M, clearly labelled as a preview sample. */
+const sampleQuote = (validityDays: number): AdminQuote => {
+  const now = new Date();
+  return {
+    id: "WI-10204",
+    customerName: "Demo Residence Client",
+    customerPhone: "+92 300 0001001",
+    customerEmail: "residence@example.com",
+    company: undefined,
+    city: "Lahore",
+    address: "Bahria Orchard, Lahore",
+    items: [
+      { id: "sample-1", name: "Classic executive desk — made to order", quantity: 1, price: 420000 },
+      { id: "sample-2", name: "Managers conference table — made to order", quantity: 1, price: 485000 },
+      { id: "sample-3", name: "Ergonomic chair set — house pick", quantity: 1, price: 495000 },
+    ],
+    subtotal: 1400000,
+    discountPct: 0,
+    discountAmount: 0,
+    shipping: 0,
+    total: 1400000,
+    validityDays,
+    validUntil: new Date(now.getTime() + validityDays * 86400000).toISOString(),
+    status: "sent",
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    version: 1,
+  };
+};
 
 type Props = {
   open: boolean;
@@ -55,6 +86,12 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
       .finally(() => setLoading(false));
   }, [open, api, currentId]);
 
+  const previewDraft = useDeferredValue(draft);
+  const previewQuote = useMemo(() => sampleQuote(previewDraft.validityDays ?? 30), [previewDraft.validityDays]);
+  const previewValidUntil = useMemo(
+    () => new Date(Date.now() + (previewDraft.validityDays ?? 30) * 86400000).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+    [previewDraft.validityDays],
+  );
   const isBuiltin = isNew ? false : (draft.builtIn === true || isBuiltinTemplateId(draft.id));
   const showInList = isNew ? null : selectedId;
 
@@ -165,7 +202,7 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[94vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[94vh] max-w-7xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Quotation template designer</DialogTitle>
         </DialogHeader>
@@ -173,7 +210,7 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
         {loading ? (
           <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading templates…</div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-[230px_1fr]">
+          <div className="grid gap-4 md:grid-cols-[230px_minmax(0,1fr)] xl:grid-cols-[230px_minmax(0,1fr)_minmax(0,400px)]">
             {/* template list */}
             <div className="space-y-1.5">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Templates</p>
@@ -259,6 +296,114 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
                 </div>
               </div>
 
+              {/* advance & policy — A4 documents only */}
+              {(draft.layout ?? "classic") === "a4" && (
+                <section className="space-y-2 rounded-md border border-border bg-white p-3" aria-label="Advance payment and policy">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Advance &amp; policy — WI-10204</p>
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, termsEn: DEFAULT_TERMS_EN, termsUr: DEFAULT_TERMS_UR }))}
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-hon-green-dark hover:underline"
+                    >
+                      <RotateCcw className="h-3 w-3" aria-hidden /> Reset to WOODEX policy wording
+                    </button>
+                  </div>
+
+                  {/* advance % stepper + quick chips */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Label htmlFor="tpl-advance" className="text-xs font-medium text-foreground">Advance due</Label>
+                    <div className="flex items-center rounded-md border border-border">
+                      <button type="button" aria-label="Decrease advance" className="p-1.5 text-muted-foreground hover:text-foreground" onClick={() => setDraft((d) => ({ ...d, advancePct: clampAdvancePct((d.advancePct ?? 75) - 5) }))}><Minus className="h-3.5 w-3.5" aria-hidden /></button>
+                      <Input
+                        id="tpl-advance"
+                        type="number" min={0} max={100} step={1}
+                        value={clampAdvancePct(draft.advancePct ?? 75)}
+                        onChange={(e) => setDraft((d) => ({ ...d, advancePct: clampAdvancePct(e.target.value) }))}
+                        className="h-8 w-16 border-0 text-center font-semibold focus-visible:ring-0"
+                        aria-label="Advance percentage"
+                      />
+                      <button type="button" aria-label="Increase advance" className="p-1.5 text-muted-foreground hover:text-foreground" onClick={() => setDraft((d) => ({ ...d, advancePct: clampAdvancePct((d.advancePct ?? 75) + 5) }))}><Plus className="h-3.5 w-3.5" aria-hidden /></button>
+                    </div>
+                    <span className="text-xs text-muted-foreground">% · balance {100 - clampAdvancePct(draft.advancePct ?? 75)}%</span>
+                    <div className="flex flex-wrap gap-1" role="group" aria-label="Advance quick picks">
+                      {ADVANCE_CHIPS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setDraft((d) => ({ ...d, advancePct: c }))}
+                          aria-pressed={clampAdvancePct(draft.advancePct ?? 75) === c}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-bold transition ${clampAdvancePct(draft.advancePct ?? 75) === c ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground hover:border-accent hover:text-foreground"}`}
+                        >
+                          {c}%
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* validity */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Label htmlFor="tpl-validity" className="text-xs font-medium text-foreground">Validity (days)</Label>
+                    <Input
+                      id="tpl-validity"
+                      type="number" min={1} max={365} step={1}
+                      value={draft.validityDays ?? 30}
+                      onChange={(e) => setDraft((d) => ({ ...d, validityDays: Math.max(1, Math.min(365, Math.round(Number(e.target.value) || 30))) }))}
+                      className="h-8 w-20 bg-white text-center font-semibold"
+                    />
+                    <span className="text-xs text-muted-foreground">→ Valid until <span className="font-semibold text-foreground">{previewValidUntil}</span></span>
+                  </div>
+
+                  {/* EN wording */}
+                  <div>
+                    <Label htmlFor="tpl-terms-en" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Policy wording — English</Label>
+                    <Textarea id="tpl-terms-en" rows={4} value={draft.termsEn ?? ""} onChange={(e) => setDraft((d) => ({ ...d, termsEn: e.target.value }))} className="bg-white font-mono text-[11px] leading-relaxed" />
+                    <p className="mt-0.5 text-[9px] text-muted-foreground">Placeholders: {"{advance}"} · {"{balance}"} · {"{advancePct}"} · {"{balancePct}"} · {"{validUntil}"}</p>
+                  </div>
+
+                  {/* UR wording */}
+                  <div>
+                    <Label htmlFor="tpl-terms-ur" className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Policy wording — اردو (RTL)</Label>
+                    <Textarea id="tpl-terms-ur" dir="rtl" lang="ur" rows={4} value={draft.termsUr ?? ""} onChange={(e) => setDraft((d) => ({ ...d, termsUr: e.target.value }))} className="bg-white text-[11px] leading-relaxed" />
+                  </div>
+
+                  {/* acceptance block */}
+                  <label htmlFor="tpl-acceptance" className="flex cursor-pointer items-start gap-2">
+                    <Checkbox id="tpl-acceptance" checked={draft.acceptanceBlock ?? true} onCheckedChange={(v) => setDraft((d) => ({ ...d, acceptanceBlock: v === true }))} />
+                    <span className="text-xs leading-snug text-foreground"><span className="font-semibold">Client acceptance block</span><br /><span className="text-[10px] text-muted-foreground">Signature &amp; date lines both sides — “CLIENT ACCEPTANCE” left, “WOODEX — Authorized Signatory &amp; Stamp” right (WI-10204).</span></span>
+                  </label>
+
+                  {/* signatory footer variant */}
+                  <div>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Signatory footer</p>
+                    <div role="group" aria-label="Signatory footer variant" className="flex flex-wrap gap-1.5">
+                      {([
+                        { id: "zainab" as const, label: "Zainab Tower (default)" },
+                        { id: "store" as const, label: "Store address" },
+                        { id: "custom" as const, label: "Custom lines" },
+                      ]).map((opt) => {
+                        const active = (draft.footerVariant ?? "zainab") === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => setDraft((d) => ({ ...d, footerVariant: opt.id }))}
+                            className={`rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition ${active ? "border-hon-green bg-hon-green-pale/40 ring-1 ring-hon-green text-foreground" : "border-border text-muted-foreground hover:border-hon-green/60 hover:text-foreground"}`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(draft.footerVariant ?? "zainab") === "custom" && (
+                      <Textarea id="tpl-footer-custom" rows={3} value={draft.footerCustomLines ?? ""} onChange={(e) => setDraft((d) => ({ ...d, footerCustomLines: e.target.value }))} placeholder={"Line 1 — wordmark\nLine 2 — address\nLine 3 — phone · email"} className="mt-1.5 bg-white text-xs" aria-label="Custom signatory footer lines" />
+                    )}
+                    <p className="mt-1 text-[9px] leading-snug text-muted-foreground">Zainab Tower carries the WI-10204 house block (+92 322 4000768 · info@woodex.com.pk). Store address uses the canonical storefront lines from src/config/site.ts.</p>
+                  </div>
+                </section>
+              )}
+
               {/* logo upload — A4 masthead */}
               <div>
                 <p className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Logo — A4 masthead <span className="normal-case text-muted-foreground/70">(optional)</span></p>
@@ -285,6 +430,23 @@ export default function QuoteTemplateDesigner({ open, onOpenChange, currentId, o
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Footer blocks</p>
               <div className="space-y-2">{draft.footer.map((b) => renderBlock("footer", b))}</div>
             </div>
+
+            {/* live A4 preview — re-renders on every edit (deferred ≤150ms) */}
+            <aside aria-live="polite" aria-label="Live A4 preview" className="hidden xl:block">
+              <p className="mb-1 px-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Live A4 preview</p>
+              {(draft.layout ?? "classic") === "a4" ? (
+                <div className="max-h-[72vh] overflow-auto rounded-md border border-border bg-[#eceae4] p-2">
+                  <div style={{ zoom: 0.46 }}>
+                    <QuoteA4Sheet quote={previewQuote} tDoc={previewDraft} vars={{ ref: previewQuote.id, version: 1, validUntil: previewValidUntil, customer: previewQuote.customerName }} />
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-border bg-muted/40 p-6 text-center text-[11px] leading-relaxed text-muted-foreground">
+                  The classic sheet has no live preview.<br />Switch <span className="font-semibold text-foreground">Print layout → Woodex A4</span> to edit the advance %, wording, acceptance block and footer against the printed page.
+                </div>
+              )}
+              <p className="mt-1 px-0.5 text-[9px] leading-snug text-muted-foreground">Sample quote — generic preview lines totalling ≈ PKR 1.4 M. Your printed sheet uses the real quotation.</p>
+            </aside>
           </div>
         )}
 

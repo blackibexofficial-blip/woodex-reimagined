@@ -4,16 +4,11 @@ import { AdminAuthProvider } from "@/admin/auth";
 import AdminLayout from "@/admin/Layout";
 import AdminLogin from "@/admin/Login";
 import AdminDashboard from "@/admin/pages/Dashboard";
+import AdminTaxonomy from "@/admin/pages/Taxonomy";
 import AdminAnalytics from "@/admin/pages/Analytics";
 import AdminProducts from "@/admin/pages/Products";
 import AdminProductEdit from "@/admin/pages/ProductEdit";
-import AdminCategories from "@/admin/pages/Categories";
-import AdminCollections from "@/admin/pages/Collections";
-import AdminMaterials from "@/admin/pages/Materials";
 import AdminProjects from "@/admin/pages/Projects";
-import AdminPriceLists from "@/admin/pages/PriceLists";
-import AdminBundles from "@/admin/pages/Bundles";
-import AdminSalesChannels from "@/admin/pages/SalesChannels";
 import AdminBulkEditor from "@/admin/pages/BulkEditor";
 import AdminInventory from "@/admin/pages/Inventory";
 import AdminOrders from "@/admin/pages/Orders";
@@ -21,13 +16,10 @@ import AdminOrderNew from "@/admin/pages/OrderNew";
 import AdminDrafts from "@/admin/pages/Drafts";
 import AdminQuotes from "@/admin/pages/Quotes";
 import AdminSuppliers from "@/admin/pages/Suppliers";
-import AdminSeries from "@/admin/pages/Series";
-import AdminBrands from "@/admin/pages/Brands";
 import AdminHomepage from "@/admin/pages/Homepage";
 import AdminShowrooms from "@/admin/pages/Showrooms";
 import AdminPurchaseOrders from "@/admin/pages/PurchaseOrders";
 import AdminTransfers from "@/admin/pages/Transfers";
-import AdminOptions from "@/admin/pages/Options";
 import AdminQuote from "@/admin/pages/Quote";
 import AdminReturns from "@/admin/pages/Returns";
 import AdminExchanges from "@/admin/pages/Exchanges";
@@ -44,6 +36,7 @@ import AdminPurchaseOrderPrint from "@/admin/pages/PurchaseOrderPrint";
 import AdminReturnPrint from "@/admin/pages/ReturnPrint";
 import AdminExchangePrint from "@/admin/pages/ExchangePrint";
 import AdminCustomers from "@/admin/pages/Customers";
+import AdminClients from "@/admin/pages/Clients";
 import AdminLeads from "@/admin/pages/Leads";
 import AdminChatInbox from "@/admin/pages/ChatInbox";
 import AdminImport from "@/admin/pages/Import";
@@ -91,13 +84,14 @@ export default function AdminApp() {
           <Route path="products" element={<AdminProducts />} />
           <Route path="products/new" element={<AdminProductEdit />} />
           <Route path="products/:id/edit" element={<AdminProductEdit />} />
-          <Route path="categories" element={<AdminCategories />} />
-          <Route path="collections" element={<AdminCollections />} />
-          <Route path="materials" element={<AdminMaterials />} />
+          <Route path="taxonomy" element={<AdminTaxonomy />} />
+          <Route path="categories" element={<Navigate to="/admin/taxonomy?section=categories" replace />} />
+          <Route path="collections" element={<Navigate to="/admin/taxonomy?section=collections" replace />} />
+          <Route path="materials" element={<Navigate to="/admin/taxonomy?section=materials" replace />} />
           <Route path="projects" element={<AdminProjects />} />
-          <Route path="price-lists" element={<AdminPriceLists />} />
-          <Route path="bundles" element={<AdminBundles />} />
-          <Route path="sales-channels" element={<AdminSalesChannels />} />
+          <Route path="price-lists" element={<Navigate to="/admin/taxonomy?section=price-lists" replace />} />
+          <Route path="bundles" element={<Navigate to="/admin/taxonomy?section=bundles" replace />} />
+          <Route path="sales-channels" element={<Navigate to="/admin/taxonomy?section=sales-channels" replace />} />
           <Route path="bulk-editor" element={<AdminBulkEditor />} />
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="orders" element={<AdminOrders />} />
@@ -111,16 +105,17 @@ export default function AdminApp() {
           <Route path="client-merge" element={<AdminClientMerge />} />
           <Route path="suppliers" element={<AdminSuppliers />} />
           <Route path="showrooms" element={<AdminShowrooms />} />
-          <Route path="series" element={<AdminSeries />} />
-          <Route path="brands" element={<AdminBrands />} />
+          <Route path="series" element={<Navigate to="/admin/taxonomy?section=series" replace />} />
+          <Route path="brands" element={<Navigate to="/admin/taxonomy?section=brands" replace />} />
           <Route path="homepage" element={<AdminHomepage />} />
           <Route path="purchase-orders" element={<AdminPurchaseOrders />} />
           <Route path="transfers" element={<AdminTransfers />} />
-          <Route path="options" element={<AdminOptions />} />
+          <Route path="options" element={<Navigate to="/admin/taxonomy?section=options" replace />} />
           <Route path="returns" element={<AdminReturns />} />
           <Route path="exchanges" element={<AdminExchanges />} />
           <Route path="claims" element={<AdminClaims />} />
           <Route path="customers" element={<AdminCustomers />} />
+          <Route path="clients" element={<AdminClients />} />
           <Route path="leads" element={<AdminLeads />} />
           <Route path="chat" element={<AdminChatInbox />} />
           <Route path="import" element={<AdminImport />} />

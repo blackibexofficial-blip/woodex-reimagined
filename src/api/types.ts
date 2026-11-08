@@ -392,6 +392,20 @@ export interface AdminQuoteTemplate {
   logo?: string;
   /** Print layout: "classic" (original sheet) or "a4" (redesigned Woodex A4 sheet). Defaults to "classic". */
   layout?: "classic" | "a4";
+  /** Advance % due on acceptance (furniture A4 documents). Whole points, clamped 0–100; missing = 75. */
+  advancePct?: number;
+  /** Quotation validity in days (designer default 30). The quote's own `validityDays` stays authoritative at print time. */
+  validityDays?: number;
+  /** Advance/policy wording (EN). Supports {advance} {balance} {advancePct} {balancePct} {validUntil} placeholders — resolved at render. Missing = classic payment-note row only. */
+  termsEn?: string;
+  /** Urdu counterpart — rendered RTL below the EN block. */
+  termsUr?: string;
+  /** Render the client-acceptance signature block (default: true for the A4 layout). */
+  acceptanceBlock?: boolean;
+  /** Signatory footer variant — "zainab" (WI-10204 house doc) | "store" (storefront) | "custom". Missing = zainab behaviour for A4. */
+  footerVariant?: "zainab" | "store" | "custom";
+  /** Custom signatory footer lines (one per line) — used when footerVariant === "custom". */
+  footerCustomLines?: string;
 }
 export type NewQuoteLineInput = NewDraftOrderLineInput;
 export interface NewQuoteInput {
@@ -602,8 +616,22 @@ export interface AdminClient {
   notes?: string;
   /** Set when this record was merged into another — retired id, kept for audit. */
   mergedInto?: string;
+  /** Explicit line-of-business tag (V4 P2). Absent for legacy rows — the UI derives furniture/interior/project/retail/business from kind+tags. */
+  category?: ClientCategory;
   createdAt: string;
   updatedAt: string;
+}
+
+/** CRM client category (V4 P2) — furniture/interior/project line of business. Derived at read when unset (kind/tags), explicit when retagged. */
+export type ClientCategory = "furniture" | "interior" | "project" | "retail" | "business";
+export const CLIENT_CATEGORIES: ClientCategory[] = ["furniture", "interior", "project", "retail", "business"];
+
+export interface ClientCrossRefs {
+  lead?: number;
+  quote?: number;
+  invoice?: number;
+  order?: number;
+  project?: number;
 }
 
 export interface AdminClientLink {
@@ -702,6 +730,17 @@ export interface AdminLead {
   /** Free text next step ("Monday visit", "Expecting call"). */
   nextAction?: string;
   /** Sheet's trailing Note column. */
+  note?: string;
+}
+
+/** Patch for the CRM parity fields (V4 P3). Empty string clears the field. Hosted wires assignedTo→owner + note only — the rest need the owner-gated migration. */
+export interface AdminLeadPatch {
+  assignedTo?: string;
+  leadSource?: LeadSource | "";
+  quotationRef?: string;
+  /** ISO datetime; "" clears. */ lastContact?: string;
+  /** ISO datetime; "" clears. */ meetingAt?: string;
+  nextAction?: string;
   note?: string;
 }
 
@@ -1616,6 +1655,15 @@ export interface StoreSettings {
    * change is needed. When set, it outranks a template's own logo.
    */
   storeLogo?: string;
+  /** Lead assignee roster — drives Leads rows + the Mine / Unassigned filters. Demo-seeded with the sales team. */
+  team?: string[];
+  /**
+   * Offline AI draft replies in the inbox composer ("Suggest reply" — the
+   * retrieval-grounded local draft, NOT the hosted model). Defaults to true.
+   * The hosted OpenAI-compatible path stays disabled until the owner deploys
+   * supabase/functions/ai-agent with AI_AGENT_API_KEY.
+   */
+  aiOfflineDraftsEnabled?: boolean;
 }
 
 export interface Paginated<T> {
@@ -1900,14 +1948,20 @@ export interface AdminApi {
   listClients(params?: { includeMerged?: boolean }): Promise<AdminClient[]>;
   listMergeCandidates(): Promise<MergeCandidate[]>;
   mergeClients(intoId: string, fromId: string): Promise<AdminClient>;
+  /** Set an explicit category (owner retag). Hosted adapters reject until the clients.category column ships (owner-gated migration). */
+  updateClientCategory(id: string, category: ClientCategory): Promise<AdminClient | undefined>;
+  /** Cross-entity reference counts per client id (lead/quote/invoice/order/project). Hosted-supabase computes from client_links only; Bagisto returns {}. */
+  listClientCrossRefs(): Promise<Record<string, ClientCrossRefs>>;
 
   /** CRM site visits — scheduling + outcome tracking against leads (0001 site_visits). */
   listSiteVisits(leadId?: string): Promise<AdminSiteVisit[]>;
   createSiteVisit(input: NewSiteVisitInput): Promise<AdminSiteVisit>;
   updateSiteVisitStatus(id: string, patch: SiteVisitPatch): Promise<AdminSiteVisit | undefined>;
 
-  listLeads(params?: ListParams & { type?: LeadType | "all"; status?: LeadStatus | "all" }): Promise<Paginated<AdminLead>>;
+  listLeads(params?: ListParams & { type?: LeadType | "all"; status?: LeadStatus | "all"; assignee?: string; unassigned?: boolean; staleDays?: number }): Promise<Paginated<AdminLead>>;
   updateLeadStatus(id: string, status: LeadStatus): Promise<AdminLead | undefined>;
+  /** Patch CRM parity fields (V4 P3). */
+  updateLead(id: string, patch: AdminLeadPatch): Promise<AdminLead | undefined>;
   /** Bulk import (Lead 2026 parity). Demo-authoritative; hosted adapters reject rows with a reason (owner-gated programme). */
   importLeads(input: LeadImportInput): Promise<LeadImportResult>;
 

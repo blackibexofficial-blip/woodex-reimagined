@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Building2, ClipboardList, ChevronLeft, ChevronRight, Mail, Phone, FileText, Handshake, ScrollText, Loader2, ShieldCheck, ShieldAlert,
-  Columns3, LayoutList, CalendarRange, GripVertical, MapPin, Inbox,
+  Columns3, LayoutList, CalendarRange, GripVertical, MapPin, Inbox, UserRound, SlidersHorizontal, Download, Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { AdminLead, AdminSiteVisit, LeadStatus, LeadType, SiteVisitStatus } from "@/api/types";
+import type { AdminLead, AdminLeadPatch, AdminSiteVisit, LeadSource, LeadStatus, LeadType, SiteVisitStatus } from "@/api/types";
+import { DEFAULT_TEAM, teamInitials } from "@/lib/team";
+import { toCsv, downloadCsv } from "@/lib/csv";
+import { Textarea } from "@/components/ui/textarea";
 import { formatPKR, timeAgo, LeadStatusBadge, SectionCard, SectionSkeleton, EmptyState, leadStatusLabel } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +18,23 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+const LEAD_SOURCES: Array<{ value: LeadSource; label: string }> = [
+  { value: "furniture", label: "Furniture" },
+  { value: "interior", label: "Interior" },
+  { value: "project", label: "Project" },
+  { value: "website", label: "Website" },
+  { value: "storefront_chat", label: "Storefront chat" },
+  { value: "referral", label: "Referral" },
+];
+const leadSourceLabel = (v?: LeadSource) => LEAD_SOURCES.find((s) => s.value === v)?.label ?? v;
+const STALE_MS = 7 * 86400000;
+const isStale = (l: AdminLead) => l.status !== "won" && l.status !== "lost" && Date.now() - new Date(l.lastContact ?? l.createdAt).getTime() > STALE_MS;
+const toLocalInput = (iso?: string) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
 const PER_PAGE = 10;
 type TypeFilter = LeadType | "all";
 type StatusFilter = LeadStatus | "all";
@@ -52,6 +72,14 @@ export default function AdminLeads() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"table" | "board">("table");
+  const [lens, setLens] = useState<"all" | "mine" | "unassigned" | "stale">("all");
+  const [mineName, setMineName] = useState<string>(() => (typeof window !== "undefined" && window.localStorage.getItem("woodex.admin.me")) || DEFAULT_TEAM[0]);
+  const [team, setTeam] = useState<string[]>(DEFAULT_TEAM);
+  const [exporting, setExporting] = useState(false);
+  /* lead details dialog */
+  const [detailsLead, setDetailsLead] = useState<AdminLead | null>(null);
+  const [detailsSaving, setDetailsSaving] = useState(false);
+  const [form, setForm] = useState({ assignedTo: "", leadSource: "" as LeadSource | "", quotationRef: "", lastContact: "", meetingAt: "", nextAction: "", note: "" });
   const dragId = useRef<string | null>(null);
 
   /* site visits state */
@@ -69,14 +97,22 @@ export default function AdminLeads() {
   }, [query]);
 
   const isBoard = view === "board";
+  useEffect(() => {
+    api.getSettings().then((s) => { if (Array.isArray(s.team) && s.team.length) setTeam(s.team); }).catch(() => {});
+  }, [api]);
+
+  const lensParams = useMemo(
+    () => (lens === "mine" ? { assignee: mineName } : lens === "unassigned" ? { unassigned: true as const } : lens === "stale" ? { staleDays: 7 } : {}),
+    [lens, mineName],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.listLeads(
         isBoard
-          ? { type, status: "all", query: debounced || undefined, page: 1, perPage: 100 }
-          : { type, status, query: debounced || undefined, page, perPage: PER_PAGE },
+          ? { type, status: "all", query: debounced || undefined, page: 1, perPage: 100, ...lensParams }
+          : { type, status, query: debounced || undefined, page, perPage: PER_PAGE, ...lensParams },
       );
       setRows(res.items);
       setTotal(res.total);
@@ -86,10 +122,10 @@ export default function AdminLeads() {
     } finally {
       setLoading(false);
     }
-  }, [api, type, status, debounced, page, isBoard]);
+  }, [api, type, status, debounced, page, isBoard, lensParams]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [type, status, debounced, view]);
+  useEffect(() => { setPage(1); }, [type, status, debounced, view, lens, mineName]);
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
@@ -184,8 +220,88 @@ export default function AdminLeads() {
     return cols;
   }, [rows]);
 
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const res = await api.listLeads({ type, status, query: debounced || undefined, page: 1, perPage: 500, ...lensParams });
+      const isoDay = (v?: string) => (v ? new Date(v).toLocaleDateString("en-GB") : "");
+      const isoDT = (v?: string) => (v ? new Date(v).toLocaleString("en-GB") : "");
+      const rows = res.items.map((l) => [
+        l.id, isoDay(l.createdAt), l.type, l.company ?? "", l.name, l.email, l.phone, l.city ?? "",
+        l.value ? String(l.value) : "", leadSourceLabel(l.leadSource) ?? "", l.status, l.assignedTo ?? "",
+        l.quotationRef ?? "", isoDay(l.lastContact), l.nextAction ?? "", isoDT(l.meetingAt), l.note ?? "",
+      ]);
+      downloadCsv(`woodex-leads-${lens}.csv`, toCsv(
+        ["ID", "Date", "Type", "Company", "Name", "Email", "Phone", "City", "Value (PKR)", "Source", "Status", "Assigned to", "Quotation", "Last contact", "Next action", "Meeting", "Note"],
+        rows,
+      ));
+      toast.success(`${rows.length} lead(s) exported — opens in Sheets or Excel.`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Export failed — please try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const openDetails = (lead: AdminLead) => {
+    setDetailsLead(lead);
+    setForm({
+      assignedTo: lead.assignedTo ?? "",
+      leadSource: lead.leadSource ?? "",
+      quotationRef: lead.quotationRef ?? "",
+      lastContact: toLocalInput(lead.lastContact),
+      meetingAt: toLocalInput(lead.meetingAt),
+      nextAction: lead.nextAction ?? "",
+      note: lead.note ?? "",
+    });
+  };
+  const saveDetails = async () => {
+    if (!detailsLead) return;
+    setDetailsSaving(true);
+    try {
+      const patch: AdminLeadPatch = {
+        assignedTo: form.assignedTo,
+        leadSource: form.leadSource,
+        quotationRef: form.quotationRef,
+        lastContact: form.lastContact ? new Date(form.lastContact).toISOString() : "",
+        meetingAt: form.meetingAt ? new Date(form.meetingAt).toISOString() : "",
+        nextAction: form.nextAction,
+        note: form.note,
+      };
+      const updated = await api.updateLead(detailsLead.id, patch);
+      if (!updated) { toast.error("Lead not found."); return; }
+      setRows((rs) => rs.map((r) => (r.id === updated.id ? updated : r)));
+      toast.success(`Details saved for ${updated.name}.`);
+      setDetailsLead(null);
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Could not save the lead.");
+    } finally {
+      setDetailsSaving(false);
+    }
+  };
+  const stampContacted = async () => {
+    if (!detailsLead) return;
+    const now = new Date().toISOString();
+    try {
+      const updated = await api.updateLead(detailsLead.id, { lastContact: now });
+      if (updated) {
+        setRows((rs) => rs.map((r) => (r.id === updated.id ? updated : r)));
+        setDetailsLead(updated);
+        setForm((f) => ({ ...f, lastContact: toLocalInput(now) }));
+        toast.success("Last contact stamped — now.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not stamp the contact.");
+    }
+  };
+
   const contactButtons = (lead: AdminLead) => (
     <div className="mt-1.5 flex gap-1.5">
+      <button onClick={() => openDetails(lead)} title="Lead details — assignee, source, follow-ups" aria-label={`Details for ${lead.name}`} className="rounded p-1 text-muted-foreground hover:bg-border hover:text-foreground">
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+      </button>
       <a href={`tel:${lead.phone.replace(/\s/g, "")}`} title={lead.phone} aria-label="Call" className="rounded p-1 text-muted-foreground hover:bg-border hover:text-foreground"><Phone className="h-3.5 w-3.5" /></a>
       <a href={`mailto:${lead.email}`} title={lead.email} aria-label="Email" className="rounded p-1 text-muted-foreground hover:bg-border hover:text-foreground"><Mail className="h-3.5 w-3.5" /></a>
       <button onClick={() => createQuote(lead)} disabled={quotingId === lead.id} title="Draft priced quotation from this lead" aria-label={`Create quote from ${lead.name}`} className="rounded p-1 text-muted-foreground hover:bg-border hover:text-foreground disabled:opacity-50">
@@ -220,8 +336,26 @@ export default function AdminLeads() {
             <button type="button" onClick={() => setView("table")} aria-pressed={view === "table"} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition ${view === "table" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}><LayoutList className="h-3.5 w-3.5" /> Table</button>
             <button type="button" onClick={() => setView("board")} aria-pressed={view === "board"} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition ${view === "board" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}><Columns3 className="h-3.5 w-3.5" /> Board</button>
           </div>
+          {/* lens chips — Mine / Unassigned / Stale > 7d */}
+          <ToggleGroup type="single" value={lens} onValueChange={(v) => v && setLens(v as typeof lens)} aria-label="Lead lens" className="h-10 rounded-md bg-muted p-1">
+            <ToggleGroupItem value="all" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">All</ToggleGroupItem>
+            <ToggleGroupItem value="mine" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Mine</ToggleGroupItem>
+            <ToggleGroupItem value="unassigned" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm">Unassigned</ToggleGroupItem>
+            <ToggleGroupItem value="stale" className="h-auto whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm" title="Last touch more than 7 days ago (won/lost excluded)">Stale &gt; 7d</ToggleGroupItem>
+          </ToggleGroup>
+          {lens === "mine" && (
+            <Select value={mineName} onValueChange={(v) => { setMineName(v); window.localStorage.setItem("woodex.admin.me", v); }}>
+              <SelectTrigger className="w-36 bg-white" aria-label="Which assignee am I?"><SelectValue placeholder="Who am I?" /></SelectTrigger>
+              <SelectContent>{team.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            </Select>
+          )}
         </div>
-        <Input placeholder="Search name, company, summary…" value={query} onChange={(e) => setQuery(e.target.value)} className="lg:max-w-xs bg-white" />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={exporting} className="whitespace-nowrap">
+            {exporting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />} Export CSV
+          </Button>
+          <Input placeholder="Search name, company, summary…" value={query} onChange={(e) => setQuery(e.target.value)} className="lg:max-w-xs bg-white" />
+        </div>
       </div>
 
       {isBoard ? (
@@ -297,6 +431,15 @@ export default function AdminLeads() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-foreground">{lead.name}</p>
                         {lead.company && <p className="truncate text-[11px] font-medium text-violet-700">{lead.company}</p>}
+                        <p className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          {lead.assignedTo ? (
+                            <span className="inline-flex items-center gap-1"><span aria-hidden className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[8px] font-bold text-foreground">{teamInitials(lead.assignedTo)}</span>{lead.assignedTo}</span>
+                          ) : (
+                            <span className="italic text-muted-foreground">Unassigned</span>
+                          )}
+                          {lead.leadSource && <span className="text-muted-foreground">· {leadSourceLabel(lead.leadSource)}</span>}
+                          {isStale(lead) && <span aria-hidden className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-amber-500" title="No contact in 7+ days" />}
+                        </p>
                         {contactButtons(lead)}
                       </div>
                     </div>
@@ -353,6 +496,77 @@ export default function AdminLeads() {
           )}
         </SectionCard>
       )}
+
+      {/* ── lead details dialog (V4 PR-D) ──────────────────────────────── */}
+      <Dialog open={Boolean(detailsLead)} onOpenChange={(open) => !open && setDetailsLead(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserRound className="h-5 w-5 text-hon-green-dark" />
+              Lead details — {detailsLead?.name}
+              {detailsLead?.company && <span className="text-[11px] font-medium uppercase tracking-wide text-violet-700">· {detailsLead.company}</span>}
+            </DialogTitle>
+          </DialogHeader>
+          {detailsLead && (
+            <div className="grid grid-cols-2 gap-3 py-1">
+              <div>
+                <Label htmlFor="lead-assignee" className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Assignee</Label>
+                <Select value={form.assignedTo || "__unassigned"} onValueChange={(v) => setForm((f) => ({ ...f, assignedTo: v === "__unassigned" ? "" : v }))}>
+                  <SelectTrigger id="lead-assignee" className="bg-white" aria-label="Assignee"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__unassigned">Unassigned</SelectItem>
+                    {team.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="lead-source" className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Lead source</Label>
+                <Select value={form.leadSource || "__none"} onValueChange={(v) => setForm((f) => ({ ...f, leadSource: (v === "__none" ? "" : v) as LeadSource | "" }))}>
+                  <SelectTrigger id="lead-source" className="bg-white" aria-label="Lead source"><SelectValue placeholder="Not set" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Not set</SelectItem>
+                    {LEAD_SOURCES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="lead-quote" className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Quotation ref</Label>
+                <div className="flex gap-2">
+                  <Input id="lead-quote" value={form.quotationRef} onChange={(e) => setForm((f) => ({ ...f, quotationRef: e.target.value }))} placeholder="QOT-1001" className="bg-white" />
+                  {form.quotationRef.trim() && <Button asChild variant="outline" size="sm" className="h-9 whitespace-nowrap"><Link to="/admin/quotes">Open quotes</Link></Button>}
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="lead-last-contact" className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Last contact</Label>
+                <div className="flex gap-1.5">
+                  <Input id="lead-last-contact" type="datetime-local" value={form.lastContact} onChange={(e) => setForm((f) => ({ ...f, lastContact: e.target.value }))} className="bg-white" />
+                  <Button type="button" variant="outline" size="sm" className="h-9 whitespace-nowrap" onClick={stampContacted} title="Stamp right now">Contacted now</Button>
+                </div>
+                <p className="mt-0.5 text-[9px] text-muted-foreground">Blank clears the field.</p>
+              </div>
+              <div>
+                <Label htmlFor="lead-meeting" className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Meeting scheduled</Label>
+                <Input id="lead-meeting" type="datetime-local" value={form.meetingAt} onChange={(e) => setForm((f) => ({ ...f, meetingAt: e.target.value }))} className="bg-white" />
+                <p className="mt-0.5 text-[9px] text-muted-foreground">Blank clears the field.</p>
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="lead-next-action" className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Next action</Label>
+                <Input id="lead-next-action" value={form.nextAction} onChange={(e) => setForm((f) => ({ ...f, nextAction: e.target.value }))} placeholder="Monday visit · Expecting call…" className="bg-white" />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="lead-note" className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Note</Label>
+                <Textarea id="lead-note" rows={2} value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} placeholder="Internal note…" className="bg-white" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsLead(null)}>Close</Button>
+            <Button onClick={saveDetails} disabled={detailsSaving} className="gap-1.5">
+              {detailsSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save details
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── site visits dialog ─────────────────────────────────────────── */}
       <Dialog open={Boolean(visitLead)} onOpenChange={(open) => !open && setVisitLead(null)}>

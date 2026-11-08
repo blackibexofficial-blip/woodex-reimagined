@@ -28,7 +28,7 @@ import type {
   AdminBrand,
   AdminApi, AdminBundle, AdminCategory, AdminStockTransfer, TransferLocation, AdminOptionSet, AdminCollection, AdminCompany, AdminCustomer, AdminPriceList, AdminLead, AdminMediaAsset, AdminOrder, AdminOrderEvent, AdminProduct, AdminReturn, AdminExchange, AdminClaim, AdminDraftOrder, AdminQuote, AdminSupplier, AdminPurchaseOrder, AdminSalesChannel, AdminSeries,
   AdminShowroom, AdminMaterial, AdminProject, AdminBlogPost, AdminService, DashboardStats, ListParams, NewAdminProductInput, NewLeadInput, NewOrderInput, NewSalesChannelInput, NewShowroomInput, Paginated, ProductImportResult, RevenuePoint, StoreSettings,
-  AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, AdminTask, AdminClient, MergeCandidate, AdminSiteVisit, NewSiteVisitInput, SiteVisitPatch,
+  AdminQuoteVersion, AdminQuoteTemplate, AdminInvoice, AdminInvoicePayment, AdminTask, AdminClient, MergeCandidate, ClientCrossRefs, AdminSiteVisit, NewSiteVisitInput, SiteVisitPatch,
   ChatConversation, ChatMessage, ChatMode, LeadImportInput, LeadImportResult,
 } from "@/api/types";
 
@@ -484,6 +484,12 @@ export const bagistoAdminApi: AdminApi = {
   async listClients(): Promise<AdminClient[]> {
     throw new BagistoApiError(501, "Merge review is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
   },
+  async updateClientCategory(): Promise<AdminClient | undefined> {
+    throw new BagistoApiError(501, "Client category retagging is demo-only in this release. Use VITE_API_MODE=demo.");
+  },
+  async listClientCrossRefs(): Promise<Record<string, ClientCrossRefs>> {
+    throw new BagistoApiError(501, "Client cross-references are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
   async listMergeCandidates(): Promise<MergeCandidate[]> {
     throw new BagistoApiError(501, "Merge review is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
   },
@@ -614,6 +620,9 @@ export const bagistoAdminApi: AdminApi = {
     return paginateLocal(params);
   },
 
+  async updateLead(): Promise<AdminLead | undefined> {
+    throw new BagistoApiError(501, "Lead detail editing is demo-only in this release. Use VITE_API_MODE=demo.");
+  },
   async updateLeadStatus() {
     throw new BagistoApiError(501, "Lead pipeline is not backed by Bagisto core — keep VITE_API_MODE=demo or add a custom package. See docs/07-admin-integration.");
   },
