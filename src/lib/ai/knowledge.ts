@@ -12,7 +12,9 @@
  *      offline (see rehearsal/ai-eval.mjs).
  *   2. ONLINE   — when the owner deploys `supabase/functions/ai-agent` with an
  *      OpenAI-compatible API key, the client ships the retrieved snippets as
- *      `grounding` and the model is instructed to answer ONLY from them.
+ *      `grounding` and the model is instructed to answer ONLY from them. The
+ *      server cannot trust those client-supplied snippets; hosted use remains
+ *      unverified and should stay disabled pending server-side grounding.
  *
  * Editing rule: change facts here only when the business fact itself changes
  * (showroom move, new warranty term, new advance policy…). Never paste

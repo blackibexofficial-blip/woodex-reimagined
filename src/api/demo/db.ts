@@ -4884,6 +4884,7 @@ export const demoAdminApi: AdminApi = {
     update((db) => {
       const t = (db.quotes ??= []).find((x) => x.id === id);
       if (!t || t.status === "converted") return;
+      if (t.status !== "accepted") throw new Error("Only accepted quotes can be converted to an order.");
       if (t.items.length === 0) throw new Error(`Quote ${t.id} has no lines to convert.`);
       if (t.total <= 0) throw new Error(`Quote ${t.id} totals Rs 0 — price the lines before converting.`);
       order = materializeOrder(db, {

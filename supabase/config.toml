@@ -9,8 +9,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ai-agent]
-# Deploy only with the owner's go-ahead. The function self-enforces a staff
-# Bearer session (Supabase Auth) and answers 501 until AI_AGENT_API_KEY is set.
+# Do not enable hosted AI until trusted grounding, provider budget/privacy
+# controls and staging verification are complete. Locally it checks Auth,
+# crm.manage and configured usage limits; hosted deployment state is unknown.
 verify_jwt = false
 
 [functions.order-submit]

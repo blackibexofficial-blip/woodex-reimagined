@@ -522,7 +522,9 @@ async function getOrderEvents(orderId: string): Promise<AdminOrderEvent[]> {
 async function createOrder(input: NewOrderInput): Promise<AdminOrder> {
   guard();
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/order-submit`;
-  const clientRef = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  // The reference also identifies replays; use a high-entropy browser token,
+  // never a timestamp plus Math.random. Do not fall back to a predictable ID.
+  const clientRef = `ord-${crypto.randomUUID()}`;
   const resp = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", apikey: String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "") },
@@ -1970,6 +1972,7 @@ async function convertQuote(id: string, paymentMethod?: string): Promise<AdminOr
     const reason = String(r?.reason ?? "unknown");
     // demo parity: missing quote or already-converted (idempotent re-click) -> undefined
     if (reason === "not-found" || reason === "already-converted" || reason === "bad-id") return undefined;
+    if (reason === "not-accepted") throw new Error("Only accepted quotes can be converted to an order.");
     throw new Error(`Supabase: quote conversion failed — ${reason}`);
   }
   return {
@@ -3144,6 +3147,14 @@ const rowToProject = (r: Row): AdminProject => ({
   updatedAt: String(asObj(r.payload).updatedAt ?? r.updated_at ?? r.created_at ?? ""),
 } as unknown as AdminProject);
 async function listProjects(): Promise<AdminProject[]> { return readRows("projects", rowToProject); }
+
+/** Public portfolio projection: never fetch the private practice payload. */
+export async function listPublishedProjects(): Promise<AdminProject[]> {
+  guard();
+  const { data, error } = await supabase.rpc("published_projects");
+  if (error) fail("published_projects", error);
+  return (data ?? []).map((row) => rowToProject(row as Row));
+}
 async function createProject(input: NewProjectInput): Promise<AdminProject> {
   guard();
   const id = `project-${Date.now()}`;
@@ -3827,6 +3838,23 @@ async function getPage(idOrSlug: string): Promise<AdminPage | undefined> {
     .eq(isNum ? "id" : "slug", isNum ? Number(idOrSlug) : idOrSlug).maybeSingle();
   if (error) fail("getPage", error);
   return data ? loadPage(data as Row, true) : undefined;
+}
+
+/** Public preview reads only the immutable published snapshot, never draft rows. */
+export async function getPublishedPage(slug: string): Promise<AdminPage | undefined> {
+  guard();
+  const { data, error } = await supabase.rpc("published_page", { p_slug: slug });
+  if (error) fail("published_page", error);
+  if (!data) return undefined;
+  const snap = asObj(data);
+  const blocks = Array.isArray(snap.blocks) ? snap.blocks as Row[] : [];
+  const publishedAt = typeof snap.published_at === "string" ? snap.published_at : null;
+  return {
+    id: String(snap.id), slug: String(snap.slug), title: String(snap.title),
+    kind: snap.kind === "chrome" ? "chrome" : "page", folderId: null,
+    status: "published", doc: rowToDoc(snap, blocks), seo: rowToSeo(snap),
+    updatedAt: publishedAt ?? "", publishedAt, version: 1, history: [],
+  };
 }
 async function createPage(input: { title: string; slug?: string; starter?: string; kind?: AdminPage["kind"] }): Promise<AdminPage> {
   guard();

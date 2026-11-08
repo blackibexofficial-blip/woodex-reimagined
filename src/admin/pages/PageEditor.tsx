@@ -13,7 +13,7 @@ import type { AdminPage, AdminPageDoc, AdminPageSeo } from "@/api/types";
 import { analyseSeo, extractBodyText } from "@/lib/seo/analyse";
 import SeoPanel from "./SeoPanel";
 import { formatDateTime } from "@/admin/components";
-import { isOwnerSession } from "@/lib/owner";
+import { usePagePublishPermission } from "@/lib/owner";
 import { woodexConfig } from "@/pages-builder/blocks";
 import { libraryPlugin } from "@/pages-builder/library";
 import { BuilderModeContext, LibraryActionsContext } from "@/pages-builder/shell";
@@ -28,14 +28,14 @@ const fromPuckData = (data: Data): AdminPageDoc =>
 
 /**
  * Page editor (Wave 1) — Puck bound to the demo-DB page document.
- * Owner-only publish (§11-Q5 interim: demo gate = owner); everyone else saves drafts.
+ * Publishing in Supabase follows the server-enforced page.manage capability.
  * Publish bumps the version and snapshots history (cap 20) — restore from the history rail.
  */
 export default function AdminPageEditor() {
   const api = useMemo(() => getAdminApi(), []);
   const { pageSlug } = useParams<{ pageSlug: string }>();
   const navigate = useNavigate();
-  const owner = isOwnerSession();
+  const { canPublish, checking: checkingPublish } = usePagePublishPermission();
 
   const [page, setPage] = useState<AdminPage | null>(null);
   const [missing, setMissing] = useState(false);
@@ -73,16 +73,22 @@ export default function AdminPageEditor() {
   const saveDraft = useCallback(async (): Promise<AdminPage | undefined> => {
     if (!page || !doc) return undefined;
     setSaving(true);
-    const updated = await api.updatePage(page.id, { title, doc, seo });
-    setSaving(false);
-    if (updated) {
-      setPage(updated);
-      setDirty(false);
-      toast.success("Draft saved.");
-      return updated;
+    try {
+      const updated = await api.updatePage(page.id, { title, doc, seo });
+      if (updated) {
+        setPage(updated);
+        setDirty(false);
+        toast.success("Draft saved.");
+        return updated;
+      }
+      toast.error("Could not save the draft.");
+      return undefined;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the draft.");
+      return undefined;
+    } finally {
+      setSaving(false);
     }
-    toast.error("Could not save the draft.");
-    return undefined;
   }, [api, page, doc, title, seo]);
 
   // Puck owns canvas state between saves. Feeding it a fresh `data` identity on every
@@ -120,8 +126,8 @@ export default function AdminPageEditor() {
 
   const doPublish = useCallback(async (publish: boolean) => {
     if (!page) return;
-    if (!owner) {
-      toast.error("Only the owner can publish (demo gate = owner today; Bagisto RBAC in Wave 7).");
+    if (!canPublish) {
+      toast.error("Your session does not have permission to publish this page.");
       return;
     }
     if (publish) {
@@ -142,14 +148,19 @@ export default function AdminPageEditor() {
     // Save pending edits first so Publish never ships a stale document.
     if (dirty && !(await saveDraft())) return;
     setPublishing(true);
-    const updated = publish ? await api.publishPage(page.id) : await api.unpublishPage(page.id);
-    setPublishing(false);
-    if (!updated) { toast.error("Publish failed."); return; }
-    setPage(updated);
-    setDirty(false);
-    toast.success(publish ? `Published "${updated.title}" (v${updated.version}).` : `"${updated.title}" unpublished — draft again.`);
-    if (publish && pageSlug !== updated.slug) navigate(`/admin/pages/${updated.slug}`, { replace: true });
-  }, [api, page, dirty, owner, pageSlug, navigate, saveDraft, seo, seoReport]);
+    try {
+      const updated = publish ? await api.publishPage(page.id) : await api.unpublishPage(page.id);
+      if (!updated) { toast.error("Publish failed."); return; }
+      setPage(updated);
+      setDirty(false);
+      toast.success(publish ? `Published "${updated.title}" (v${updated.version}).` : `"${updated.title}" unpublished — draft again.`);
+      if (publish && pageSlug !== updated.slug) navigate(`/admin/pages/${updated.slug}`, { replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Publish failed.");
+    } finally {
+      setPublishing(false);
+    }
+  }, [api, page, dirty, canPublish, pageSlug, navigate, saveDraft, seo, seoReport]);
 
   const insertBlock = useCallback((type: string, index?: number) => {
     setDoc((prev) => {
@@ -178,17 +189,23 @@ export default function AdminPageEditor() {
 
   const restoreVersion = useCallback(async (version: number) => {
     if (!page) return;
-    const updated = await api.revertPage(page.id, version);
-    if (updated) {
-      setPage(updated);
-      setTitle(updated.title);
-      setDoc(updated.doc);
-      setSeo(updated.seo ?? {});
-      setDirty(false);
-      setPuckKey((k) => k + 1);
-      toast.success(`Restored v${version} as the current draft — publish to ship it.`);
-    } else {
-      toast.error("Could not restore that version.");
+    try {
+      const updated = await api.revertPage(page.id, version);
+      if (updated) {
+        setPage(updated);
+        setTitle(updated.title);
+        setDoc(updated.doc);
+        setSeo(updated.seo ?? {});
+        setDirty(false);
+        setPuckKey((k) => k + 1);
+        toast.success(`Restored v${version} as the current draft — publish to ship it.`);
+      } else {
+        toast.error("Could not restore that version.");
+      }
+    } catch (error) {
+      // Older history entries may not contain recoverable blocks. Keep the
+      // current editor state intact and make the refusal visible to the user.
+      toast.error(error instanceof Error ? error.message : "Could not restore that version.");
     }
   }, [api, page]);
 
@@ -267,8 +284,8 @@ export default function AdminPageEditor() {
           <Button
             size="sm"
             onClick={() => doPublish(page.status !== "published")}
-            disabled={publishing || !owner}
-            title={owner ? (page.status === "published" ? "Unpublish (back to draft)" : "Publish this page") : "Only the owner can publish"}
+            disabled={publishing || checkingPublish || !canPublish}
+            title={checkingPublish ? "Checking publishing permission" : canPublish ? (page.status === "published" ? "Unpublish (back to draft)" : "Publish this page") : "Publishing permission required"}
             className={cn(page.status === "published" ? "bg-muted text-foreground hover:bg-muted/80" : "bg-accent text-accent-foreground hover:bg-hon-green-dark")}
           >
             {publishing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}

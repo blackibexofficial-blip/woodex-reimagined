@@ -1959,6 +1959,15 @@ export type Database = {
         Args: { p_id: string; p_patch: Json }
         Returns: Database['public']['Tables']['products']['Row']
       }
+      // Migration 0015: curated public reads; raw drafts remain staff-only.
+      published_page: {
+        Args: { p_slug: string }
+        Returns: Json
+      }
+      published_projects: {
+        Args: Record<string, never>
+        Returns: { id: string; payload: Json; status: string; created_at: string; updated_at: string }[]
+      }
       page_snapshot: {
         Args: { p_id: number }
         Returns: Json

@@ -263,15 +263,14 @@ export default function AdminSettings() {
             </button>
           </div>
           <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-900"><AlertTriangle className="h-3.5 w-3.5" aria-hidden /> Hosted copilot — Not configured</p>
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-900"><AlertTriangle className="h-3.5 w-3.5" aria-hidden /> Hosted copilot — Not verified</p>
             <p className="mt-1 text-[11px] leading-4 text-amber-900">
-              The <code className="rounded bg-amber-100 px-1">ai-agent</code> edge function ships in this repository but is <strong>undeployed</strong>.
-              It serves only after the owner applies the owner-gated rollout (deploy <span className="font-mono">ai-agent</span>, set <code className="rounded bg-amber-100 px-1">AI_AGENT_API_KEY</code>, optionally <code className="rounded bg-amber-100 px-1">AI_AGENT_BASE_URL</code> / <code className="rounded bg-amber-100 px-1">AI_AGENT_MODEL</code>).
-              Until then this toggle affects the offline draft only — no hosted model exists, and no conversation ever leaves this browser.
+              The <code className="rounded bg-amber-100 px-1">ai-agent</code> edge function exists in this repository; its hosted deployment status is unknown. Do not enable it yet: its grounding is client-supplied, attempt limits are not hosted-verified, and provider spending and privacy controls are incomplete.
+              This toggle affects only the offline draft in the inbox; it does not enable or call a hosted model.
             </p>
           </div>
           <p className="mt-2 text-[10px] leading-4 text-muted-foreground">
-            Honest status (2026-11-08): the offline draft engine is verified offline — <span className="font-mono">npm run test:ai-eval</span> (19/19, retrieval + price-grounding + handoff checks). The hosted path is UNVERIFIED until deployed with a key and rehearsed in staging. See <span className="font-mono">docs/08-master-plan/CREDENTIAL-BLOCKED.md</span>.
+            Honest status (2026-11-08): the offline draft engine is verified offline — <span className="font-mono">npm run test:ai-eval</span> (19/19, retrieval + price-grounding + handoff checks). The hosted path remains UNVERIFIED and should stay disabled pending safety controls and staging tests. See <span className="font-mono">docs/08-master-plan/CREDENTIAL-BLOCKED.md</span>.
           </p>
         </SectionCard>
 

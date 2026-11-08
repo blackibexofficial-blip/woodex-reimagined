@@ -14,15 +14,16 @@
 // Anti-abuse: Turnstile challenge verified before any RPC when TURNSTILE_SECRET is
 // set (fail-open when unset, fail-closed 503 on siteverify transport errors), plus a
 // fixed-window caller-key limit inside the RPC (migration 0005). Global budgets
-// (WAF/Upstash) remain the owner's decision — see docs/08-master-plan/ANTI-ABUSE-DECISION.md. Anon may call this ONLY because the
-// RPC is self-verifying — PostgREST never exposes the orders tables for
-// direct writes.
+// (WAF/Upstash) remain the owner's decision — see docs/08-master-plan/ANTI-ABUSE-DECISION.md.
+// Migration 0015 restricts order_submit RPC execution to service_role; browser
+// roles must use this function so the challenge and validation cannot be bypassed.
 //
 // NOT verified against a hosted project (no Supabase egress in the authoring
 // environment). EF logic = thin pass-through; correctness lives in the RPC
 // (rehearsed under pglite, 20261107000003).
 import { createClient } from "npm:@supabase/supabase-js@^2.57.4";
 import { verifyTurnstileToken } from "../_shared/turnstile.mjs";
+import { publicOrderReceipt } from "../_shared/order-response.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -117,5 +118,12 @@ Deno.serve(async (req) => {
     console.error("order_submit rpc failed", msg);
     return json({ error: "could not create the order" }, 500);
   }
-  return json({ ok: true, order: data }, 200);
+  // The SQL replay result contains the original buyer's contact details.
+  // Never return those to the caller merely because it supplied a clientRef.
+  try {
+    return json({ ok: true, order: publicOrderReceipt(data) }, 200);
+  } catch {
+    console.error("order_submit returned an invalid receipt");
+    return json({ error: "could not create the order" }, 500);
+  }
 });
