@@ -222,8 +222,8 @@ async function adminSuite(browser) {
   ok("campaigns 'Open leads' link routes to /admin/leads", await page.evaluate(() => location.pathname.endsWith("/admin/leads")));
   await page.waitForSelector('input[placeholder*="Search name"]', { timeout: 15000 });
   await clickByText("button", "Board");
-  await page.waitForFunction(() => document.querySelectorAll('[aria-label^="Column "]').length === 5, { timeout: 15000 }).catch(() => {});
-  ok("leads board renders the five stage columns via UI click-through", await page.evaluate(() => document.querySelectorAll('[aria-label^="Column "]').length === 5));
+  await page.waitForFunction(() => document.querySelectorAll('[aria-label^="Column "]').length === 7, { timeout: 15000 }).catch(() => {});
+  ok("leads board renders the seven stage columns via UI click-through", await page.evaluate(() => document.querySelectorAll('[aria-label^="Column "]').length === 7));
   await clickByText("button", "Table");
   await typeInto('input[placeholder*="Search name"]', "Bilal Ahmed");
   await waitText("Bilal Ahmed", 10000);
@@ -238,7 +238,7 @@ async function adminSuite(browser) {
   await page.goto(`${ADMIN}/leads`, { waitUntil: "networkidle2", timeout: 60000 });
   await page.waitForSelector('input[placeholder*="Search name"]', { timeout: 15000 });
   await clickByText("button", "Board");
-  await page.waitForFunction(() => document.querySelectorAll('[aria-label^="Column "]').length === 5, { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => document.querySelectorAll('[aria-label^="Column "]').length === 7, { timeout: 15000 }).catch(() => {});
   const drag = await page.evaluate(() => {
     const card = document.querySelector('li[draggable="true"]');
     const quoted = document.querySelector('[aria-label="Column quoted"]');

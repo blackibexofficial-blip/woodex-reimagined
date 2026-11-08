@@ -32,12 +32,19 @@ const orderStyles: Record<OrderStatus, string> = {
   delivered: "bg-emerald-100 text-emerald-800 border-emerald-200",
   cancelled: "bg-rose-100 text-rose-800 border-rose-200",
 };
+const leadStatusLabels: Record<LeadStatus, string> = {
+  new: "New", contacted: "Contacted", quoted: "Quoted", won: "Won", lost: "Lost",
+  meeting: "Meeting", not_responding: "Not responding",
+};
+export const leadStatusLabel = (status: LeadStatus): string => leadStatusLabels[status] ?? status;
 const leadStyles: Record<LeadStatus, string> = {
   new: "bg-sky-100 text-sky-800 border-sky-200",
   contacted: "bg-hon-green-pale text-hon-green-dark border-hon-green-pale",
   quoted: "bg-violet-100 text-violet-800 border-violet-200",
   won: "bg-emerald-100 text-emerald-800 border-emerald-200",
   lost: "bg-secondary text-foreground border-border",
+  meeting: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  not_responding: "bg-stone-100 text-stone-700 border-stone-200",
 };
 const returnStyles: Record<ReturnStatus, string> = {
   requested: "bg-amber-100 text-amber-800 border-amber-200",
@@ -130,7 +137,7 @@ export const OrderStatusBadge = ({ status }: { status: OrderStatus }) => (
   <Badge variant="outline" className={cn("capitalize font-medium", orderStyles[status])}>{status}</Badge>
 );
 export const LeadStatusBadge = ({ status }: { status: LeadStatus }) => (
-  <Badge variant="outline" className={cn("capitalize font-medium", leadStyles[status])}>{status}</Badge>
+  <Badge variant="outline" className={cn("font-medium", leadStyles[status])}>{leadStatusLabel(status)}</Badge>
 );
 export const paymentLabel = (m: PaymentMethod) => paymentLabels[m] ?? m;
 
