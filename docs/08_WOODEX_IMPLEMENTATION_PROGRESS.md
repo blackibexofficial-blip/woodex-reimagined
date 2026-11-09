@@ -1,6 +1,7 @@
 # 08 — Implementation progress
 
-**Snapshot:** 2026-11-08. Overall Business OS remains **in progress**, not ready for actual operations. No global completion percentage is supportable: 265 requirements were triaged, but complete acceptance criteria and actual-data-source verification have not been run for all features. A triage count is not a completion rate. The sequenced route from here is
+**Snapshot:** 2026-11-08. Overall Business OS remains **in progress**, not ready for actual operations. No global completion percentage is supportable: 265 requirements were triaged, but complete acceptance criteria and actual-data-source verification have not been run for all features. A triage count is not a completion rate. All of the above is committed as nine reviewable slices (`03f6704`..`5ceb672`) and reproduced on
+that tip — see the REL-004 block in `07_WOODEX_TEST_REPORT.md`. The sequenced route from here is
 `08-master-plan/PHASE2-COMPLETION-MASTER-PLAN.md` (milestones M0–M10, three owner gates).
 
 ## Baseline and locally implemented work

@@ -56,6 +56,41 @@ Status **in progress**, 2026-11-08. Tests below use synthetic data. PASS means o
 - `npm exec --yes --package=bun -- npm run build`: **PASS**, large chunks/stale Browserslist warnings. `npm exec --yes --package=bun -- npm run e2e`: **108/108** demo checks passed before the final analytics accessibility-label wording edit. No claim of actual live integration. Temporary build-generated sitemap/MCP changes were restored.
 - Historic lead-content local evidence: browser **9/9**, demo lead details **5/5**, CSV unit **4/4**, mocked Deno handler **3/3**. Checkout cart local **9/9**, checkout safety **10/10**, mocked challenge **5/5**, Bagisto order **18/18**. See `PHASE1-LEAD-CONTENT-CONTRACT.md` and `PHASE1-CHECKOUT-CART-PRESERVATION.md` for exact scope. These suites were **not rerun** in this audit continuation.
 
+## REL-004 — full local re-run on the committed tip
+
+Executed 2026-11-09 on branch `arena/6bd5a1db-woodex-reimagined` at `5ceb672`, i.e. the tree whose
+history is now committed as nine slices. Servers were started per suite with synthetic keys only;
+every suite blocked or mocked external traffic. Nothing here is hosted evidence.
+
+SQL / PGlite (`npm run test:<suite>`): rehearsal 93, p0-safety 32, phase1-workflows 28,
+procurement-reads 38, settings-reads 36, cms-snapshot-boundary 21, qc-boundary 21, qc-records 60,
+shape-guard 37, order-linkage 32, handover-warranty 37, warranty-claims 30, warranty-register 16.
+Node-only: intake-safety 24, payments 15, ai-eval 19. Typecheck clean, lint 0 errors / 35 warnings.
+
+Demo browser (`VITE_API_MODE=demo`, local server): production workspace 25, legacy payload 15,
+order link 16, handover 17, claims 16, register 14, page-editor safety 12, dashboard integrity 16,
+builder product rail 5, checkout safety 10, manual order 5, cart preservation 9, demo lead 7,
+SEO publish gate 10, CMS demo reader 20, CMS document preflight 28.
+
+Mocked-mode browser (server per suite, synthetic URL/key): procurement permissions 10 (`:4177`),
+settings permissions 7 (`:4178`), published-page 5 (`:4177`), admin auth UI 15 (`:4180` + `:4181`),
+checkout challenge 5 (`:8081`), lead content 9 (`:8084`), Supabase lead challenge 12 (`:8084`),
+CMS Supabase reader 15 (`:4181`), CMS mocked Supabase route 11 (`:4188`), CMS reader modes 3/3
+(`:4182`/`:4183`/`:4184`), CMS rendering guards 37 (`:4179`), CMS staging route 23 (`:4186`/`:4187`),
+CMS staging build 3 (`:4189`). Bagisto adapter: order outcome 18, lead outcome 15 (`:8082`).
+
+Build and smoke: `npm exec --yes --package=bun -- npm run build` exit 0 (large-chunk and stale
+Browserslist warnings only); `npm exec --yes --package=bun -- npm run e2e` **110/110**. Generated
+`public/sitemap.xml` and `supabase/functions/mcp/index.ts` were restored afterwards.
+
+Two environment traps found while reproducing, both harness issues rather than product defects:
+
+1. The repository's local `.env` supplies `VITE_SUPABASE_URL`, so suites that require an
+   **unconfigured** build (`phase1-cms-reader-modes`) only pass when `.env` is temporarily absent.
+2. A build produced while `.env` was absent bakes no demo admin credentials, and the smoke suite then
+   fails at `#admin-email`. Rebuilding with `.env` present restores 110/110. Never reuse a build made
+   in a stripped environment for the smoke suite.
+
 ## Required but not yet executed
 
 | Test ID | Required steps / expected | Actual |
