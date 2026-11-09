@@ -1,5 +1,24 @@
 # 09 — Deployment report
 
+## 2026-11-09 — first hosted deployment (frontend only)
+
+PR #29 was merged into `main` (`72badcc`) after CI (`build-and-test`) and the Vercel preview both
+passed. The Vercel production deployment for that commit reports **success**. This ships the
+**static frontend only**, in demo mode: no Supabase migration, RPC, Edge Function, storage policy,
+database row or provider credential was touched, and no hosted verification of anything in
+`docs/07` follows from it. Candidates 00018–00027 remain unapplied.
+
+Before the merge the branch had to be reconciled with `main`, which had advanced 190 commits (mostly
+the Lovable bot) since the branch was cut. One file conflicted, `src/integrations/supabase/types.ts`:
+upstream had regenerated it with empty `Tables`/`Functions` stubs, which would erase the typed schema
+the app and the new RPCs depend on, so the branch's generated definition was kept. Migration
+numbering did not collide (00001–00027 stay unique). On the merged tree: typecheck clean, lint 0
+errors, PGlite suites green (p0 32, workflows 28, qc-records 60, handover 37, claims 30, register 16),
+Bun build exit 0, demo smoke 110/110.
+
+Still true: no staging project exists, no backup/restore has been rehearsed, no RLS or grant has been
+verified on a hosted database, and nothing below has been satisfied.
+
 Status **blocked / preparation only**, 2026-11-08. No production site, hosted Supabase/Bagisto provider, real records, migration, credentials or deployment were accessed or modified during this continuation. No commit, push, PR update or merge was performed. `arena/6bd5a1db-woodex-reimagined` is the fixed Arena branch; the different branch name in the user-supplied prompt cannot be used for this session.
 
 PR #29 was last known open at `7d5658a571b5985f9e7a755dc136c9bafe869f88`; the large later local working-tree changes and this audit are not in that commit. Past GitHub/Vercel checks applied to that prior head only; deployment status and present check results have not been rechecked here. A local demo preview may run on port 8080; it uses synthetic/browser-local data, is not a shared production environment, and demo login is not production authentication.
