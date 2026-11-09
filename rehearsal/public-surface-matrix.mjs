@@ -129,6 +129,23 @@ try {
   check('anon can read only allowlisted content through a policy',
     anonReadUnexpected.length === 0, anonReadUnexpected.join(', '));
 
+  /* Grant layer, not policy layer. Hosted Supabase hands `anon` broad table
+     privileges by default; 00028 revokes the ones no policy justifies. A grant
+     with no matching policy is dead weight at best and a live hole the moment a
+     permissive policy lands, so it is treated as a failure either way. */
+  const anonWritePolicyTables = new Set(policies
+    .filter(p => (p.roles.includes('anon') || p.roles.includes('public')))
+    .filter(p => ['ALL', 'INSERT', 'UPDATE', 'DELETE'].includes(p.cmd))
+    .map(p => p.tablename));
+  const deadWriteGrants = anonWriteGrants.filter(n => !anonWritePolicyTables.has(n));
+  check('anon holds no write grant without an anon write policy',
+    deadWriteGrants.length === 0, deadWriteGrants.join(', '));
+
+  const ANON_WRITE_ALLOWED = new Set(['track_events']);
+  const unexpectedWriteGrants = anonWriteGrants.filter(n => !ANON_WRITE_ALLOWED.has(n));
+  check('anon write grants are limited to the documented analytics table',
+    unexpectedWriteGrants.length === 0, unexpectedWriteGrants.join(', '));
+
   const ungatedAnonFunctions = functions
     .filter(f => f.anon_exec && f.security_definer)
     .filter(f => !ANON_CALLABLE_ALLOWED.has(f.name))
