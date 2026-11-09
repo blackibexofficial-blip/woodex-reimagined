@@ -4,6 +4,15 @@
 that tip — see the REL-004 block in `07_WOODEX_TEST_REPORT.md`. The sequenced route from here is
 `08-master-plan/PHASE2-COMPLETION-MASTER-PLAN.md` (milestones M0–M10, three owner gates).
 
+## Phase 2 start (2026-11-09)
+
+The Phase-1 work is merged and deployed in demo mode. Two things moved since: the owner decision
+sheet (`08-master-plan/PHASE2-OWNER-DECISIONS.md`) publishes the eight blocking decisions with
+provisional defaults, and the security surface is now measured rather than assumed —
+`rehearsal/public-surface-matrix.mjs` enumerates all 61 tables, 124 policies and 48 functions across
+the 27 migrations and separates grants from enforcement (7/7). Both SQL suites and that matrix run in
+CI through `npm run test:sql-all`.
+
 ## Baseline and locally implemented work
 
 - Original local audit: draft/project public-read exposure, dangerous page restore and direct anonymous order RPC were reproduced in isolated fixtures; remediation migrations 00015–00017 and associated tests were added. Real hosted state remains unknown.
