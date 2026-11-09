@@ -282,6 +282,11 @@ export default function AdminProjects() {
                     <TableCell>
                       <p className="text-sm font-medium leading-snug max-w-[240px]">{p.title}</p>
                       <p className="text-[11px] text-muted-foreground">{p.client}</p>
+                      {p.orderId && (
+                        <p className="mt-0.5">
+                          <Badge variant="outline" className="font-mono text-[10px]" aria-label={`Linked order ${p.orderId}`}>Order {p.orderId}</Badge>
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell><Badge variant="secondary">{p.category}</Badge></TableCell>
                     <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{p.location || "—"}</TableCell>

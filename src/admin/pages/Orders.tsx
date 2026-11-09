@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, Eye, History, Loader2, MessageCircle, Phone, Plus, Printer, Save, ShieldCheck, ShoppingCart, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import type { AdminOrder, AdminOrderEvent, OrderStatus } from "@/api/types";
+import type { AdminOrder, AdminOrderEvent, OrderStatus, OrderProduction } from "@/api/types";
 import { formatPKR, formatDateTime, timeAgo, OrderStatusBadge, paymentLabel, SectionCard, SectionSkeleton, EmptyState } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,9 @@ export default function AdminOrders() {
   const [notesDraft, setNotesDraft] = useState("");
   const [savingCourier, setSavingCourier] = useState(false);
   const [events, setEvents] = useState<AdminOrderEvent[] | null>(null);
+  const [production, setProduction] = useState<OrderProduction | null>(null);
+  const [productionLoading, setProductionLoading] = useState(false);
+  const [startingJob, setStartingJob] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query), 250);
@@ -94,6 +97,12 @@ export default function AdminOrders() {
     setNotesDraft(selected.internalNotes ?? "");
     let alive = true;
     setEvents(null);
+    setProduction(null);
+    setProductionLoading(true);
+    api.getOrderProduction(selected.id)
+      .then((row) => { if (alive) setProduction(row ?? null); })
+      .catch(() => { if (alive) setProduction(null); })
+      .finally(() => { if (alive) setProductionLoading(false); });
     api.getOrderEvents(selected.id)
       .then((list) => { if (alive) setEvents(list); })
       .catch((e) => { console.warn("[woodex admin] order events unavailable", e); if (alive) setEvents([]); });
@@ -160,6 +169,33 @@ export default function AdminOrders() {
       toast.error("Export failed.");
     } finally {
       setExporting(false);
+    }
+  };
+
+  /** Start a production job for this order. The job is created inactive so an
+   *  internal workshop row never appears in the public portfolio; the link itself
+   *  goes through the server RPC (candidate 00024). */
+  const startProductionJob = async () => {
+    if (!selected || startingJob) return;
+    setStartingJob(true);
+    try {
+      const created = await api.createProject({
+        title: `${selected.customerName} — ${selected.id}`,
+        client: selected.customerName,
+        category: "Interior",
+        location: selected.city,
+        description: `Production job for order ${selected.id} (${formatPKR(selected.total)}).`,
+        active: false,
+        orderId: selected.id,
+      });
+      const row = await api.getOrderProduction(selected.id);
+      setProduction(row ?? { projectId: created.id, orderId: selected.id, title: created.title, progress: 0, qcResult: "pending", dispatchVehicle: null, dispatchDate: null, updatedAt: created.updatedAt });
+      toast.success(`Production job created for ${selected.id}. Open Projects to record the working stages.`);
+      void refreshEvents(selected.id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not create the production job.");
+    } finally {
+      setStartingJob(false);
     }
   };
 
@@ -280,6 +316,46 @@ export default function AdminOrders() {
                 <p className="text-muted-foreground">
                   Expected delivery: {new Date(new Date(selected.placedAt).getTime() + 5 * 86400000).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · {selected.items.reduce((s, i) => s + i.quantity, 0)} item(s)
                 </p>
+              </div>
+
+              {/* production job link (candidate 00024) */}
+              <div className="space-y-2 rounded-lg border border-muted p-3" aria-label="Production job">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Production</p>
+                  {production && <OrderStatusBadge status={selected.status} />}
+                </div>
+                {productionLoading ? (
+                  <p className="text-xs text-muted-foreground">Checking for a production job…</p>
+                ) : production ? (
+                  <div className="space-y-1 text-xs">
+                    <p className="font-medium text-foreground">{production.title || production.projectId}</p>
+                    <p className="text-muted-foreground">
+                      Job <span className="font-mono">{production.projectId}</span> · {production.progress}% complete · QC{" "}
+                      <span className={production.qcResult === "passed" ? "font-semibold text-emerald-700" : production.qcResult === "failed" ? "font-semibold text-rose-700" : "font-semibold text-amber-700"}>
+                        {production.qcResult ?? "pending"}
+                      </span>
+                    </p>
+                    {production.dispatchVehicle && (
+                      <p className="text-muted-foreground">Dispatch: {production.dispatchVehicle}{production.dispatchDate ? ` · ${production.dispatchDate}` : ""}</p>
+                    )}
+                    <Link to="/admin/projects" className="inline-block pt-1 font-semibold text-hon-green-dark underline-offset-2 hover:underline">Open in Projects</Link>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">No production job is linked to this order yet.</p>
+                    <Button
+                      size="sm"
+                      className="h-8 gap-1.5 bg-hon-green text-xs font-bold text-white hover:bg-hon-green/90"
+                      disabled={startingJob || selected.status === "cancelled"}
+                      onClick={() => void startProductionJob()}
+                      aria-label="Start production job"
+                    >
+                      {startingJob ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowLeftRight className="h-3.5 w-3.5" />}
+                      {startingJob ? "Creating…" : "Start production job"}
+                    </Button>
+                    {selected.status === "cancelled" && <p className="text-[11px] text-rose-700">A cancelled order cannot start production.</p>}
+                  </div>
+                )}
               </div>
 
               {/* dispatch & fulfilment */}
