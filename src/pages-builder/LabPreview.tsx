@@ -4,6 +4,7 @@ import { Render } from "@puckeditor/core";
 import type { Data } from "@puckeditor/core";
 import { FileQuestion, Pencil } from "lucide-react";
 import { woodexConfig } from "./blocks";
+import { BuilderModeContext } from "./shell";
 import "./builder.css";
 import { BuilderDocProvider } from "./BuilderDocContext";
 import { normalizeLinkedStyles, scanHmTokens } from "./inspector";
@@ -144,7 +145,9 @@ const LabPreview = () => {
         <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">Loading page…</div>
       ) : page ? (
         <BuilderDocProvider linkedStyles={linkedStyles} counts={hmCounts}>
-          <Render config={woodexConfig} data={toPuckData(page.doc)} />
+          <BuilderModeContext.Provider value="store">
+            <Render config={woodexConfig} data={toPuckData(page.doc)} />
+          </BuilderModeContext.Provider>
         </BuilderDocProvider>
       ) : (
         <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-6 text-center">

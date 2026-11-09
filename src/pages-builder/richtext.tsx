@@ -15,12 +15,13 @@
  * Safety model: a tiny tokenizing scanner (not a regex wall) splits raw input into text
  * runs and candidate tags. A candidate may only start with `<[A-Za-z]` or `</[A-Za-z]`
  * (otherwise its `<` is escaped as text). Tags keep an INLINE allow-list (u, b, strong,
- * em, i, s, strike, a, br, span) — a hrefs restricted to http(s)?:/tel:/mailto:/root-relative/hash
+ * em, i, s, strike, a, br, span) — a hrefs allow safe relative paths, http(s), tel and mailto
  * with rel="noopener", spans carry no attributes, everything else is dropped (text kept).
  * script/style/iframe (and friends) are removed outright with their contents. No DOM is
  * needed, so the module is pure and unit-testable (node + esbuild alias of react).
  */
 import { isValidElement, type ElementType } from "react";
+import { safeBuilderHref } from "./safe-url";
 
 export const richTextField = (label?: string, placeholder?: string) =>
   ({ type: "richtext" as const, label, placeholder, contentEditable: true, initialHeight: "auto" });
@@ -55,8 +56,9 @@ const filterTag = (raw: string): string => {
   if (name === "br") return closing ? "" : "<br>";
   if (name === "a" && !closing) {
     const href = /\bhref\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(match[3])?.slice(2).find(Boolean) ?? "";
-    const safe = /^(https?:\/\/|mailto:|tel:|\/|#)/i.test(href.trim()) ? href.trim().replace(/"/g, "&quot;") : null;
-    return safe ? `<a href="${safe}" rel="noopener">` : "";
+    const safe = safeBuilderHref(href.replace(/&amp;/gi, "&"));
+    const escaped = safe?.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return escaped ? `<a href="${escaped}" rel="noopener">` : "";
   }
   if (name === "a" && closing) return "</a>";
   if (name === "span") return closing ? "</span>" : "<span>";

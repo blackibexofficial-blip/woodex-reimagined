@@ -8,6 +8,7 @@ import { getAdminApi } from "@/api";
 import type { AdminPage, AdminPageFolder } from "@/api/types";
 import { formatDate, EmptyState, SectionSkeleton } from "@/admin/components";
 import { usePagePublishPermission } from "@/lib/owner";
+import { analysePageSeo, seoPublishViolations, summarizeSeoViolations } from "@/lib/seo/publish-gate";
 import { isSupabaseMode } from "@/config/env";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ export default function AdminPages() {
   const [pages, setPages] = useState<AdminPage[]>([]);
   const [folders, setFolders] = useState<AdminPageFolder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [folderFilter, setFolderFilter] = useState<FolderFilter>("all");
 
@@ -128,9 +130,31 @@ export default function AdminPages() {
   };
 
   const togglePublish = async (p: AdminPage) => {
-    if (!canPublish) return;
+    if (!canPublish || publishingId !== null) return;
+    setPublishingId(p.id);
     try {
-      const updated = p.status === "published" ? await api.unpublishPage(p.id) : await api.publishPage(p.id);
+      // Reload the saved draft rather than checking a stale list row. This remains
+      // advisory: another editor can change it before the server publishes.
+      const current = await api.getPage(p.id);
+      if (!current || current.status !== p.status) {
+        toast.error("Page status changed or the page is unavailable. Refresh and try again.");
+        await load();
+        return;
+      }
+      if (current.status !== "published") {
+        const seo = current.seo ?? {};
+        const violations = seoPublishViolations(analysePageSeo(current.doc, seo), seo);
+        if (violations.length > 0) {
+          const summary = summarizeSeoViolations(violations);
+          if (seo.strictGate === false) {
+            if (!window.confirm(`SEO is not ready: ${summary}\n\nPublish anyway?`)) return;
+          } else {
+            toast.error(`SEO gate blocks publish: ${summary} Open the SEO panel to fix.`);
+            return;
+          }
+        }
+      }
+      const updated = current.status === "published" ? await api.unpublishPage(current.id) : await api.publishPage(current.id);
       if (updated) {
         await load();
         toast.success(updated.status === "published" ? `"${updated.title}" published (v${updated.version}).` : `"${updated.title}" unpublished — back to draft.`);
@@ -139,6 +163,8 @@ export default function AdminPages() {
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Publish failed.");
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -311,6 +337,7 @@ export default function AdminPages() {
                       <TableCell className="text-right">
                         <Switch
                           checked={p.status === "published"}
+                          disabled={publishingId !== null}
                           onCheckedChange={() => togglePublish(p)}
                           aria-label={p.status === "published" ? "Unpublish page" : "Publish page"}
                         />

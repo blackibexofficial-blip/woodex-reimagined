@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QuoteProvider } from "@/contexts/QuoteContext";
 import { CartProvider } from "@/contexts/CartContext";
 import RouteHead from "@/components/RouteHead";
+import { config } from "@/config/env";
 import ChatBubble from "@/components/chat/ChatBubble";
 // Landing experience stays eager (LCP); every other storefront route is a separate chunk.
 import Index from "./pages/Index";
@@ -36,6 +37,7 @@ const Checkout = lazy(() => import("./pages/Checkout"));
 // Admin panel — separate async chunk, storefront visitors never download it.
 const AdminApp = lazy(() => import("./admin/AdminApp"));
 const LabPreview = lazy(() => import("./pages-builder/LabPreview"));
+const PublishedPagePreview = lazy(() => import("./pages-builder/PublishedPagePreview"));
 
 const queryClient = new QueryClient();
 
@@ -85,6 +87,7 @@ const App = () => (
               {/* Admin panel — self-contained (own auth + layout) */}
               <Route path="/admin/*" element={<AdminApp />} />
               <Route path="/lab/:slug" element={<LabPreview />} />
+              {config.cmsStorefrontPreview && <Route path="/p/:slug" element={<PublishedPagePreview />} />}
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
