@@ -103,14 +103,26 @@ Answer: `______`
 ### D-08 · Staging — blocks milestone M2 entirely
 
 ```
-Staging project ref:               ____________________
-Region:                            ____________________
-Backup location (outside the repo): ____________________
-Apply window (date/time):          ____________________
-Who runs the apply:                ____________________
-Synthetic seats:  editor = ______________   qc = ______________
-Confirmed this is NOT production:  [ ]
+Staging project ref:               azdexktqvobrhwjiskrq   (woodex commad center, ACTIVE_HEALTHY)
+Region:                            ap-southeast-1           (Postgres 17.6.1.032)
+Backup location (outside the repo): Google Drive "WOODEX — staging backups (D-08)"
+Apply window (date/time):          executed 2026-11-09 (agent session, owner-authorized)
+Who runs the apply:                agent via Supabase connector (SQL editor role `postgres`)
+Synthetic seats:  editor = editor@staging.woodex.test   qc = qc@staging.woodex.test
+Confirmed this is NOT production:  [x] — project held 0 public tables before the apply
 ```
+
+**State after the apply (evidence, not a claim):** 27 of 28 migration files applied —
+everything except `00014_storage_projects_bucket.sql`. The bucket insert in that file *did*
+succeed (private `projects`, 50 MB cap), so the only outstanding statements are the four
+`create policy … on storage.objects` rules, which need a role that owns `storage.objects`
+(`supabase_storage_admin` — not grantable from the SQL editor). Run those four from the
+dashboard Storage → projects → Policies UI, or via `supabase db push` from a machine that can
+reach the project.
+
+**Owner action still owed for D-08:** confirm `azdexktqvobrhwjiskrq` is the intended staging
+project. It was named "woodex commad center", created 2025-11-02 and found `INACTIVE`; it held
+zero public tables, so nothing was overwritten — but the name is not one this plan chose.
 
 M2 then runs: dump → **restore into a scratch database and verify row counts** → preflight queries →
 apply `00021`–`00027` in dependency order → functional checks 1–20 → rollback drill in reverse order.
@@ -131,7 +143,7 @@ These are what the code and docs assume today if an answer is missing. They are 
 | D-05 | booked revenue, `Asia/Karachi`, refunds separate, PKR | dashboard labels say "sample", not revenue |
 | D-06 | off / 90 days / off / no cap | hosted AI stays disabled |
 | D-07 | fixed slots, manual approval, 48 h cancellation | booking module untouched |
-| D-08 | none — no staging project exists | M2 cannot start |
+| D-08 | **answered by execution** — `azdexktqvobrhwjiskrq`, ap-southeast-1, 27/28 files applied | the four `storage.objects` policies are the last hosted step |
 
 ---
 
