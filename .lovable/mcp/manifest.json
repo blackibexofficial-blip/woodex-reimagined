@@ -8,7 +8,7 @@
   "mcp": {
     "server": {
       "name": "woodex-reimagined",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "WOODEX Reimagined"
     },
     "tools": [
@@ -149,6 +149,85 @@
           },
           "required": [
             "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "seo_audit_page",
+        "title": "SEO audit (advisory)",
+        "description": "Advisory, read-only SEO audit of a WOODEX page (/, /product/<id>, /blog/<id>, /service/<slug>). Deterministic checks on title, meta description, focus keyphrase usage, body depth and slug hygiene. No external calls; never mutates anything.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Site path, e.g. '/product/ballmer-executive-desk' or '/blog/custom-office-furniture-cost'."
+            },
+            "focusKeyphrase": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Optional focus keyphrase to check (case-insensitive)."
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "seo_generate_meta",
+        "title": "Generate SEO meta (advisory)",
+        "description": "Deterministic, advisory title/description suggestions for a WOODEX page. No external AI calls; templates keyed off the focus keyphrase with 60/160-character word-boundary trims. Read-only output for an editor to apply.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 3,
+              "description": "Current page title or working topic, e.g. 'Ballmer Executive Desk'."
+            },
+            "focusKeyphrase": {
+              "type": "string",
+              "minLength": 2,
+              "description": "Focus keyphrase, e.g. 'executive office desk Lahore'."
+            },
+            "pageType": {
+              "type": "string",
+              "enum": [
+                "home",
+                "product",
+                "blog",
+                "service",
+                "category",
+                "generic"
+              ],
+              "description": "Page family; tunes the benefit clause (default generic)."
+            },
+            "brand": {
+              "type": "string",
+              "description": "Brand suffix (default WOODEX)."
+            }
+          },
+          "required": [
+            "title",
+            "focusKeyphrase"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
