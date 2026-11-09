@@ -53,7 +53,9 @@
     "test:production-warranty-claims": "node rehearsal/production-warranty-claims.mjs",
     "test:warranty-claims": "node e2e/phase1-warranty-claims.mjs",
     "test:production-warranty-register": "node rehearsal/production-warranty-register.mjs",
-    "test:warranty-register": "node e2e/phase1-warranty-register.mjs"
+    "test:warranty-register": "node e2e/phase1-warranty-register.mjs",
+    "test:public-surface": "node rehearsal/public-surface-matrix.mjs",
+    "test:sql-all": "npm run test:rehearsal && npm run test:p0-safety && npm run test:phase1-workflows && npm run test:procurement-reads && npm run test:settings-reads && npm run test:cms-snapshot-boundary && npm run test:production-qc-boundary && npm run test:production-qc-records && npm run test:production-shape-guard && npm run test:production-order-linkage && npm run test:production-handover-warranty && npm run test:production-warranty-claims && npm run test:production-warranty-register && npm run test:public-surface"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

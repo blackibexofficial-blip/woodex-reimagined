@@ -340,3 +340,15 @@ After each milestone update: `docs/02` (rows + counts), `docs/03` (new root caus
 - Does not enable hosted AI, live chat provider or payments without the D-06/D-01 decisions.
 - Does not claim any hosted verification from local PGlite or demo results.
 - Does not apply, push or merge anything without the gate owner's approval.
+
+---
+
+## Progress log
+
+| Date | Milestone | State |
+|---|---|---|
+| 2026-11-09 | M0 REL-001…003 | **done** — nine slices committed, PR #29 merged to main (`72badcc`), Vercel production deployment succeeded in demo mode |
+| 2026-11-09 | M0 REL-004 | **done** — full local re-run recorded in `docs/07` (REL-004 block) |
+| 2026-11-09 | M1 | **blocked** — decision sheet published as `PHASE2-OWNER-DECISIONS.md`; no answers yet |
+| 2026-11-09 | M3 SEC-004 | **started** — public surface matrix built (`npm run test:public-surface`, 7/7) and wired into CI via `test:sql-all`; hosted half still needs D-08 |
+| — | M2, M4–M10 | not started |
