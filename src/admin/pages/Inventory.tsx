@@ -69,6 +69,7 @@ export default function AdminInventory() {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<AdminInventoryItem[]>([]);
   const [movements, setMovements] = useState<AdminStockMovement[]>([]);
+  const [movementError, setMovementError] = useState<string | null>(null);
   const [movementProduct, setMovementProduct] = useState<string>("all");
   const [zones, setZones] = useState<AdminDeliveryZone[]>([]);
   const [loadingStock, setLoadingStock] = useState(true);
@@ -102,9 +103,10 @@ export default function AdminInventory() {
   const loadMovements = useCallback(async (productId = movementProduct) => {
     try {
       setMovements(await api.listStockMovements({ productId: productId === "all" ? undefined : productId, limit: 60 }));
-    } catch (e) {
-      console.error(e);
-      toast.error("Could not load movement history.");
+      setMovementError(null);
+    } catch (error) {
+      setMovements([]);
+      setMovementError(error instanceof Error ? error.message : "Could not load movement history.");
     }
   }, [api, movementProduct]);
 
@@ -363,7 +365,9 @@ export default function AdminInventory() {
             </Select>
           }
         >
-          {movements.length === 0 ? (
+          {movementError ? (
+            <p role="alert" className="p-4 text-sm text-destructive">{movementError}</p>
+          ) : movements.length === 0 ? (
             <EmptyState icon={History} title="No movements yet" hint="Inbound receipts, order dispatches and adjustments will appear here — every quantity change is logged." />
           ) : (
             <div className="overflow-x-auto">

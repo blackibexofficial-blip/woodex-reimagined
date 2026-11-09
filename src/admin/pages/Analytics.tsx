@@ -7,7 +7,8 @@ import {
   Banknote, LineChart as LineChartIcon, Receipt, ShoppingCart, XCircle, RefreshCw,
 } from "lucide-react";
 import { getAdminApi } from "@/api";
-import type { AdminOrder, OrderStatus, PaymentMethod, RevenuePoint } from "@/api/types";
+import type { AdminOrder, OrderStatus } from "@/api/types";
+import { summarizeOrderSample } from "@/lib/order-analytics";
 import {
   formatPKR, formatNumber, paymentLabel, StatCard, SectionCard, SectionSkeleton, EmptyState,
 } from "@/admin/components";
@@ -20,7 +21,6 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   delivered: "#10b981",
   cancelled: "#f43f5e",
 };
-const STATUS_ORDER: OrderStatus[] = ["pending", "processing", "shipped", "delivered", "cancelled"];
 const PAY_COLORS = ["#f59e0b", "#d97706", "#737373", "#a8a29e", "#44403c"];
 
 const tooltipStyle = { borderRadius: 12, border: "1px solid #E0E0E0", fontSize: 12 } as const;
@@ -28,90 +28,70 @@ const axisTick = { fontSize: 11, fill: "#737373" };
 
 export default function AdminAnalytics() {
   const api = useMemo(() => getAdminApi(), []);
-  const [series, setSeries] = useState<RevenuePoint[]>([]);
-  const [orders, setOrders] = useState<AdminOrder[] | null>(null);
+  const [sample, setSample] = useState<{ orders: AdminOrder[]; asOf: Date } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [days, setDays] = useState(30);
+  const [refresh, setRefresh] = useState(0);
 
-  const load = () => {
+  useEffect(() => {
+    let active = true;
     setError(null);
-    setOrders(null);
-    Promise.all([api.getRevenueSeries(30), api.listOrders({ perPage: 500, page: 1 })])
-      .then(([rev, res]) => { setSeries(rev); setOrders(res.items); })
-      .catch((e) => { console.error(e); setError(e instanceof Error ? e.message : "Could not load analytics."); });
-  };
+    setSample(null);
+    // One bounded page only. Never imply that it is a complete backend report.
+    api.listOrders({ perPage: 100, page: 1 })
+      .then((res) => {
+        if (!Array.isArray(res.items)) throw new Error("Invalid order sample response.");
+        if (active) setSample({ orders: res.items.slice(0, 100), asOf: new Date() });
+      })
+      .catch((e) => { console.error(e); if (active) setError("Could not load the order sample. Please try again."); });
+    return () => { active = false; };
+  }, [api, refresh]);
 
-  useEffect(load, [api]);
+  const result = useMemo(() => {
+    if (!sample) return { data: null, error: null };
+    try { return { data: summarizeOrderSample(sample.orders, days, sample.asOf), error: null }; }
+    catch { return { data: null, error: "The order sample contains invalid data; analytics cannot be calculated safely." }; }
+  }, [sample, days]);
+  const derived = result.data;
+  const series = derived?.series ?? [];
+  const paymentSplit = derived?.paymentCounts.map(({ method, count }) => ({ name: paymentLabel(method), value: count })).sort((a, b) => b.value - a.value) ?? [];
+  const aovSeries = series.map((p) => ({ label: p.label, aov: p.orders ? Math.round(p.revenue / p.orders) : null }));
 
-  const derived = useMemo(() => {
-    if (!orders) return null;
-    const live = orders.filter((o) => o.status !== "cancelled");
-    const revenue30 = live.reduce((s, o) => s + o.total, 0);
-    const orders30 = live.length;
-    const aov = orders30 ? Math.round(revenue30 / orders30) : 0;
-    const cancelled = orders.length - live.length;
-    const cancelRate = orders.length ? Math.round((cancelled / orders.length) * 100) : 0;
-
-    const statusCounts = STATUS_ORDER.map((status) => ({
-      name: status,
-      value: orders.filter((o) => o.status === status).length,
-    })).filter((s) => s.value > 0);
-
-    const productTotals = new Map<string, { name: string; revenue: number; units: number }>();
-    for (const o of live) {
-      for (const item of o.items) {
-        const entry = productTotals.get(item.id) ?? { name: item.name, revenue: 0, units: 0 };
-        entry.revenue += item.price * item.quantity;
-        entry.units += item.quantity;
-        productTotals.set(item.id, entry);
-      }
-    }
-    const topProducts = [...productTotals.values()]
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5)
-      .map((p) => ({ name: p.name.length > 34 ? `${p.name.slice(0, 34)}…` : p.name, revenue: p.revenue, units: p.units }));
-
-    const methodCounts = new Map<PaymentMethod, number>();
-    for (const o of orders) methodCounts.set(o.paymentMethod, (methodCounts.get(o.paymentMethod) ?? 0) + 1);
-    const paymentSplit = [...methodCounts.entries()]
-      .map(([method, count]) => ({ name: paymentLabel(method), value: count }))
-      .sort((a, b) => b.value - a.value);
-
-    return { revenue30, orders30, aov, cancelRate, statusCounts, topProducts, paymentSplit };
-  }, [orders]);
-
-  const aovSeries = useMemo(
-    () => series.map((p) => ({ label: p.label, aov: p.orders ? Math.round(p.revenue / p.orders) : 0 })),
-    [series],
-  );
-
-  if (error) {
+  if (error || result.error) {
     return (
-      <EmptyState
-        icon={LineChartIcon}
-        title="Analytics unavailable"
-        hint={error}
-      />
+      <div role="alert" className="space-y-3">
+        <EmptyState icon={LineChartIcon} title="Analytics unavailable" hint={error ?? result.error ?? undefined} />
+        <Button variant="outline" onClick={() => setRefresh((v) => v + 1)}>Try again</Button>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* 30-day KPI strip */}
+      <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status">
+        <p className="font-semibold">Order sample, not a complete business report</p>
+        <p>These figures use only the first page returned by the selected adapter (up to 100 orders). Older orders in the selected period may be missing, even when the page contains fewer than 100. Amounts are displayed in PKR; verify the source currency. Order value is not revenue or money received.</p>
+        {derived && <p className="mt-1">UTC calendar dates: {derived.start} to {derived.endInclusive}; {sample?.orders.length} loaded, {derived.selectedCount} in range.{derived.invalidDates > 0 && ` ${derived.invalidDates} order(s) with invalid dates excluded.`}</p>}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <label htmlFor="analytics-days" className="text-sm font-medium">Date range (UTC)</label>
+        <select id="analytics-days" value={days} onChange={(event) => setDays(Number(event.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+          <option value={7}>Last 7 calendar days</option><option value={30}>Last 30 calendar days</option><option value={90}>Last 90 calendar days</option>
+        </select>
+        <Button variant="outline" size="sm" onClick={() => setRefresh((v) => v + 1)}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh sample</Button>
+      </div>
+      {/* KPIs apply to this bounded sample, not all business orders. */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Revenue (30d)" value={derived ? formatPKR(derived.revenue30) : "…"} sub="excl. cancelled orders" icon={Banknote} tone="emerald" />
-        <StatCard label="Orders (30d)" value={derived ? formatNumber(derived.orders30) : "…"} sub={derived ? `${derived.statusCounts.reduce((s, x) => s + x.value, 0)} placed in total` : undefined} icon={ShoppingCart} tone="blue" />
-        <StatCard label="Avg. order value" value={derived ? formatPKR(derived.aov) : "…"} sub="revenue ÷ orders" icon={Receipt} tone="violet" />
+        <StatCard label="Order value in sample" value={derived ? formatPKR(derived.orderValue) : "…"} sub="non-cancelled orders; not revenue" icon={Banknote} tone="emerald" />
+        <StatCard label="Orders in sample" value={derived ? formatNumber(derived.orders) : "…"} sub={derived ? `${derived.statusCounts.reduce((s, x) => s + x.value, 0)} placed in total` : undefined} icon={ShoppingCart} tone="blue" />
+        <StatCard label="Avg. order value" value={derived ? formatPKR(derived.aov) : "…"} sub="order value ÷ non-cancelled orders" icon={Receipt} tone="violet" />
         <StatCard label="Cancellation rate" value={derived ? `${derived.cancelRate}%` : "…"} sub="of all orders in view" icon={XCircle} tone="rose" />
       </div>
 
       {/* daily orders volume */}
       <SectionCard
-        title="Order volume — last 30 days"
-        action={
-          <Button variant="ghost" size="sm" onClick={load} className="text-muted-foreground hover:text-foreground">
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh
-          </Button>
-        }
+        title={days === 30 ? "Order volume — last 30 days" : `Order volume — last ${days} days`}
+        action={<span className="text-xs text-muted-foreground">Sample · non-cancelled</span>}
       >
         <div className="h-56 w-full">
           {series.length === 0 ? (
@@ -133,12 +113,12 @@ export default function AdminAnalytics() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         {/* orders by status */}
-        <SectionCard title="Orders by status">
+        <SectionCard title="Orders by status — sample">
           <div className="h-64 w-full">
             {!derived ? (
               <SectionSkeleton rows={5} />
             ) : derived.statusCounts.length === 0 ? (
-              <EmptyState icon={ShoppingCart} title="No orders yet" />
+              <EmptyState icon={ShoppingCart} title="No orders in this sample" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -156,7 +136,7 @@ export default function AdminAnalytics() {
         </SectionCard>
 
         {/* AOV trend */}
-        <SectionCard title="Average order value — daily">
+        <SectionCard title="Average order value — daily sample">
           <div className="h-64 w-full">
             {series.length === 0 ? (
               <SectionSkeleton rows={5} />
@@ -176,12 +156,12 @@ export default function AdminAnalytics() {
         </SectionCard>
 
         {/* top products by revenue */}
-        <SectionCard title="Top products by revenue (non-cancelled)">
+        <SectionCard title="Top products by line value — sample (non-cancelled)">
           <div className="h-64 w-full">
             {!derived ? (
               <SectionSkeleton rows={5} />
             ) : derived.topProducts.length === 0 ? (
-              <EmptyState icon={ShoppingCart} title="No line items yet" />
+              <EmptyState icon={ShoppingCart} title="No line items in this sample" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={derived.topProducts} layout="vertical" margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
@@ -190,7 +170,7 @@ export default function AdminAnalytics() {
                     tickFormatter={(v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : `${Math.round(v / 1000)}k`)} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#57534e" }} tickLine={false} axisLine={false} width={150} />
                   <Tooltip cursor={{ fill: "#F2F2F2" }} contentStyle={tooltipStyle}
-                    formatter={(value: number, name: string) => [name === "revenue" ? formatPKR(value) : formatNumber(value), name === "revenue" ? "Revenue" : "Units"]} />
+                    formatter={(value: number, name: string) => [name === "revenue" ? formatPKR(value) : formatNumber(value), name === "revenue" ? "Line value" : "Units"]} />
                   <Bar dataKey="revenue" name="revenue" fill="#629924" radius={[0, 6, 6, 0]} maxBarSize={18} />
                 </BarChart>
               </ResponsiveContainer>
@@ -199,18 +179,18 @@ export default function AdminAnalytics() {
         </SectionCard>
 
         {/* payment methods */}
-        <SectionCard title="Orders by payment method">
+        <SectionCard title="Orders by payment method — sample">
           <div className="h-64 w-full">
             {!derived ? (
               <SectionSkeleton rows={5} />
-            ) : derived.paymentSplit.length === 0 ? (
-              <EmptyState icon={ShoppingCart} title="No orders yet" />
+            ) : paymentSplit.length === 0 ? (
+              <EmptyState icon={ShoppingCart} title="No orders in this sample" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={derived.paymentSplit} dataKey="value" nameKey="name" outerRadius={85} paddingAngle={3}>
-                    {derived.paymentSplit.map((entry, i) => (
-                      <Cell key={entry.name} fill={PAY_COLORS[i % PAY_COLORS.length]} stroke="#fff" strokeWidth={2} aria-label={`${entry.name}: ${entry.value} payments`} />
+                  <Pie data={paymentSplit} dataKey="value" nameKey="name" outerRadius={85} paddingAngle={3}>
+                    {paymentSplit.map((entry, i) => (
+                      <Cell key={entry.name} fill={PAY_COLORS[i % PAY_COLORS.length]} stroke="#fff" strokeWidth={2} aria-label={`${entry.name}: ${entry.value} orders`} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [formatNumber(value), name]} />

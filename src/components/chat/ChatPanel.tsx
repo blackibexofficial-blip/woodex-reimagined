@@ -16,6 +16,10 @@ import {
 } from "@/lib/chat";
 import { cn } from "@/lib/utils";
 import { LeadConsent } from "@/components/LeadConsent";
+import { LeadSubmissionWarning } from "@/components/LeadSubmissionWarning";
+import { unconfirmedLeadDetail, useLeadSubmissionGuard } from "@/lib/lead-submission";
+import { getTurnstileToken } from "@/lib/turnstile";
+import { CHAT_MESSAGE_LIMIT } from "@/lib/lead-content";
 
 const WA_FALLBACK = waLink("Salam! I was on the WOODEX site and I'd like to talk to your team.");
 
@@ -49,7 +53,7 @@ export default function ChatPanel({ open, onClose, onUnseen, mode }: Props) {
   const [capMessage, setCapMessage] = useState("");
   const [capConsent, setCapConsent] = useState(false);
   const [capErrors, setCapErrors] = useState<Record<string, string>>({});
-  const [capBusy, setCapBusy] = useState(false);
+  const capture = useLeadSubmissionGuard();
   const [capturedLead, setCapturedLead] = useState<string | null>(null);
 
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -124,36 +128,54 @@ export default function ChatPanel({ open, onClose, onUnseen, mode }: Props) {
 
   const submitCapture = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (capBusy) return;
     const errs: Record<string, string> = {};
     if (capName.trim().length < 2) errs.name = "Please tell us your name.";
     if (!isPkPhone(capPhone)) errs.phone = "Enter a valid PK mobile/landline, e.g. 0300 1234567.";
     if (capMessage.trim().length < 4) errs.message = "A few words about what you need, please.";
+    else if (capMessage.length > CHAT_MESSAGE_LIMIT) errs.message = `Please keep your request to ${CHAT_MESSAGE_LIMIT} characters or fewer.`;
     if (!capConsent) errs.consent = "Tick the consent box so we can call you back.";
     setCapErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-    setCapBusy(true);
+    if (Object.keys(errs).length > 0 || !capture.begin()) return;
+    const name = capName.trim();
+    const phone = capPhone.trim();
+    const message = capMessage.trim();
+    let cfTurnstileToken: string | undefined;
     try {
-      const { conversation, leadId } = await getAdminApi().captureChatOffline({
-        name: capName.trim(),
-        phone: capPhone.trim(),
-        message: capMessage.trim(),
+      cfTurnstileToken = (await getTurnstileToken("lead")) ?? undefined;
+    } catch (err) {
+      console.error("Turnstile challenge failed:", err);
+      toast.error("Verification didn't load — check your connection and try again.");
+      capture.verificationFailed();
+      return;
+    }
+    try {
+      const { conversation, leadId, submissionOutcome } = await getAdminApi().captureChatOffline({
+        name,
+        phone,
+        message,
         consent: true,
         consentVersion: buildConsent().consentVersion,
         page: location.pathname,
+        cfTurnstileToken,
       });
+      const detail = unconfirmedLeadDetail(submissionOutcome);
+      if (detail) {
+        capture.unconfirmed(detail);
+        toast.error("We couldn't confirm your enquiry. Please check with us before sending it again.");
+        return;
+      }
+      capture.success();
       rememberThread(conversation.id);
       setMessages((m) => [
         // mirror the stored visitor message locally so the thread is complete
         ...m,
-        { id: `local-${Date.now()}`, conversationId: conversation.id, role: "visitor", body: capMessage.trim(), createdAt: new Date().toISOString() },
+        { id: `local-${Date.now()}`, conversationId: conversation.id, role: "visitor", body: message, createdAt: new Date().toISOString() },
       ]);
       setCapturedLead(leadId);
     } catch (err) {
-      console.error("chat capture failed:", err);
-      toast.error("Could not store your request — please try again or use WhatsApp.");
-    } finally {
-      setCapBusy(false);
+      console.error("chat capture outcome could not be confirmed:", err);
+      capture.unconfirmed(null);
+      toast.error("We couldn't confirm your enquiry. Please check with us before sending it again.");
     }
   };
 
@@ -188,7 +210,7 @@ export default function ChatPanel({ open, onClose, onUnseen, mode }: Props) {
         {messages.length === 0 && (
           <div className="rounded-xl border border-border bg-background p-3 text-[13px] leading-snug text-foreground shadow-sm">
             <p className="font-semibold">Salam! 👋</p>
-            <p className="mt-1 text-muted-foreground">Ask about stock, a quotation, or visiting our showroom. We keep every message — nothing is read by bots.</p>
+            <p className="mt-1 text-muted-foreground">Ask about stock, a quotation, or visiting our showroom.</p>
             {mode !== "live" && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {CHAT_QUICK_PROMPTS.map((q) => (
@@ -254,30 +276,34 @@ export default function ChatPanel({ open, onClose, onUnseen, mode }: Props) {
         </div>
       ) : (
         <form onSubmit={submitCapture} className="max-h-[16rem] overflow-y-auto border-t border-border bg-background p-3" noValidate>
+          <fieldset disabled={capture.busy} className="min-w-0">
           <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-foreground"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden /> Leave your details — we call back within the hour</p>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label htmlFor="chat-cap-name" className="sr-only">Your name</label>
-              <input id="chat-cap-name" value={capName} onChange={(e) => setCapName(e.target.value)} placeholder="Name" autoComplete="name" aria-invalid={!!capErrors.name} className={cn("h-9 w-full rounded-md border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", capErrors.name ? "border-destructive" : "border-input")} />
+              <input id="chat-cap-name" value={capName} onChange={(e) => setCapName(e.target.value)} maxLength={160} placeholder="Name" autoComplete="name" aria-invalid={!!capErrors.name} className={cn("h-9 w-full rounded-md border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", capErrors.name ? "border-destructive" : "border-input")} />
               {capErrors.name && <p className="mt-0.5 text-[10px] text-destructive">{capErrors.name}</p>}
             </div>
             <div>
               <label htmlFor="chat-cap-phone" className="sr-only">Phone number</label>
-              <input id="chat-cap-phone" type="tel" inputMode="tel" value={capPhone} onChange={(e) => setCapPhone(e.target.value)} placeholder="0300 1234567" autoComplete="tel" aria-invalid={!!capErrors.phone} className={cn("h-9 w-full rounded-md border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", capErrors.phone ? "border-destructive" : "border-input")} />
+              <input id="chat-cap-phone" type="tel" inputMode="tel" value={capPhone} onChange={(e) => setCapPhone(e.target.value)} maxLength={40} placeholder="0300 1234567" autoComplete="tel" aria-invalid={!!capErrors.phone} className={cn("h-9 w-full rounded-md border bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring", capErrors.phone ? "border-destructive" : "border-input")} />
               {capErrors.phone && <p className="mt-0.5 text-[10px] text-destructive">{capErrors.phone}</p>}
             </div>
           </div>
           <label htmlFor="chat-cap-message" className="sr-only">What do you need?</label>
-          <textarea id="chat-cap-message" value={capMessage} onChange={(e) => setCapMessage(e.target.value)} placeholder="What do you need? e.g. 12 Z-Lift chairs for Gulberg office" rows={2} aria-invalid={!!capErrors.message} className={cn("mt-2 w-full resize-none rounded-md border bg-background px-2.5 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring", capErrors.message ? "border-destructive" : "border-input")} />
+          <textarea id="chat-cap-message" value={capMessage} onChange={(e) => setCapMessage(e.target.value)} maxLength={CHAT_MESSAGE_LIMIT} placeholder="What do you need? e.g. 12 Z-Lift chairs for Gulberg office" rows={2} aria-invalid={!!capErrors.message} className={cn("mt-2 w-full resize-none rounded-md border bg-background px-2.5 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring", capErrors.message ? "border-destructive" : "border-input")} />
           {capErrors.message && <p className="-mt-1 text-[10px] text-destructive">{capErrors.message}</p>}
+          <p className="text-[10px] text-muted-foreground">Up to {CHAT_MESSAGE_LIMIT} characters. Please don't include sensitive information.</p>
           <LeadConsent checked={capConsent} onChange={setCapConsent} className="mt-1.5" />
           {capErrors.consent && <p className="mt-0.5 text-[10px] text-destructive">{capErrors.consent}</p>}
+          {capture.unknown && <div className="mt-2"><LeadSubmissionWarning detail={capture.detail} acknowledged={capture.acknowledged} onAcknowledge={capture.acknowledge} /></div>}
           <div className="mt-2 flex items-center justify-between gap-2">
             <a href={WA_FALLBACK} target="_blank" rel="noreferrer" className="text-[11px] font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground">Or WhatsApp →</a>
-            <button type="submit" disabled={capBusy} className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-4 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50">
-              {capBusy ? "Sending…" : "Request callback"}
+            <button type="submit" disabled={capture.busy || capture.blocked} className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-4 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50">
+              {capture.busy ? "Sending…" : "Request callback"}
             </button>
           </div>
+          </fieldset>
         </form>
       )}
     </div>

@@ -499,7 +499,7 @@ export default function AdminLeads() {
 
       {/* ── lead details dialog (V4 PR-D) ──────────────────────────────── */}
       <Dialog open={Boolean(detailsLead)} onOpenChange={(open) => !open && setDetailsLead(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserRound className="h-5 w-5 text-hon-green-dark" />
@@ -509,6 +509,10 @@ export default function AdminLeads() {
           </DialogHeader>
           {detailsLead && (
             <div className="grid grid-cols-2 gap-3 py-1">
+              <div className="col-span-2 min-w-0">
+                <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Enquiry details</p>
+                <p className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-3 text-sm" data-testid="lead-enquiry-details">{detailsLead.summary || "No enquiry details recorded."}</p>
+              </div>
               <div>
                 <Label htmlFor="lead-assignee" className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Assignee</Label>
                 <Select value={form.assignedTo || "__unassigned"} onValueChange={(v) => setForm((f) => ({ ...f, assignedTo: v === "__unassigned" ? "" : v }))}>

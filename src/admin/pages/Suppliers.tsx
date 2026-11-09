@@ -35,6 +35,7 @@ export default function AdminSuppliers() {
   const api = useMemo(() => getAdminApi(), []);
   const [items, setItems] = useState<AdminSupplier[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
   const [editorOpen, setEditorOpen] = useState(false);
@@ -49,8 +50,10 @@ export default function AdminSuppliers() {
     setLoading(true);
     try {
       setItems(await api.listSuppliers({ query: query || undefined }));
-    } catch {
-      toast.error("Could not load suppliers.");
+      setLoadError(null);
+    } catch (error) {
+      setItems([]);
+      setLoadError(error instanceof Error ? error.message : "Could not load suppliers.");
     } finally {
       setLoading(false);
     }
@@ -152,6 +155,8 @@ export default function AdminSuppliers() {
       <SectionCard title="Suppliers">
         {loading ? (
           <SectionSkeleton rows={4} />
+        ) : loadError ? (
+          <p role="alert" className="p-4 text-sm text-destructive">{loadError}</p>
         ) : items.length === 0 ? (
           <EmptyState
             icon={Truck}

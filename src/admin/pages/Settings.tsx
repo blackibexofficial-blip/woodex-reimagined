@@ -3,7 +3,8 @@ import { CheckCircle2, XCircle, Loader2, Save, AlertTriangle, RotateCcw, Plug, D
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { StoreSettings, ChatMode } from "@/api/types";
-import { config, isDemoMode, isSupabaseConfigured, isBagistoShopConfigured, isBagistoAdminConfigured } from "@/config/env";
+import { config, isDemoMode, isSupabaseMode, isSupabaseConfigured, isBagistoShopConfigured, isBagistoAdminConfigured } from "@/config/env";
+import { useSettingsManagePermission } from "@/lib/owner";
 import { SectionCard } from "@/admin/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,9 @@ const FIELD = "mb-1 block text-xs font-medium text-muted-foreground";
 
 export default function AdminSettings() {
   const api = useMemo(() => getAdminApi(), []);
+  const { canManage, checking } = useSettingsManagePermission();
   const [settings, setSettings] = useState<StoreSettings | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [chatMode, setChatMode] = useState<ChatMode | null>(null);
@@ -23,8 +26,21 @@ export default function AdminSettings() {
   const [newMember, setNewMember] = useState("");
 
   useEffect(() => {
-    api.getSettings().then(setSettings).catch(console.error);
-    api.getChatMode().then(setChatMode).catch(() => setChatMode("offline"));
+    let alive = true;
+    // Clear any prior owner's settings while session/capability checks change.
+    setSettings(null);
+    setLoadError(null);
+    if (!checking) {
+      api.getSettings().then((value) => { if (alive) setSettings(value); })
+        .catch((error) => { if (alive) setLoadError(error instanceof Error ? error.message : "Could not load store settings."); });
+    }
+    return () => { alive = false; };
+  }, [api, checking, canManage]);
+
+  useEffect(() => {
+    let alive = true;
+    api.getChatMode().then((value) => { if (alive) setChatMode(value); }).catch(() => { if (alive) setChatMode("offline"); });
+    return () => { alive = false; };
   }, [api]);
 
   const chooseChatMode = (mode: ChatMode) => {
@@ -68,10 +84,11 @@ export default function AdminSettings() {
   };
 
   const save = async () => {
-    if (!settings) return;
+    if (!settings || !canManage || checking) return;
     setSaving(true);
     try {
-      await api.saveSettings(settings);
+      const saved = await api.saveSettings(settings);
+      setSettings(saved);
       toast.success("Store settings saved.");
     } catch (e) {
       console.error(e);
@@ -101,12 +118,17 @@ export default function AdminSettings() {
     { label: "Bagisto admin integration token", ok: isBagistoAdminConfigured, detail: isBagistoAdminConfigured ? "Bearer token present (keep it server-side in production!)" : "Not configured — admin uses demo dataset" },
   ];
 
+  if (loadError) return <p role="alert" className="p-4 text-sm text-destructive">{loadError}</p>;
   if (!settings) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
   return (
-    <div className="grid max-w-5xl gap-6 lg:grid-cols-5">
+    <div className="max-w-5xl space-y-4">
+      {isSupabaseMode && (!canManage || checking) && (
+        <p className="text-sm text-muted-foreground">{checking ? "Checking settings permissions…" : "Read-only: only the owner can change settings. Some fields are restricted."}</p>
+      )}
+      <fieldset aria-label="Store settings" disabled={isSupabaseMode && (!canManage || checking)} className="grid w-full gap-6 lg:grid-cols-5">
       {/* ── store profile form ─────────────────────────────────────────── */}
       <SectionCard className="lg:col-span-3" title="Store profile" action={
         <Button size="sm" onClick={save} disabled={saving} className="bg-accent text-accent-foreground hover:bg-hon-green-dark">
@@ -166,7 +188,7 @@ export default function AdminSettings() {
               {settings.storeLogo ? (
                 <>
                   <img src={settings.storeLogo} alt="Company logo preview" className="h-14 w-14 shrink-0 rounded-md border border-border object-contain p-1" />
-                  <Button type="button" variant="outline" size="sm" onClick={() => set("storeLogo", undefined)}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => set("storeLogo", null)}>
                     <X className="mr-1 h-3.5 w-3.5" /> Remove logo
                   </Button>
                 </>
@@ -335,6 +357,7 @@ export default function AdminSettings() {
           <Database className="h-3.5 w-3.5" /> Demo persistence key: <code className="font-mono">woodex.admin.db.v1</code>
         </div>
       </div>
+      </fieldset>
     </div>
   );
 }
