@@ -11,6 +11,9 @@ import { useQuote, quoteLineKey } from "@/contexts/QuoteContext";
 import { formatPKR, products } from "@/data/products";
 import { getAdminApi } from "@/api";
 import { LeadConsent } from "@/components/LeadConsent";
+import { LeadSubmissionWarning } from "@/components/LeadSubmissionWarning";
+import { unconfirmedLeadDetail, useLeadSubmissionGuard } from "@/lib/lead-submission";
+import { COMPANY_LIMIT, LEAD_INTEREST_LIMIT, PROJECT_TYPE_LIMIT, quoteLeadSummary } from "@/lib/lead-content";
 import { buildConsent, collectAttributionBrowser } from "@/lib/consent";
 import { getTurnstileToken } from "@/lib/turnstile";
 import { useEffect } from "react";
@@ -49,14 +52,14 @@ const Quotation = () => {
     document.title = "Get E-Quotation — WOODEX Pakistan | Free Quote Request";
   }, []);
 
-  const [submitting, setSubmitting] = useState(false);
+  const submission = useLeadSubmissionGuard();
   const [consent, setConsent] = useState(false);
+  const [summaryError, setSummaryError] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (submitting) return;
     if (!consent) {
-      toast.error("Please tick the consent box so we can store your details securely.");
+      toast.error("Please tick the consent box so we can process your enquiry.");
       return;
     }
     const form = e.currentTarget;
@@ -66,40 +69,49 @@ const Quotation = () => {
     const email = val("email");
     const phone = val("phone");
     const projectType = val("project-type");
-    const basketSummary = items.length
-      ? ` — basket: ${items.slice(0, 6).map((i) => `${i.name} x${i.quantity}`).join(", ")}${items.length > 6 ? "…" : ""} (${totalItems} items, est. ${formatPKR(totalPrice)})`
-      : "";
-    setSubmitting(true);
+    const summary = quoteLeadSummary(projectType, items, formatPKR(totalPrice));
+    if (summary.length > LEAD_INTEREST_LIMIT) {
+      setSummaryError(true);
+      return;
+    }
+    setSummaryError(false);
+    if (!submission.begin()) return;
     let cfTurnstileToken: string | undefined;
     try {
       cfTurnstileToken = (await getTurnstileToken("lead")) ?? undefined;
     } catch (err) {
       console.error("Turnstile challenge failed:", err);
       toast.error("Verification didn't load — check your connection and try again.");
-      setSubmitting(false);
+      submission.verificationFailed();
       return;
     }
     try {
-      await getAdminApi().createLead({
+      const lead = await getAdminApi().createLead({
         type: "quote",
         name,
         company: company || undefined,
         email: email || undefined,
         phone,
-        summary: `${projectType}${basketSummary}`,
+        summary,
         value: items.length ? totalPrice : undefined,
         ...buildConsent(),
         ...collectAttributionBrowser(),
         cfTurnstileToken,
       });
+      const detail = unconfirmedLeadDetail(lead.submissionOutcome);
+      if (detail) {
+        submission.unconfirmed(detail);
+        toast.error("We couldn't confirm your enquiry. Please check with us before sending it again.");
+        return;
+      }
+      submission.success();
       setSubmitted(true);
-      setTimeout(() => setSubmitted(false), 5000);
+      setTimeout(() => { submission.reset(); setSubmitted(false); }, 5000);
       toast.success("Quote request received — we'll reach out within 24 hours.");
     } catch (err) {
-      console.error("Quote lead capture failed:", err);
-      toast.error(`Could not submit the request. Please call ${site.phone}.`);
-    } finally {
-      setSubmitting(false);
+      console.error("Quote lead outcome could not be confirmed:", err);
+      submission.unconfirmed(null);
+      toast.error("We couldn't confirm your enquiry. Please check with us before sending it again.");
     }
   };
 
@@ -412,42 +424,47 @@ const Quotation = () => {
                       </p>
                     </div>
                   ) : (
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit}>
+                      <fieldset disabled={submission.busy} className="space-y-5">
                       {items.length > 0 && (
                         <div className="p-4 bg-hon-green-pale rounded-sm border border-accent/30">
                           <p className="text-sm font-semibold text-accent">
-                            ✓ {totalItems} product{totalItems !== 1 ? "s" : ""} from your quote basket will be included ({formatPKR(totalPrice)} estimated)
+                            Your request includes a text summary of {totalItems} product{totalItems !== 1 ? "s" : ""} and the displayed estimate ({formatPKR(totalPrice)}). Pricing and availability are not confirmed.
                           </p>
                         </div>
                       )}
                       <div className="grid md:grid-cols-2 gap-5">
                         <div className="space-y-1.5">
                           <Label htmlFor="name">Full Name *</Label>
-                          <Input id="name" placeholder="John Doe" required />
+                          <Input id="name" placeholder="John Doe" maxLength={160} required />
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="company">Company Name *</Label>
-                          <Input id="company" placeholder="Company Inc." required />
+                          <Input id="company" placeholder="Company Inc." maxLength={COMPANY_LIMIT} required />
                         </div>
                       </div>
                       <div className="grid md:grid-cols-2 gap-5">
                         <div className="space-y-1.5">
                           <Label htmlFor="email">Email Address *</Label>
-                          <Input id="email" type="email" placeholder="john@company.com" required />
+                          <Input id="email" type="email" placeholder="john@company.com" maxLength={254} required />
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="phone">Phone Number *</Label>
-                          <Input id="phone" type="tel" placeholder={site.phone} required />
+                          <Input id="phone" type="tel" placeholder={site.phone} maxLength={40} required />
                         </div>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="project-type">Project Type *</Label>
-                        <Input id="project-type" placeholder="e.g., New office setup, Office renovation" required />
+                        <Input id="project-type" placeholder="e.g., New office setup, Office renovation" maxLength={PROJECT_TYPE_LIMIT} required />
                       </div>
+                      <p className="text-xs text-muted-foreground">Products are sent as a text summary, not a priced or accepted quotation. We may need to confirm exact options with you.</p>
                       <LeadConsent checked={consent} onChange={setConsent} />
-                      <Button type="submit" size="lg" disabled={submitting || !consent} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 gap-2 uppercase tracking-wider text-xs">
-                        <ArrowRight className="h-4 w-4" /> {submitting ? "Submitting…" : "Download Quote!"}
+                      {summaryError && <p role="alert" className="rounded-sm border border-amber-600 bg-amber-50 p-3 text-sm text-amber-950">This request is too long to send without losing details. Shorten the project type or reduce the basket, then submit again.</p>}
+                      {submission.unknown && <LeadSubmissionWarning detail={submission.detail} acknowledged={submission.acknowledged} onAcknowledge={submission.acknowledge} />}
+                      <Button type="submit" size="lg" disabled={submission.busy || submission.blocked || !consent} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 gap-2 uppercase tracking-wider text-xs">
+                        <ArrowRight className="h-4 w-4" /> {submission.busy ? "Submitting…" : "Submit Quote Request"}
                       </Button>
+                      </fieldset>
                     </form>
                   )}
                 </div>

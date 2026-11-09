@@ -3,6 +3,9 @@ import { Mail, Phone, MapPin, Clock, Send, MessageCircle, ChevronDown } from "lu
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import { LeadConsent } from "@/components/LeadConsent";
+import { LeadSubmissionWarning } from "@/components/LeadSubmissionWarning";
+import { unconfirmedLeadDetail, useLeadSubmissionGuard } from "@/lib/lead-submission";
+import { CONTACT_MESSAGE_LIMIT, CONTACT_SUBJECT_LIMIT, LEAD_INTEREST_LIMIT } from "@/lib/lead-content";
 import { buildConsent, collectAttributionBrowser } from "@/lib/consent";
 import { getTurnstileToken } from "@/lib/turnstile";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,7 +33,7 @@ const faqs = [
 
 const Contact = () => {
   const [submitted, setSubmitted] = useState(false);
-  const [sending, setSending] = useState(false);
+  const submission = useLeadSubmissionGuard();
   const [consent, setConsent] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -40,44 +43,57 @@ const Contact = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (sending) return;
     if (!consent) {
-      toast.error("Please tick the consent box so we can store your details securely.");
+      toast.error("Please tick the consent box so we can process your enquiry.");
       return;
     }
     const form = e.currentTarget;
     const val = (id: string) => ((form.elements.namedItem(id) as HTMLInputElement | HTMLTextAreaElement | null)?.value ?? "").trim();
+    const name = val("name");
+    const email = val("email");
+    const phone = val("phone");
     const subject = val("subject");
     const message = val("message");
-    setSending(true);
+    const summary = `Website enquiry — ${subject || "General"}: ${message}`;
+    if (summary.length > LEAD_INTEREST_LIMIT) {
+      toast.error("Your enquiry is too long to submit. Please shorten the subject or message.");
+      return;
+    }
+    if (!submission.begin()) return;
     let cfTurnstileToken: string | undefined;
     try {
       cfTurnstileToken = (await getTurnstileToken("lead")) ?? undefined;
     } catch (err) {
       console.error("Turnstile challenge failed:", err);
       toast.error("Verification didn't load — check your connection and try again.");
-      setSending(false);
+      submission.verificationFailed();
       return;
     }
     try {
-      await getAdminApi().createLead({
+      const lead = await getAdminApi().createLead({
         type: "quote",
-        name: val("name"),
-        email: val("email") || undefined,
-        phone: val("phone") || "—",
-        summary: `Website enquiry — ${subject || "General"}: ${message.slice(0, 180)}`,
+        name,
+        email: email || undefined,
+        phone: phone || "—",
+        summary,
         ...buildConsent(),
         ...collectAttributionBrowser(),
         cfTurnstileToken,
       });
+      const detail = unconfirmedLeadDetail(lead.submissionOutcome);
+      if (detail) {
+        submission.unconfirmed(detail);
+        toast.error("We couldn't confirm your enquiry. Please check with us before sending it again.");
+        return;
+      }
+      submission.success();
       setSubmitted(true);
       form.reset();
-      setTimeout(() => setSubmitted(false), 4000);
+      setTimeout(() => { submission.reset(); setSubmitted(false); }, 4000);
     } catch (err) {
-      console.error("Contact lead capture failed:", err);
-      toast.error(`Could not send your message. Please call ${site.phone} instead.`);
-    } finally {
-      setSending(false);
+      console.error("Contact lead outcome could not be confirmed:", err);
+      submission.unconfirmed(null);
+      toast.error("We couldn't confirm your enquiry. Please check with us before sending it again.");
     }
   };
 
@@ -141,35 +157,39 @@ const Contact = () => {
                         <p className="text-muted-foreground">We'll get back to you within 24 hours.</p>
                       </div>
                     ) : (
-                      <form onSubmit={handleSubmit} className="space-y-5">
+                      <form onSubmit={handleSubmit}>
+                        <fieldset disabled={submission.busy} className="space-y-5">
                         <div className="grid md:grid-cols-2 gap-5">
                           <div className="space-y-1.5">
                             <Label htmlFor="name">Full Name *</Label>
-                            <Input id="name" placeholder="Muhammad Ali" required />
+                            <Input id="name" placeholder="Muhammad Ali" maxLength={160} required />
                           </div>
                           <div className="space-y-1.5">
                             <Label htmlFor="email">Email *</Label>
-                            <Input id="email" type="email" placeholder="your@email.com" required />
+                            <Input id="email" type="email" placeholder="your@email.com" maxLength={254} required />
                           </div>
                         </div>
                         <div className="grid md:grid-cols-2 gap-5">
                           <div className="space-y-1.5">
                             <Label htmlFor="phone">Phone</Label>
-                            <Input id="phone" type="tel" placeholder={site.phone} />
+                            <Input id="phone" type="tel" placeholder={site.phone} maxLength={40} />
                           </div>
                           <div className="space-y-1.5">
                             <Label htmlFor="subject">Subject</Label>
-                            <Input id="subject" placeholder="Product inquiry" />
+                            <Input id="subject" placeholder="Product inquiry" maxLength={CONTACT_SUBJECT_LIMIT} />
                           </div>
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="message">Message *</Label>
-                          <Textarea id="message" placeholder="Tell us about your project..." className="min-h-[140px]" required />
+                          <Textarea id="message" placeholder="Tell us about your project..." className="min-h-[140px]" maxLength={CONTACT_MESSAGE_LIMIT} required />
+                          <p className="text-xs text-muted-foreground">Up to {CONTACT_MESSAGE_LIMIT} characters. Please do not include sensitive information.</p>
                         </div>
                         <LeadConsent checked={consent} onChange={setConsent} />
-                        <Button type="submit" disabled={sending || !consent} className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground font-semibold">
-                          {sending ? "Sending…" : "Send Message"}
+                        {submission.unknown && <LeadSubmissionWarning detail={submission.detail} acknowledged={submission.acknowledged} onAcknowledge={submission.acknowledge} />}
+                        <Button type="submit" disabled={submission.busy || submission.blocked || !consent} className="w-full bg-accent hover:bg-hon-green-dark text-accent-foreground font-semibold">
+                          {submission.busy ? "Sending…" : "Send Message"}
                         </Button>
+                        </fieldset>
                       </form>
                     )}
                   </CardContent>

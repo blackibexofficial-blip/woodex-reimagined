@@ -3,8 +3,9 @@
 // runs in the Supabase edge runtime and under `node --test` for rehearsal.
 //
 // Posture contract (documented in docs/08-master-plan/ANTI-ABUSE-DECISION.md):
-//   - TURNSTILE_SECRET unset on the EF  -> EFs fail OPEN with a log (unconfigured mode,
-//     same posture as the fixed-window limiter). Configure both client key + secret.
+//   - TURNSTILE_SECRET unset -> strict intake mode fails closed before calling this
+//     helper; legacy/unset mode preserves the old fail-open behavior. Configure
+//     both client key and server secret, and review the deployment policy.
 //   - TURNSTILE_SECRET set, token missing/invalid -> 403 (caller rejects).
 //   - siteverify unreachable / non-200 / non-JSON   -> 503 (fail-CLOSED on transport error
 //     so a Cloudflare blip never silently waves bots through a COD checkout).
@@ -57,10 +58,10 @@ export async function verifyTurnstileToken({ secret, token, remoteip, action, fe
     console.error("turnstile: verification failed", data?.["error-codes"]);
     return { ok: false, status: 403, error: "challenge verification failed — please retry" };
   }
-  // Action pinning: the client renders the widget with a fixed action per flow; a token
-  // minted for another flow (e.g. "lead" replayed against checkout) is rejected.
-  if (action && typeof data?.action === "string" && data.action !== action) {
-    console.error("turnstile: action mismatch", data.action, "expected", action);
+  // When an action is expected, a missing or non-string action is not a match.
+  // Never accept an action-less token in an action-pinned flow.
+  if (action && data?.action !== action) {
+    console.error("turnstile: missing or mismatched action; expected", action);
     return { ok: false, status: 403, error: "challenge verification failed — please retry" };
   }
   return { ok: true };
