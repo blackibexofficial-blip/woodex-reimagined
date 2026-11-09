@@ -8,6 +8,7 @@
 import { idbDeleteMany, idbGetAll, idbPutMany } from "@/api/demo/mediaStore";
 import { DEFAULT_TEAM } from "@/lib/team";
 import { deriveClientCategory } from "@/lib/clientCategory";
+import { clonePractice, normalizePractice } from "@/lib/projectPractice";
 import { products, categoryGroups } from "@/data/products";
 import { optionSetIdsFor, OPTION_SETS } from "@/data/options";
 import { materials as finishSeed } from "@/data/materials";
@@ -48,6 +49,8 @@ import type {
   MergeCandidate,
   AdminSiteVisit,
   ProjectPractice,
+  ProjectQcInspection,
+  ProjectProductionEvent,
   NewSiteVisitInput,
   SiteVisitPatch,
   ListParams,
@@ -157,6 +160,10 @@ import type {
   AdminTask,
   NewTaskInput,
   StoreSettings,
+  ProjectHandover,
+  ProjectWarranty,
+  ProjectWarrantyClaim,
+  WarrantyRegisterRow,
 } from "@/api/types";
 import { BUILTIN_TEMPLATES, isBuiltinTemplateId } from "@/api/quote-templates";
 
@@ -212,6 +219,16 @@ interface DemoDb {
   /** Relational Job-costing ledger (migration 0013 shape) — demo mirror. */
   costCodes: ProjectCostCode[];
   actuals: ProjectActualLine[];
+  /** Append-only QC inspections (mirror of migration 00022). */
+  qcInspections: ProjectQcInspection[];
+  /** Append-only production audit entries (mirror of migration 00022). */
+  productionEvents: ProjectProductionEvent[];
+  /** Delivery/installation handovers (mirror of migration 00025). */
+  handovers: ProjectHandover[];
+  /** One active warranty per job, cancelled rows kept (mirror of migration 00025). */
+  warranties: ProjectWarranty[];
+  /** Warranty claims (mirror of migration 00026). */
+  warrantyClaims: ProjectWarrantyClaim[];
   chatConversations: ChatConversation[];
   chatMessages: ChatMessage[];
   /** Storefront live chat availability (V4 P0). */
@@ -662,6 +679,30 @@ function buildSeedProjectPractices(): Record<string, ProjectPractice> {
   };
 }
 
+/** Synthetic inspection for the seeded completed job — the only seeded pass. */
+function buildSeedQcInspections(): ProjectQcInspection[] {
+  return [{
+    id: "qc-seed-1",
+    projectId: "1",
+    result: "passed",
+    notes: "Final inspection complete — two minor snags reworked on site.",
+    inspectedByEmail: "site.engineer@woodex.test",
+    revision: 1,
+    createdAt: new Date(Date.now() - 160 * 86400000).toISOString(),
+  }];
+}
+function buildSeedProductionEvents(): ProjectProductionEvent[] {
+  return [{
+    id: 1,
+    projectId: "1",
+    action: "qc_changed",
+    revision: 1,
+    qcResult: "passed",
+    dispatchVehicle: "WDX-Delivery-04",
+    createdAt: new Date(Date.now() - 160 * 86400000).toISOString(),
+  }];
+}
+
 function buildSeedProjects(): AdminProject[] {
   const now = Date.now();
   const iso = (daysAgo: number) => new Date(now - daysAgo * 86400000).toISOString();
@@ -671,6 +712,7 @@ function buildSeedProjects(): AdminProject[] {
     ...(practiceSeeds[p.id] ? { practice: cloneProjectPractice(practiceSeeds[p.id]) } : {}),
     active: true,
     sortOrder: (i + 1) * 10,
+    revision: 1,
     createdAt: iso(300 - i * 25),
     updatedAt: iso(300 - i * 25),
   }));
@@ -695,11 +737,64 @@ function cloneService<T>(v: T): T {
 }
 function cloneProjectPractice(p: ProjectPractice | undefined): ProjectPractice | undefined {
   if (!p) return undefined;
+  // Normalise partial/legacy payloads before they are written back.
+  return clonePractice(normalizePractice(p).practice);
+}
+
+/** Structural copy that preserves the stored shape, even when a legacy or
+ *  partial payload is incomplete. The workspace reports what it had to repair
+ *  instead of silently normalising it away here. */
+function copyStoredPractice(p: ProjectPractice | undefined): ProjectPractice | undefined {
+  if (!p) return undefined;
+  try { return JSON.parse(JSON.stringify(p)) as ProjectPractice; } catch { return p; }
+}
+
+/* ── production / QC helpers (local mirror of migration 00022 rules) ───────── */
+
+/** Demo has no real auth; label records with the demo session email. Clearly
+ *  synthetic — this is browser-local data, never a staff identity proof. */
+function demoActorEmail(): string {
+  try {
+    const raw = localStorage.getItem("woodex.admin.session");
+    const email = raw ? (JSON.parse(raw) as { email?: unknown }).email : undefined;
+    return typeof email === "string" && email.trim() ? email.trim() : "demo@woodex.test";
+  } catch {
+    return "demo@woodex.test";
+  }
+}
+function latestQcInspection(db: DemoDb, projectId: string): ProjectQcInspection | undefined {
+  return (db.qcInspections ?? [])
+    .filter((i) => i.projectId === projectId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0];
+}
+function productionHasDispatch(production: ProjectPractice["production"]): boolean {
+  if (!production) return false;
+  const dispatch = production.dispatch;
+  if (dispatch) {
+    const values = Object.values(dispatch) as unknown[];
+    if (values.some((v) => typeof v === "string" ? v.trim() !== "" : v !== null && v !== undefined)) return true;
+  }
+  return production.stages.some((s) => s.stage === "dispatch" && Number(s.pct) > 0);
+}
+function pushProductionEvent(db: DemoDb, proj: AdminProject, action: string) {
+  const production = proj.practice?.production;
+  const events = (db.productionEvents ??= []);
+  events.push({
+    id: (events.at(-1)?.id ?? 0) + 1,
+    projectId: proj.id,
+    action,
+    revision: proj.revision ?? 0,
+    qcResult: production?.qc.result ?? null,
+    dispatchVehicle: production?.dispatch.vehicle || null,
+    createdAt: new Date().toISOString(),
+  });
+}
+function snapshotProject(proj: AdminProject): AdminProject {
   return {
-    boq: p.boq.map((r) => ({ ...r })),
-    milestones: p.milestones.map((m) => ({ ...m })),
-    files: p.files.map((f) => ({ ...f })),
-    ...(p.production ? { production: { stages: p.production.stages.map((s) => ({ ...s })), qc: { ...p.production.qc }, dispatch: { ...p.production.dispatch } } } : {}),
+    ...proj,
+    furnitureUsed: [...proj.furnitureUsed],
+    testimonial: proj.testimonial ? { ...proj.testimonial } : undefined,
+    practice: cloneProjectPractice(proj.practice),
   };
 }
 
@@ -2105,6 +2200,8 @@ function buildSeed(): DemoDb {
     invoices: buildSeedInvoices(seedQuotes),
     payments: buildSeedPayments(),
     tasks: buildSeedTasks(), clients: buildSeedClients(), clientLinks: buildSeedClientLinks(), siteVisits: buildSeedSiteVisits(), suppliers: buildSeedSuppliers(), purchaseOrders: buildSeedPurchaseOrders(adminProducts), stockTransfers: buildSeedTransfers(adminProducts), optionSets: buildSeedOptionSets(), quoteVersions: [], quoteTemplates: [], costCodes: buildSeedCostCodes(), actuals: buildSeedActuals(),
+    qcInspections: buildSeedQcInspections(), productionEvents: buildSeedProductionEvents(),
+    handovers: [], warranties: [], warrantyClaims: [],
     chatConversations: seedChat.conversations, chatMessages: seedChat.messages, chatMode: "offline" as ChatMode };
 }
 
@@ -2240,6 +2337,25 @@ const update = (fn: (db: DemoDb) => void) => {
   fn(db);
   persist(db);
 };
+
+/** Complete demo publish revisions only. Never use the current editable doc,
+ * title, slug or SEO to fill gaps in a historical snapshot. */
+export function getDemoStorefrontSnapshot(slug: string): unknown | undefined {
+  const candidates = (loadDb().pages ?? []).flatMap((page) => {
+    if (page.kind !== "page" || page.status !== "published" || !page.publishedAt || !Array.isArray(page.history)) return [];
+    const version = page.history.find((entry) => entry && typeof entry === "object" && entry.version === page.version && entry.publishedAt === page.publishedAt);
+    if (!version || version.slug !== slug) return [];
+    return [{ page, version }];
+  });
+  if (candidates.length !== 1) return undefined;
+  const { page, version } = candidates[0];
+  if (!version.seo || typeof version.seo !== "object" || Array.isArray(version.seo)) return undefined;
+  // Clone so callers cannot mutate the retained revision in the demo store.
+  return cloneDoc({
+    id: page.id, slug: version.slug, title: version.title, published_at: version.publishedAt,
+    theme: version.doc?.root?.props, blocks: version.doc?.content, seo: version.seo,
+  });
+}
 
 /* Cross-tab freshness: the demo DB is one localStorage snapshot per tab. When another
    tab writes (e.g. the admin inbox posts a chat reply), this tab's cached copy must be
@@ -3521,7 +3637,7 @@ export const demoAdminApi: AdminApi = {
       if (!target) return;
       const now = new Date().toISOString();
       const version = (target.version ?? 1) + 1;
-      const entry = { version, publishedAt: now, title: target.title, doc: cloneDoc(target.doc) };
+      const entry = { version, publishedAt: now, slug: target.slug, title: target.title, doc: cloneDoc(target.doc), seo: cloneDoc(target.seo ?? {}) };
       updated = {
         ...target,
         status: "published",
@@ -3745,7 +3861,7 @@ export const demoAdminApi: AdminApi = {
     const db = loadDb();
     return [...(db.projects ??= [])]
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((r) => ({ ...r, furnitureUsed: [...r.furnitureUsed], testimonial: r.testimonial ? { ...r.testimonial } : undefined, practice: cloneProjectPractice(r.practice) }));
+      .map((r) => ({ ...r, furnitureUsed: [...r.furnitureUsed], testimonial: r.testimonial ? { ...r.testimonial } : undefined, practice: copyStoredPractice(r.practice) }));
   },
 
   async createProject(input) {
@@ -3760,9 +3876,16 @@ export const demoAdminApi: AdminApi = {
       while (ids.has(id)) id = `${base}-${++n}`;
       const maxOrder = Math.max(0, ...arr.map((r) => r.sortOrder));
       const nowIso = new Date().toISOString();
+      if (input.orderId) {
+        const order = (db.orders ?? []).find((o) => o.id === input.orderId);
+        if (!order) throw new Error(`Order ${input.orderId} not found`);
+        if (order.status === "cancelled") throw new Error(`Order ${input.orderId} is cancelled and cannot start production`);
+        if (arr.some((p) => p.orderId === input.orderId)) throw new Error(`Order ${input.orderId} already has a production job`);
+      }
       created = {
         id,
         title: name,
+        orderId: input.orderId ?? undefined,
         client: input.client.trim(),
         category: input.category.trim(),
         image: input.image?.trim() || "",
@@ -3784,6 +3907,7 @@ export const demoAdminApi: AdminApi = {
         updatedAt: nowIso,
       };
       arr.push(created);
+      if (created.orderId) pushProductionEvent(db, created, "order_linked");
     });
     if (!created) throw new Error("Failed to create project");
     return created;
@@ -3812,14 +3936,389 @@ export const demoAdminApi: AdminApi = {
       if (patch.rating !== undefined) proj.rating = patch.rating;
       if (patch.active !== undefined) proj.active = patch.active;
       if (patch.sortOrder !== undefined) proj.sortOrder = patch.sortOrder;
-      if (patch.practice !== undefined) proj.practice = cloneProjectPractice(patch.practice);
+      if (patch.practice !== undefined) {
+        const before = JSON.stringify(proj.practice?.production?.stages ?? null);
+        proj.practice = cloneProjectPractice(patch.practice);
+        if (JSON.stringify(proj.practice?.production?.stages ?? null) !== before) proj.productionUpdatedBy = demoActorEmail();
+      }
+      proj.revision = (proj.revision ?? 0) + 1;
       proj.updatedAt = new Date().toISOString();
       updated = { ...proj, furnitureUsed: [...proj.furnitureUsed], testimonial: proj.testimonial ? { ...proj.testimonial } : undefined, practice: cloneProjectPractice(proj.practice) };
     });
     return updated;
   },
 
-  async setProjectActive(id, active: boolean) {
+  async saveProjectPractice(id, practice, expectedRevision) {
+    let updated: AdminProject | undefined;
+    update((db) => {
+      const proj = (db.projects ??= []).find((x) => x.id === id);
+      if (!proj) return;
+      if (expectedRevision !== undefined && (proj.revision ?? 0) !== expectedRevision) {
+        throw new Error(`This job changed elsewhere (revision ${proj.revision ?? 0}, your copy ${expectedRevision}). Reload before saving.`);
+      }
+      const next = cloneProjectPractice(practice);
+      if (!next) throw new Error("Practice payload is required");
+      if (next.production) {
+        const latest = latestQcInspection(db, id);
+        if (latest) {
+          next.production.qc = {
+            result: latest.result,
+            defectNote: latest.notes,
+            inspectedBy: latest.inspectedByEmail,
+            inspectedAt: latest.createdAt.slice(0, 10),
+          };
+        } else if (proj.practice?.production?.qc.result === "passed") {
+          // Legacy tolerance: keep an existing pass, never invent a new one.
+          next.production.qc = { ...proj.practice.production.qc };
+        } else {
+          next.production.qc = { result: "pending", defectNote: "", inspectedBy: "", inspectedAt: "" };
+        }
+        if (productionHasDispatch(next.production) && next.production.qc.result !== "passed") {
+          throw new Error("QC is not passed — dispatch data can't be saved until QC is Passed (or clear the dispatch block).");
+        }
+      }
+      const stagesBefore = JSON.stringify(proj.practice?.production?.stages ?? null);
+      proj.practice = next;
+      // Separation of duties: remember who last moved the stages (mirrors 00022).
+      if (JSON.stringify(next.production?.stages ?? null) !== stagesBefore) proj.productionUpdatedBy = demoActorEmail();
+      proj.revision = (proj.revision ?? 0) + 1;
+      proj.updatedAt = new Date().toISOString();
+      pushProductionEvent(db, proj, "production_updated");
+      updated = snapshotProject(proj);
+    });
+    return updated;
+  },
+
+  async linkProjectOrder(projectId, orderId) {
+    let out: { projectId: string; orderId: string; alreadyLinked: boolean } | undefined;
+    update((db) => {
+      const proj = (db.projects ?? []).find((p) => p.id === projectId);
+      if (!proj) throw new Error("Project not found");
+      const order = (db.orders ?? []).find((o) => o.id === orderId);
+      if (!order) throw new Error(`Order ${orderId} not found`);
+      if (order.status === "cancelled") throw new Error(`Order ${orderId} is cancelled and cannot start production`);
+      if (proj.orderId && proj.orderId !== orderId) throw new Error(`This job is already linked to order ${proj.orderId}`);
+      if (proj.orderId === orderId) { out = { projectId, orderId, alreadyLinked: true }; return; }
+      const claimed = (db.projects ?? []).find((p) => p.orderId === orderId && p.id !== projectId);
+      if (claimed) throw new Error(`Order ${orderId} already has a production job (${claimed.id})`);
+      proj.orderId = orderId;
+      proj.updatedAt = new Date().toISOString();
+      pushProductionEvent(db, proj, "order_linked");
+      out = { projectId, orderId, alreadyLinked: false };
+    });
+    if (!out) throw new Error("Project not found");
+    return out;
+  },
+
+  async unlinkProjectOrder(projectId, reason) {
+    let out: { projectId: string; previousOrderId: string } | undefined;
+    update((db) => {
+      const proj = (db.projects ?? []).find((p) => p.id === projectId);
+      if (!proj) throw new Error("Project not found");
+      if (!proj.orderId) throw new Error("This job is not linked to an order");
+      const previousOrderId = proj.orderId;
+      const cleanReason = (reason ?? "").trim();
+      if (cleanReason.length > 500) throw new Error("Reason is limited to 500 characters");
+      proj.orderId = undefined;
+      proj.updatedAt = new Date().toISOString();
+      pushProductionEvent(db, proj, "order_unlinked");
+      out = { projectId, previousOrderId };
+    });
+    if (!out) throw new Error("Project not found");
+    return out;
+  },
+
+  async getOrderProduction(orderId) {
+    const proj = (loadDb().projects ?? []).find((p) => p.orderId === orderId);
+    if (!proj) return undefined;
+    const production = proj.practice?.production;
+    const stages = Array.isArray(production?.stages) ? production.stages : [];
+    const progress = stages.length === 0 ? 0 : Math.round(stages.reduce((sum, st) => sum + Math.min(100, Math.max(0, Number(st.pct) || 0)), 0) / stages.length);
+    return {
+      projectId: proj.id,
+      orderId,
+      title: proj.title,
+      progress,
+      qcResult: (production?.qc.result ?? null) as "pending" | "passed" | "failed" | null,
+      dispatchVehicle: production?.dispatch.vehicle?.trim() ? production.dispatch.vehicle : null,
+      dispatchDate: production?.dispatch.date?.trim() ? production.dispatch.date : null,
+      updatedAt: proj.updatedAt,
+    };
+  },
+
+  async getProjectPostDispatch(projectId) {
+    const db = loadDb();
+    const handovers = (db.handovers ?? []).filter((h) => h.projectId === projectId);
+    const delivery = handovers.find((h) => h.kind === "delivery");
+    const installation = handovers.find((h) => h.kind === "installation");
+    const rows = (db.warranties ?? []).filter((w) => w.projectId === projectId);
+    const warranty = rows.find((w) => !w.cancelledAt) ?? rows.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    const today = new Date().toISOString().slice(0, 10);
+    const warrantyState = !warranty ? "none" : warranty.cancelledAt ? "cancelled" : warranty.endsOn < today ? "expired" : "active";
+    return {
+      projectId,
+      delivery: delivery ? { ...delivery } : undefined,
+      installation: installation ? { ...installation } : undefined,
+      warranty: warranty ? { ...warranty } : undefined,
+      warrantyState,
+    };
+  },
+
+  async recordProjectHandover({ projectId, kind, happenedOn, lead, notes, signedBy }) {
+    let out;
+    update((db) => {
+      const proj = (db.projects ?? []).find((p) => p.id === projectId);
+      if (!proj) throw new Error("Project not found");
+      const production = proj.practice?.production;
+      const clean = { lead: (lead ?? "").trim(), notes: (notes ?? "").trim(), signedBy: (signedBy ?? "").trim() };
+      if (kind !== "delivery" && kind !== "installation") throw new Error("Handover kind must be delivery or installation");
+      if (!happenedOn) throw new Error("Handover date is required");
+      if (happenedOn > new Date().toISOString().slice(0, 10)) throw new Error("Handover date cannot be in the future");
+      if (happenedOn < "2000-01-01") throw new Error(`Handover date looks wrong (${happenedOn})`);
+      if (clean.notes.length > 2000) throw new Error("Notes are limited to 2000 characters");
+      if (clean.lead.length > 120 || clean.signedBy.length > 120) throw new Error("Names are limited to 120 characters");
+      if (production?.qc.result !== "passed") throw new Error("Record a passed QC inspection before the handover");
+      if (!production || !productionHasDispatch(production)) throw new Error("Store the dispatch details before the handover");
+      const existing = (db.handovers ?? []).filter((h) => h.projectId === projectId);
+      if (existing.some((h) => h.kind === kind)) throw new Error(`A ${kind} record already exists for this job`);
+      if (kind === "installation") {
+        const delivery = existing.find((h) => h.kind === "delivery");
+        if (!delivery) throw new Error("Record the delivery before the installation");
+        if (happenedOn < delivery.happenedOn) throw new Error(`Installation cannot predate the delivery (${delivery.happenedOn})`);
+      }
+      const row = {
+        id: `ho-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        projectId,
+        kind,
+        happenedOn,
+        ...clean,
+        createdAt: new Date().toISOString(),
+      };
+      (db.handovers ??= []).push(row);
+      pushProductionEvent(db, proj, "handover_recorded");
+      out = { ...row };
+    });
+    if (!out) throw new Error("Project not found");
+    return out;
+  },
+
+  async openProjectWarranty({ projectId, months, coverage, exclusions }) {
+    let out;
+    update((db) => {
+      const proj = (db.projects ?? []).find((p) => p.id === projectId);
+      if (!proj) throw new Error("Project not found");
+      if (!Number.isInteger(months) || months < 1 || months > 120) throw new Error("Warranty months must be between 1 and 120");
+      const cover = (coverage ?? "").trim();
+      const excl = (exclusions ?? "").trim();
+      if (cover.length > 2000 || excl.length > 2000) throw new Error("Warranty text is limited to 2000 characters");
+      const installation = (db.handovers ?? []).find((h) => h.projectId === projectId && h.kind === "installation");
+      if (!installation) throw new Error("Record the installation before opening a warranty");
+      if ((db.warranties ?? []).some((w) => w.projectId === projectId && !w.cancelledAt)) throw new Error("This job already has an active warranty");
+      const start = new Date(`${installation.happenedOn}T00:00:00Z`);
+      const end = new Date(start);
+      end.setUTCMonth(end.getUTCMonth() + months);
+      end.setUTCDate(end.getUTCDate() - 1);
+      const row = {
+        id: `wr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        projectId,
+        months,
+        coverage: cover,
+        exclusions: excl,
+        startsOn: installation.happenedOn,
+        endsOn: end.toISOString().slice(0, 10),
+        createdAt: new Date().toISOString(),
+      };
+      (db.warranties ??= []).push(row);
+      pushProductionEvent(db, proj, "warranty_opened");
+      out = { ...row };
+    });
+    if (!out) throw new Error("Project not found");
+    return out;
+  },
+
+  async cancelProjectWarranty({ projectId, reason }) {
+    let out;
+    update((db) => {
+      const proj = (db.projects ?? []).find((p) => p.id === projectId);
+      if (!proj) throw new Error("Project not found");
+      const clean = (reason ?? "").trim();
+      if (clean.length > 500) throw new Error("Reason is limited to 500 characters");
+      const active = (db.warranties ?? []).find((w) => w.projectId === projectId && !w.cancelledAt);
+      if (!active) throw new Error("This job has no active warranty");
+      active.cancelledAt = new Date().toISOString();
+      active.cancelReason = clean;
+      pushProductionEvent(db, proj, "warranty_cancelled");
+      out = { ...active };
+    });
+    if (!out) throw new Error("Project not found");
+    return out;
+  },
+
+  async listWarrantyRegister(daysAhead = 60) {
+    if (!Number.isInteger(daysAhead) || daysAhead < 0 || daysAhead > 365) throw new Error("The reminder window must be between 0 and 365 days");
+    const db = loadDb();
+    const today = new Date().toISOString().slice(0, 10);
+    const rows = [];
+    for (const proj of db.projects ?? []) {
+      const warranties = (db.warranties ?? []).filter((w) => w.projectId === proj.id);
+      const warranty = warranties.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+      const claims = (db.warrantyClaims ?? []).filter((c) => c.projectId === proj.id);
+      if (!warranty && claims.length === 0) continue;
+      const state = !warranty ? "none" : warranty.cancelledAt ? "cancelled" : warranty.endsOn < today ? "expired" : "active";
+      const daysLeft = warranty ? Math.round((Date.parse(`${warranty.endsOn}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000) : undefined;
+      const handovers = (db.handovers ?? []).filter((h) => h.projectId === proj.id);
+      rows.push({
+        projectId: proj.id,
+        title: proj.title,
+        orderId: proj.orderId,
+        warrantyId: warranty?.id,
+        warrantyState: state,
+        startsOn: warranty?.startsOn,
+        endsOn: warranty?.endsOn,
+        daysLeft,
+        expiringSoon: state === "active" && daysLeft !== undefined && daysLeft <= daysAhead,
+        openClaims: claims.filter((c) => c.status === "open" || c.status === "scheduled").length,
+        totalClaims: claims.length,
+        deliveryOn: handovers.find((h) => h.kind === "delivery")?.happenedOn,
+        installationOn: handovers.find((h) => h.kind === "installation")?.happenedOn,
+        dispatchVehicle: proj.practice?.production?.dispatch.vehicle?.trim() || undefined,
+        updatedAt: proj.updatedAt,
+      });
+    }
+    const rank = { active: 1, expired: 2, cancelled: 3, none: 4 };
+    return rows.sort((a, b) =>
+      (rank[a.warrantyState] - rank[b.warrantyState]) ||
+      String(a.endsOn ?? "9999").localeCompare(String(b.endsOn ?? "9999")) ||
+      a.projectId.localeCompare(b.projectId));
+  },
+
+  async listProjectWarrantyClaims(projectId) {
+    return (loadDb().warrantyClaims ?? [])
+      .filter((c) => c.projectId === projectId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((c) => ({ ...c }));
+  },
+
+  async openProjectWarrantyClaim({ projectId, summary, details, openedOn }) {
+    let out;
+    update((db) => {
+      const proj = (db.projects ?? []).find((p) => p.id === projectId);
+      if (!proj) throw new Error("Project not found");
+      const cleanSummary = (summary ?? "").trim();
+      const cleanDetails = (details ?? "").trim();
+      const today = new Date().toISOString().slice(0, 10);
+      const on = openedOn || today;
+      if (!cleanSummary) throw new Error("A claim needs a short summary");
+      if (cleanSummary.length > 200) throw new Error("Claim summary is limited to 200 characters");
+      if (cleanDetails.length > 2000) throw new Error("Claim details are limited to 2000 characters");
+      if (on > today) throw new Error("A claim cannot be dated in the future");
+      if (on < "2000-01-01") throw new Error(`Claim date looks wrong (${on})`);
+      const warranty = (db.warranties ?? []).find((w) => w.projectId === projectId && !w.cancelledAt);
+      if (!warranty) throw new Error("This job has no active warranty to claim against");
+      if (warranty.endsOn < today) throw new Error(`The warranty expired on ${warranty.endsOn}`);
+      if (on < warranty.startsOn) throw new Error(`A claim cannot predate the warranty start (${warranty.startsOn})`);
+      const now = new Date().toISOString();
+      const row = {
+        id: `wc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        projectId,
+        warrantyId: warranty.id,
+        summary: cleanSummary,
+        details: cleanDetails,
+        status: "open" as const,
+        openedOn: on,
+        resolution: "",
+        openedBy: demoActorEmail(),
+        createdAt: now,
+      };
+      (db.warrantyClaims ??= []).push(row);
+      pushProductionEvent(db, proj, "warranty_claim_opened");
+      out = { ...row };
+    });
+    if (!out) throw new Error("Project not found");
+    return out;
+  },
+
+  async updateProjectWarrantyClaim({ claimId, status, resolution }) {
+    let out;
+    update((db) => {
+      const claim = (db.warrantyClaims ?? []).find((c) => c.id === claimId);
+      if (!claim) throw new Error("Claim not found");
+      const clean = (resolution ?? "").trim();
+      if (!["scheduled", "resolved", "rejected"].includes(status)) throw new Error("Claim status must be scheduled, resolved or rejected");
+      if (clean.length > 2000) throw new Error("Resolution is limited to 2000 characters");
+      const allowed = claim.status === "open" ? ["scheduled", "resolved", "rejected"].includes(status) : claim.status === "scheduled" ? ["resolved", "rejected"].includes(status) : false;
+      if (!allowed) throw new Error(`Cannot move a claim from ${claim.status} to ${status}`);
+      if ((status === "resolved" || status === "rejected") && clean.length < 3) throw new Error("Resolving or rejecting a claim needs a resolution note");
+      claim.status = status;
+      claim.resolution = clean;
+      claim.closedAt = status === "resolved" || status === "rejected" ? new Date().toISOString() : undefined;
+      const proj = (db.projects ?? []).find((p) => p.id === claim.projectId);
+      if (proj) pushProductionEvent(db, proj, "warranty_claim_status");
+      out = { ...claim };
+    });
+    if (!out) throw new Error("Claim not found");
+    return out;
+  },
+
+  async listProjectQcInspections(projectId) {
+    return (loadDb().qcInspections ?? [])
+      .filter((i) => i.projectId === projectId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+      .map((i) => ({ ...i }));
+  },
+
+  async recordProjectQcInspection({ projectId, result, notes }) {
+    let out: { inspection: ProjectQcInspection; project: AdminProject | undefined } | undefined;
+    update((db) => {
+      const proj = (db.projects ??= []).find((x) => x.id === projectId);
+      if (!proj) throw new Error("Project not found");
+      const production = proj.practice?.production;
+      if (!production) throw new Error("Record the production stages before a QC inspection");
+      const cleanNotes = (notes ?? "").trim().slice(0, 2000);
+      if (result === "failed" && productionHasDispatch(production)) {
+        throw new Error("Cannot record a failed QC while dispatch details are stored — clear the dispatch block first.");
+      }
+      const email = demoActorEmail();
+      // Separation of duties (mirrors the 00022 RPC): a pass must come from someone
+      // other than the person who last changed the stages. A failure is allowed —
+      // flagging your own work is not self-approval.
+      if (result === "passed" && proj.productionUpdatedBy && proj.productionUpdatedBy.toLowerCase() === email.toLowerCase()) {
+        throw new Error("You last changed the production stages — another person must record the pass.");
+      }
+      const inspection: ProjectQcInspection = {
+        id: `qc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        projectId,
+        result,
+        notes: cleanNotes,
+        inspectedByEmail: email,
+        revision: (proj.revision ?? 0) + 1,
+        createdAt: new Date().toISOString(),
+      };
+      (db.qcInspections ??= []).push(inspection);
+      production.qc = {
+        result,
+        defectNote: result === "failed" ? cleanNotes : "",
+        inspectedBy: email,
+        inspectedAt: inspection.createdAt.slice(0, 10),
+      };
+      proj.practice = cloneProjectPractice(proj.practice);
+      proj.revision = inspection.revision;
+      proj.updatedAt = new Date().toISOString();
+      pushProductionEvent(db, proj, "qc_changed");
+      out = { inspection: { ...inspection }, project: snapshotProject(proj) };
+    });
+    if (!out) throw new Error("Project not found");
+    return out;
+  },
+
+  async listProjectProductionEvents(projectId) {
+    return (loadDb().productionEvents ?? [])
+      .filter((e) => e.projectId === projectId)
+      .sort((a, b) => b.id - a.id)
+      .map((e) => ({ ...e }));
+  },
+
+  async setProjectActive(id, active) {
     let updated: AdminProject | undefined;
     update((db) => {
       const proj = (db.projects ??= []).find((x) => x.id === id);
@@ -5919,7 +6418,7 @@ export const demoAdminApi: AdminApi = {
         name,
         email: "",
         phone,
-        summary: `Chat callback — ${message.slice(0, 160)}`,
+        summary: `Chat callback — ${message}`,
         status: "new",
         createdAt: now,
         consent: true,

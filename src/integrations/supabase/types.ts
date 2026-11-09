@@ -1107,6 +1107,9 @@ export type Database = {
           id: string
           payload: Json
           status: string
+          // Hand-added for local migration 00022; regenerate against staging.
+          revision: number
+          production_updated_by: string | null
           created_at: string
           updated_at: string
         }
@@ -1114,6 +1117,8 @@ export type Database = {
           id: string
           payload: Json
           status?: string
+          revision?: number
+          production_updated_by?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1121,10 +1126,97 @@ export type Database = {
           id?: string
           payload?: Json
           status?: string
+          revision?: number
+          production_updated_by?: string | null
           created_at?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      project_qc_inspections: {
+        Row: {
+          id: string
+          project_id: string
+          result: string
+          notes: string
+          inspected_by: string
+          inspected_by_email: string
+          revision: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          result: string
+          notes?: string
+          inspected_by: string
+          inspected_by_email?: string
+          revision?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          result?: string
+          notes?: string
+          inspected_by?: string
+          inspected_by_email?: string
+          revision?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_qc_inspections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      project_production_events: {
+        Row: {
+          id: number
+          project_id: string
+          actor: string | null
+          action: string
+          revision: number
+          qc_result: string | null
+          dispatch_vehicle: string | null
+          detail: Json
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          project_id: string
+          actor?: string | null
+          action: string
+          revision?: number
+          qc_result?: string | null
+          dispatch_vehicle?: string | null
+          detail?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          project_id?: string
+          actor?: string | null
+          action?: string
+          revision?: number
+          qc_result?: string | null
+          dispatch_vehicle?: string | null
+          detail?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_production_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       purchase_orders: {
         Row: {
@@ -1618,6 +1710,56 @@ export type Database = {
         }
         Relationships: []
       }
+      // Hand-added for local migration 00026 (warranty claims). Never inserted from
+      // the client — writes go through the RPCs — but reads need the table type.
+      project_warranty_claims: {
+        Row: {
+          id: string
+          project_id: string
+          warranty_id: string
+          summary: string
+          details: string
+          status: string
+          opened_on: string
+          resolution: string
+          closed_at: string | null
+          opened_by: string | null
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          warranty_id: string
+          summary: string
+          details?: string
+          status?: string
+          opened_on?: string
+          resolution?: string
+          closed_at?: string | null
+          opened_by?: string | null
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          warranty_id?: string
+          summary?: string
+          details?: string
+          status?: string
+          opened_on?: string
+          resolution?: string
+          closed_at?: string | null
+          opened_by?: string | null
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       project_cost_codes: {
         Row: {
           id: number
@@ -1917,6 +2059,20 @@ export type Database = {
         Args: { need: string }
         Returns: boolean
       }
+      // Hand-added for local migration 0018; regenerate against staging before deployment.
+      procurement_read_allowed: {
+        Args: Record<string, never>
+        Returns: boolean
+      }
+      // Hand-added for local migration 0019; regenerate against staging before deployment.
+      staff_store_settings: {
+        Args: Record<string, never>
+        Returns: Json
+      }
+      owner_save_store_settings: {
+        Args: { p_settings: Json }
+        Returns: Json
+      }
       require_cap: {
         Args: { need: string }
         Returns: undefined
@@ -1964,9 +2120,97 @@ export type Database = {
         Args: { p_slug: string }
         Returns: Json
       }
+      // Hand-added for local migration 0020; regenerate against staging before deployment.
+      storefront_page_snapshot: {
+        Args: { p_slug: string }
+        Returns: Json
+      }
       published_projects: {
         Args: Record<string, never>
         Returns: { id: string; payload: Json; status: string; created_at: string; updated_at: string }[]
+      }
+      // Hand-added for local migration 00022; regenerate against staging before deployment.
+      project_qc_record: {
+        Args: { p_project_id: string; p_result: string; p_notes?: string }
+        Returns: { id: string; project_id: string; result: string; notes: string; inspected_by_email: string; revision: number; created_at: string }[]
+      }
+      project_practice_save: {
+        Args: { p_project_id: string; p_practice: Json; p_expected_revision?: number | null }
+        Returns: { practice: Json; revision: number }[]
+      }
+      // Hand-added for local migration 00024 (order → production job link).
+      project_link_order: {
+        Args: { p_project_id: string; p_order_id: string }
+        Returns: { project_id: string; order_id: string; already_linked: boolean }[]
+      }
+      project_unlink_order: {
+        Args: { p_project_id: string; p_reason?: string }
+        Returns: { project_id: string; previous_order_id: string }[]
+      }
+      // Hand-added for local migration 00025 (handover + warranty).
+      project_handover_record: {
+        Args: { p_project_id: string; p_kind: string; p_happened_on: string; p_lead?: string; p_notes?: string; p_signed_by?: string }
+        Returns: {
+          id: string; project_id: string; kind: string; happened_on: string; lead: string; notes: string; signed_by: string; created_at: string
+        }
+      }
+      project_warranty_open: {
+        Args: { p_project_id: string; p_months: number; p_coverage?: string; p_exclusions?: string }
+        Returns: {
+          id: string; project_id: string; months: number; coverage: string; exclusions: string
+          starts_on: string; ends_on: string; cancelled_at: string | null; cancel_reason: string; created_at: string
+        }
+      }
+      project_warranty_cancel: {
+        Args: { p_project_id: string; p_reason?: string }
+        Returns: {
+          id: string; project_id: string; months: number; coverage: string; exclusions: string
+          starts_on: string; ends_on: string; cancelled_at: string | null; cancel_reason: string; created_at: string
+        }
+      }
+      project_warranty_register: {
+        Args: { p_days_ahead?: number }
+        Returns: {
+          project_id: string; title: string; order_id: string | null
+          warranty_id: string | null; warranty_state: string
+          warranty_starts_on: string | null; warranty_ends_on: string | null
+          days_left: number | null; expiring_soon: boolean
+          open_claims: number; total_claims: number
+          delivery_on: string | null; installation_on: string | null
+          dispatch_vehicle: string | null; updated_at: string
+        }[]
+      }
+      project_warranty_claim_open: {
+        Args: { p_project_id: string; p_summary: string; p_details?: string; p_opened_on?: string }
+        Returns: {
+          id: string; project_id: string; warranty_id: string; summary: string; details: string; status: string
+          opened_on: string; resolution: string; closed_at: string | null; opened_by: string | null; created_at: string
+        }
+      }
+      project_warranty_claim_update: {
+        Args: { p_claim_id: string; p_status: string; p_resolution?: string }
+        Returns: {
+          id: string; project_id: string; warranty_id: string; summary: string; details: string; status: string
+          opened_on: string; resolution: string; closed_at: string | null; opened_by: string | null; created_at: string
+        }
+      }
+      project_post_dispatch: {
+        Args: { p_project_id: string }
+        Returns: {
+          project_id: string
+          delivery_id: string | null; delivery_on: string | null; delivery_lead: string | null; delivery_notes: string | null; delivery_signed_by: string | null; delivery_created_at: string | null
+          installation_id: string | null; installation_on: string | null; installation_lead: string | null; installation_notes: string | null; installation_signed_by: string | null; installation_created_at: string | null
+          warranty_id: string | null; warranty_months: number | null; warranty_coverage: string | null; warranty_exclusions: string | null
+          warranty_starts_on: string | null; warranty_ends_on: string | null; warranty_cancelled_at: string | null; warranty_cancel_reason: string | null; warranty_created_at: string | null
+          warranty_state: string
+        }[]
+      }
+      order_project: {
+        Args: { p_order_id: string }
+        Returns: {
+          project_id: string; order_id: string; title: string; progress: number
+          qc_result: string | null; dispatch_vehicle: string | null; dispatch_date: string | null; updated_at: string
+        }[]
       }
       page_snapshot: {
         Args: { p_id: number }

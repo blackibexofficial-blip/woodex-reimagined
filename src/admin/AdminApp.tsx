@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { AdminAuthProvider } from "@/admin/auth";
+import { Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
+import { AdminAuthProvider, useAdminAuth } from "@/admin/auth";
 import AdminLayout from "@/admin/Layout";
 import AdminLogin from "@/admin/Login";
 import AdminDashboard from "@/admin/pages/Dashboard";
@@ -42,6 +42,7 @@ import AdminChatInbox from "@/admin/pages/ChatInbox";
 import AdminImport from "@/admin/pages/Import";
 import AdminContent from "@/admin/pages/Content";
 import AdminWarranty from "@/admin/pages/Warranty";
+import AdminWarrantyRegister from "@/admin/pages/WarrantyRegister";
 import AdminCustomDesign from "@/admin/pages/CustomDesign";
 import AdminVirtualShowroom from "@/admin/pages/VirtualShowroom";
 import AdminBlog from "@/admin/pages/Blog";
@@ -51,6 +52,16 @@ import AdminSettings from "@/admin/pages/Settings";
 import AdminPages from "@/admin/pages/Pages";
 
 const AdminPageEditor = lazy(() => import("@/admin/pages/PageEditor"));
+
+/** Prevent protected routes (including print views) from mounting until the
+ * Supabase UI session is verified. Server authorization remains authoritative. */
+function RequireAdmin() {
+  const { user, checking } = useAdminAuth();
+  const location = useLocation();
+  if (checking) return <main className="p-6" role="status">Checking admin session…</main>;
+  if (!user) return <Navigate to="/admin/login" state={{ from: location }} replace />;
+  return <Outlet />;
+}
 
 /**
  * WOODEX admin — mounted at /admin/*.
@@ -63,6 +74,7 @@ export default function AdminApp() {
     <AdminAuthProvider>
       <Routes>
         <Route path="login" element={<AdminLogin />} />
+        <Route element={<RequireAdmin />}>
         {/* chrome-free printable invoice — standalone, outside the admin layout, guarded inside */}
         <Route path="invoice/:id" element={<AdminInvoice />} />
         {/* chrome-free printable invoice from the ledger — same pattern */}
@@ -123,6 +135,7 @@ export default function AdminApp() {
           <Route path="blog" element={<AdminBlog />} />
           <Route path="content" element={<AdminContent />} />
           <Route path="warranty" element={<AdminWarranty />} />
+          <Route path="warranty-register" element={<AdminWarrantyRegister />} />
           <Route path="custom-design" element={<AdminCustomDesign />} />
           <Route path="virtual-showroom" element={<AdminVirtualShowroom />} />
           <Route path="media" element={<AdminMedia />} />
@@ -130,6 +143,7 @@ export default function AdminApp() {
           <Route path="pages" element={<AdminPages />} />
           <Route path="pages/:pageSlug" element={<Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading page editor…</div>}><AdminPageEditor /></Suspense>} />
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+        </Route>
         </Route>
       </Routes>
     </AdminAuthProvider>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
   ContactRound, Armchair, Receipt, ChevronDown, ClipboardCheck, GitMerge, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, MessagesSquare, FileText,
-  Image, Settings, LogOut, ArrowLeft, Menu, X, Megaphone, Store, Warehouse, ListChecks, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, LayoutTemplate, PenTool, Monitor, FileUp,
+  Image, Settings, LogOut, ArrowLeft, Menu, X, Megaphone, Store, Warehouse, ListChecks, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, LayoutTemplate, PenTool, Monitor, FileUp, CalendarClock,
 } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
 import { isDemoMode, isSupabaseConfigured } from "@/config/env";
@@ -39,6 +39,7 @@ const NAV_GROUPS: Array<{
       { to: "/admin/returns", label: "Returns", icon: Undo2 },
       { to: "/admin/exchanges", label: "Exchanges", icon: ArrowLeftRight },
       { to: "/admin/claims", label: "Claims", icon: ShieldCheck },
+      { to: "/admin/warranty-register", label: "Warranty register", icon: CalendarClock },
       { to: "/admin/customers", label: "Customers", icon: Users },
       { to: "/admin/clients", label: "Clients", icon: ContactRound },
       { to: "/admin/client-merge", label: "Merge review", icon: GitMerge },
@@ -80,7 +81,7 @@ function pageTitle(pathname: string) {
     tasks: "Tasks & Follow-ups",
     campaigns: "Campaigns",
     "client-merge": "CRM merge review", clients: "Clients",
-    orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", transfers: "Transfers", options: "Product Options", content: "Content", warranty: "Warranty Content", pages: "Pages", showrooms: "Showrooms", "custom-design": "Custom Design Content", "virtual-showroom": "Virtual Showroom Content",
+    orders: "Orders", customers: "Customers", leads: "Leads", quotes: "Quotes", suppliers: "Suppliers", "purchase-orders": "Purchase Orders", transfers: "Transfers", options: "Product Options", content: "Content", warranty: "Warranty Content", "warranty-register": "Warranty register", pages: "Pages", showrooms: "Showrooms", "custom-design": "Custom Design Content", "virtual-showroom": "Virtual Showroom Content",
     media: "Media Library", settings: "Settings", import: "Import data", inventory: "Inventory & Delivery Zones", series: "Furniture Series", brands: "Product Brands", homepage: "Homepage Sections",
   };
   return map[seg] ?? "Admin";

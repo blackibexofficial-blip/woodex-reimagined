@@ -34,14 +34,15 @@ import type {
 
 const OUTBOX_KEYS = { order: "woodex.outbox.orders.v1", lead: "woodex.outbox.leads.v1" } as const;
 
-/** Never lose a storefront enquiry: if the live endpoint is unreachable/unverified, queue locally. */
-function outboxPush(kind: keyof typeof OUTBOX_KEYS, value: unknown) {
+/** Best-effort browser-local fallback; this is not a delivery queue. */
+function outboxPush(kind: keyof typeof OUTBOX_KEYS, value: unknown): boolean {
   try {
     const key = OUTBOX_KEYS[kind];
     const queued = JSON.parse(localStorage.getItem(key) ?? "[]") as unknown[];
     queued.push({ ...(value as object), queuedAt: new Date().toISOString() });
     localStorage.setItem(key, JSON.stringify(queued));
-  } catch { /* storage unavailable — log only */ }
+    return true;
+  } catch { return false; }
 }
 
 const localOrderFrom = (input: NewOrderInput): AdminOrder => ({
@@ -98,6 +99,19 @@ async function request<T>(path: string, init: RequestInit = {}, surface: "shop" 
     throw new BagistoApiError(res.status, `Bagisto ${surface} ${path} → ${res.status}: ${body.slice(0, 300)}`);
   }
   return res.json() as Promise<T>;
+}
+
+// The custom lead endpoint is unverified; even 2xx does not establish delivery.
+// Do not log provider responses, which may contain submitted personal details.
+async function submitBagistoLead(input: NewLeadInput): Promise<AdminLead> {
+  try {
+    await request(`/woodex/leads`, { method: "POST", body: JSON.stringify(input) }, "shop");
+  } catch {
+    const saved = outboxPush("lead", input);
+    console.warn(saved ? "[woodex] enquiry outcome unconfirmed; saved in local outbox" : "[woodex] enquiry outcome unconfirmed; local outbox unavailable");
+    return { ...localLeadFrom(input), submissionOutcome: saved ? "bagisto-queued-locally" : "bagisto-not-saved" };
+  }
+  return { ...localLeadFrom(input), submissionOutcome: "bagisto-response-unverified" };
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -652,8 +666,8 @@ export const bagistoAdminApi: AdminApi = {
     try {
       // Bagisto checkout is a token flow (cart → address → payment → order). This is a
       // best-effort single-shot payload for instances exposing it — VERIFY on staging and
-      // adjust to your bagisto-api version. On any failure the order is queued in the
-      // local outbox so nothing is lost; see docs/07-admin-integration §6.
+      // adjust to your bagisto-api version. A response is not a verified order receipt.
+      // On failure try the browser-local outbox; it is not an automatic delivery queue.
       await request(
         `/checkout`,
         {
@@ -669,22 +683,15 @@ export const bagistoAdminApi: AdminApi = {
         "shop",
       );
     } catch (err) {
-      console.warn("[woodex] live order capture failed — queued in local outbox:", err);
-      outboxPush("order", input);
+      const saved = outboxPush("order", input);
+      console.warn(saved ? "[woodex] order outcome unconfirmed; saved in local outbox" : "[woodex] order outcome unconfirmed; local outbox unavailable", err);
+      return { ...localOrderFrom(input), submissionOutcome: saved ? "bagisto-queued-locally" : "bagisto-not-saved" };
     }
-    return localOrderFrom(input);
+    return { ...localOrderFrom(input), submissionOutcome: "bagisto-response-unverified" };
   },
 
   async createLead(input: NewLeadInput): Promise<AdminLead> {
-    try {
-      // Requires the custom `woodex/leads` Laravel package (see docs/07-admin-integration §6).
-      // Falls back to the local outbox if absent — the enquiry is never lost.
-      await request(`/woodex/leads`, { method: "POST", body: JSON.stringify(input) }, "shop");
-    } catch (err) {
-      console.warn("[woodex] live lead capture failed — queued in local outbox:", err);
-      outboxPush("lead", input);
-    }
-    return localLeadFrom(input);
+    return submitBagistoLead(input);
   },
 
   async listCategories() {
@@ -925,6 +932,66 @@ export const bagistoAdminApi: AdminApi = {
     throw new BagistoApiError(501, "Project editing is not wired for Bagisto yet.");
   },
 
+  async saveProjectPractice(): Promise<AdminProject | undefined> {
+    throw new BagistoApiError(501, "Production workspace saves need the Woodex Supabase schema (migration 00022) — Bagisto has no project production model.");
+  },
+
+  async linkProjectOrder(): Promise<{ projectId: string; orderId: string; alreadyLinked: boolean }> {
+    throw new BagistoApiError(501, "Order → production links live in the Woodex Supabase schema (migration 00024), not Bagisto.");
+  },
+
+  async unlinkProjectOrder(): Promise<{ projectId: string; previousOrderId: string }> {
+    throw new BagistoApiError(501, "Order → production links live in the Woodex Supabase schema (migration 00024), not Bagisto.");
+  },
+
+  async getOrderProduction(): Promise<import("@/api/types").OrderProduction | undefined> {
+    return undefined;
+  },
+
+  async getProjectPostDispatch(projectId: string): Promise<import("@/api/types").ProjectPostDispatch> {
+    return { projectId, warrantyState: "none" };
+  },
+
+  async recordProjectHandover(): Promise<import("@/api/types").ProjectHandover> {
+    throw new BagistoApiError(501, "Delivery/installation handovers live in the Woodex Supabase schema (migration 00025), not Bagisto.");
+  },
+
+  async openProjectWarranty(): Promise<import("@/api/types").ProjectWarranty> {
+    throw new BagistoApiError(501, "Warranty records live in the Woodex Supabase schema (migration 00025), not Bagisto.");
+  },
+
+  async cancelProjectWarranty(): Promise<import("@/api/types").ProjectWarranty> {
+    throw new BagistoApiError(501, "Warranty records live in the Woodex Supabase schema (migration 00025), not Bagisto.");
+  },
+
+  async listProjectWarrantyClaims(): Promise<import("@/api/types").ProjectWarrantyClaim[]> {
+    return [];
+  },
+
+  async listWarrantyRegister(): Promise<import("@/api/types").WarrantyRegisterRow[]> {
+    return [];
+  },
+
+  async openProjectWarrantyClaim(): Promise<import("@/api/types").ProjectWarrantyClaim> {
+    throw new BagistoApiError(501, "Warranty claims live in the Woodex Supabase schema (migration 00026), not Bagisto.");
+  },
+
+  async updateProjectWarrantyClaim(): Promise<import("@/api/types").ProjectWarrantyClaim> {
+    throw new BagistoApiError(501, "Warranty claims live in the Woodex Supabase schema (migration 00026), not Bagisto.");
+  },
+
+  async listProjectQcInspections(): Promise<import("@/api/types").ProjectQcInspection[]> {
+    throw new BagistoApiError(501, "QC inspection records live in the Woodex Supabase schema (migration 00022), not Bagisto.");
+  },
+
+  async recordProjectQcInspection(): Promise<{ inspection: import("@/api/types").ProjectQcInspection; project: AdminProject | undefined }> {
+    throw new BagistoApiError(501, "Recording a QC inspection needs the Woodex Supabase schema (migration 00022).");
+  },
+
+  async listProjectProductionEvents(): Promise<import("@/api/types").ProjectProductionEvent[]> {
+    throw new BagistoApiError(501, "Production audit entries live in the Woodex Supabase schema (migration 00022), not Bagisto.");
+  },
+
   async setProjectActive(): Promise<AdminProject | undefined> {
     throw new BagistoApiError(501, "Project toggling is not wired for Bagisto yet.");
   },
@@ -1117,20 +1184,15 @@ export const bagistoAdminApi: AdminApi = {
     throw new BagistoApiError(501, "The live chat inbox is demo-only in this release — see docs/07-admin-integration.");
   },
 
-  async captureChatOffline(input: { name: string; phone: string; message: string; consent: boolean; consentVersion?: string; page?: string }): Promise<{ conversation: ChatConversation; leadId: string }> {
+  async captureChatOffline(input: { name: string; phone: string; message: string; consent: boolean; consentVersion?: string; page?: string }): Promise<{ conversation: ChatConversation; leadId: string; submissionOutcome?: AdminLead["submissionOutcome"] }> {
     if (!input.consent) throw new BagistoApiError(501, "Consent is required before we store a callback request.");
-    const leadInput: NewLeadInput = { type: "chat", name: input.name, phone: input.phone, email: "", summary: `Chat callback — ${input.message.slice(0, 160)}`, consent: true, consentAt: new Date().toISOString(), consentVersion: input.consentVersion ?? "lead-privacy-v1", landingPath: input.page, utmSource: "storefront_chat" };
-    try {
-      await request(`/woodex/leads`, { method: "POST", body: JSON.stringify(leadInput) }, "shop");
-    } catch (err) {
-      console.warn("[woodex] live lead capture failed — queued in local outbox:", err);
-      outboxPush("lead", leadInput);
-    }
-    const lead = localLeadFrom(leadInput);
+    const leadInput: NewLeadInput = { type: "chat", name: input.name, phone: input.phone, email: "", summary: `Chat callback — ${input.message.trim()}`, consent: true, consentAt: new Date().toISOString(), consentVersion: input.consentVersion ?? "lead-privacy-v1", landingPath: input.page, utmSource: "storefront_chat" };
+    const lead = await submitBagistoLead(leadInput);
     const now = new Date().toISOString();
     return {
       conversation: { id: `CH-${lead.id}`, page: input.page, visitorName: input.name, visitorPhone: input.phone, visitorConsent: true, visitorConsentAt: now, status: "open", unread: 1, createdAt: now, lastMessageAt: now, leadId: lead.id },
       leadId: lead.id,
+      submissionOutcome: lead.submissionOutcome,
     };
   },
 

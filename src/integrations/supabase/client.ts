@@ -3,8 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// A syntactically valid non-routable placeholder lets unconfigured builds render
+// an actionable login error instead of throwing during createClient. It is not a backend.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://unconfigured.invalid';
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() || 'unconfigured';
 
 
 function isNewSupabaseApiKey(value: string): boolean {
