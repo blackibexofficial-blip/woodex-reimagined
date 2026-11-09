@@ -1,0 +1,28 @@
+# Phase 1 — public intake safety follow-up
+
+Status: local implementation and synthetic tests only, 2026-11-08. Not committed or pushed to PR #29, not deployed, and not tested against hosted Supabase or Cloudflare. No real orders, leads, secrets, or production data were accessed.
+
+## Changes
+
+1. **Challenge action pinning.** When `TURNSTILE_SECRET` is configured, both Edge Functions already ask for a specific Turnstile action: `order` for checkout, `lead` for lead intake. Previously the shared verifier rejected a *different string* but accepted a successful Siteverify response with an absent, null or non-string action. It now requires an exact match whenever an action is supplied; missing, wrong, differently cased or whitespace-modified values return 403. An unpinned use of the helper is unchanged; the two intake functions both explicitly pin actions. This is a behavior change for legacy clients or widgets that omit the action: review and test all callers before deployment.
+2. **Bounded request bodies.** Both endpoints now stream-read at most 64 KiB of UTF-8 JSON before performing the challenge or making database requests. A declared oversized content length or an actual oversized/chunked/mislabelled body gets 413; malformed/non-object JSON and invalid UTF-8 get 400. Exactly 64 KiB is accepted. This protects application-level parsing and write paths from oversized requests but does not guarantee the hosting gateway did not buffer the request first, bound concurrent requests or prevent slowly streamed requests. Review the limit against large legitimate carts and third-party integrations in staging before release.
+3. The initial slice did not change the configured/unconfigured failure mode. A later local follow-up adds an optional server-side strict policy; see `PHASE1-INTAKE-STRICT-MODE.md`. No schema migration, client route, demo behavior, pricing, inventory logic, receipt projection or consent policy was changed.
+
+## Critical remaining risks — do not treat as complete anti-abuse protection
+
+- **Default still fails open in the local code:** when `TURNSTILE_SECRET` is absent, both function implementations skip the challenge, and the lead limiter can fail open on RPC error or malformed output. A later opt-in strict mode fails closed for these cases; it is not enabled by default and has not been deployed. The availability-versus-security decision remains owner-gated. Existing deployed versions are unaffected until a separately authorized deployment.
+- The per-key limit depends on the first `x-forwarded-for` value, which can be spoofed unless a trusted gateway overwrites it. IP rotation, shared carrier NAT, volumetric attacks, provider outage, lack of a global budget and monitoring, hostname validation, and legitimate-user false positives remain open. A successful challenge is not proof of identity and does not prevent COD fraud.
+- Anonymous order idempotency/replay authorization and receipt-item/total exposure remain open; a retry can produce a new reference. P0 migration 00015 restricts the direct RPC only after a correctly coordinated and verified deployment. Local changes do not prove hosted grants, RLS or function versions.
+
+## Local tests
+
+- `npm run test:intake-safety`: **20/20 Node tests**, covering JSON boundaries, Unicode byte accounting, misleading lengths, stream cancellation/errors, invalid JSON/UTF-8, action matching/missing/type/case, provider failures, and receipt projection. Action-value loops contain multiple assertions; the count is Node subtests, not distinct field combinations.
+- `npx --yes deno check supabase/functions/order-submit/index.ts supabase/functions/lead-capture/index.ts`: passed.
+- `npx --yes deno test --allow-env supabase/functions/_shared/intake-action-wiring.test.mjs`: **1/1 synthetic integration test** imports the actual two Deno entry points, overrides Deno.serve, mocks every outbound fetch, and exercises missing/wrong actions and oversized/non-object inputs with no DB calls; matching-action synthetic order/lead paths continue to their mocked DB responses. No network permission is granted. This is not a running hosted function, real PostgREST, Turnstile, concurrent Postgres or inventory test.
+- `npm run typecheck` and `npm run lint` passed; lint retained 35 warnings. The app build and demo E2E were not rerun for this Edge-only slice; the prior admin-auth slice recorded a passing build and 108/108 demo checks.
+
+## Required staging and rollback
+
+After owner approval and verified backup/rollback, inventory current deployed versions, direct RPC privileges, all caller/widget configurations and proxy/IP handling. With synthetic accounts and data in isolated staging, test real Turnstile actions and hostname, both legitimate forms including mobile, unavailable/missing secret/site key, wrong/missing/expired/replayed action, transport failures, 64 KiB boundaries and large real carts, limiter failure and actual server-side denial, duplicate/retried orders, response privacy and telemetry. Decide the fail-open/closed policy and deploy frontend and functions together only after compatibility review. Do not put secrets in the browser, repository, logs or chat.
+
+A code rollback of the verifier reintroduces missing-action acceptance, and rolling back P0 RPC grants can reopen direct order abuse. If the new behavior prevents legitimate staging traffic, first disable or restrict the affected intake route and investigate widget/size compatibility; do not bypass the challenge on production. Apply any rollback or equivalent protections only under the reviewed runbook and preserve existing orders/leads. No hosted change or production release is authorized by this document.

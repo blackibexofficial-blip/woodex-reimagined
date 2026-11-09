@@ -1,6 +1,8 @@
 # Anti-abuse decision brief — public intake endpoints (2026-11-07)
 
-**Status: DECISION REQUIRED (owner). Nothing in this document is implemented.**
+Historical baseline: later local Turnstile and optional strict-mode work is documented in `PHASE1-INTAKE-SAFETY.md` and `PHASE1-INTAKE-STRICT-MODE.md`. Neither document records a hosted deployment or owner policy decision.
+
+**Status at the time of this brief: DECISION REQUIRED (owner). Nothing in this document was implemented at that time.**
 **Scope:** the two unauthenticated, service-role write paths that exist today:
 
 | Endpoint | Implementation | Abuse impact |

@@ -10,7 +10,9 @@ Local implementation, 2026-11-08. No hosted migration, production data change, o
 
 **Important limitation:** `accepted` is an existing staff-editable status. This change does not independently verify customer approval, restrict who may set that status beyond the existing quote permissions, establish separation of duties, freeze accepted pricing, or prevent later edits to an accepted quote. Confirm the intended business approval policy before treating this as an approval-control solution. The separate invoice-from-quote workflow was not changed.
 
-Existing editor SEO publish checks remain client-side, and the Pages list publish toggle can bypass them. This work does not make SEO gating authoritative. Other prior audit/P0 risks remain.
+Follow-up local update: the Pages list now reloads the saved page and uses the same SEO check and non-strict confirmation as the editor; stale page status and failed reads do not publish. Unpublishing remains available. A local demo browser regression passed 10/10 checks, including strict, noindex, confirmation, stale data/status, valid publish, unpublish, and editor behavior (`npm run test:seo-publish-gate` against a separately started demo Vite server; `WOODEX_TEST_BASE` sets the origin). Typecheck, build and lint passed; lint has 35 warnings and build warns about large chunks. The existing demo E2E passed 108/108 and CMS preflight 28/28. No hosted test was run.
+
+This is still only a browser-side workflow check: authorized callers can invoke the publishing API directly and another editor may change the saved draft between the list check and publication. Concurrent editing, server-enforced SEO policy, role matrices, and production behavior remain pending. Other prior audit/P0 risks remain.
 
 ## Local evidence
 

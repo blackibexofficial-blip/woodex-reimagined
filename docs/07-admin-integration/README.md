@@ -71,7 +71,7 @@ or your CI secrets — never commit them.
 
 | Storefront action | Adapter method | Bagisto (bagisto-api) endpoint |
 |---|---|---|
-| Checkout "Place Order" | `createOrder()` | `POST /api/shop/checkout` (best-effort single-shot; verify on staging). Failure → local outbox `woodex.outbox.orders.v1` |
+| Checkout "Place Order" | `createOrder()` | `POST /api/shop/checkout` (best-effort single-shot; response/contract unverified). On failure, a browser-local outbox write is attempted; it is not automatic delivery. All current Bagisto order outcomes remain unconfirmed in checkout/admin. |
 | Quotation / Contact submit | `createLead()` | `POST /api/shop/woodex/leads` (custom package, §6). Failure → local outbox `woodex.outbox.leads.v1` |
 | Dashboard KPIs | `getDashboardStats()` | `GET /api/admin/sales/orders` (aggregated client-side; swap for `/reports/*` when confirmed on your version) |
 | Revenue chart (30d) | `getRevenueSeries()` | `GET /api/admin/reports/sales/*` (instance-dependent) |
@@ -109,8 +109,12 @@ read-oriented. Rotating either is one click in Bagisto admin.
 
 The storefront forms (**quotation basket, contact**) now capture leads through the same adapter:
 in demo mode they persist to the local demo DB; in bagisto mode they POST to
-`/api/shop/woodex/leads` (custom package) and **fall back to the local outbox
-(`woodex.outbox.leads.v1`) if the endpoint is missing/unreachable — enquiries are never lost.**
+`/api/shop/woodex/leads` (custom package) and attempt a local outbox write
+(`woodex.outbox.leads.v1`) if the endpoint is missing/unreachable. This is browser-local,
+can fail or be cleared, and is not automatically delivered. Local follow-up work now
+warns in contact, quote and offline-chat forms and treats both the fallback and the
+unverified 2xx response as unconfirmed; it is not deployed or proof of delivery.
+Do not rely on this fallback for lossless delivery.
 
 For a full in-admin pipeline you still want the custom Laravel package:
 1. **Custom Laravel package** `woodex/leads` inside Bagisto: tables `quote_requests`,
