@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { isSupabaseMode } from "@/config/env";
 import {
   Briefcase, CalendarDays, FilePlus2, FileText, Image as ImageIcon, Loader2, ListChecks, MapPin, Trash2, Ruler, Save,
-  Box, FilePenLine, Table2, Plus, ReceiptText, Download,
+  Box, FilePenLine, Table2, Plus, ReceiptText, Download, Truck, Wrench, ShieldCheck, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import { PROJECT_MILESTONE_STATUSES, PROJECT_PRODUCTION_STAGES, PROJECT_PRODUCTION_STAGE_LABELS, PROJECT_QC_RESULTS, PROJECT_ACTUAL_SOURCES, PROJECT_ACTUAL_SOURCE_LABELS, type AdminProject, type NewProjectInput, type ProjectActualLine, type ProjectActualSource, type ProjectBoqRow, type ProjectCostCode, type ProjectFileItem, type ProjectMilestone, type ProjectMilestoneStatus, type ProjectPractice, type ProjectProduction, type ProjectProductionStageKey, type ProjectQcResult } from "@/api/types";
+import { PROJECT_MILESTONE_STATUSES, PROJECT_PRODUCTION_STAGES, PROJECT_PRODUCTION_STAGE_LABELS, PROJECT_ACTUAL_SOURCES, PROJECT_ACTUAL_SOURCE_LABELS, type AdminProject, type ProjectActualLine, type ProjectActualSource, type ProjectBoqRow, type ProjectCostCode, type ProjectFileItem, type ProjectMilestone, type ProjectMilestoneStatus, type ProjectPractice, type ProjectProduction, type ProjectProductionStageKey, type ProjectQcInspection, type ProjectPostDispatch, type ProjectHandoverKind, type ProjectWarrantyClaim } from "@/api/types";
+import { normalizePractice } from "@/lib/projectPractice";
+import { useAdminAuth } from "@/admin/auth";
 import { formatPKR, SectionSkeleton } from "@/admin/components";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +33,7 @@ const clone = (p: ProjectPractice): ProjectPractice => ({
 });
 const emptyPractice = (): ProjectPractice => ({ boq: [], milestones: [], files: [], production: defaultProduction() });
 const productionProgress = (p?: ProjectProduction): number => {
-  const stages = p?.stages ?? [];
+  const stages = Array.isArray(p?.stages) ? p.stages : [];
   if (stages.length === 0) return 0;
   return Math.round(stages.reduce((s, x) => s + (Number.isFinite(x.pct) ? Math.min(100, Math.max(0, x.pct)) : 0), 0) / stages.length);
 };
@@ -63,15 +65,87 @@ function milestoneProgress(ms: ProjectMilestone[]): number {
 
 export default function ProjectPracticeDialog({ project, onClose, onSaved }: { project: AdminProject; onClose: () => void; onSaved: (updated: AdminProject) => void }) {
   const api = useMemo(() => getAdminApi(), []);
-  const [tab, setTab] = useState<"overview" | "boq" | "milestones" | "files" | "production" | "actuals">("overview");
-  const [draft, setDraft] = useState<ProjectPractice>(() => clone(project.practice ?? emptyPractice()));
+  const [tab, setTab] = useState<"overview" | "boq" | "milestones" | "files" | "production" | "handover" | "actuals">("overview");
+  const [draft, setDraft] = useState<ProjectPractice>(() => normalizePractice(project.practice).practice);
+  const [repairNotice, setRepairNotice] = useState(() => normalizePractice(project.practice).repaired);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const editRevision = useRef(0);
+  const saveInFlight = useRef(false);
+  const uploadInFlight = useRef(false);
+  const [revision, setRevision] = useState(project.revision ?? 0);
+  const [conflict, setConflict] = useState(false);
+  const [inspections, setInspections] = useState<ProjectQcInspection[]>([]);
+  const [inspectionResult, setInspectionResult] = useState<"passed" | "failed">("passed");
+  const [inspectionNotes, setInspectionNotes] = useState("");
+  const [recording, setRecording] = useState(false);
+  /* ── post-dispatch: delivery / installation / warranty (candidate 00025) ── */
+  const todayIso = () => new Date().toISOString().slice(0, 10);
+  const [post, setPost] = useState<ProjectPostDispatch | null>(null);
+  const [postBusy, setPostBusy] = useState(false);
+  const [handoverKind, setHandoverKind] = useState<ProjectHandoverKind>("delivery");
+  const [handoverDate, setHandoverDate] = useState(todayIso);
+  const [handoverLead, setHandoverLead] = useState("");
+  const [handoverNotes, setHandoverNotes] = useState("");
+  const [handoverSignedBy, setHandoverSignedBy] = useState("");
+  const [warrantyMonths, setWarrantyMonths] = useState("12");
+  const [warrantyCoverage, setWarrantyCoverage] = useState("");
+  const [warrantyExclusions, setWarrantyExclusions] = useState("");
+  const [warrantyReason, setWarrantyReason] = useState("");
+  const [claims, setClaims] = useState<ProjectWarrantyClaim[]>([]);
+  const [claimSummary, setClaimSummary] = useState("");
+  const [claimDetails, setClaimDetails] = useState("");
+  const [claimResolutions, setClaimResolutions] = useState<Record<string, string>>({});
+  const { user } = useAdminAuth();
+  /** Separation of duties: whoever last moved the stages cannot record the pass. */
+  const lastStageEditor = project.productionUpdatedBy;
+  const selfEdited = Boolean(lastStageEditor && user?.email && lastStageEditor.toLowerCase() === user.email.toLowerCase());
 
   useEffect(() => {
-    setDraft(clone(project.practice ?? emptyPractice()));
+    const normalized = normalizePractice(project.practice);
+    setDraft(normalized.practice);
+    setRepairNotice(normalized.repaired);
+    setRevision(project.revision ?? 0);
+    setConflict(false);
     setDirty(false);
   }, [project.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Once the delivery is in, the only handover left is the installation.
+  useEffect(() => {
+    if (post?.delivery && !post?.installation) setHandoverKind("installation");
+  }, [post?.delivery, post?.installation]);
+
+  const reloadClaims = async () => {
+    try { setClaims(await api.listProjectWarrantyClaims(project.id)); }
+    catch { setClaims([]); }
+  };
+  useEffect(() => {
+    let active = true;
+    void api.listProjectWarrantyClaims(project.id)
+      .then((rows) => { if (active) setClaims(rows); })
+      .catch(() => { if (active) setClaims([]); });
+    return () => { active = false; };
+  }, [api, project.id]);
+
+  const loadPost = async () => {
+    try { setPost(await api.getProjectPostDispatch(project.id)); }
+    catch { setPost({ projectId: project.id, warrantyState: "none" }); }
+  };
+  useEffect(() => {
+    let active = true;
+    void api.getProjectPostDispatch(project.id)
+      .then((row) => { if (active) setPost(row); })
+      .catch(() => { if (active) setPost({ projectId: project.id, warrantyState: "none" }); });
+    return () => { active = false; };
+  }, [api, project.id]);
+
+  useEffect(() => {
+    let active = true;
+    void api.listProjectQcInspections(project.id)
+      .then((rows) => { if (active) setInspections(rows); })
+      .catch(() => { if (active) setInspections([]); });
+    return () => { active = false; };
+  }, [api, project.id]);
 
   const open = true;
   const plannedTotal = draft.boq.reduce((s, r) => s + (Number.isFinite(r.qty) ? r.qty : 0) * (Number.isFinite(r.rate) ? r.rate : 0), 0);
@@ -80,6 +154,7 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
   const nextDue = draft.milestones.filter((m) => m.status !== "done" && m.due).sort((a, b) => String(a.due).localeCompare(String(b.due)))[0];
 
   const touch = (mut: (d: ProjectPractice) => void) => {
+    editRevision.current += 1;
     setDraft((prev) => { const next = clone(prev); mut(next); return next; });
     setDirty(true);
   };
@@ -188,6 +263,21 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!dirty && !saving && !uploading && !recording) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, saving, uploading, recording]);
+
+  const requestClose = () => {
+    if (saveInFlight.current || uploadInFlight.current || recording) {
+      toast.error("Wait for the workspace operation to finish before closing.");
+      return;
+    }
+    if (dirty && !window.confirm("You have unsaved workspace changes. Close without saving?")) return;
+    onClose();
+  };
   const downloadFile = async (f: ProjectFileItem) => {
     if (!f.storagePath) return;
     setDownloadingId(f.id);
@@ -202,6 +292,8 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
   };
   const uploadFile = async (file: File) => {
     if (file.size > 50 * 1024 * 1024) { toast.error("File is larger than the 50 MB bucket cap."); return; }
+    if (saveInFlight.current || uploadInFlight.current) return;
+    uploadInFlight.current = true;
     setUploading(true);
     try {
       const bytes = await file.arrayBuffer();
@@ -211,6 +303,7 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed — the hosted bucket (migration 0014) may not be applied yet.");
     } finally {
+      uploadInFlight.current = false;
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -220,6 +313,11 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
   const prod = draft.production ?? defaultProduction();
   const prodPct = productionProgress(prod);
   const qcPassed = prod.qc.result === "passed";
+  const dispatchHasData = Object.values(prod.dispatch).some((v) => (typeof v === "string" ? v.trim() !== "" : v != null));
+  const clearDispatch = () => {
+    touchProduction((p) => { p.dispatch = { date: "", vehicle: "", driver: "", driverPhone: "", challanRef: "" }; });
+    toast.message("Dispatch details cleared — save to remove them from the job.");
+  };
   const touchProduction = (mut: (p: ProjectProduction) => void) =>
     touch((d) => {
       const p = d.production ? { stages: d.production.stages.map((s) => ({ ...s })), qc: { ...d.production.qc }, dispatch: { ...d.production.dispatch } } : defaultProduction();
@@ -233,7 +331,6 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
       if (patch.pct !== undefined) row.pct = Math.min(100, Math.max(0, Number.isFinite(patch.pct) ? patch.pct : 0));
       if (patch.note !== undefined) row.note = patch.note;
     });
-  const setQc = (patch: Partial<ProjectProduction["qc"]>) => touchProduction((p) => { Object.assign(p.qc, patch); });
   const setDispatch = (patch: Partial<ProjectProduction["dispatch"]>) => touchProduction((p) => { Object.assign(p.dispatch, patch); });
 
   /* files */
@@ -243,7 +340,139 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
   });
   const removeFile = (id: string) => touch((d) => { d.files = d.files.filter((f) => f.id !== id); });
 
+  /** Recording an inspection is the only way a job's QC result changes. The
+   *  demo store and the candidate Supabase RPC (00022) apply the same rule. */
+  const recordInspection = async () => {
+    if (recording) return;
+    if (saveInFlight.current || uploadInFlight.current) {
+      toast.error("Finish the current save or upload before recording an inspection.");
+      return;
+    }
+    setRecording(true);
+    const wasDirty = dirty;
+    try {
+      const { project: updated } = await api.recordProjectQcInspection({
+        projectId: project.id,
+        result: inspectionResult,
+        notes: inspectionNotes,
+      });
+      const rows = await api.listProjectQcInspections(project.id);
+      setInspections(rows);
+      setInspectionNotes("");
+      if (updated) {
+        const normalized = normalizePractice(updated.practice);
+        setRepairNotice(normalized.repaired);
+        const fresh = normalized.practice;
+        if (wasDirty) {
+          // Keep the user's unsaved work; only the server-owned QC block changes.
+          setDraft((prev) => ({
+            ...prev,
+            production: prev.production && fresh.production
+              ? { ...prev.production, qc: { ...fresh.production.qc } }
+              : fresh.production ?? prev.production,
+          }));
+        } else {
+          setDraft(fresh);
+          setDirty(false);
+        }
+        setRevision(updated.revision ?? revision);
+        setConflict(false);
+        onSaved(updated);
+      }
+      toast.success(`QC inspection recorded as ${inspectionResult}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not record the inspection.");
+    } finally {
+      setRecording(false);
+    }
+  };
+
+  const reloadLatest = async () => {
+    if (!window.confirm("Reload the saved workspace? Unsaved edits on this screen will be discarded.")) return;
+    try {
+      const rows = await api.listProjects();
+      const fresh = rows.find((p) => p.id === project.id);
+      if (!fresh) { toast.error("Project not found."); return; }
+      editRevision.current += 1;
+      const normalized = normalizePractice(fresh.practice);
+      setDraft(normalized.practice);
+      setRepairNotice(normalized.repaired);
+      setRevision(fresh.revision ?? 0);
+      setDirty(false);
+      setConflict(false);
+      onSaved(fresh);
+      toast.success("Reloaded the latest workspace");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not reload the project.");
+    }
+  };
+
+  /** Post-dispatch records. The server decides sequence (QC pass → dispatch → delivery
+   *  → installation → warranty); this only surfaces the message. */
+  const recordHandover = async (kind: ProjectHandoverKind) => {
+    if (postBusy) return;
+    setPostBusy(true);
+    try {
+      await api.recordProjectHandover({ projectId: project.id, kind, happenedOn: handoverDate, lead: handoverLead, notes: handoverNotes, signedBy: handoverSignedBy });
+      await loadPost();
+      setHandoverLead(""); setHandoverNotes(""); setHandoverSignedBy("");
+      toast.success(`${kind === "delivery" ? "Delivery" : "Installation"} recorded.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not record the handover.");
+    } finally { setPostBusy(false); }
+  };
+  const openWarranty = async () => {
+    if (postBusy) return;
+    setPostBusy(true);
+    try {
+      await api.openProjectWarranty({ projectId: project.id, months: Number(warrantyMonths), coverage: warrantyCoverage, exclusions: warrantyExclusions });
+      await loadPost();
+      setWarrantyCoverage(""); setWarrantyExclusions("");
+      toast.success("Warranty opened from the installation date.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not open the warranty.");
+    } finally { setPostBusy(false); }
+  };
+  const cancelWarranty = async () => {
+    if (postBusy) return;
+    setPostBusy(true);
+    try {
+      await api.cancelProjectWarranty({ projectId: project.id, reason: warrantyReason });
+      await loadPost();
+      setWarrantyReason("");
+      toast.success("Warranty cancelled — the record is kept.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not cancel the warranty.");
+    } finally { setPostBusy(false); }
+  };
+
+  const openClaim = async () => {
+    if (postBusy) return;
+    setPostBusy(true);
+    try {
+      await api.openProjectWarrantyClaim({ projectId: project.id, summary: claimSummary, details: claimDetails });
+      await reloadClaims();
+      setClaimSummary(""); setClaimDetails("");
+      toast.success("Warranty claim opened.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not open the claim.");
+    } finally { setPostBusy(false); }
+  };
+  const moveClaim = async (claim: ProjectWarrantyClaim, status: "scheduled" | "resolved" | "rejected") => {
+    if (postBusy) return;
+    setPostBusy(true);
+    try {
+      await api.updateProjectWarrantyClaim({ claimId: claim.id, status, resolution: claimResolutions[claim.id] ?? "" });
+      await reloadClaims();
+      setClaimResolutions((prev) => ({ ...prev, [claim.id]: "" }));
+      toast.success(`Claim ${status}.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update the claim.");
+    } finally { setPostBusy(false); }
+  };
+
   const save = async () => {
+    if (saveInFlight.current || uploadInFlight.current || recording) return;
     // client-side dispatch gate — production data rides the payload; refuse to
     // persist dispatch details (or a dispatched stage) while QC is not passed.
     const d = draft.production;
@@ -257,25 +486,41 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
       toast.error("QC is not passed — dispatch data can't be saved until QC is Passed (or clear the dispatch block).");
       return;
     }
+    saveInFlight.current = true;
+    const editSnapshot = editRevision.current;
+    const expectedRevision = revision;
     setSaving(true);
     try {
-      const updated = await api.updateProject(project.id, { practice: draft } as Partial<NewProjectInput>);
+      const updated = await api.saveProjectPractice(project.id, draft, expectedRevision);
       if (updated) {
-        toast.success("Practice workspace saved");
-        setDirty(false);
+        setRevision(updated.revision ?? expectedRevision + 1);
+        setConflict(false);
+        if (editRevision.current === editSnapshot) {
+          setDirty(false);
+          toast.success("Practice workspace saved");
+        } else {
+          toast.warning("An earlier workspace snapshot was saved. Newer changes are still unsaved; save again.");
+        }
         onSaved(updated);
       } else {
         toast.error("Project not found.");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed.");
+      const message = e instanceof Error ? e.message : "Save failed.";
+      if (/changed elsewhere/i.test(message)) {
+        setConflict(true);
+        toast.error(message);
+      } else {
+        toast.error(message);
+      }
     } finally {
+      saveInFlight.current = false;
       setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) requestClose(); }}>
       <DialogContent className="max-w-3xl gap-0 p-0 sm:max-w-4xl">
         <DialogHeader className="border-b border-border px-5 py-4">
           <DialogTitle className="flex items-center gap-2.5 text-base">
@@ -288,6 +533,12 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
         </DialogHeader>
 
         <div className="px-5 pt-3">
+          {conflict && (
+            <div role="alert" className="mx-5 mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">
+              <span>This job changed elsewhere while you were editing. Your edits are still on screen — reload the saved version before saving, or keep editing and save once you have reloaded.</span>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" aria-label="Reload latest workspace" onClick={() => void reloadLatest()}>Reload latest</Button>
+            </div>
+          )}
           <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -295,6 +546,7 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
               <TabsTrigger value="milestones">Milestones · {doneCount}/{draft.milestones.length}</TabsTrigger>
               <TabsTrigger value="files">Files · {draft.files.length}</TabsTrigger>
               <TabsTrigger value="production">Production · {prodPct}%</TabsTrigger>
+              <TabsTrigger value="handover">Handover</TabsTrigger>
               <TabsTrigger value="actuals">Actuals · {actuals.length}</TabsTrigger>
             </TabsList>
 
@@ -304,6 +556,11 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                 <img src={project.image} alt="" className="h-40 w-full rounded-xl border border-border object-cover sm:w-56" />
                 <div className="min-w-0 flex-1 space-y-3">
                   <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> {project.client} · {project.location} {project.sqft ? `· ${project.sqft}` : ""} {project.duration ? `· ${project.duration}` : ""}</p>
+                  {project.orderId && (
+                    <p className="text-[11px] text-muted-foreground" aria-label="Linked order">
+                      Started from order <span className="font-mono font-semibold text-foreground">{project.orderId}</span> — production and QC stay on this job.
+                    </p>
+                  )}
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { label: "Planned cost", value: plannedTotal > 0 ? formatPKR(plannedTotal) : "—", tone: "text-foreground" },
@@ -390,6 +647,172 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
             </TabsContent>
 
             {/* ── actuals (relational ledger, migration 0013) ───────── */}
+            {/* ── handover: delivery · installation · warranty ──────── */}
+            <TabsContent value="handover" className="py-4">
+              <div className="space-y-3">
+                <p className="text-[10px] text-muted-foreground">
+                  Delivery and installation are recorded only after the QC pass and stored dispatch details; the warranty runs from the installation date and its state is derived by the server, never typed.
+                </p>
+                {!qcPassed && (
+                  <p role="status" className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] font-medium text-amber-900">
+                    Handover is locked until QC is passed — record the inspection on the Production tab first.
+                  </p>
+                )}
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-border bg-card p-3" aria-label="Delivery handover">
+                    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"><Truck className="h-3.5 w-3.5" /> Delivery</p>
+                    {post?.delivery ? (
+                      <div className="mt-1 space-y-0.5 text-[11px]">
+                        <p className="font-semibold text-foreground">{new Date(`${post.delivery.happenedOn}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+                        <p className="text-muted-foreground">{post.delivery.lead || "—"}{post.delivery.signedBy ? ` · signed by ${post.delivery.signedBy}` : ""}</p>
+                        {post.delivery.notes && <p className="text-muted-foreground">{post.delivery.notes}</p>}
+                      </div>
+                    ) : <p className="mt-1 text-[11px] text-muted-foreground">Not recorded.</p>}
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-3" aria-label="Installation handover">
+                    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"><Wrench className="h-3.5 w-3.5" /> Installation</p>
+                    {post?.installation ? (
+                      <div className="mt-1 space-y-0.5 text-[11px]">
+                        <p className="font-semibold text-foreground">{new Date(`${post.installation.happenedOn}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+                        <p className="text-muted-foreground">{post.installation.lead || "—"}{post.installation.signedBy ? ` · signed by ${post.installation.signedBy}` : ""}</p>
+                        {post.installation.notes && <p className="text-muted-foreground">{post.installation.notes}</p>}
+                      </div>
+                    ) : <p className="mt-1 text-[11px] text-muted-foreground">{post?.delivery ? "Not recorded." : "Record the delivery first."}</p>}
+                  </div>
+                </div>
+
+                {(!post?.delivery || !post?.installation) && (
+                  <div className="rounded-xl border border-border bg-card p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Record handover</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Select value={handoverKind} onValueChange={(v) => setHandoverKind(v as ProjectHandoverKind)}>
+                        <SelectTrigger className="h-8 w-32 border px-2 text-[11px] font-semibold" aria-label="Handover kind"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="delivery" disabled={Boolean(post?.delivery)} className="text-[11px]">Delivery</SelectItem>
+                          <SelectItem value="installation" disabled={Boolean(post?.installation) || !post?.delivery} className="text-[11px]">Installation</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input aria-label="Handover date" type="date" value={handoverDate} max={todayIso()} onChange={(e) => setHandoverDate(e.target.value)} className={`${inputCls} w-36`} />
+                      <Input aria-label="Handover lead" placeholder="Team lead" value={handoverLead} onChange={(e) => setHandoverLead(e.target.value)} className={`${inputCls} w-32`} />
+                      <Input aria-label="Handover signed by" placeholder="Signed by (customer)" value={handoverSignedBy} onChange={(e) => setHandoverSignedBy(e.target.value)} className={`${inputCls} w-36`} />
+                    </div>
+                    <Input aria-label="Handover notes" placeholder="Condition, site notes, anything the next person needs" value={handoverNotes} onChange={(e) => setHandoverNotes(e.target.value)} className={`${inputCls} mt-2 w-full`} />
+                    <Button
+                      size="sm"
+                      aria-label="Record handover"
+                      className="mt-2 h-8 gap-1.5 bg-hon-green text-xs font-bold text-white hover:bg-hon-green/90"
+                      disabled={postBusy || !qcPassed || handoverKind === "installation" && !post?.delivery}
+                      onClick={() => void recordHandover(handoverKind)}
+                    >
+                      {postBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Truck className="h-3.5 w-3.5" />} Record handover
+                    </Button>
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-border bg-card p-3" aria-label="Warranty">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5" /> Warranty</p>
+                    <span
+                      aria-label="Warranty state"
+                      className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${post?.warrantyState === "active" ? "border-emerald-200 bg-emerald-100 text-emerald-800" : post?.warrantyState === "expired" ? "border-rose-200 bg-rose-100 text-rose-800" : post?.warrantyState === "cancelled" ? "border-slate-300 bg-slate-100 text-slate-700" : "border-amber-300 bg-amber-100 text-amber-900"}`}
+                    >
+                      {post?.warrantyState ?? "none"}
+                    </span>
+                  </div>
+                  {post?.warranty ? (
+                    <div className="mt-1 space-y-1 text-[11px]">
+                      <p className="font-semibold text-foreground">{post.warranty.months} months · {new Date(`${post.warranty.startsOn}T00:00:00`).toLocaleDateString("en-GB")} → {new Date(`${post.warranty.endsOn}T00:00:00`).toLocaleDateString("en-GB")}</p>
+                      {post.warranty.coverage && <p className="text-muted-foreground">Covered: {post.warranty.coverage}</p>}
+                      {post.warranty.exclusions && <p className="text-muted-foreground">Excluded: {post.warranty.exclusions}</p>}
+                      {post.warranty.cancelReason && <p className="text-muted-foreground">Cancelled: {post.warranty.cancelReason}</p>}
+                      {post.warrantyState === "active" && (
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <Input aria-label="Warranty cancellation reason" placeholder="Cancellation reason" value={warrantyReason} onChange={(e) => setWarrantyReason(e.target.value)} className={`${inputCls} w-56`} />
+                          <Button size="sm" variant="outline" aria-label="Cancel warranty" className="h-8 gap-1.5 text-xs font-bold" disabled={postBusy} onClick={() => void cancelWarranty()}>
+                            {postBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />} Cancel warranty
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-[11px] text-muted-foreground">{post?.installation ? "No warranty recorded yet." : "Record the installation before opening a warranty."}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input aria-label="Warranty months" type="number" min={1} max={120} value={warrantyMonths} onChange={(e) => setWarrantyMonths(e.target.value)} className={`${inputCls} w-24`} />
+                        <Input aria-label="Warranty coverage" placeholder="Covered (structure, hardware…)" value={warrantyCoverage} onChange={(e) => setWarrantyCoverage(e.target.value)} className={`${inputCls} w-64`} />
+                        <Input aria-label="Warranty exclusions" placeholder="Exclusions (damage, misuse…)" value={warrantyExclusions} onChange={(e) => setWarrantyExclusions(e.target.value)} className={`${inputCls} w-64`} />
+                        <Button
+                          size="sm"
+                          aria-label="Open warranty"
+                          className="h-8 gap-1.5 bg-hon-green text-xs font-bold text-white hover:bg-hon-green/90"
+                          disabled={postBusy || !post?.installation}
+                          onClick={() => void openWarranty()}
+                        >
+                          {postBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />} Open warranty
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* warranty claims (candidate 00026) */}
+                <div className="rounded-xl border border-border bg-card p-3" aria-label="Warranty claims">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Claims</p>
+                    <span className="text-[10px] text-muted-foreground">{claims.length} recorded</span>
+                  </div>
+                  {post?.warrantyState !== "active" && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">A claim can only be opened while the warranty is active.</p>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Input aria-label="Claim summary" placeholder="Short summary (what failed)" value={claimSummary} onChange={(e) => setClaimSummary(e.target.value)} className={`${inputCls} w-64`} />
+                    <Input aria-label="Claim details" placeholder="Details for the workshop" value={claimDetails} onChange={(e) => setClaimDetails(e.target.value)} className={`${inputCls} min-w-[220px] flex-1`} />
+                    <Button
+                      size="sm"
+                      aria-label="Open warranty claim"
+                      className="h-8 gap-1.5 bg-hon-green text-xs font-bold text-white hover:bg-hon-green/90"
+                      disabled={postBusy || post?.warrantyState !== "active"}
+                      onClick={() => void openClaim()}
+                    >
+                      {postBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Open claim
+                    </Button>
+                  </div>
+                  {claims.length > 0 && (
+                    <ul className="mt-2 space-y-2 border-t border-border pt-2">
+                      {claims.map((claim) => (
+                        <li key={claim.id} className="rounded-lg border border-border p-2 text-[11px]" aria-label={`Claim ${claim.summary}`}>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${claim.status === "resolved" ? "border-emerald-200 bg-emerald-100 text-emerald-800" : claim.status === "rejected" ? "border-rose-200 bg-rose-100 text-rose-800" : claim.status === "scheduled" ? "border-sky-200 bg-sky-100 text-sky-800" : "border-amber-300 bg-amber-100 text-amber-900"}`}>{claim.status}</span>
+                            <span className="font-semibold text-foreground">{claim.summary}</span>
+                            <span className="text-muted-foreground">opened {claim.openedOn}{claim.openedBy ? ` by ${claim.openedBy}` : ""}</span>
+                          </div>
+                          {claim.details && <p className="mt-1 text-muted-foreground">{claim.details}</p>}
+                          {claim.resolution && <p className="mt-1 font-medium text-foreground">Resolution: {claim.resolution}</p>}
+                          {(claim.status === "open" || claim.status === "scheduled") && (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                              <Input
+                                aria-label={`Claim resolution for ${claim.summary}`}
+                                placeholder="Resolution note (required to resolve/reject)"
+                                value={claimResolutions[claim.id] ?? ""}
+                                onChange={(e) => setClaimResolutions((prev) => ({ ...prev, [claim.id]: e.target.value }))}
+                                className={`${inputCls} w-56`}
+                              />
+                              {claim.status === "open" && (
+                                <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" aria-label={`Schedule claim ${claim.summary}`} disabled={postBusy} onClick={() => void moveClaim(claim, "scheduled")}>Schedule</Button>
+                              )}
+                              <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" aria-label={`Resolve claim ${claim.summary}`} disabled={postBusy} onClick={() => void moveClaim(claim, "resolved")}>Resolve</Button>
+                              <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold text-destructive" aria-label={`Reject claim ${claim.summary}`} disabled={postBusy} onClick={() => void moveClaim(claim, "rejected")}>Reject</Button>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
             <TabsContent value="actuals" className="py-4">
               <div className="flex items-center justify-between pb-2">
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"><ReceiptText className="h-4 w-4" /> Job costing — planned vs actual</p>
@@ -498,11 +921,16 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
             {/* ── production ────────────────────────────────────── */}
             <TabsContent value="production" className="py-4">
               <div className="flex items-center justify-between pb-2">
-                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"><Box className="h-4 w-4" /> Shop floor — {prodPct}% complete · QC gates dispatch</p>
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"><Box className="h-4 w-4" /> Shop floor — {prodPct}% recorded progress · QC UI check</p>
               </div>
               <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-hon-green transition-all" style={{ width: `${prodPct}%` }} /></div>
+              {repairNotice && (
+                <p role="status" className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">
+                  Some stored production values were incomplete or invalid and were filled with blanks so the job could open. Save the workspace to write a complete record.
+                </p>
+              )}
               <div role="status" className={`mb-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-semibold ${qcPassed ? "border-emerald-200 bg-emerald-50 text-emerald-800" : prod.qc.result === "failed" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-amber-300 bg-amber-50 text-amber-900"}`}>
-                {qcPassed ? <><Ruler className="h-4 w-4 shrink-0" /> QC passed — dispatch cleared for the yard.</> : <><FilePenLine className="h-4 w-4 shrink-0" /> Dispatch blocked — QC is {prod.qc.result === "failed" ? "FAILED" : "pending"}. Record a passing QC inspection before dispatch leaves the yard. Saving with dispatch data filled is refused while QC is not passed.</>}
+                {qcPassed ? <><Ruler className="h-4 w-4 shrink-0" /> QC marked passed — dispatch fields unlocked in this interface. Verify approval before dispatch.</> : <><FilePenLine className="h-4 w-4 shrink-0" /> Dispatch blocked — QC is {prod.qc.result === "failed" ? "FAILED" : "pending"}. Record a passing QC inspection before dispatch leaves the yard. Saving with dispatch data filled is refused while QC is not passed.</>}
               </div>
               <ul className="space-y-2">
                 {PROJECT_PRODUCTION_STAGES.map((stage) => {
@@ -521,21 +949,69 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                 })}
               </ul>
 
-              {/* QC gate */}
+              {/* QC record — the result comes from recorded inspections, not a typed field */}
               <div className="mt-4 rounded-xl border border-border bg-card p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">QC gate</p>
-                  <div className="flex items-center gap-2">
-                    <Select value={prod.qc.result} onValueChange={(v) => setQc({ result: v as ProjectQcResult })}>
-                      <SelectTrigger className="h-8 w-32 border px-2 text-[11px] font-semibold" aria-label="QC result"><SelectValue /></SelectTrigger>
-                      <SelectContent>{PROJECT_QC_RESULTS.map((r) => <SelectItem key={r} value={r} className="text-[11px]">{r === "pending" ? "Pending" : r === "passed" ? "Passed" : "Failed"}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <Input aria-label="QC inspected by" placeholder="Inspected by" value={prod.qc.inspectedBy} onChange={(e) => setQc({ inspectedBy: e.target.value })} className={`${inputCls} w-32`} />
-                    <Input aria-label="QC inspected at" type="date" value={prod.qc.inspectedAt} onChange={(e) => setQc({ inspectedAt: e.target.value })} className={`${inputCls} w-36`} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      aria-label="Recorded QC result"
+                      className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${qcPassed ? "border-emerald-200 bg-emerald-100 text-emerald-800" : prod.qc.result === "failed" ? "border-rose-200 bg-rose-100 text-rose-800" : "border-amber-300 bg-amber-100 text-amber-900"}`}
+                    >
+                      {prod.qc.result}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {prod.qc.inspectedBy ? `by ${prod.qc.inspectedBy} · ${prod.qc.inspectedAt}` : "No inspection recorded yet"}
+                    </span>
                   </div>
                 </div>
-                <Input aria-label="QC defect note" placeholder="Defect note (when failed — e.g. veneer chip on console no. 3)" value={prod.qc.defectNote} onChange={(e) => setQc({ defectNote: e.target.value })} className={`${inputCls} mt-2 w-full`} />
-                <p className="mt-1.5 text-[10px] text-muted-foreground">Client-side gate: dispatch inputs stay locked and <span className="font-semibold">saving with dispatch data filled is refused</span> until QC is <span className="font-semibold">Passed</span>. Server-side enforcement (a hosted payload trigger) needs owner sign-off.</p>
+                {prod.qc.defectNote && <p className="mt-1 text-[11px] font-medium text-rose-700">Defect note: {prod.qc.defectNote}</p>}
+                {selfEdited && (
+                  <p role="status" className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] font-medium text-amber-900">
+                    You last changed the production stages, so you cannot record the pass yourself. Someone else with project access has to inspect this job
+                    {isSupabaseMode ? "." : " — in this demo, sign in with the second demo account."}
+                  </p>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Select value={inspectionResult} onValueChange={(v) => setInspectionResult(v as "passed" | "failed")}>
+                    <SelectTrigger className="h-8 w-28 border px-2 text-[11px] font-semibold" aria-label="QC inspection result"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="passed" className="text-[11px]">Passed</SelectItem>
+                      <SelectItem value="failed" className="text-[11px]">Failed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    aria-label="QC inspection notes"
+                    placeholder="Inspection notes (defects, rework, sign-off reference)"
+                    value={inspectionNotes}
+                    onChange={(e) => setInspectionNotes(e.target.value)}
+                    className={`${inputCls} min-w-[200px] flex-1`}
+                  />
+                  <Button
+                    size="sm"
+                    aria-label="Record QC inspection"
+                    className="h-8 gap-1.5 bg-hon-green text-xs font-bold text-white hover:bg-hon-green/90"
+                    disabled={recording || saving || (selfEdited && inspectionResult === "passed")}
+                    title={selfEdited && inspectionResult === "passed" ? "Another person must record the pass" : undefined}
+                    onClick={() => void recordInspection()}
+                  >
+                    {recording ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />} {recording ? "Recording…" : "Record inspection"}
+                  </Button>
+                </div>
+                {inspections.length > 0 && (
+                  <ul aria-label="QC inspection history" className="mt-2 space-y-1 border-t border-border pt-2">
+                    {inspections.slice(0, 3).map((i) => (
+                      <li key={i.id} className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                        <span className={`font-bold uppercase tracking-widest ${i.result === "passed" ? "text-emerald-700" : "text-rose-700"}`}>{i.result}</span>
+                        <span>{new Date(i.createdAt).toLocaleDateString()} · {i.inspectedByEmail || "unknown staff"}</span>
+                        {i.notes && <span className="truncate">— {i.notes}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="mt-1.5 text-[10px] text-muted-foreground">
+                  The QC result is derived from recorded inspections{isSupabaseMode ? " on the server" : " in this demo store"}. Dispatch inputs stay locked and saving dispatch data is refused until a pass is recorded. Separation of duties is enforced: the person who last changed the production stages cannot record the pass, though they may record a failure.
+                </p>
               </div>
 
               {/* dispatch */}
@@ -548,6 +1024,12 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                   <Input aria-label="Driver phone" placeholder={qcPassed ? "Driver phone" : "Locked — QC first"} value={prod.dispatch.driverPhone} onChange={(e) => setDispatch({ driverPhone: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-1`} />
                   <Input aria-label="Challan ref" placeholder={qcPassed ? "Challan ref" : "Locked — QC first"} value={prod.dispatch.challanRef} onChange={(e) => setDispatch({ challanRef: e.target.value })} className={`${inputCls} col-span-2 sm:col-span-2`} />
                 </fieldset>
+                {!qcPassed && dispatchHasData && (
+                  <p className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                    This job still has dispatch details on the draft. Clear them to save while QC is not passed.
+                    <Button size="sm" variant="outline" className="h-7 text-[10px]" aria-label="Clear dispatch details" onClick={clearDispatch}>Clear dispatch details</Button>
+                  </p>
+                )}
               </div>
             </TabsContent>
 
@@ -559,7 +1041,7 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                   {isSupabaseMode && (
                     <>
                       <input ref={fileInputRef} type="file" className="sr-only" aria-label="Upload file to the job bucket" onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadFile(f); }} />
-                      <Button size="sm" className="h-8 gap-1.5 bg-hon-green text-xs font-bold text-white hover:bg-hon-green/90" disabled={uploading} onClick={() => fileInputRef.current?.click()}>{uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FilePlus2 className="h-3.5 w-3.5" />} {uploading ? "Uploading…" : "Upload file"}</Button>
+                      <Button size="sm" className="h-8 gap-1.5 bg-hon-green text-xs font-bold text-white hover:bg-hon-green/90" disabled={uploading || saving} onClick={() => fileInputRef.current?.click()}>{uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FilePlus2 className="h-3.5 w-3.5" />} {uploading ? "Uploading…" : "Upload file"}</Button>
                     </>
                   )}
                   <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={addDemoFile}><FilePlus2 className="h-3.5 w-3.5" /> Simulate upload</Button>
@@ -599,8 +1081,8 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
         <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border px-5 py-3 sm:justify-between">
           <p className="text-[10px] text-muted-foreground">{dirty ? "Unsaved changes" : "All changes saved"}</p>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>Close</Button>
-            <Button onClick={save} disabled={saving || !dirty} className="gap-1.5">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {saving ? "Saving…" : "Save workspace"}</Button>
+            <Button variant="outline" onClick={requestClose}>Close</Button>
+            <Button onClick={save} disabled={saving || uploading || recording || !dirty} className="gap-1.5">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {saving ? "Saving…" : "Save workspace"}</Button>
           </div>
         </DialogFooter>
       </DialogContent>

@@ -34,6 +34,9 @@ export const config = {
   /** Which backend adapter the app uses. */
   apiMode: (["demo", "static", "bagisto", "supabase"] as const).includes(apiMode) ? apiMode : "demo",
 
+  /** Staging-only experiment; not an authorization boundary. Off unless explicitly set to 1. */
+  cmsStorefrontPreview: str(raw.VITE_CMS_STOREFRONT_PREVIEW) === "1",
+
   supabase: {
     url: str(raw.VITE_SUPABASE_URL),
     publishableKey: str(raw.VITE_SUPABASE_PUBLISHABLE_KEY),
@@ -68,6 +71,11 @@ export const config = {
     /** Demo-only gate for the /admin preview. NOT a real access control in demo mode. */
     email: str(raw.VITE_ADMIN_EMAIL, "admin@woodex.pk"),
     password: str(raw.VITE_ADMIN_PASSWORD, "woodex-admin"),
+    /** Demo-only second seat. QC must be recorded by someone other than the person
+     *  who last changed the production stages, so the demo ships two logins.
+     *  Defaults to the same password as the primary demo account. */
+    qcEmail: str(raw.VITE_ADMIN_QC_EMAIL, "qc@woodex.test"),
+    qcPassword: str(raw.VITE_ADMIN_QC_PASSWORD, str(raw.VITE_ADMIN_PASSWORD, "woodex-admin")),
     sessionKey: "woodex.admin.session",
     /** Opt-in (local dev only): print the demo credentials on the /admin Login screen.
      *  Unset/0 = never printed — shared previews must not expose the gate. */

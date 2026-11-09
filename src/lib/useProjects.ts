@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { getAdminApi } from "@/api";
+import { isSupabaseMode } from "@/config/env";
+import { listPublishedProjects } from "@/api/supabase";
 import type { AdminProject } from "@/api/types";
 import { projectsDisplay } from "@/data/projects";
 
@@ -19,17 +21,18 @@ const staticFallback = (): AdminProject[] =>
   }));
 
 export function useProjects(): AdminProject[] {
-  const [list, setList] = useState<AdminProject[]>(staticFallback);
+  const [list, setList] = useState<AdminProject[]>(() => isSupabaseMode ? [] : staticFallback());
 
   useEffect(() => {
     let on = true;
-    getAdminApi()
-      .listProjects()
+    const load = isSupabaseMode ? listPublishedProjects() : getAdminApi().listProjects();
+    load
       .then((rows) => {
-        if (on && rows.length > 0) setList([...rows].sort((a, b) => a.sortOrder - b.sortOrder));
+        // A successful empty hosted result is authoritative, not a reason to show seed projects.
+        if (on && (isSupabaseMode || rows.length > 0)) setList([...rows].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
       })
       .catch(() => {
-        /* demo API unavailable — bundled catalogue stays */
+        // Offline demo retains its catalogue; Supabase mode stays empty on error.
       });
     return () => {
       on = false;

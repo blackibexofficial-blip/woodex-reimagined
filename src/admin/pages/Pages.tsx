@@ -7,7 +7,9 @@ import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminPage, AdminPageFolder } from "@/api/types";
 import { formatDate, EmptyState, SectionSkeleton } from "@/admin/components";
-import { isOwnerSession } from "@/lib/owner";
+import { usePagePublishPermission } from "@/lib/owner";
+import { analysePageSeo, seoPublishViolations, summarizeSeoViolations } from "@/lib/seo/publish-gate";
+import { isSupabaseMode } from "@/config/env";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,16 +32,17 @@ type FolderFilter = "all" | "top" | string;
 /**
  * Pages workspace (Wave 1) — list, create, duplicate, publish and organize builder pages.
  * Documents themselves are edited in /admin/pages/:pageSlug (Puck). Storefront preview = /lab/:slug.
- * Publish controls render only for the owner session (§11-Q5 interim rule — demo gate is the owner today).
+ * Demo uses the preview gate; Supabase publishing follows the server page.manage capability.
  */
 export default function AdminPages() {
   const api = useMemo(() => getAdminApi(), []);
   const navigate = useNavigate();
-  const owner = isOwnerSession();
+  const { canPublish } = usePagePublishPermission();
 
   const [pages, setPages] = useState<AdminPage[]>([]);
   const [folders, setFolders] = useState<AdminPageFolder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [folderFilter, setFolderFilter] = useState<FolderFilter>("all");
 
@@ -48,7 +51,7 @@ export default function AdminPages() {
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [folderId, setFolderId] = useState<string>("none");
-  const [starter, setStarter] = useState<"starter" | "blank">("starter");
+  const [starter, setStarter] = useState<"starter" | "blank">(isSupabaseMode ? "blank" : "starter");
   const [creating, setCreating] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<AdminPage | null>(null);
@@ -62,11 +65,11 @@ export default function AdminPages() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [pgs, flds] = await Promise.all([api.listPages("page"), api.listPageFolders()]);
+      const [pgs, flds] = await Promise.all([api.listPages("page"), isSupabaseMode ? Promise.resolve([]) : api.listPageFolders()]);
       setPages(pgs);
       setFolders(flds);
     } catch {
-      toast.error("Could not load pages (demo API unavailable).");
+      toast.error("Could not load pages. Check your connection and permissions.");
     } finally {
       setLoading(false);
     }
@@ -110,7 +113,7 @@ export default function AdminPages() {
       });
       toast.success(`Page "${created.title}" created as draft.`);
       setNewOpen(false);
-      setTitle(""); setSlug(""); setSlugTouched(false); setFolderId("none"); setStarter("starter");
+      setTitle(""); setSlug(""); setSlugTouched(false); setFolderId("none"); setStarter(isSupabaseMode ? "blank" : "starter");
       await load();
       navigate(`/admin/pages/${created.slug}`);
     } catch (err) {
@@ -127,12 +130,41 @@ export default function AdminPages() {
   };
 
   const togglePublish = async (p: AdminPage) => {
-    const updated = p.status === "published" ? await api.unpublishPage(p.id) : await api.publishPage(p.id);
-    if (updated) {
-      await load();
-      toast.success(updated.status === "published" ? `"${updated.title}" published (v${updated.version}).` : `"${updated.title}" unpublished — back to draft.`);
-    } else {
-      toast.error("Publish failed.");
+    if (!canPublish || publishingId !== null) return;
+    setPublishingId(p.id);
+    try {
+      // Reload the saved draft rather than checking a stale list row. This remains
+      // advisory: another editor can change it before the server publishes.
+      const current = await api.getPage(p.id);
+      if (!current || current.status !== p.status) {
+        toast.error("Page status changed or the page is unavailable. Refresh and try again.");
+        await load();
+        return;
+      }
+      if (current.status !== "published") {
+        const seo = current.seo ?? {};
+        const violations = seoPublishViolations(analysePageSeo(current.doc, seo), seo);
+        if (violations.length > 0) {
+          const summary = summarizeSeoViolations(violations);
+          if (seo.strictGate === false) {
+            if (!window.confirm(`SEO is not ready: ${summary}\n\nPublish anyway?`)) return;
+          } else {
+            toast.error(`SEO gate blocks publish: ${summary} Open the SEO panel to fix.`);
+            return;
+          }
+        }
+      }
+      const updated = current.status === "published" ? await api.unpublishPage(current.id) : await api.publishPage(current.id);
+      if (updated) {
+        await load();
+        toast.success(updated.status === "published" ? `"${updated.title}" published (v${updated.version}).` : `"${updated.title}" unpublished — back to draft.`);
+      } else {
+        toast.error("Publish failed.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Publish failed.");
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -227,7 +259,7 @@ export default function AdminPages() {
         <aside className="rounded-xl border border-border bg-card p-3">
           <div className="flex items-center justify-between px-1 pb-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Folders</span>
-            <button onClick={() => setNewFolderOpen((v) => !v)} aria-label="New folder" className="rounded p-1 text-muted-foreground hover:bg-muted">
+            <button onClick={() => setNewFolderOpen((v) => !v)} disabled={isSupabaseMode} title={isSupabaseMode ? "Folders are not available in Supabase mode" : "New folder"} aria-label="New folder" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50">
               <FolderPlus className="h-4 w-4" />
             </button>
           </div>
@@ -255,7 +287,7 @@ export default function AdminPages() {
             </button>
             <div className="my-1 border-t border-border" />
             {folders.map(folderRow)}
-            {folders.length === 0 && <p className="px-2 py-2 text-xs text-muted-foreground">No folders yet.</p>}
+            {folders.length === 0 && <p className="px-2 py-2 text-xs text-muted-foreground">{isSupabaseMode ? "Folders are not available in Supabase mode." : "No folders yet."}</p>}
           </div>
         </aside>
 
@@ -281,7 +313,7 @@ export default function AdminPages() {
                   <TableHead>Folder</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Updated</TableHead>
-                  {owner && <TableHead className="text-right">Publish</TableHead>}
+                  {canPublish && <TableHead className="text-right">Publish</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -301,10 +333,11 @@ export default function AdminPages() {
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(p.updatedAt)}</TableCell>
-                    {owner && (
+                    {canPublish && (
                       <TableCell className="text-right">
                         <Switch
                           checked={p.status === "published"}
+                          disabled={publishingId !== null}
                           onCheckedChange={() => togglePublish(p)}
                           aria-label={p.status === "published" ? "Unpublish page" : "Publish page"}
                         />
@@ -344,7 +377,7 @@ export default function AdminPages() {
             </div>
             <div className="space-y-1.5">
               <Label>Folder</Label>
-              <Select value={folderId} onValueChange={setFolderId}>
+              <Select value={folderId} onValueChange={setFolderId} disabled={isSupabaseMode}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">(top level)</SelectItem>
@@ -356,13 +389,14 @@ export default function AdminPages() {
             </div>
             <div className="space-y-1.5">
               <Label>Starting content</Label>
-              <Select value={starter} onValueChange={(v) => setStarter(v as "starter" | "blank")}>
+              <Select value={starter} onValueChange={(v) => setStarter(v as "starter" | "blank")} disabled={isSupabaseMode}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="starter">Starter page (heading + features + CTA)</SelectItem>
                   <SelectItem value="blank">Blank canvas</SelectItem>
                 </SelectContent>
               </Select>
+              {isSupabaseMode && <p className="text-xs text-muted-foreground">Supabase pages start with a blank canvas.</p>}
             </div>
           </div>
           <DialogFooter>

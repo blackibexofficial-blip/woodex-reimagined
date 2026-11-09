@@ -1,8 +1,8 @@
 /**
  * WOODEX builder — shared section/element infrastructure (Wave 2 + Wave 4).
  *
- * BuilderModeContext distinguishes the storefront render ("store") from the
- * Puck editor canvas ("editor"): hidden sections render `null` on the store,
+ * BuilderModeContext distinguishes LAB preview ("store"), a future public renderer
+ * ("public"), and the Puck editor ("editor"): hidden sections render `null` outside the editor,
  * a greyed placeholder in the editor.
  *
  * Wave 4: every wrapper merges the block's `_inspector` flat props (attached by
@@ -25,8 +25,8 @@ import {
 } from "./inspector";
 import { useBuilderLinkedStyles } from "./BuilderDocContext";
 
-export type BuilderMode = "store" | "editor";
-export const BuilderModeContext = createContext<BuilderMode>("store");
+export type BuilderMode = "store" | "editor" | "public";
+export const BuilderModeContext = createContext<BuilderMode>("public");
 
 export type InsertFn = (type: string) => void;
 export const LibraryActionsContext = createContext<{ insert: InsertFn } | null>(null);
@@ -104,7 +104,7 @@ export function SectionShell({ hidden, locked, children, className, label, inspe
   const mode = useContext(BuilderModeContext);
   const wrapper = useWrapperProps(inspector, className);
   const hiddenOn = isHidden(hidden);
-  if (hiddenOn && mode === "store") return null;
+  if (hiddenOn && mode !== "editor") return null;
 
   const Tag = TAGS.has(wrapper.value.tag ?? "") && wrapper.value.tag !== "section" ? (wrapper.value.tag as "div") : "section";
   const classNameMerged = cn(wrapper.classes);
@@ -138,7 +138,7 @@ export function ElementShell({ hidden, locked, children, label, inspector }: {
   const mode = useContext(BuilderModeContext);
   const wrapper = useWrapperProps(inspector);
   if (isHidden(hidden)) {
-    if (mode === "store") return null;
+    if (mode !== "editor") return null;
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-2 text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
@@ -150,7 +150,7 @@ export function ElementShell({ hidden, locked, children, label, inspector }: {
   const animated = Boolean(wrapper.attrs["data-animate"]);
   const Wrapper = animated ? "span" : "div";
   const wrapperClass = cn(animated ? "inline-block" : "contents", wrapper.classes);
-  if (isLocked(locked)) {
+  if (isLocked(locked) && mode !== "public") {
     return (
       <Wrapper className={wrapperClass} style={wrapper.style} {...wrapper.attrs}>
         <span className="relative inline-block">

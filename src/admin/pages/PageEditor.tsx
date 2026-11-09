@@ -10,11 +10,12 @@ import type { Data } from "@puckeditor/core";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminPage, AdminPageDoc, AdminPageSeo } from "@/api/types";
-import { analyseSeo, extractBodyText } from "@/lib/seo/analyse";
+import { analysePageSeo, seoPublishViolations, summarizeSeoViolations } from "@/lib/seo/publish-gate";
 import SeoPanel from "./SeoPanel";
 import { formatDateTime } from "@/admin/components";
-import { isOwnerSession } from "@/lib/owner";
+import { usePagePublishPermission } from "@/lib/owner";
 import { woodexConfig } from "@/pages-builder/blocks";
+import { preparePublicDocument, type PublicDocumentIssueCode } from "@/pages-builder/public-document";
 import { libraryPlugin } from "@/pages-builder/library";
 import { BuilderModeContext, LibraryActionsContext } from "@/pages-builder/shell";
 import { Badge } from "@/components/ui/badge";
@@ -22,20 +23,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+const preflightMessages: Record<PublicDocumentIssueCode, string> = {
+  invalid_document: "The document structure is invalid.",
+  too_many_blocks: "This profile allows at most 50 blocks.",
+  unsupported_root: "Page-level settings or linked styles are not supported yet.",
+  invalid_block: "The block structure is invalid.",
+  unsupported_block: "This block type is not supported by the limited storefront profile yet.",
+  duplicate_id: "This block ID is duplicated.",
+  unsupported_style: "Custom block styles are not supported by this profile yet.",
+  invalid_property: "A block field is invalid or not supported.",
+  unsafe_link: "The link is empty or uses an unsafe URL format.",
+  rich_text_unsupported: "Formatted HTML is not supported by this profile yet; use plain text.",
+  size_limit: "The document exceeds the profile's text size limit.",
+};
+
 const toPuckData = (doc: AdminPageDoc): Data => doc as unknown as Data;
 const fromPuckData = (data: Data): AdminPageDoc =>
   ({ root: { props: (data.root?.props ?? {}) as Record<string, unknown> }, content: data.content as unknown as AdminPageDoc["content"] });
 
 /**
  * Page editor (Wave 1) — Puck bound to the demo-DB page document.
- * Owner-only publish (§11-Q5 interim: demo gate = owner); everyone else saves drafts.
+ * Publishing in Supabase follows the server-enforced page.manage capability.
  * Publish bumps the version and snapshots history (cap 20) — restore from the history rail.
  */
 export default function AdminPageEditor() {
   const api = useMemo(() => getAdminApi(), []);
   const { pageSlug } = useParams<{ pageSlug: string }>();
   const navigate = useNavigate();
-  const owner = isOwnerSession();
+  const { canPublish, checking: checkingPublish } = usePagePublishPermission();
 
   const [page, setPage] = useState<AdminPage | null>(null);
   const [missing, setMissing] = useState(false);
@@ -46,6 +61,10 @@ export default function AdminPageEditor() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const editRevision = useRef(0);
+  const operationInFlight = useRef(false);
+  const markDirty = useCallback(() => { editRevision.current += 1; setDirty(true); }, []);
   const [showHistory, setShowHistory] = useState(false);
   const [seo, setSeo] = useState<AdminPageSeo>({});
   const [showSeo, setShowSeo] = useState(false);
@@ -70,20 +89,42 @@ export default function AdminPageEditor() {
 
   useEffect(() => { load(); }, [load]);
 
-  const saveDraft = useCallback(async (): Promise<AdminPage | undefined> => {
-    if (!page || !doc) return undefined;
+  // A response acknowledges only the snapshot that was sent, not later edits.
+  const saveSnapshot = useCallback(async (): Promise<boolean> => {
+    if (!page || !doc) return false;
+    const revision = editRevision.current;
     setSaving(true);
-    const updated = await api.updatePage(page.id, { title, doc, seo });
-    setSaving(false);
-    if (updated) {
+    try {
+      const updated = await api.updatePage(page.id, { title, doc, seo });
+      if (!updated) { toast.error("Could not save the draft."); return false; }
       setPage(updated);
+      if (editRevision.current !== revision) {
+        toast.warning("An earlier draft was saved. Newer changes are still unsaved; save again.");
+        return false;
+      }
       setDirty(false);
       toast.success("Draft saved.");
-      return updated;
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the draft.");
+      return false;
+    } finally {
+      setSaving(false);
     }
-    toast.error("Could not save the draft.");
-    return undefined;
   }, [api, page, doc, title, seo]);
+
+  const saveDraft = useCallback(async () => {
+    if (operationInFlight.current) return;
+    operationInFlight.current = true;
+    try { await saveSnapshot(); } finally { operationInFlight.current = false; }
+  }, [saveSnapshot]);
+
+  useEffect(() => {
+    if (!dirty && !saving && !publishing && !restoring) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, saving, publishing, restoring]);
 
   // Puck owns canvas state between saves. Feeding it a fresh `data` identity on every
   // keystroke makes its fields panel remount (resetting our Style/Advanced tab state and
@@ -105,51 +146,55 @@ export default function AdminPageEditor() {
   }
   const puckData = snapshotRef.current;
 
-  const seoReport = useMemo(() => {
-    if (!doc) return null;
-    const { bodyText, firstParagraph, h1Count } = extractBodyText(doc);
-    return analyseSeo({
-      title: seo.title ?? "",
-      metaDescription: seo.description ?? "",
-      focusKeyphrase: seo.focusKeyphrase ?? "",
-      bodyText,
-      firstParagraph,
-      h1Count,
-    });
-  }, [doc, seo]);
+  const storefrontCheck = useMemo(() => doc ? preparePublicDocument(doc) : null, [doc]);
+
+  const seoReport = useMemo(() => doc ? analysePageSeo(doc, seo) : null, [doc, seo]);
 
   const doPublish = useCallback(async (publish: boolean) => {
-    if (!page) return;
-    if (!owner) {
-      toast.error("Only the owner can publish (demo gate = owner today; Bagisto RBAC in Wave 7).");
+    if (!page || operationInFlight.current) return;
+    if (!canPublish) {
+      toast.error("Your session does not have permission to publish this page.");
       return;
     }
     if (publish) {
-      const noindexOn = seo.noindex === true;
-      const violations = [...(seoReport?.blocked ?? []), ...(noindexOn ? ["noindex is ON — flip it off in the SEO panel before going live."] : [])];
+      if (!seoReport) return;
+      const violations = seoPublishViolations(seoReport, seo);
       if (violations.length > 0) {
-        const list = violations.slice(0, 2).join(" ");
-        const more = violations.length > 2 ? ` (+${violations.length - 2} more)` : "";
+        const summary = summarizeSeoViolations(violations);
         if (seo.strictGate === false) {
-          if (!window.confirm(`SEO is not ready: ${list}${more}\n\nPublish anyway?`)) return;
+          if (!window.confirm(`SEO is not ready: ${summary}\n\nPublish anyway?`)) return;
         } else {
-          toast.error(`SEO gate blocks publish: ${list}${more} Open the SEO panel to fix.`);
+          toast.error(`SEO gate blocks publish: ${summary} Open the SEO panel to fix.`);
           setShowSeo(true);
           return;
         }
       }
     }
-    // Save pending edits first so Publish never ships a stale document.
-    if (dirty && !(await saveDraft())) return;
+    // Serialize this editor's operations; never publish if the save was overtaken by edits.
+    if (operationInFlight.current) return;
+    operationInFlight.current = true;
     setPublishing(true);
-    const updated = publish ? await api.publishPage(page.id) : await api.unpublishPage(page.id);
-    setPublishing(false);
-    if (!updated) { toast.error("Publish failed."); return; }
-    setPage(updated);
-    setDirty(false);
-    toast.success(publish ? `Published "${updated.title}" (v${updated.version}).` : `"${updated.title}" unpublished — draft again.`);
-    if (publish && pageSlug !== updated.slug) navigate(`/admin/pages/${updated.slug}`, { replace: true });
-  }, [api, page, dirty, owner, pageSlug, navigate, saveDraft, seo, seoReport]);
+    try {
+      if (dirty && !(await saveSnapshot())) return;
+      const revision = editRevision.current;
+      const updated = publish ? await api.publishPage(page.id) : await api.unpublishPage(page.id);
+      if (!updated) { toast.error("Publish failed."); return; }
+      setPage(updated);
+      if (editRevision.current === revision) {
+        setDirty(false);
+        toast.success(publish ? `Published "${updated.title}" (v${updated.version}).` : `"${updated.title}" unpublished — draft again.`);
+      } else {
+        toast.warning("The page status changed, but newer editor changes remain unsaved.");
+      }
+      // Do not navigate away from edits made while the request was in flight.
+      if (publish && pageSlug !== updated.slug && editRevision.current === revision) navigate(`/admin/pages/${updated.slug}`, { replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Publish failed.");
+    } finally {
+      operationInFlight.current = false;
+      setPublishing(false);
+    }
+  }, [api, page, dirty, canPublish, pageSlug, navigate, saveSnapshot, seo, seoReport]);
 
   const insertBlock = useCallback((type: string, index?: number) => {
     setDoc((prev) => {
@@ -163,10 +208,10 @@ export default function AdminPageEditor() {
       content.splice(at, 0, block as never);
       return { ...prev, content };
     });
-    setDirty(true);
+    markDirty();
     setPuckKey((k) => k + 1); // force Puck to re-read `data`
     toast.success("Block added — drag to reorder, or manage it in the Layers panel.");
-  }, []);
+  }, [markDirty]);
 
   // Plugin identity must stay stable — a new array (or new plugin objects) per render tears
   // down Puck's rail/panels/canvas and swallows focus + panel state on every keystroke.
@@ -177,20 +222,38 @@ export default function AdminPageEditor() {
   const libraryActions = useMemo(() => ({ insert: insertBlock }), [insertBlock]);
 
   const restoreVersion = useCallback(async (version: number) => {
-    if (!page) return;
-    const updated = await api.revertPage(page.id, version);
-    if (updated) {
-      setPage(updated);
-      setTitle(updated.title);
-      setDoc(updated.doc);
-      setSeo(updated.seo ?? {});
-      setDirty(false);
-      setPuckKey((k) => k + 1);
-      toast.success(`Restored v${version} as the current draft — publish to ship it.`);
-    } else {
-      toast.error("Could not restore that version.");
+    if (!page || operationInFlight.current) return;
+    const message = dirty
+      ? "Restoring replaces the saved draft and your unsaved editor changes. Continue?"
+      : "Restoring replaces the current saved draft with this version. Continue?";
+    if (!window.confirm(message)) return;
+    operationInFlight.current = true;
+    setRestoring(true);
+    const revision = editRevision.current;
+    try {
+      const updated = await api.revertPage(page.id, version);
+      if (updated) {
+        setPage(updated);
+        if (editRevision.current !== revision) {
+          toast.warning("The saved draft was restored, but newer editor changes are still unsaved. Review before saving.");
+          return;
+        }
+        setTitle(updated.title);
+        setDoc(updated.doc);
+        setSeo(updated.seo ?? {});
+        setDirty(false);
+        setPuckKey((k) => k + 1);
+        toast.success(`Restored v${version} as the current draft — publish to ship it.`);
+      } else {
+        toast.error("Could not restore that version.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not restore that version.");
+    } finally {
+      operationInFlight.current = false;
+      setRestoring(false);
     }
-  }, [api, page]);
+  }, [api, page, dirty]);
 
   const linkedStyles = normalizeLinkedStyles(doc?.root?.props?._linkedStyles);
   const hmCounts = scanHmTokens(doc?.content as unknown[] | undefined);
@@ -217,12 +280,15 @@ export default function AdminPageEditor() {
     <div className="flex h-[calc(100vh-6rem)] min-h-[620px] flex-col gap-2">
       {/* Meta bar */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
-        <Link to="/admin/pages" className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Back to Pages">
+        <Link to="/admin/pages" onClick={(event) => {
+          if (operationInFlight.current) { event.preventDefault(); toast.error("Wait for the current page operation to finish."); }
+          else if (dirty && !window.confirm("You have unsaved changes. Leave without saving?")) event.preventDefault();
+        }} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Back to Pages">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <Input
           value={title}
-          onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
+          onChange={(e) => { setTitle(e.target.value); markDirty(); }}
           aria-label="Page title"
           className="h-9 w-48 flex-1 border-transparent bg-transparent px-2 font-semibold shadow-none focus-visible:border-border sm:w-64"
         />
@@ -261,14 +327,14 @@ export default function AdminPageEditor() {
               </span>
             )}
           </Button>
-          <Button variant="outline" size="sm" onClick={saveDraft} disabled={saving || !dirty}>
+          <Button variant="outline" size="sm" onClick={saveDraft} disabled={saving || publishing || restoring || !dirty}>
             {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />} Save draft
           </Button>
           <Button
             size="sm"
             onClick={() => doPublish(page.status !== "published")}
-            disabled={publishing || !owner}
-            title={owner ? (page.status === "published" ? "Unpublish (back to draft)" : "Publish this page") : "Only the owner can publish"}
+            disabled={saving || publishing || restoring || checkingPublish || !canPublish}
+            title={checkingPublish ? "Checking publishing permission" : canPublish ? (page.status === "published" ? "Unpublish (back to draft)" : "Publish this page") : "Publishing permission required"}
             className={cn(page.status === "published" ? "bg-muted text-foreground hover:bg-muted/80" : "bg-accent text-accent-foreground hover:bg-hon-green-dark")}
           >
             {publishing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
@@ -280,6 +346,25 @@ export default function AdminPageEditor() {
         </div>
       </div>
 
+      {storefrontCheck && (
+        <details className="rounded-xl border border-border bg-card px-3 py-2 text-xs" data-testid="storefront-preflight">
+          <summary className="cursor-pointer font-semibold">
+            Future storefront check (current editor content): {storefrontCheck.ok ? "limited checks passed" : `${storefrontCheck.issues.length} issue${storefrontCheck.issues.length === 1 ? "" : "s"}`}
+          </summary>
+          <p className="mt-2 text-muted-foreground">The public builder route is not enabled. This limited check is advisory, is not a security or accessibility certification, and does not block publishing. Editor content may be unsaved.</p>
+          {!storefrontCheck.ok && (
+            <ul className="mt-2 list-inside list-disc space-y-1">
+              {storefrontCheck.issues.map((issue, index) => (
+                <li key={`${index}-${issue.code}`}>
+                  {issue.block ? `Block ${issue.block}: ` : ""}{preflightMessages[issue.code]}{issue.field ? ` (${issue.field})` : ""}
+                </li>
+              ))}
+              {storefrontCheck.issues.length === 20 && <li>Only the first 20 issues are shown.</li>}
+            </ul>
+          )}
+        </details>
+      )}
+
       {seoReport && (
         <SeoPanel
           open={showSeo}
@@ -287,7 +372,7 @@ export default function AdminPageEditor() {
           slug={page.slug}
           host={typeof window !== "undefined" ? window.location.host : "woodex.pk"}
           seo={seo}
-          onSeoChange={(patch) => { setSeo((prev) => ({ ...prev, ...patch })); setDirty(true); }}
+          onSeoChange={(patch) => { setSeo((prev) => ({ ...prev, ...patch })); markDirty(); }}
           report={seoReport}
           pageTitle={title}
         />
@@ -305,7 +390,7 @@ export default function AdminPageEditor() {
                   <span className="font-mono font-semibold">v{h.version}</span>
                   <span className="text-muted-foreground">{formatDateTime(h.publishedAt)}</span>
                   <span className="min-w-0 flex-1 truncate">{h.title}</span>
-                  <button onClick={() => restoreVersion(h.version)} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted">
+                  <button onClick={() => restoreVersion(h.version)} disabled={saving || publishing || restoring} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted">
                     <Undo2 className="h-3 w-3" /> Restore as draft
                   </button>
                 </li>
@@ -325,7 +410,7 @@ export default function AdminPageEditor() {
               config={woodexConfig}
               data={puckData ?? { root: { props: {} }, content: [] }}
               plugins={puckPlugins}
-              onChange={(data) => { setDoc(fromPuckData(data)); setDirty(true); }}
+              onChange={(data) => { setDoc(fromPuckData(data)); markDirty(); }}
               onPublish={() => doPublish(page.status !== "published")}
             />
           </BuilderModeContext.Provider>

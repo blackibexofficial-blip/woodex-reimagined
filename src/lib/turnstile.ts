@@ -9,7 +9,8 @@
  * Rollout posture:
  *   - Demo / preview builds (VITE_API_MODE != "supabase") and builds WITHOUT
  *     VITE_TURNSTILE_SITE_KEY get NO widget and NO script injection — the app behaves
- *     exactly as before and the EF decides (unconfigured EFs fail open with a log).
+ *     as before. The EF decides: legacy mode fails open when unconfigured; strict
+ *     intake mode refuses requests without its server-side secret.
  *   - Configured builds (site key set) REQUIRE the challenge to succeed at submit time;
  *     a failed/timed-out challenge aborts the submit with a visible toast.
  *
@@ -70,7 +71,7 @@ function loadTurnstileScript(): Promise<void> {
 /**
  * Run an invisible challenge for `action` and resolve its token.
  *   - returns null when Turnstile is NOT enabled for this build (caller proceeds;
- *     the unconfigured EF decides to fail open, by contract);
+ *     the EF's configured intake policy decides whether to accept the request);
  *   - throws when Turnstile IS enabled but cannot produce a token (offline,
  *     script blocked, timeout) — the caller must NOT submit.
  */

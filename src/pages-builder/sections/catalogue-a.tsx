@@ -1,3 +1,5 @@
+import { PreviewOnlyForm } from "../PreviewOnlyForm";
+import { safeBuilderHref } from "../safe-url";
 /**
  * WOODEX builder — catalogue sections, part A (Wave 2, plan §5.2).
  * Hero (6) · Features (6) · Pricing (3) · Stats & charts (3) = 18 sections.
@@ -62,7 +64,7 @@ export const catalogueA: Record<string, ComponentConfig<P>> = {
       <h1 className="mb-4 text-4xl font-extrabold leading-tight sm:text-5xl">{str(p, "title")}</h1>
       <p className="mx-auto mb-6 max-w-2xl text-lg text-muted-foreground">{str(p, "subtitle")}</p>
       <div className="flex items-center justify-center gap-3">
-        <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-hon-green-dark"><a href={str(p, "ctaHref", "#")}>{str(p, "ctaLabel")}</a></Button>
+        <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-hon-green-dark"><a href={safeBuilderHref(str(p, "ctaHref", "#"))}>{str(p, "ctaLabel")}</a></Button>
         <Button asChild size="lg" variant="outline"><a href="/shop">Browse catalogue</a></Button>
       </div>
     </div>
@@ -88,7 +90,7 @@ export const catalogueA: Record<string, ComponentConfig<P>> = {
         <p className="mb-6 text-lg text-muted-foreground">{str(p, "subtitle")}</p>
         <ul className="space-y-2 text-sm">{["Nationwide site visits for offices", "Showroom appointments 7 days a week", "GST-compliant invoicing for businesses"].map((t, i) => <li key={i} className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" />{t}</li>)}</ul>
       </div>
-      <form className="rounded-2xl border border-border bg-card p-6 shadow-sm" onSubmit={(e) => { e.preventDefault(); alert("Demo: the WOODEX team will call you back within working hours."); }}>
+      <PreviewOnlyForm><form className="rounded-2xl border border-border bg-card p-6 shadow-sm" onSubmit={(e) => { e.preventDefault(); alert("Preview only. No submission was sent."); }}>
         <p className="mb-4 font-bold">{str(p, "formTitle")}</p>
         <div className="grid gap-3">
           <input required aria-label="Your name" placeholder="Your name" className="h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-accent" />
@@ -98,7 +100,7 @@ export const catalogueA: Record<string, ComponentConfig<P>> = {
           </select>
           <Button type="submit" className="h-11 bg-accent text-accent-foreground hover:bg-hon-green-dark">Request callback</Button>
         </div>
-      </form>
+      </form></PreviewOnlyForm>
     </div>
   )),
   HeroSplitForm: sec("Hero — split with enquiry form", {
@@ -110,7 +112,7 @@ export const catalogueA: Record<string, ComponentConfig<P>> = {
         <p className="mb-6 text-lg text-muted-foreground">{str(p, "subtitle")}</p>
         <Button asChild variant="outline"><a href="/services">Explore office projects</a></Button>
       </div>
-      <form className="rounded-2xl border border-border bg-card p-6 shadow-sm" onSubmit={(e) => { e.preventDefault(); alert("Demo: site-survey request received."); }}>
+      <PreviewOnlyForm><form className="rounded-2xl border border-border bg-card p-6 shadow-sm" onSubmit={(e) => { e.preventDefault(); alert("Preview only. No submission was sent."); }}>
         <div className="grid gap-3">
           <input required aria-label="Company" placeholder="Company name" className="h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-accent" />
           <input required aria-label="Phone or WhatsApp" placeholder="Phone / WhatsApp" className="h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-accent" />
@@ -118,7 +120,7 @@ export const catalogueA: Record<string, ComponentConfig<P>> = {
           <Button type="submit" className="h-11 bg-accent text-accent-foreground hover:bg-hon-green-dark">Get a free site-survey slot</Button>
           <p className="text-[11px] text-muted-foreground">{str(p, "formNote")}</p>
         </div>
-      </form>
+      </form></PreviewOnlyForm>
     </div>
   )),
   HeroSplitStats: sec("Hero — split with stats", {

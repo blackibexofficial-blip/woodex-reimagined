@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
+import type { AdminOrder } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ import { site, waLink } from "@/config/site";
 import { config } from "@/config/env";
 import { deliveryFeeFor } from "@/config/shipping";
 import { getTurnstileToken } from "@/lib/turnstile";
+import { unconfirmedOrderDetail } from "@/lib/order-submission";
 
 const cities = [
   "Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan",
@@ -26,10 +28,16 @@ const cities = [
 ];
 
 const Checkout = () => {
-  const { items, totalPrice, totalItems, clearCart, tradeSavings, retailTotal, effectiveUnitPrice } = useCart();
+  const { items, totalPrice, totalItems, snapshotCart, isCartSnapshotCurrent, clearCartIfUnchanged, tradeSavings, retailTotal, effectiveUnitPrice } = useCart();
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [placing, setPlacing] = useState(false);
+  // State updates render asynchronously; the ref closes the same-tick submit gap.
+  const submitLock = useRef(false);
+  const retryBlocked = useRef(false);
+  const [outcomeUnknown, setOutcomeUnknown] = useState(false);
+  const [unconfirmedDetail, setUnconfirmedDetail] = useState<string | null>(null);
+  const [retryAcknowledged, setRetryAcknowledged] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<{
     id: string | null;
     total: number;
@@ -55,7 +63,9 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (placing) return;
+    if (submitLock.current || retryBlocked.current) return;
+    submitLock.current = true;
+    const cartSnapshot = snapshotCart();
     setPlacing(true);
     let cfTurnstileToken: string | undefined;
     try {
@@ -63,11 +73,21 @@ const Checkout = () => {
     } catch (err) {
       console.error("Turnstile challenge failed:", err);
       toast.error("Verification didn't load — check your connection and try again.");
+      submitLock.current = false;
       setPlacing(false);
       return;
     }
+    // Never send the pre-verification basket after a known intervening edit.
+    // This check is conservative, not a cross-tab transaction or order lock.
+    if (!isCartSnapshotCurrent(cartSnapshot)) {
+      toast.error("Your cart changed or couldn't be checked. Review it and refresh if needed before placing your order.");
+      submitLock.current = false;
+      setPlacing(false);
+      return;
+    }
+    let order: AdminOrder;
     try {
-      const order = await getAdminApi().createOrder({
+      order = await getAdminApi().createOrder({
         customerName: formData.name.trim(),
         customerEmail: formData.email.trim() || undefined,
         customerPhone: formData.phone.trim(),
@@ -82,23 +102,41 @@ const Checkout = () => {
         total: grandTotal,
         cfTurnstileToken,
       });
-      setPlacedOrder({
-        id: order.id,
-        total: order.total,
-        count: totalItems,
-        payment: paymentMethod,
-        name: formData.name.trim(),
-        phone: formData.phone.trim(),
-      });
-      setOrderPlaced(true);
-      clearCart();
-      window.scrollTo(0, 0);
     } catch (err) {
-      console.error("Order placement failed:", err);
-      toast.error(`Sorry — your order could not be placed. Please call ${site.phone} and we'll take it manually.`);
-    } finally {
+      console.error("Order outcome could not be confirmed:", err);
+      retryBlocked.current = true;
+      setOutcomeUnknown(true);
+      setUnconfirmedDetail(null);
+      setRetryAcknowledged(false);
+      toast.error("We couldn't confirm your order. Please check with us before placing it again.");
+      submitLock.current = false;
       setPlacing(false);
+      return;
     }
+    const detail = unconfirmedOrderDetail(order.submissionOutcome);
+    if (detail) {
+      retryBlocked.current = true;
+      setOutcomeUnknown(true);
+      setUnconfirmedDetail(detail);
+      setRetryAcknowledged(false);
+      toast.error("We couldn't confirm your order. Please check with us before placing it again.");
+      submitLock.current = false;
+      setPlacing(false);
+      return;
+    }
+    // Keep the lock after success until the confirmation screen replaces the form.
+    setPlacedOrder({
+      id: order.id,
+      total: order.total,
+      count: totalItems,
+      payment: paymentMethod,
+      name: formData.name.trim(),
+      phone: formData.phone.trim(),
+    });
+    setOrderPlaced(true);
+    clearCartIfUnchanged(cartSnapshot);
+    setPlacing(false);
+    window.scrollTo(0, 0);
   };
 
   if (orderPlaced) {
@@ -113,6 +151,9 @@ const Checkout = () => {
             <h1 className="text-3xl font-bold mb-3">Order Placed Successfully!</h1>
             <p className="text-muted-foreground mb-2">
               Thank you for your order. Our team will contact you within 24 hours to confirm delivery details.
+            </p>
+            <p className="text-sm text-muted-foreground mb-2">
+              If you changed your cart while this order was processing, review it before ordering again; it may still contain items from this order.
             </p>
             {placedOrder?.id && (
               <p className="text-sm font-semibold mb-2">
@@ -342,7 +383,18 @@ const Checkout = () => {
                         <span className="font-bold text-xl text-accent">{formatPKR(grandTotal)}</span>
                       </div>
 
-                      <Button type="submit" disabled={placing} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-base h-12">
+                      {outcomeUnknown && (
+                        <div role="alert" className="rounded-sm border border-amber-600 bg-amber-50 p-3 text-sm text-amber-950 space-y-3">
+                          <p className="font-semibold">We couldn't confirm whether your order was received.</p>
+                          {unconfirmedDetail && <p>{unconfirmedDetail}</p>}
+                          <p>It may have been placed. Please contact us at <a className="underline" href={site.phoneHref}>{site.phone}</a> before submitting again to avoid a duplicate. Your cart has not been cleared.</p>
+                          <label className="flex items-start gap-2">
+                            <input type="checkbox" className="mt-1" checked={retryAcknowledged} onChange={(e) => { retryBlocked.current = !e.target.checked; setRetryAcknowledged(e.target.checked); }} />
+                            <span>I understand another submission may create a duplicate order.</span>
+                          </label>
+                        </div>
+                      )}
+                      <Button type="submit" disabled={placing || (outcomeUnknown && !retryAcknowledged)} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-base h-12">
                         {placing ? "Placing your order…" : paymentMethod === "cod" ? "Place Order — Cash on Delivery" : "Place Order — Bank Transfer"}
                       </Button>
 

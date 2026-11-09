@@ -1,0 +1,265 @@
+WOODEX REIMAGINED — CONSOLIDATED STATUS AND PLAN
+Status snapshot: 2026-11-08 | Branch: arena/6bd5a1db-woodex-reimagined
+
+PURPOSE AND STATUS
+This report consolidates the audit and implementation slices completed so far,
+what has actually been tested, and the remaining work. It is a progress report,
+not a production-readiness certificate. "Implemented locally" does not mean
+applied to a hosted database or verified in production.
+
+PHASE / FEATURE STATUS
+
+1. Phase 0 technical audit — COMPLETE for the requested local audit scope.
+   Architecture, route inventory, data relationships, safety findings, broken
+   workflows and a prioritized roadmap are recorded in docs/WOODEX_TECHNICAL_AUDIT.md.
+   Its findings describe the baseline at the time of the audit, not the current
+   completion status of later fixes. The original historical audit is preserved.
+
+2. P0 safety and page-version recovery — IMPLEMENTED AND LOCALLY TESTED; hosted
+   verification and release remain pending. Migration 00015 restricts raw draft
+   and project reads, exposes curated published projections, restricts direct
+   order submission RPC access, and makes page restore fail safely for versions
+   without recoverable blocks. Receipt responses were narrowed to avoid exposing
+   customer contact/address information. A known order reference may still expose
+   receipt contents; idempotency, replay authorization and abuse controls remain
+   separate open work. These local changes do not prove hosted policies are safe.
+
+3. Page permissions and quote conversion — IMPLEMENTED AND LOCALLY TESTED;
+   staging and business approval remain pending. Owner/editor publishing follows
+   page.manage, with database authorization still authoritative. Quote conversion
+   requires accepted status under the SQL gate. Staff can still manually change
+   acceptance; this is not an independent approval or frozen-pricing workflow.
+   Follow-up: the list now reloads the saved draft and applies the same SEO
+   check as the editor. This remains a UI-only check; direct API calls and
+   concurrent edits can bypass it. Hosted behavior is not verified.
+
+4. AI authorization and usage limits — IMPLEMENTED AND LOCALLY TESTED; DO NOT
+   ENABLE HOSTED AI YET. The proxy verifies an authenticated crm.manage caller,
+   bounds request size and reserves configurable server-side user/global attempt
+   quotas. These are not monetary or token budgets. Trusted grounding, privacy,
+   provider-side budget/monitoring, retention, deployment coordination, real
+   provider behavior and independent-connection concurrency are still open.
+
+5. Procurement and settings read isolation — IMPLEMENTED LOCALLY, NOT IN PR #29.
+   Migration 00018 narrows supplier, purchase-order and movement reads using
+   capabilities. Migration 00019 restricts raw settings to owners and adds a
+   typed staff projection and owner merge RPC. The owner must approve the role
+   and field matrix, including sales/finance exposure to supplier contacts, costs
+   and notes, and projected fields that may contain sensitive text. Additional
+   permissive hosted policies and other tables/EXECUTE grants still need review.
+
+6. CMS-to-storefront publishing — IN PROGRESS, NOT IN PR #29. A published-only
+   snapshot RPC, demo publish snapshots, typed reader, narrow document preflight,
+   editor advisory, public-mode form/link guards, and an opt-in /p/:slug staging
+   renderer are implemented locally. The flag is OFF by default in normal builds.
+   Only 13 simple block types are currently allowed, with no custom inspector or
+   linked styles, images, embeds, form blocks or formatted HTML. Unsupported pages
+   fail as a whole. Existing /, top-level routes, and /lab/:slug are preserved.
+   This is NOT a completed public CMS rollout. Existing browser-local demo pages
+   without complete snapshots require republishing; demo restore differs from
+   Supabase restore. Hidden blocks are hidden visually, not confidential: published
+   block props and theme are exposed through snapshot APIs.
+
+7. Supabase admin UI session isolation — IMPLEMENTED AND MOCK-TESTED LOCALLY,
+   NOT IN PR #29. Supabase mode disables demo login, ignores browser-local demo
+   identities and verifies the Supabase user before opening protected admin and
+   print routes. The user must still have server-enforced capabilities; a valid
+   Auth identity alone is not proof of staff membership. Real hosted Auth/RLS,
+   logout revocation, offline recovery and multi-device behavior remain untested.
+
+8. Public intake safety follow-up — IMPLEMENTED AND SYNTHETICALLY TESTED LOCALLY,
+   NOT IN PR #29. Configured Turnstile checks now reject missing/wrong action;
+   order and lead endpoints reject JSON bodies over 64 KiB before database calls.
+   The default still fails open for a missing secret or lead limiter failure.
+   A subsequent locally tested, opt-in strict policy can fail closed; it has not
+   been enabled or deployed. Owner decisions and hosted testing remain pending.
+
+9. Checkout retry safety — LIMITED LOCAL MITIGATION, NOT IN PR #29. The page
+   blocks overlapping submits in one mounted component and warns/asks for
+   acknowledgement after an unconfirmed adapter response. This is NOT reliable
+   idempotency: reload, navigation, other tabs and direct clients bypass it;
+   acknowledged retries may duplicate orders. The Supabase adapter still creates
+   a new reference per call. A later local Bagisto follow-up now marks 2xx and
+   browser-only fallback outcomes unconfirmed in checkout and manual order entry;
+   actual Bagisto semantics and secure durable recovery remain unverified. A
+   later local lead follow-up warns on unverified/browser-only/unsaved outcomes
+   in contact, quotation and offline chat; it is not reliable delivery. Offline
+   Supabase chat now passes a challenge token locally. A local v2 capture contract
+   preserves bounded enquiry text and company for upgraded Supabase clients;
+   legacy callers still truncate. Quote baskets remain text-only, not structured
+   or accepted quotes. Privacy approval and coordinated rollout remain pending.
+   A local cart follow-up cancels a detected change during verification and
+   conditionally retains a changed cart after success. This is not atomic
+   cross-tab synchronization or order idempotency. Owner must verify the contact
+   number. See PHASE1-CHECKOUT-CART-PRESERVATION.md and the checkout, Bagisto
+   order, lead outcome and PHASE1-LEAD-CONTENT-CONTRACT.md reports.
+
+10. Phase 2 / broader business platform — NOT COMPLETE. Hosted chat, structured
+   quote intake, customer accounts and payments, trusted customer-facing AI,
+   booking, CRM traceability, production/QC gates, full finance/procurement,
+   communications, advanced CMS, production SEO and observability still require
+   design, implementation and verification. See the audit for the full inventory.
+
+GITHUB AND WORKSPACE
+
+- PR #29 is OPEN: https://github.com/blackibexofficial-blip/woodex-reimagined/pull/29
+  Remote PR head at this status check: 7d5658a. GitHub CI and Vercel preview checks
+  reported success for that head; this does not prove hosted database behavior or
+  cover later uncommitted slices.
+- The local branch was advanced from 84aad29 to existing PR head 7d5658a without
+  switching branches or changing working files. Before/after snapshots of all
+  non-ignored working-tree files matched byte-for-byte; no commit or push was
+  made. The PR contains the earlier P0/publishing/quote/AI commit. Procurement,
+  settings, CMS, SEO, Supabase admin UI, intake safety, checkout and lead outcome
+  follow-ups remain local and are not yet in PR #29.
+  CI applies only to the remote head, not the later local work. Review the
+  remaining tracked and untracked files before any future commit or PR update.
+- No hosted migrations, hosted database changes, production access, real customer
+  records, provider configuration or production deployment were performed here.
+
+VERIFICATION ALREADY RECORDED
+
+- Checkout cart preservation: local cart browser checks 9/9, checkout 10/10,
+  mocked challenge 5/5, mocked Bagisto 18/18 and demo E2E 108/108. Typecheck,
+  lint and build passed. True concurrent tabs and hosted behavior not verified;
+  see PHASE1-CHECKOUT-CART-PRESERVATION.md.
+- Lead content contract: 9/9 mocked Supabase browser checks, 5/5 demo details,
+  4/4 CSV unit checks, 3/3 mocked Deno handler tests, plus lead regressions and
+  demo E2E 108/108. Typecheck, lint and build passed. Real provider, staging and
+  spreadsheet testing remain pending; see PHASE1-LEAD-CONTENT-CONTRACT.md.
+- Lead outcome safety: Bagisto 15/15, Supabase challenge/receipt 11/11 and
+  demo 7/7 local browser checks; intake helpers 24/24. Isolated demo regression
+  108/108 before final Supabase receipt validation change. Typecheck, lint and
+  build passed. Not verified on hosted services or real providers; see
+  PHASE1-LEAD-OUTCOME-SAFETY.md.
+- Bagisto order outcome follow-up: 18/18 mocked-network browser checks, plus
+  manual demo order 5/5, checkout 10/10 and challenge 4/4. Typecheck, lint and
+  build passed. No real Bagisto calls or hosted testing; see
+  PHASE1-BAGISTO-ORDER-OUTCOME.md. Demo E2E 108/108 preceded the final wording edit.
+- Checkout mitigation: 10/10 local browser checks including mocked errors and an
+  unmocked demo order, and 4/4 mocked Supabase-mode challenge checks; external
+  requests blocked. Demo regression 108/108, typecheck, build and lint passed
+  (35 warnings; large chunks). Full retry safety and hosted concurrency testing
+  remain pending. See
+  PHASE1-CHECKOUT-RETRY-SAFETY.md.
+- Intake strict-policy follow-up: 24/24 Node subtests and 2/2 mocked Deno
+  integration tests of both Edge entry points; Deno check, typecheck and lint
+  passed (35 warnings). No hosted function, provider, database or browser E2E
+  was run for this Edge-only slice. See PHASE1-INTAKE-STRICT-MODE.md.
+- Supabase admin UI follow-up: 15/15 mocked Auth browser checks. Procurement
+  UI 10/10, settings UI 7/7 and publish-permission hook 5/5 passed with mocks;
+  demo E2E 108/108, typecheck, build and lint also passed (35 warnings; oversized
+  chunks). Hosted Auth and RLS are not verified. See PHASE1-ADMIN-AUTH-UI.md.
+- Follow-up SEO list/editor gate: 10/10 local demo browser checks; existing
+  demo E2E 108/108 and CMS preflight 28/28 passed again. Typecheck/build/lint
+  passed; lint has 35 warnings and build warns about large chunks.
+- Latest CMS staging route: 23/23 local demo browser checks; 11/11 mocked
+  Supabase browser checks; 3/3 local production-format staging-build checks.
+  One synthetic rendered page had zero WCAG A/AA axe findings. These tests do
+  not establish hosted Auth/RLS, real PostgREST, production SEO, or accessibility
+  across all possible documents.
+- Public document preflight: 28/28 synthetic browser checks. The snapshot SQL
+  boundary: 21/21 isolated PGlite checks. Existing demo E2E: 108/108. Latest
+  typecheck and build passed; lint passed with 35 warnings, and build reported
+  oversized bundles. A previous report-only axe run found 0 violations over 54
+  existing demo routes; this is not a manual accessibility certification.
+- Earlier locally recorded suites include P0 safety 32/32, page/quote workflows
+  28/28, procurement policy 38/38 and mocked UI 10/10, settings policy 36/36 and
+  mocked UI 7/7, AI handler/auth 40/40 and AI quota database 21/21. Some earlier
+  tests used temporary no-save dependencies. Counts are historical evidence, not
+  a claim that every suite was rerun in this report turn.
+- Local PGlite and mocked-browser tests are not equivalent to a hosted Supabase
+  deployment, independent concurrent Postgres connections, live providers, or a
+  production security audit. Test details and rollback plans are in the Phase 1
+  documents under docs/08-master-plan/.
+
+PENDING PLAN — RECOMMENDED ORDER
+
+A. Release governance and safety (P0 / immediate)
+   - Review open PR #29 and the exact remaining local diff on the fixed session
+     branch before any approved commit or update. Branch history now matches the
+     existing PR head; later local work is preserved separately.
+   - Owner approves capability/field policies, selected backend, quote approval
+     semantics and operational responsibilities. Inventory actual deployed schema,
+     grants, permissive policies and function versions in an isolated environment.
+   - Establish verified backup/restore and rollback. Apply reviewed migrations in
+     order only to approved staging; coordinate frontend, DB and Edge Functions.
+   - Use synthetic users to verify role matrices, direct RPC denials, receipt/replay,
+     project privacy, real PostgREST, concurrent edits/conversions and rollback.
+     Keep hosted AI disabled and do not declare the release complete until verified.
+
+B. Finish CMS publishing (P1, currently partial)
+   - Review allowed blocks, HTML/URL/image/style/embed handling and content safety;
+     wire or explicitly exclude nonfunctional forms. Expand the profile only after
+     tests and owner review. Confirm published snapshots never expose drafts.
+   - Address transactional slug collision prevention, legacy snapshot compatibility,
+     real authenticated draft preview, concurrent editors, publish/restore/unpublish,
+     cache invalidation and what happens to already-open pages.
+   - In restricted staging, test /p/:slug with actual Supabase roles, staging-only
+     data and server-side noindex. Review SSR/crawler behavior, proper HTTP status,
+     canonical/metadata, sitemap, redirects and existing URL fallbacks. The local
+     staging flag is not authentication and browser-only noindex is not sufficient.
+   - Explicitly approve any production route cutover; do not replace the homepage
+     or existing URLs without migration, fallback and rollback tests.
+
+C. Commerce and CRM (P1)
+   - Define and persist structured quote-request baskets, consent, company/city,
+     retries and lead-to-quote linkage; verify end-to-end with synthetic records.
+   - Finish checkout anti-abuse/idempotency and stock/replay reconciliation. Decide
+     customer identity and payment provider; test sandbox signatures, webhooks,
+     refunds and duplicate/retry handling before any real-money integration.
+   - Choose Supabase versus Bagisto as system of record; Bagisto is not at parity.
+
+D. AI, chat and communications (P1/P2)
+   - Either complete or explicitly disable hosted chat; prove visitor/staff message
+     isolation, consent, handover and persistence on staging.
+   - Implement trusted/versioned grounding, privacy controls, provider budget and
+     monitoring before enabling AI. Test adversarial prompts and outage behavior.
+   - Connect messaging providers only after opt-in/opt-out, authenticated webhook,
+     retry/idempotency, suppression, logging and sandbox tests are agreed.
+
+E. Operations, finance and readiness (P2/P3)
+   - Enforce production/QC gates server-side; design booking collision prevention,
+     inventory/PO/accounting reconciliation and auditable lifecycle transitions.
+   - Complete advanced CMS/media features, dynamic sitemap/redirects, performance
+     measurement, accessibility beyond automated axe, monitoring and recovery drills.
+   - Keep unverified screens and integrations explicitly labeled as incomplete.
+
+UPDATED DEMO PREVIEW
+
+A live preview server was started in demo mode with the staging CMS flag enabled.
+It is served through Arena's live-preview control, not a production deployment.
+The Supabase URL/key were replaced in that process with a non-routable dummy
+configuration; do not use its Supabase sign-in. Demo data and the admin demo gate
+are browser-local and are not security boundaries or shared production storage.
+
+Open the storefront home, /lab/home, or /admin/pages in the preview. The new
+/p/<slug> staging route accepts only a published page with a complete demo
+snapshot and supported blocks. The pre-existing seeded home has no complete demo
+snapshot and may contain unsupported blocks; /p/home is not a finished public
+homepage. To try the new route, create a blank demo page, insert supported simple
+blocks such as HeroCentered, review the editor's advisory check, save/publish,
+and visit /p/<its-slug>. Both the Pages list and editor now apply the SEO UI
+check; strict mode may block incomplete SEO, or non-strict mode permits an
+explicit confirmation. This check is not a production security boundary.
+
+Preview smoke in this session: home rendered, /p/no-such-demo-page showed the
+staging banner and missing state, /lab/home rendered, and no page errors were
+observed. A subsequent isolated browser test rejected an invalid demo password
+and signed in successfully using the explicitly configured preview-only demo
+credentials. External requests were blocked during these browser tests. The
+preview server remains running until stopped or the session ends.
+
+DETAILED SOURCE DOCUMENTS
+- docs/WOODEX_TECHNICAL_AUDIT.md
+- docs/08-master-plan/PHASE1-P0-SAFETY.md
+- docs/08-master-plan/PHASE1-PUBLISH-QUOTE-WORKFLOWS.md
+- docs/08-master-plan/PHASE1-INTAKE-STRICT-MODE.md
+- docs/08-master-plan/PHASE1-INTAKE-SAFETY.md
+- docs/08-master-plan/PHASE1-ADMIN-AUTH-UI.md
+- docs/08-master-plan/PHASE1-STAGING-RELEASE-CHECKLIST.md
+- docs/08-master-plan/PHASE1-AI-AUTH.md
+- docs/08-master-plan/PHASE1-AI-USAGE.md
+- docs/08-master-plan/PHASE1-PROCUREMENT-READS.md
+- docs/08-master-plan/PHASE1-SETTINGS-READS.md
+- docs/08-master-plan/PHASE1-CMS-SNAPSHOTS.md

@@ -44,6 +44,42 @@ test("action mismatch (lead token replayed at checkout) -> 403", async () => {
   assert.equal(r.status, 403);
 });
 
+test("success without an action fails closed for pinned order and lead flows", async () => {
+  for (const action of ["order", "lead"]) {
+    for (const value of [undefined, null, "", 1, {}, [action]]) {
+      const r = await verifyTurnstileToken({
+        secret: "s", token: "tok", action,
+        fetchImpl: mockFetch(async () => jsonResp({ success: true, action: value })),
+      });
+      assert.equal(r.ok, false, `${action}: ${JSON.stringify(value)}`);
+      assert.equal(r.status, 403);
+    }
+  }
+});
+
+test("action comparison is exact and does not coerce case or whitespace", async () => {
+  for (const value of ["Order", "order ", " order"]) {
+    const r = await verifyTurnstileToken({
+      secret: "s", token: "tok", action: "order",
+      fetchImpl: mockFetch(async () => jsonResp({ success: true, action: value })),
+    });
+    assert.equal(r.status, 403);
+  }
+});
+
+test("matching lead action succeeds; optional unpinned helper still works", async () => {
+  const lead = await verifyTurnstileToken({
+    secret: "s", token: "tok", action: "lead",
+    fetchImpl: mockFetch(async () => jsonResp({ success: true, action: "lead" })),
+  });
+  assert.equal(lead.ok, true);
+  const unpinned = await verifyTurnstileToken({
+    secret: "s", token: "tok",
+    fetchImpl: mockFetch(async () => jsonResp({ success: true })),
+  });
+  assert.equal(unpinned.ok, true);
+});
+
 test("siteverify HTTP 500 -> 503 (fail-closed)", async () => {
   const r = await verifyTurnstileToken({
     secret: "s", token: "tok", action: "order",

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { absUrl } from "@/config/site";
+import { config } from "@/config/env";
 import { organizationJsonLd, websiteJsonLd, localBusinessJsonLd } from "@/data/seoContent";
 import { JsonLd } from "@/components/JsonLd";
 import { trackPageview } from "@/lib/analytics";
@@ -28,7 +29,9 @@ const RouteHead = () => {
       canon.setAttribute("rel", "canonical");
       document.head.appendChild(canon);
     }
-    canon.setAttribute("href", absUrl(pathname));
+    // Staging-only CMS previews must not claim a production canonical URL.
+    const stagingCms = config.cmsStorefrontPreview && /^\/p\/[^/]+\/?$/.test(pathname);
+    canon.setAttribute("href", stagingCms ? `${window.location.origin}${pathname}` : absUrl(pathname));
     trackPageview(pathname + search);
   }, [pathname, search]);
 

@@ -1,0 +1,29 @@
+# Phase 1 — procurement and stock-movement reads
+
+Local implementation, 2026-11-08. No hosted schema, production records, or deployment were touched. This is a focused reduction of broad reads, not a complete RLS audit.
+
+## Scope and policy
+
+Additive migration `20261108000018_procurement_read_policies.sql` replaces the permissive authenticated SELECT policies on `suppliers`, `purchase_orders` and `stock_movements`. Their rows remain readable by accounts with any of `catalog.manage`, `crm.manage` or `finance.manage`: the current local role mapping permits owner, editor, sales and finance, while viewer, unassigned and anonymous accounts cannot read them. The `crm.manage` choice preserves sales access to the existing purchase-order-to-job workflow; finance can review costs and editors can manage procurement. **This is a provisional business policy:** the owner must confirm whether sales and finance should see full supplier contacts, notes, purchase costs and movement notes before hosted rollout. The policies follow capabilities, so future changes to the capability mapping also change access.
+
+Existing write policies are not broadened: editor/owner retain the existing catalogue write paths; sales/finance read access does not itself grant supplier or PO writes. Existing security-definer quote conversion can still record stock movements for authorized sales users. No data is deleted or rewritten.
+
+The new `procurement_read_allowed()` helper lets the Supabase adapter distinguish an ordinary permission denial from an empty table. The suppliers list, purchase-order list/print and inventory movement history now display a permission or verification error instead of falsely reporting no records. The helper is only a presentation check; database RLS is authoritative. A role change between that check and a subsequent data request can still yield an empty result. Missing the migration or an unavailable permission RPC causes these adapter reads to fail closed. Demo and Bagisto adapters are not changed.
+
+## Explicitly outside this slice
+
+At the time of this slice, `app_settings` still permitted broad authenticated reads and combined multiple settings fields. A subsequent local settings projection is documented in `PHASE1-SETTINGS-READS.md`; it has not been deployed or hosted-verified. `price_lists`, `sales_channels`, `stock_transfers`, `inventory_meta`, `saved_sections` and other policies also need review; raw catalogue data is outside this change. Existing write, UI-role, SECURITY DEFINER, function EXECUTE and default-grant risks are not comprehensively audited here. Supabase frontend permission checks do not replace RLS; finance/sales may still see write controls whose existing database writes are denied. Staging must inventory all existing permissive policies because PostgreSQL combines them with OR; a separately created hosted policy could still expose these rows.
+
+## Local evidence
+
+- `npm run test:procurement-reads`: 38/38 isolated PGlite checks covering owner/editor/sales/finance/viewer/unassigned/anon, all three tables, supplier–PO joins, sales/finance write denials, editor write and inventory operations, sales quote conversion, and role revocation on the next query.
+- `e2e/phase1-procurement-permissions.mjs`: 10/10 browser checks using mocked local Supabase responses, covering denial/error presentation and permitted supplier/PO rendering. This does **not** exercise real Supabase Auth, PostgREST, RLS or hosted data. To rerun, start Vite with `VITE_API_MODE=supabase VITE_SUPABASE_URL=http://127.0.0.1:4177 VITE_SUPABASE_PUBLISHABLE_KEY=test-anon-key` on local port 4177, then run `node e2e/phase1-procurement-permissions.mjs` and stop the server. Never point this test at a real Supabase project.
+- Fresh local reset: 18 migrations and seed, 11/11 checks; fresh rehearsal 93/93; P0 safety 32/32; prior workflow suite 28/28; AI usage suite 40/40 handler tests and 21/21 database checks. Typecheck and build pass; lint has 36 warnings; demo E2E smoke 108/108. The build warns about large chunks. The local dependency tree includes temporary no-save tools and is not a frozen-install proof.
+- No real Supabase policies, staff accounts, hosted role changes, production data, PostgREST relationships or deployment were tested.
+
+## Staging and rollback
+
+1. Obtain owner approval of the full-field access matrix and verify that legitimate staff and integrations have appropriate roles. Inspect actual hosted schema, grants, additional SELECT/FOR ALL policies, existing functions and consumers. Confirm the authoritative database and take and verify a restorable backup; do not modify production data to make a test pass.
+2. Apply migrations in order to an isolated staging project, including 00018, and deploy the matching app there. With synthetic data, use real independent sessions for anonymous, unassigned, viewer, editor, sales, finance, owner and service role. Check raw direct reads, PostgREST embedded supplier joins, writes and denied writes, quote/order stock movements, revocation, empty tables, missing helper/connection failures and UI messages. Validate actual RLS policies and all integrations before separately approved production rollout.
+3. Coordinate application and database changes: the new app requires the helper RPC; the old app can show hidden rows as empty after the database change. Regenerate and compare the hand-added Supabase types with the staged schema.
+4. Do not blindly restore permissive SELECT policies. If rollback is needed, first supply equivalent access restrictions and agree which consumers require temporary access; then use a reviewed forward migration to restore the specific prior policies from a verified schema backup or revert the app as appropriate. Rehearse the rollback on staging. No table restoration or production data rewrite is needed solely to reverse these policies.

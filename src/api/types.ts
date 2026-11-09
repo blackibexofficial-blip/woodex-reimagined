@@ -55,6 +55,9 @@ export interface AdminOrder {
   paymentMethod: PaymentMethod;
   status: OrderStatus;
   placedAt: string;      // ISO
+  /** Transient createOrder outcome from the unverified Bagisto checkout integration.
+   * None of these values confirms remote order creation; local IDs are not receipts. */
+  submissionOutcome?: "bagisto-response-unverified" | "bagisto-queued-locally" | "bagisto-not-saved";
   notes?: string;
   /** Courier + consignment for the dispatch leg (admin-entered). */
   courierName?: string;
@@ -697,8 +700,12 @@ export interface AdminCustomer {
   score?: number;
 }
 
+/** Transient result of the unverified Bagisto lead intake, not a delivery receipt. */
+export type LeadSubmissionOutcome = "bagisto-response-unverified" | "bagisto-queued-locally" | "bagisto-not-saved";
+
 export interface AdminLead {
   id: string;
+  submissionOutcome?: LeadSubmissionOutcome;
   type: LeadType;
   name: string;
   company?: string;
@@ -1231,6 +1238,16 @@ export interface AdminProject {
   rating?: number;
   active: boolean;
   sortOrder: number;
+  /** Optimistic-concurrency token for practice/payload writes (migration 00022). */
+  revision?: number;
+  /** Last person who changed the production stages (demo mirror of
+   *  `projects.production_updated_by`). Used to stop self-approval: whoever moved
+   *  the stages cannot record the QC pass. Undefined in Supabase mode, where the
+   *  RPC enforces the rule and returns the reason. */
+  productionUpdatedBy?: string;
+  /** Order this job was started from (`WDX-<n>`), stored in `projects.order_id`
+   *  (candidate 00024). One order links to at most one job. */
+  orderId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1269,8 +1286,9 @@ export interface ProjectFileItem {
 /* ── Production / dispatch (rides the same payload; still no migration) ──
    Five fixed shop-floor stages with per-stage % complete + note; a QC gate
    (pending/passed/failed + defect note) and a dispatch block (date · vehicle ·
-   driver · challan ref). QC is the hard gate to dispatch in the UI copy; today
-   it is informational, not enforced (no migration to enforce it). */
+   driver · challan ref). The UI checks the recorded QC value before dispatch;
+   migration 00021 adds a limited local server-side check but is not independent
+   approval, and its hosted deployment and policy are unverified. */
 export const PROJECT_PRODUCTION_STAGES = ["material_prep", "fabrication", "finishing", "qc", "dispatch"] as const;
 export type ProjectProductionStageKey = (typeof PROJECT_PRODUCTION_STAGES)[number];
 export const PROJECT_PRODUCTION_STAGE_LABELS: Record<ProjectProductionStageKey, string> = {
@@ -1313,8 +1331,119 @@ export interface ProjectPractice {
   production?: ProjectProduction;
 }
 
+/** Recorded QC inspection (append-only; migration 00022 candidate). The pass
+ *  shown on the job comes from here, not from a hand-typed payload field. */
+export interface ProjectQcInspection {
+  id: string;
+  projectId: string;
+  result: "passed" | "failed";
+  notes: string;
+  inspectedByEmail: string;
+  /** Project revision created by this inspection. */
+  revision: number;
+  createdAt: string;
+}
+
+/** Append-only production audit entry (migration 00022 candidate). */
+/* ── Delivery / installation handover + warranty (candidate 00025) ────────── */
+export type ProjectHandoverKind = "delivery" | "installation";
+export interface ProjectHandover {
+  id: string;
+  projectId: string;
+  kind: ProjectHandoverKind;
+  /** YYYY-MM-DD, never in the future. */
+  happenedOn: string;
+  lead: string;
+  notes: string;
+  signedBy: string;
+  createdAt: string;
+}
+export type ProjectWarrantyState = "none" | "active" | "expired" | "cancelled";
+export interface ProjectWarranty {
+  id: string;
+  projectId: string;
+  months: number;
+  coverage: string;
+  exclusions: string;
+  /** YYYY-MM-DD — the installation date, not the day it was typed. */
+  startsOn: string;
+  endsOn: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+  createdAt: string;
+}
+/** One row of the warranty register (candidate 00027) — computed, never stored. */
+export interface WarrantyRegisterRow {
+  projectId: string;
+  title: string;
+  orderId?: string;
+  warrantyId?: string;
+  warrantyState: ProjectWarrantyState;
+  startsOn?: string;
+  endsOn?: string;
+  /** Negative when expired. */
+  daysLeft?: number;
+  expiringSoon: boolean;
+  openClaims: number;
+  totalClaims: number;
+  deliveryOn?: string;
+  installationOn?: string;
+  dispatchVehicle?: string;
+  updatedAt: string;
+}
+
+export type ProjectWarrantyClaimStatus = "open" | "scheduled" | "resolved" | "rejected";
+export interface ProjectWarrantyClaim {
+  id: string;
+  projectId: string;
+  warrantyId: string;
+  summary: string;
+  details: string;
+  status: ProjectWarrantyClaimStatus;
+  /** YYYY-MM-DD; never future, never before the warranty start. */
+  openedOn: string;
+  resolution: string;
+  closedAt?: string;
+  openedBy?: string;
+  createdAt: string;
+}
+
+/** What happened after dispatch, plus the derived warranty state (never typed). */
+export interface ProjectPostDispatch {
+  projectId: string;
+  delivery?: ProjectHandover;
+  installation?: ProjectHandover;
+  warranty?: ProjectWarranty;
+  warrantyState: ProjectWarrantyState;
+}
+
+/** Read projection for the orders page: which job is building this order. */
+export interface OrderProduction {
+  projectId: string;
+  orderId: string;
+  title: string;
+  /** Roll-up of stage percentages (0–100). */
+  progress: number;
+  qcResult: "pending" | "passed" | "failed" | null;
+  dispatchVehicle: string | null;
+  dispatchDate: string | null;
+  updatedAt: string;
+}
+
+export interface ProjectProductionEvent {
+  id: number;
+  projectId: string;
+  action: string;
+  revision: number;
+  qcResult: string | null;
+  dispatchVehicle: string | null;
+  createdAt: string;
+}
+
 export interface NewProjectInput {
   title: string;
+  /** Optional order link (`WDX-<n>`); stored on the row, never inside the payload. */
+  orderId?: string;
   practice?: ProjectPractice;
   client: string;
   category: string;
@@ -1654,7 +1783,7 @@ export interface StoreSettings {
    * ≤ 200 KB) — persisted inside the app_settings `store` blob, so no schema
    * change is needed. When set, it outranks a template's own logo.
    */
-  storeLogo?: string;
+  storeLogo?: string | null;
   /** Lead assignee roster — drives Leads rows + the Mine / Unassigned filters. Demo-seeded with the sales team. */
   team?: string[];
   /**
@@ -1756,6 +1885,9 @@ export interface AdminPageSeo {
   strictGate?: boolean;
 }
 export interface AdminPageHistoryEntry {
+  /** Present only on new demo publish revisions; older history cannot safely reconstruct a public snapshot. */
+  slug?: string;
+  seo?: AdminPageSeo;
   version: number;
   publishedAt: string;
   title: string;
@@ -1973,7 +2105,7 @@ export interface AdminApi {
   /** Agent-side reply; optionally closes the thread in the same write. */
   postChatAgentMessage(conversationId: string, body: string, opts?: { close?: boolean }): Promise<ChatMessage | undefined>;
   /** Offline capture → creates the thread + a lead with consent; returns both refs. */
-  captureChatOffline(input: { name: string; phone: string; message: string; consent: boolean; consentVersion?: string; page?: string }): Promise<{ conversation: ChatConversation; leadId: string }>;
+  captureChatOffline(input: { name: string; phone: string; message: string; consent: boolean; consentVersion?: string; page?: string; cfTurnstileToken?: string }): Promise<{ conversation: ChatConversation; leadId: string; submissionOutcome?: LeadSubmissionOutcome }>;
   /** Agent opened the thread — clears agent-side unread. */
   markChatRead(conversationId: string): Promise<ChatConversation | undefined>;
   /** Close or reopen a thread (agent action). */
@@ -2058,6 +2190,33 @@ export interface AdminApi {
   listProjects(): Promise<AdminProject[]>;
   createProject(input: NewProjectInput): Promise<AdminProject>;
   updateProject(id: string, patch: Partial<NewProjectInput>): Promise<AdminProject | undefined>;
+  /**
+   * Practice save with a revision check (migration 00022 candidate in Supabase mode;
+   * demo mirrors the same conflict rule). QC fields are owned by recorded
+   * inspections, so the server overrides the draft's qc block.
+   */
+  saveProjectPractice(id: string, practice: ProjectPractice, expectedRevision?: number): Promise<AdminProject | undefined>;
+  /** Link a production job to an order (candidate 00024). One order → one job. */
+  linkProjectOrder(projectId: string, orderId: string): Promise<{ projectId: string; orderId: string; alreadyLinked: boolean }>;
+  /** Remove the link; the production/QC history is kept. */
+  unlinkProjectOrder(projectId: string, reason?: string): Promise<{ projectId: string; previousOrderId: string }>;
+  /** Which job (if any) is building this order. */
+  getOrderProduction(orderId: string): Promise<OrderProduction | undefined>;
+  /** Delivery/installation records and the warranty (candidate 00025). */
+  getProjectPostDispatch(projectId: string): Promise<ProjectPostDispatch>;
+  recordProjectHandover(input: { projectId: string; kind: ProjectHandoverKind; happenedOn: string; lead?: string; notes?: string; signedBy?: string }): Promise<ProjectHandover>;
+  openProjectWarranty(input: { projectId: string; months: number; coverage?: string; exclusions?: string }): Promise<ProjectWarranty>;
+  cancelProjectWarranty(input: { projectId: string; reason?: string }): Promise<ProjectWarranty>;
+  /** Warranty claims (candidate 00026) — only against a live warranty. */
+  listProjectWarrantyClaims(projectId: string): Promise<ProjectWarrantyClaim[]>;
+  /** Warranty register: jobs with a warranty or a claim, derived state and counts. */
+  listWarrantyRegister(daysAhead?: number): Promise<WarrantyRegisterRow[]>;
+  openProjectWarrantyClaim(input: { projectId: string; summary: string; details?: string; openedOn?: string }): Promise<ProjectWarrantyClaim>;
+  updateProjectWarrantyClaim(input: { claimId: string; status: "scheduled" | "resolved" | "rejected"; resolution?: string }): Promise<ProjectWarrantyClaim>;
+  listProjectQcInspections(projectId: string): Promise<ProjectQcInspection[]>;
+  /** Records an identity-stamped inspection and derives the job's QC result. */
+  recordProjectQcInspection(input: { projectId: string; result: "passed" | "failed"; notes?: string }): Promise<{ inspection: ProjectQcInspection; project: AdminProject | undefined }>;
+  listProjectProductionEvents(projectId: string): Promise<ProjectProductionEvent[]>;
   setProjectActive(id: string, active: boolean): Promise<AdminProject | undefined>;
   deleteProject(id: string): Promise<boolean>;
   /** Cost-code master per project (migration 0013). Writes require crm.manage. */

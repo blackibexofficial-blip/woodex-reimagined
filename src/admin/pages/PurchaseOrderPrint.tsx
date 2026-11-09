@@ -24,16 +24,18 @@ export default function AdminPurchaseOrderPrint() {
   const { id } = useParams<{ id: string }>();
   const [po, setPo] = useState<AdminPurchaseOrder | null | undefined>(undefined);
   const [supplier, setSupplier] = useState<AdminSupplier | undefined>(undefined);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) { setPo(null); return; }
     let alive = true;
+    setLoadError(null);
     const api = getAdminApi();
     api.getPurchaseOrder(id)
       .then((p) => { if (alive) { setPo(p ?? null); if (p?.supplierId) {
         api.listSuppliers({}).then((sups) => { if (alive) setSupplier(sups.find((s) => s.id === p.supplierId)); }).catch(() => undefined);
       } } })
-      .catch((e) => { console.error(e); if (alive) setPo(null); });
+      .catch((e) => { if (alive) { setPo(null); setLoadError(e instanceof Error ? e.message : "Could not load purchase order."); } });
     return () => { alive = false; };
   }, [id]);
 
@@ -49,6 +51,8 @@ export default function AdminPurchaseOrderPrint() {
 
       {po === undefined ? (
         <A4Notice title="Loading purchase order…" />
+      ) : loadError ? (
+        <A4Notice title="Could not load purchase order" hint={loadError} />
       ) : po === null ? (
         <A4Notice title="Purchase order not found" hint={`No purchase order exists for ID “${id}”.`} />
       ) : (

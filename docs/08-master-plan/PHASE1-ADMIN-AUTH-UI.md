@@ -1,0 +1,28 @@
+# Phase 1 — Supabase admin UI session isolation
+
+Status: implemented and tested locally, 2026-11-08. Not committed or pushed to PR #29; no hosted Auth, database, production data or deployment was touched. This is UI/session hardening, not an authorization boundary or a production-readiness certification.
+
+## Changes
+
+- In `VITE_API_MODE=supabase`, the demo login control and demo login handler are disabled, and the old `woodex.admin.session` value is ignored and removed. Demo/static and existing Bagisto demo sign-in remain available. The demo gate remains intentionally browser-local and insecure; it must not be used to protect hosted data.
+- The admin provider waits for Supabase's auth state, checks the access token using the server `getUser` endpoint, and fails closed if missing, invalid, unavailable, or if its returned user ID differs from the session. Protected routes, including chrome-free print views, do not mount while the initial session is being checked. Redirects retain the requested deep link. Auth change generations prevent a late verification from restoring access after sign-out or account changes. The same previously verified user remains mounted during `SIGNED_IN`/`TOKEN_REFRESHED` rechecks, so an ordinary token refresh does not unnecessarily discard unsaved editor state; a failed recheck closes the UI.
+- Logout requests a Supabase **local** sign-out in every mode (previously it requested global sign-out): the local Supabase session is cleared even if the revocation request fails. The request to revoke the refresh token is best effort; server-side revocation and other devices are not guaranteed. Test actual deployed Auth behavior, timeout and multi-device policy before relying on logout guarantees.
+- When URL/key are empty, the generated-client wrapper uses non-routable placeholders so the app can render a clear unconfigured login instead of throwing during client initialization. The admin login refuses to call Auth in this state. A malformed nonempty URL is not necessarily detected; production environment validation remains pending.
+
+## Important limitations
+
+- Supabase Auth validates identity, **not staff membership or privileges**. Any valid project user can reach the admin shell; actual data access must be denied or allowed by real RLS, RPC and server capability policies. The UI remains client-controlled and must never be treated as authorization. Other clients can invoke public endpoints directly.
+- Verification requires a network call: Auth outage, blocked requests or invalid/expired sessions close the UI. If this happens during an existing editor session, unsaved edits can be lost. A successful password exchange currently shows the normal sign-in toast before asynchronous UI verification is finished; a later verification failure returns the user to login without a dedicated verification error. Improve messaging and recovery before hosted rollout.
+- A shared kiosk must still consider browser cache, screenshots, downloaded files, copied access tokens, other tabs, network-failed refresh-token revocation and account/device session policies. Client-side code cannot guarantee revoked JWTs immediately stop working. Demo and Bagisto modes still use the preview gate and are not production authentication.
+- `VITE_*` values are browser-visible. This slice does not remove existing demo credential defaults, audit historical secrets, protect a leaked Bagisto token, add MFA, audit logs or staff provisioning. Audit/rotate any real exposed credentials through an approved process, without posting secrets in chat.
+
+## Local verification
+
+- `npm run test:admin-auth-ui`: **15/15**, with two separately started local Vite servers (4180: Supabase mode with a fake URL/key pointed to itself; 4181: Supabase mode with empty URL/key). Mocked Auth and PostgREST, synthetic accounts, outside requests blocked. Covers forged old session, no demo bypass, print deep link, mocked login and server verification, reload, same-user refresh, local logout with failed revocation, rejected verification, stale verification after sign-out and missing config. No real Supabase credentials or hosted services were used.
+- Procurement permissions **10/10**, settings permissions **7/7**, and publishing permission hook **5/5** against mocked local Supabase after updating tests to use synthetic verified sessions. These are UI checks, not real PostgREST/RLS tests.
+- Existing demo E2E **108/108**, including demo login and print screens. The user's isolated demo preview credentials were separately tested after the change; invalid login had already been tested in the prior turn. Demo browser data is local, not shared.
+- Typecheck/build passed; lint passed with **35 warnings**, and build still warns about oversized chunks. SEO gate regression **10/10** passed during this slice before the final auth-refresh adjustment; the broader demo E2E passed after it. `git diff --check` must be checked alongside untracked files when preparing a commit.
+
+## Hosted staging gates
+
+After owner approval, on an isolated project with synthetic users, verify real sign-in, missing/disabled user, invalid credentials, valid nonstaff and each staff role, reload/deep links, expiration/refresh, account switch, Auth outage, sign-out failure and independent browser tabs/devices. Confirm direct PostgREST/RPC access still enforces the intended role matrix and no privileged key or demo token is exposed. Verify the app's hosted session storage/broker behavior, MFA and logout policy. Coordinate with existing app and Edge Function versions, verify backup/rollback and follow `PHASE1-STAGING-RELEASE-CHECKLIST.md`. A real staging test and production release require separate approval.

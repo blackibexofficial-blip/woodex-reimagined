@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Armchair, ArrowLeft, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/admin/auth";
-import { config } from "@/config/env";
+import { config, isSupabaseMode } from "@/config/env";
 
 export default function AdminLogin() {
   const { login, loginWithSupabase, supabaseEnabled } = useAdminAuth();
@@ -11,7 +11,7 @@ export default function AdminLogin() {
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/admin/dashboard";
 
-  const [mode, setMode] = useState<"demo" | "supabase">("demo");
+  const [mode, setMode] = useState<"demo" | "supabase">(isSupabaseMode ? "supabase" : "demo");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -63,7 +63,7 @@ export default function AdminLogin() {
         </div>
         <div className="relative flex items-center gap-2 text-xs text-utility-text">
           <ShieldCheck className="h-4 w-4 text-hon-green-light" />
-          Demo gate or Supabase Auth — production RBAC, 2FA &amp; audit logs live in your backend. See docs/07-admin-integration.
+          {isSupabaseMode ? "Supabase sign-in; server-side permissions remain authoritative." : "Demo gate or Supabase Auth — the demo gate is not a security boundary."}
         </div>
       </div>
 
@@ -86,7 +86,7 @@ export default function AdminLogin() {
             {mode === "supabase" ? "Authenticate against your Supabase project (VITE_SUPABASE_*)." : "Use your admin credentials to continue."}
           </p>
 
-          {supabaseEnabled && (
+          {supabaseEnabled && !isSupabaseMode && (
             <div className="mt-4 grid grid-cols-2 rounded-lg border border-border bg-muted p-1 text-xs font-semibold" role="tablist" aria-label="Sign-in method">
               <button
                 role="tab"
@@ -165,6 +165,8 @@ export default function AdminLogin() {
               <p className="font-semibold uppercase tracking-wide text-hon-green-dark">Demo credentials</p>
               <p className="mt-1.5">Email: <span className="font-mono text-foreground">{config.admin.email}</span></p>
               <p>Password: <span className="font-mono text-foreground">{config.admin.password}</span></p>
+              <p className="mt-2">QC seat: <span className="font-mono text-foreground">{config.admin.qcEmail}</span> / <span className="font-mono text-foreground">{config.admin.qcPassword}</span></p>
+              <p className="mt-1">QC must be recorded by someone other than the person who last changed the production stages, so the demo ships two logins.</p>
             </div>
             ) : (
               <div className="mt-6 rounded-lg border border-border bg-muted p-4 text-xs leading-5 text-muted-foreground">

@@ -1,14 +1,15 @@
+import { safeBuilderHref } from "../safe-url";
 /**
  * Home-page seed blocks (2026-11-07).
  *
  * Two blocks used by the seeded "home" document so the builder's Home page mirrors the real
- * storefront home (src/pages/Index.tsx + src/components/home/*) with live data, not copied JSON:
+ * storefront home (src/pages/Index.tsx + src/components/home/*) using bundled seed data:
  *
  *  - CategoryCircles — the scrolling row of circular category images (ProductCategoriesRow).
  *    Items are configured inline (label / href / image URL); seeded with the 8 real categories.
- *  - ProductRail — the "Latest Collection" rail, rendered at runtime from the catalog module
- *    (src/data/products.ts). Filter: best sellers (default) / new arrivals / all — the card
- *    links to /product/<id>, so the builder and /lab/home always show the live catalog.
+ *  - ProductRail — the "Latest Collection" rail uses the bundled seed catalog
+ *    (src/data/products.ts), not an authoritative live product feed. Filter: best sellers
+ *    (default) / new arrivals / all. Cards use the existing /shop/<id> product route.
  *
  * Both carry the shared hidden/locked layer fields like every catalogue section.
  */
@@ -73,7 +74,7 @@ export const homeBlocks: Record<string, ComponentConfig<P>> = {
     (p) => (
       <div className="flex gap-6 overflow-x-auto pb-2">
         {arr<{ label?: string; href?: string; image?: string }>(p, "circles").map((item, i) => (
-          <a key={i} href={item.href || "/shop"} className="group w-[120px] flex-shrink-0 text-center">
+          <a key={i} href={safeBuilderHref(item.href || "/shop")} className="group w-[120px] flex-shrink-0 text-center">
             <div className="mx-auto mb-3 h-[110px] w-[110px] overflow-hidden rounded-full border-2 border-transparent bg-muted transition-colors group-hover:border-accent">
               {item.image ? (
                 <img src={item.image} alt={item.label ?? ""} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
@@ -87,7 +88,7 @@ export const homeBlocks: Record<string, ComponentConfig<P>> = {
   ),
 
   ProductRail: sec(
-    "Latest products (live catalog)",
+    "Latest products (seed catalog)",
     {
       title: { type: "text", label: "Heading", placeholder: "Latest Collection" },
       subtitle: { type: "textarea", label: "Sub", placeholder: "Handpicked premium furniture for the modern workspace" },
@@ -122,7 +123,7 @@ export const homeBlocks: Record<string, ComponentConfig<P>> = {
             {picks.map((product) => (
               <a
                 key={product.id}
-                href={`/product/${product.id}`}
+                href={`/shop/${product.id}`}
                 className="group overflow-hidden rounded-sm border border-border bg-background transition-all hover:border-accent hover:shadow-lg"
               >
                 <div className="aspect-square overflow-hidden bg-muted">

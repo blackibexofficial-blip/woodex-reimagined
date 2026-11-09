@@ -1,3 +1,5 @@
+import { PreviewOnlyForm } from "../PreviewOnlyForm";
+import { safeBuilderHref } from "../safe-url";
 /**
  * WOODEX builder — catalogue sections, part B (Wave 2, plan §5.2).
  * Testimonials (3) · Team (2) · Call to action (3) · Content (4) · Forms (4) · Components (6) = 22 sections.
@@ -117,7 +119,7 @@ export const catalogueB: Record<string, ComponentConfig<P>> = {
   }, { text: "Showroom visits daily, 11:00–21:00 — bring your measurements.", ctaLabel: "Get directions", ctaHref: "/showrooms" }, (p) => (
     <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
       <p className="font-semibold">{str(p, "text")}</p>
-      <Button asChild className="bg-accent text-accent-foreground hover:bg-hon-green-dark"><a href={str(p, "ctaHref", "#")}>{str(p, "ctaLabel")}</a></Button>
+      <Button asChild className="bg-accent text-accent-foreground hover:bg-hon-green-dark"><a href={safeBuilderHref(str(p, "ctaHref", "#"))}>{str(p, "ctaLabel")}</a></Button>
     </div>
   )),
   CtaSplit: sec("CTA — split", {
@@ -197,13 +199,13 @@ export const catalogueB: Record<string, ComponentConfig<P>> = {
   }, { title: "Send an enquiry", phoneHint: "03xx-xxxxxxx", consent: "We reply on WhatsApp within working hours. No spam, no sharing." }, (p) => (
     <div className="mx-auto max-w-xl">
       <h2 className="mb-4 text-center text-3xl font-bold">{str(p, "title")}</h2>
-      <form className="grid gap-3 rounded-2xl border border-border bg-card p-6" onSubmit={(e) => { e.preventDefault(); alert("Demo: enquiry received — the team will WhatsApp you shortly."); }}>
+      <PreviewOnlyForm><form className="grid gap-3 rounded-2xl border border-border bg-card p-6" onSubmit={(e) => { e.preventDefault(); alert("Preview only. No submission was sent."); }}>
         <input required aria-label="Name" placeholder="Your name" className="h-11 rounded-lg border border-border bg-background px-3 outline-none focus:ring-2 focus:ring-accent" />
         <input required aria-label="Phone / WhatsApp" placeholder={str(p, "phoneHint")} className="h-11 rounded-lg border border-border bg-background px-3 outline-none focus:ring-2 focus:ring-accent" />
         <textarea required aria-label="Requirement" placeholder="Tell us about your requirement (space, pieces, timeline)…" className="min-h-24 rounded-lg border border-border bg-background p-3 outline-none focus:ring-2 focus:ring-accent" />
         <Button type="submit" className="h-11 bg-accent text-accent-foreground hover:bg-hon-green-dark"><Send className="mr-1.5 h-4 w-4" />Send enquiry</Button>
         <p className="text-center text-[11px] text-muted-foreground">{str(p, "consent")}</p>
-      </form>
+      </form></PreviewOnlyForm>
     </div>
   )),
   NewsletterSignup: sec("Newsletter signup", {
@@ -212,22 +214,22 @@ export const catalogueB: Record<string, ComponentConfig<P>> = {
     <div className="mx-auto max-w-xl text-center">
       <h2 className="text-2xl font-extrabold">{str(p, "title")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{str(p, "subtitle")}</p>
-      <form className="mt-4 flex gap-2" onSubmit={(e) => { e.preventDefault(); alert("Demo: welcome aboard the WOODEX letter."); }}>
+      <PreviewOnlyForm newsletter><form className="mt-4 flex gap-2" onSubmit={(e) => { e.preventDefault(); alert("Preview only. No submission was sent."); }}>
         <input required type="email" aria-label="Email" placeholder={str(p, "placeholder")} className="h-11 flex-1 rounded-lg border border-border bg-background px-3 outline-none focus:ring-2 focus:ring-accent" />
         <Button type="submit" className="h-11 bg-accent text-accent-foreground hover:bg-hon-green-dark">Subscribe</Button>
-      </form>
+      </form></PreviewOnlyForm>
     </div>
   )),
   CallbackForm: sec("Callback request", {
     title: text("Heading", "We'll call you"), hours: text("Hours line", "Working hours: Mon–Sat, 11:00–21:00"),
   }, { title: "We'll call you", hours: "Working hours: Mon–Sat, 11:00–21:00" }, (p) => (
-    <form className="mx-auto flex max-w-md flex-col gap-3 rounded-2xl border border-border bg-card p-6" onSubmit={(e) => { e.preventDefault(); alert("Demo: callback scheduled — expect a call within working hours."); }}>
+    <PreviewOnlyForm><form className="mx-auto flex max-w-md flex-col gap-3 rounded-2xl border border-border bg-card p-6" onSubmit={(e) => { e.preventDefault(); alert("Preview only. No submission was sent."); }}>
       <h2 className="text-xl font-extrabold">{str(p, "title")}</h2>
       <input required aria-label="Phone" placeholder="03xx-xxxxxxx" className="h-11 rounded-lg border border-border bg-background px-3 outline-none focus:ring-2 focus:ring-accent" />
       <input aria-label="Best time" placeholder="Best time to call (e.g. tomorrow 11–1)" className="h-11 rounded-lg border border-border bg-background px-3 outline-none focus:ring-2 focus:ring-accent" />
       <Button type="submit" className="h-11 bg-accent text-accent-foreground hover:bg-hon-green-dark">Schedule callback</Button>
       <p className="text-center text-[11px] text-muted-foreground">{str(p, "hours")}</p>
-    </form>
+    </form></PreviewOnlyForm>
   )),
   NewsletterCard: sec("Newsletter — boxed card", {
     title: text("Heading", "Get the trade price list"), subtitle: area("Sub", "For architects, designers and procurement teams — updated weekly."), ctaLabel: text("Button", "Request trade access"),
@@ -281,9 +283,9 @@ export const catalogueB: Record<string, ComponentConfig<P>> = {
     <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-6">
       <h2 className="text-xl font-extrabold">{str(p, "title")}</h2>
       <ul className="mt-4 space-y-3 text-sm">
-        <li className="flex items-center gap-2"><PhoneCall className="h-4 w-4 text-accent" aria-hidden /><a href={`tel:${str(p, "phone").replace(/\s|-/g, "")}`} className="hover:underline">{str(p, "phone")}</a></li>
+        <li className="flex items-center gap-2"><PhoneCall className="h-4 w-4 text-accent" aria-hidden /><a href={safeBuilderHref(`tel:${str(p, "phone").replace(/\s|-/g, "")}`)} className="hover:underline">{str(p, "phone")}</a></li>
         <li className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-accent" aria-hidden /><a href={wa} className="hover:underline">WhatsApp {str(p, "whatsapp")}</a></li>
-        <li className="flex items-center gap-2"><Mail className="h-4 w-4 text-accent" aria-hidden /><a href={`mailto:${str(p, "email")}`} className="hover:underline">{str(p, "email")}</a></li>
+        <li className="flex items-center gap-2"><Mail className="h-4 w-4 text-accent" aria-hidden /><a href={safeBuilderHref(`mailto:${str(p, "email")}`)} className="hover:underline">{str(p, "email")}</a></li>
       </ul>
     </div>
   )),

@@ -1,7 +1,12 @@
 /** WOODEX — minimal CSV helpers (headers + rows → downloadable file). */
 
 const escapeCell = (value: string | number | undefined | null): string => {
-  const s = value === undefined || value === null ? "" : String(value);
+  let s = value === undefined || value === null ? "" : String(value);
+  // Quoting CSV does not stop spreadsheet formulas. Keep actual numbers numeric,
+  // but prefix risky text (including leading whitespace/control characters) with
+  // an apostrophe. Spreadsheet behavior varies; review exports before opening.
+  // eslint-disable-next-line no-control-regex -- spreadsheet imports may ignore leading controls.
+  if (typeof value === "string" && (/^[\t\r\n]/.test(s) || /^[\s\u0000-\u001f\u007f\ufeff\u200b-\u200d\u2060]*[=+\-@]/u.test(s))) s = `'${s}`;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 

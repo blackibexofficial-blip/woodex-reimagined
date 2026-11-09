@@ -1,3 +1,4 @@
+import { safeBuilderHref } from "./safe-url";
 /**
  * WOODEX builder — BASIC elements library (plan §5.1, legacy parity).
  * Elements are placeable anywhere in the page flow (v1 of nesting — section slots
@@ -101,7 +102,7 @@ export const elementComponents = {
           variant={str(props, "variant") === "outline" ? "outline" : "default"}
           className={cn(str(props, "variant") === "accent" && "bg-accent text-accent-foreground hover:bg-hon-green-dark", str(props, "variant") === "ghost" && "bg-transparent text-foreground shadow-none hover:bg-muted")}
         >
-          <a href={str(props, "href", "#")}>{str(props, "label")}</a>
+          <a href={safeBuilderHref(str(props, "href", "#"))}>{str(props, "label")}</a>
         </Button>
       </div>
     )),
@@ -113,8 +114,8 @@ export const elementComponents = {
     resolvePermissions: resolveLayerPermissions,
     render: (props) => wrap("Two buttons", props, (
       <div className="mx-auto flex w-full max-w-3xl flex-wrap gap-3 px-4 pb-4">
-        <Button asChild className="bg-accent text-accent-foreground hover:bg-hon-green-dark"><a href={str(props, "primaryHref", "#")}>{str(props, "primaryLabel")}</a></Button>
-        <Button asChild variant="outline"><a href={str(props, "secondaryHref", "#")}>{str(props, "secondaryLabel")}</a></Button>
+        <Button asChild className="bg-accent text-accent-foreground hover:bg-hon-green-dark"><a href={safeBuilderHref(str(props, "primaryHref", "#"))}>{str(props, "primaryLabel")}</a></Button>
+        <Button asChild variant="outline"><a href={safeBuilderHref(str(props, "secondaryHref", "#"))}>{str(props, "secondaryLabel")}</a></Button>
       </div>
     )),
   },
@@ -221,7 +222,7 @@ export const elementComponents = {
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h3 className="mb-2 font-bold">{str(props, "title")}</h3>
           <p className="mb-4 text-sm leading-relaxed text-muted-foreground">{str(props, "text")}</p>
-          <Button asChild variant="outline" size="sm"><a href={str(props, "ctaHref", "#")}>{str(props, "ctaLabel")}</a></Button>
+          <Button asChild variant="outline" size="sm"><a href={safeBuilderHref(str(props, "ctaHref", "#"))}>{str(props, "ctaLabel")}</a></Button>
         </div>
       </div>
     )),

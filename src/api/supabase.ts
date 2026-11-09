@@ -81,6 +81,14 @@ import type {
   StockTransferReceipt, TransferLocation, PurchaseOrderStatus, PriceListStatus,
   ProductImportRow, ProductImportResult,
   ProjectCostCode, ProjectActualLine, ProjectActualSource, ProjectFileItem,
+  ProjectPractice, ProjectQcInspection, ProjectProductionEvent,
+  OrderProduction,
+  ProjectPostDispatch,
+  ProjectHandover,
+  ProjectWarranty,
+  ProjectHandoverKind,
+  ProjectWarrantyClaim,
+  WarrantyRegisterRow,
 } from "@/api/types";
 import { BUILTIN_TEMPLATES, isBuiltinTemplateId, DEFAULT_QUOTE_TEMPLATE, clampAdvancePct } from "@/api/quote-templates";
 import { defaultWarrantyPage, defaultCustomDesignPage, defaultVirtualShowroomPage } from "@/api/singleton-defaults";
@@ -522,7 +530,9 @@ async function getOrderEvents(orderId: string): Promise<AdminOrderEvent[]> {
 async function createOrder(input: NewOrderInput): Promise<AdminOrder> {
   guard();
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/order-submit`;
-  const clientRef = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  // The reference also identifies replays; use a high-entropy browser token,
+  // never a timestamp plus Math.random. Do not fall back to a predictable ID.
+  const clientRef = `ord-${crypto.randomUUID()}`;
   const resp = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", apikey: String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "") },
@@ -1970,6 +1980,7 @@ async function convertQuote(id: string, paymentMethod?: string): Promise<AdminOr
     const reason = String(r?.reason ?? "unknown");
     // demo parity: missing quote or already-converted (idempotent re-click) -> undefined
     if (reason === "not-found" || reason === "already-converted" || reason === "bad-id") return undefined;
+    if (reason === "not-accepted") throw new Error("Only accepted quotes can be converted to an order.");
     throw new Error(`Supabase: quote conversion failed — ${reason}`);
   }
   return {
@@ -2163,18 +2174,19 @@ async function postChatAgentMessage(): Promise<ChatMessage | undefined> {
   throw new SupabaseUnsupportedError(CHAT_HOSTED_REASON);
 }
 
-async function captureChatOffline(input: { name: string; phone: string; message: string; consent: boolean; consentVersion?: string; page?: string }): Promise<{ conversation: ChatConversation; leadId: string }> {
+async function captureChatOffline(input: { name: string; phone: string; message: string; consent: boolean; consentVersion?: string; page?: string; cfTurnstileToken?: string }): Promise<{ conversation: ChatConversation; leadId: string }> {
   if (!input.consent) throw new Error("Consent is required before we store a callback request.");
   const lead = await createLead({
     type: "chat",
     name: input.name.trim(),
     phone: input.phone.trim(),
-    summary: `Chat callback — ${input.message.trim().slice(0, 160)}`,
+    summary: `Chat callback — ${input.message.trim()}`,
     consent: true,
     consentAt: new Date().toISOString(),
     consentVersion: input.consentVersion ?? "lead-privacy-v1",
     landingPath: input.page,
     utmSource: "storefront_chat",
+    cfTurnstileToken: input.cfTurnstileToken,
   });
   const now = new Date().toISOString();
   return {
@@ -2217,6 +2229,7 @@ async function createLead(input: NewLeadInput): Promise<AdminLead> {
       phone: input.phone,
       city: input.city,
       interest: input.summary,
+      capture_version: 2,
       value: input.value,
       source: (input as { source?: string }).source ?? "admin",
       landing_path: input.landingPath,
@@ -2229,13 +2242,22 @@ async function createLead(input: NewLeadInput): Promise<AdminLead> {
       cfTurnstileToken: input.cfTurnstileToken,
     }),
   });
-  const body = (await resp.json().catch(() => ({}))) as { ok?: boolean; id?: number | null; error?: string };
+  const body = (await resp.json().catch(() => ({}))) as { ok?: boolean; id?: number | string | null; capture_version?: number; error?: string };
   if (!resp.ok) {
     if (resp.status === 403) throw new Error("Supabase: the anti-bot check failed — please retry (and complete the challenge if shown).");
     throw new Error(`Supabase: lead capture failed (${resp.status}) — ${body.error ?? "the lead-capture function rejected the submission"}`);
   }
+  const validLeadId = typeof body.id === "number"
+    ? Number.isSafeInteger(body.id) && body.id > 0
+    : typeof body.id === "string" && /^[1-9]\d{0,18}$/.test(body.id);
+  // An older deployed function silently clips interest to 120 characters and
+  // drops company. Without the v2 acknowledgement do not claim full capture:
+  // the old function may already have inserted a partial lead.
+  if (body.ok !== true || !validLeadId || body.capture_version !== 2) {
+    throw new Error("Supabase: lead capture response could not be verified.");
+  }
   return {
-    id: body.id != null ? `lead-${body.id}` : `lead-${Date.now()}`,
+    id: `lead-${body.id}`,
     type: input.type,
     name: input.name,
     ...(input.company ? { company: input.company } : {}),
@@ -2263,17 +2285,19 @@ function listCompanies(): Promise<never> {
 /* ── settings (single-row app_settings) ─────────────────────────────────── */
 async function getSettings(): Promise<StoreSettings> {
   guard();
-  const { data, error } = await supabase.from("app_settings").select("value").eq("key", "store").maybeSingle();
-  if (error) fail("getSettings", error);
-  const v = asObj((data?.value as Json) ?? null);
+  const { data, error } = await supabase.rpc("staff_store_settings");
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Could not load store settings. Check your permissions and connection.");
+  }
+  const v = asObj(data as Json);
   return v as unknown as StoreSettings;
 }
 async function saveSettings(settings: StoreSettings): Promise<StoreSettings> {
   guard();
-  const { error } = await supabase.from("app_settings")
-    .upsert({ key: "store", value: settings as unknown as Json, updated_at: new Date().toISOString() });
+  const { data, error } = await supabase.rpc("owner_save_store_settings", { p_settings: settings as unknown as Json });
   if (error) fail("saveSettings", error);
-  return settings;
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Could not verify saved store settings.");
+  return data as unknown as StoreSettings;
 }
 function resetDemoData(): Promise<void> {
   return Promise.reject(new SupabaseUnsupportedError("resetDemoData — refuses to run anywhere but the browser demo (destructive)."));
@@ -2304,6 +2328,15 @@ const readRows = async <T>(table: TableName, toModel: (r: Row) => T, orderBy = "
   if (error) fail(`${table} list`, error);
   return ((data ?? []) as Row[]).map(toModel);
 };
+
+// Presentation check only. RLS independently enforces access on every row.
+// Explicitly report denial/errors instead of treating an RLS-empty result as
+// proof that there are no procurement records.
+async function requireProcurementRead(): Promise<void> {
+  const { data, error } = await supabase.rpc("procurement_read_allowed");
+  if (error || typeof data !== "boolean") throw new Error("Could not verify procurement access. Check your connection or contact an administrator.");
+  if (!data) throw new Error("You do not have permission to view procurement or stock movement records.");
+}
 
 /* ── suppliers + POs ─────────────────────────────────────────────────────── */
 const rowToSupplier = (r: Row): AdminSupplier => {
@@ -2342,6 +2375,7 @@ const supplierInputToRow = (input: NewSupplierInput | AdminSupplierPatch) => {
 
 async function listSuppliers(params?: ListParams & { active?: "all" | "active" | "inactive" }): Promise<AdminSupplier[]> {
   guard();
+  await requireProcurementRead();
   const rows = await readRows("suppliers", rowToSupplier);
   const q = params?.query?.trim().toLowerCase();
   let filtered = q ? rows.filter((r) => [r.name, r.contactName, r.email, r.city].some((v) => String(v ?? "").toLowerCase().includes(q))) : rows;
@@ -2435,6 +2469,7 @@ const poLinesInput = (lines: NewPurchaseOrderLineInput[]): AdminPurchaseOrder["l
   }));
 async function listPurchaseOrders(params?: ListParams & { status?: AdminPurchaseOrder["status"] | "all" }): Promise<Paginated<AdminPurchaseOrder>> {
   guard();
+  await requireProcurementRead();
   const page = Math.max(1, params?.page ?? 1), perPage = params?.perPage ?? 50;
   const { data, error } = await supabase.from("purchase_orders")
     .select("*, supplier:suppliers(name)").order("created_at", { ascending: false });
@@ -2448,6 +2483,7 @@ async function listPurchaseOrders(params?: ListParams & { status?: AdminPurchase
 }
 async function getPurchaseOrder(id: string): Promise<AdminPurchaseOrder | undefined> {
   guard();
+  await requireProcurementRead();
   const { data, error } = await supabase.from("purchase_orders").select("*, supplier:suppliers(name)").eq("id", id).maybeSingle();
   if (error) fail("getPurchaseOrder", error);
   return data ? rowToPO({ ...(data as unknown as Row), supplier_name: (data as unknown as Row).supplier?.name }) : undefined;
@@ -3139,20 +3175,35 @@ async function deleteService(slug: string): Promise<boolean> {
 const rowToProject = (r: Row): AdminProject => ({
   id: r.id,
   ...(asObj(r.payload) as object),
+  orderId: r.order_id ? String(r.order_id) : undefined,
+  revision: toNum(r.revision, 0),
   status: String(r.status ?? "published"),
   createdAt: String(asObj(r.payload).createdAt ?? r.created_at ?? ""),
   updatedAt: String(asObj(r.payload).updatedAt ?? r.updated_at ?? r.created_at ?? ""),
 } as unknown as AdminProject);
 async function listProjects(): Promise<AdminProject[]> { return readRows("projects", rowToProject); }
+
+/** Public portfolio projection: never fetch the private practice payload. */
+export async function listPublishedProjects(): Promise<AdminProject[]> {
+  guard();
+  const { data, error } = await supabase.rpc("published_projects");
+  if (error) fail("published_projects", error);
+  return (data ?? []).map((row) => rowToProject(row as Row));
+}
 async function createProject(input: NewProjectInput): Promise<AdminProject> {
   guard();
   const id = `project-${Date.now()}`;
   const now = new Date().toISOString();
+  // `orderId` is a column (00024), never payload: the workspace repair path would
+  // drop unknown payload fields. Link through the RPC afterwards so the audit row
+  // and the one-job-per-order rule both apply.
+  const { orderId, ...rest } = input;
   const { data, error } = await supabase.from("projects").insert({
-    id, status: "published",
-    payload: { ...(input as unknown as Record<string, unknown>), createdAt: now, updatedAt: now } as unknown as Json,
+    id, status: rest.active === false ? "draft" : "published",
+    payload: { ...(rest as unknown as Record<string, unknown>), createdAt: now, updatedAt: now } as unknown as Json,
   }).select("*").single();
   if (error) fail("createProject", error);
+  if (orderId) await linkProjectOrder(id, orderId);
   return rowToProject(data as Row);
 }
 async function updateProject(id: string, patch: Partial<NewProjectInput>): Promise<AdminProject | undefined> {
@@ -3167,6 +3218,313 @@ async function updateProject(id: string, patch: Partial<NewProjectInput>): Promi
   const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
   if (error) fail("getProject", error);
   return data ? rowToProject(data) : undefined;
+}
+async function fetchProject(id: string): Promise<AdminProject | undefined> {
+  const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
+  if (error) fail("getProject", error);
+  return data ? rowToProject(data as Row) : undefined;
+}
+/**
+ * Practice save with optimistic concurrency (migration 00022 candidate). The
+ * server, not this client, derives the QC block from recorded inspections and
+ * rejects a stale revision instead of overwriting a colleague's work.
+ */
+async function saveProjectPractice(id: string, practice: ProjectPractice, expectedRevision?: number): Promise<AdminProject | undefined> {
+  guard();
+  const { error } = await supabase.rpc("project_practice_save", {
+    p_project_id: id,
+    p_practice: practice as unknown as Json,
+    p_expected_revision: expectedRevision ?? null,
+  });
+  if (error) {
+    if (String(error.code ?? "") === "40001" || /changed elsewhere/i.test(error.message ?? "")) {
+      throw new Error(
+        `This job changed elsewhere while you were editing (${error.message ?? "revision conflict"}). Reload the workspace before saving again — your current edits are still on screen.`,
+      );
+    }
+    fail("saveProjectPractice", error);
+  }
+  return fetchProject(id);
+}
+/** Order → job link (candidate 00024). The server checks capability, existence and
+ *  the one-job-per-order rule; this wrapper only maps the RPC result. */
+async function linkProjectOrder(projectId: string, orderId: string): Promise<{ projectId: string; orderId: string; alreadyLinked: boolean }> {
+  guard();
+  const { data, error } = await supabase.rpc("project_link_order", { p_project_id: projectId, p_order_id: orderId });
+  if (error) {
+    if (String(error.code ?? "") === "23514" || String(error.code ?? "") === "P0002" || String(error.code ?? "") === "22023") {
+      throw new Error(error.message ?? "Could not link the order to this job.");
+    }
+    fail("linkProjectOrder", error);
+  }
+  const row = ((data ?? []) as Row[])[0] ?? {};
+  return { projectId: String(row.project_id ?? projectId), orderId: String(row.order_id ?? orderId), alreadyLinked: Boolean(row.already_linked) };
+}
+async function unlinkProjectOrder(projectId: string, reason?: string): Promise<{ projectId: string; previousOrderId: string }> {
+  guard();
+  const { data, error } = await supabase.rpc("project_unlink_order", { p_project_id: projectId, p_reason: reason ?? "" });
+  if (error) {
+    if (String(error.code ?? "") === "23514" || String(error.code ?? "") === "P0002" || String(error.code ?? "") === "22001") {
+      throw new Error(error.message ?? "Could not remove the order link.");
+    }
+    fail("unlinkProjectOrder", error);
+  }
+  const row = ((data ?? []) as Row[])[0] ?? {};
+  return { projectId: String(row.project_id ?? projectId), previousOrderId: String(row.previous_order_id ?? "") };
+}
+async function getOrderProduction(orderId: string): Promise<OrderProduction | undefined> {
+  guard();
+  const { data, error } = await supabase.rpc("order_project", { p_order_id: orderId });
+  if (error) {
+    // A missing projection function or an unauthorised read is not a page-breaking
+    // error: the orders screen simply shows "no production job".
+    if (String(error.code ?? "") === "42501" || String(error.code ?? "") === "42883" || /does not exist|schema cache/i.test(error.message ?? "")) return undefined;
+    fail("getOrderProduction", error);
+  }
+  const row = ((data ?? []) as Row[])[0];
+  if (!row) return undefined;
+  return {
+    projectId: String(row.project_id ?? ""),
+    orderId: String(row.order_id ?? orderId),
+    title: String(row.title ?? ""),
+    progress: Number(row.progress ?? 0),
+    qcResult: (row.qc_result ?? null) as OrderProduction["qcResult"],
+    dispatchVehicle: (row.dispatch_vehicle ?? null) as string | null,
+    dispatchDate: (row.dispatch_date ?? null) as string | null,
+    updatedAt: String(row.updated_at ?? ""),
+  };
+}
+/** Post-dispatch records + derived warranty state (candidate 00025). One RPC keeps
+ *  the state server-derived instead of recomputing rules in the UI. */
+async function getProjectPostDispatch(projectId: string): Promise<ProjectPostDispatch> {
+  guard();
+  const { data, error } = await supabase.rpc("project_post_dispatch", { p_project_id: projectId });
+  if (error) {
+    if (String(error.code ?? "") === "42883" || /does not exist|schema cache/i.test(error.message ?? "")) {
+      return { projectId, warrantyState: "none" };
+    }
+    fail("getProjectPostDispatch", error);
+  }
+  const r = ((data ?? []) as Row[])[0];
+  if (!r) return { projectId, warrantyState: "none" };
+  const iso = (v: unknown) => (v == null ? "" : String(v));
+  const delivery = r.delivery_id ? {
+    id: String(r.delivery_id), projectId, kind: "delivery" as const,
+    happenedOn: iso(r.delivery_on), lead: iso(r.delivery_lead), notes: iso(r.delivery_notes),
+    signedBy: iso(r.delivery_signed_by), createdAt: iso(r.delivery_created_at),
+  } : undefined;
+  const installation = r.installation_id ? {
+    id: String(r.installation_id), projectId, kind: "installation" as const,
+    happenedOn: iso(r.installation_on), lead: iso(r.installation_lead), notes: iso(r.installation_notes),
+    signedBy: iso(r.installation_signed_by), createdAt: iso(r.installation_created_at),
+  } : undefined;
+  const warranty = r.warranty_id ? {
+    id: String(r.warranty_id), projectId, months: Number(r.warranty_months ?? 0),
+    coverage: iso(r.warranty_coverage), exclusions: iso(r.warranty_exclusions),
+    startsOn: iso(r.warranty_starts_on), endsOn: iso(r.warranty_ends_on),
+    cancelledAt: r.warranty_cancelled_at ? iso(r.warranty_cancelled_at) : undefined,
+    cancelReason: iso(r.warranty_cancel_reason) || undefined,
+    createdAt: iso(r.warranty_created_at),
+  } : undefined;
+  return { projectId, delivery, installation, warranty, warrantyState: (r.warranty_state ?? "none") as ProjectPostDispatch["warrantyState"] };
+}
+async function recordProjectHandover(input: { projectId: string; kind: ProjectHandoverKind; happenedOn: string; lead?: string; notes?: string; signedBy?: string }): Promise<ProjectHandover> {
+  guard();
+  const { data, error } = await supabase.rpc("project_handover_record", {
+    p_project_id: input.projectId,
+    p_kind: input.kind,
+    p_happened_on: input.happenedOn,
+    p_lead: input.lead ?? "",
+    p_notes: input.notes ?? "",
+    p_signed_by: input.signedBy ?? "",
+  });
+  if (error) {
+    if (["23514", "23505", "22023", "22001", "P0002"].includes(String(error.code ?? ""))) throw new Error(error.message ?? "Could not record the handover.");
+    fail("recordProjectHandover", error);
+  }
+  const r = (data ?? {}) as Row;
+  return {
+    id: String(r.id ?? ""), projectId: input.projectId, kind: input.kind,
+    happenedOn: String(r.happened_on ?? input.happenedOn), lead: String(r.lead ?? ""),
+    notes: String(r.notes ?? ""), signedBy: String(r.signed_by ?? ""), createdAt: String(r.created_at ?? new Date().toISOString()),
+  };
+}
+async function openProjectWarranty(input: { projectId: string; months: number; coverage?: string; exclusions?: string }): Promise<ProjectWarranty> {
+  guard();
+  const { data, error } = await supabase.rpc("project_warranty_open", {
+    p_project_id: input.projectId, p_months: input.months,
+    p_coverage: input.coverage ?? "", p_exclusions: input.exclusions ?? "",
+  });
+  if (error) {
+    if (["23514", "23505", "22023", "22001", "P0002"].includes(String(error.code ?? ""))) throw new Error(error.message ?? "Could not open the warranty.");
+    fail("openProjectWarranty", error);
+  }
+  return warrantyFromRow(data as Row, input.projectId);
+}
+async function cancelProjectWarranty(input: { projectId: string; reason?: string }): Promise<ProjectWarranty> {
+  guard();
+  const { data, error } = await supabase.rpc("project_warranty_cancel", { p_project_id: input.projectId, p_reason: input.reason ?? "" });
+  if (error) {
+    if (["23514", "22001", "P0002"].includes(String(error.code ?? ""))) throw new Error(error.message ?? "Could not cancel the warranty.");
+    fail("cancelProjectWarranty", error);
+  }
+  return warrantyFromRow(data as Row, input.projectId);
+}
+function warrantyFromRow(r: Row, projectId: string): ProjectWarranty {
+  return {
+    id: String(r.id ?? ""), projectId, months: Number(r.months ?? 0),
+    coverage: String(r.coverage ?? ""), exclusions: String(r.exclusions ?? ""),
+    startsOn: String(r.starts_on ?? ""), endsOn: String(r.ends_on ?? ""),
+    cancelledAt: r.cancelled_at ? String(r.cancelled_at) : undefined,
+    cancelReason: r.cancel_reason ? String(r.cancel_reason) : undefined,
+    createdAt: String(r.created_at ?? new Date().toISOString()),
+  };
+}
+/** Warranty claims (candidate 00026). Listing reads the table under RLS; every
+ *  write goes through the RPCs so transitions and warranty liveness are enforced. */
+/** Warranty register (candidate 00027): one read-only projection, no client maths. */
+async function listWarrantyRegister(daysAhead = 60): Promise<WarrantyRegisterRow[]> {
+  guard();
+  const { data, error } = await supabase.rpc("project_warranty_register", { p_days_ahead: daysAhead });
+  if (error) {
+    if (String(error.code ?? "") === "42883" || /does not exist|schema cache/i.test(error.message ?? "")) return [];
+    if (String(error.code ?? "") === "22023") throw new Error(error.message ?? "Invalid reminder window.");
+    fail("listWarrantyRegister", error);
+  }
+  const iso = (v: unknown) => (v == null ? undefined : String(v));
+  return ((data ?? []) as Row[]).map((r) => ({
+    projectId: String(r.project_id ?? ""),
+    title: String(r.title ?? ""),
+    orderId: iso(r.order_id),
+    warrantyId: iso(r.warranty_id),
+    warrantyState: (r.warranty_state ?? "none") as WarrantyRegisterRow["warrantyState"],
+    startsOn: iso(r.warranty_starts_on),
+    endsOn: iso(r.warranty_ends_on),
+    daysLeft: r.days_left == null ? undefined : Number(r.days_left),
+    expiringSoon: Boolean(r.expiring_soon),
+    openClaims: Number(r.open_claims ?? 0),
+    totalClaims: Number(r.total_claims ?? 0),
+    deliveryOn: iso(r.delivery_on),
+    installationOn: iso(r.installation_on),
+    dispatchVehicle: iso(r.dispatch_vehicle),
+    updatedAt: String(r.updated_at ?? ""),
+  }));
+}
+async function listProjectWarrantyClaims(projectId: string): Promise<ProjectWarrantyClaim[]> {
+  guard();
+  const { data, error } = await supabase
+    .from("project_warranty_claims")
+    .select("id,project_id,warranty_id,summary,details,status,opened_on,resolution,closed_at,opened_by,created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    if (String(error.code ?? "") === "42P01" || String(error.code ?? "") === "42883") return [];
+    fail("listProjectWarrantyClaims", error);
+  }
+  return ((data ?? []) as Row[]).map(claimFromRow);
+}
+function claimFromRow(r: Row): ProjectWarrantyClaim {
+  return {
+    id: String(r.id ?? ""),
+    projectId: String(r.project_id ?? ""),
+    warrantyId: String(r.warranty_id ?? ""),
+    summary: String(r.summary ?? ""),
+    details: String(r.details ?? ""),
+    status: String(r.status ?? "open") as ProjectWarrantyClaim["status"],
+    openedOn: String(r.opened_on ?? ""),
+    resolution: String(r.resolution ?? ""),
+    closedAt: r.closed_at ? String(r.closed_at) : undefined,
+    openedBy: r.opened_by ? String(r.opened_by) : undefined,
+    createdAt: String(r.created_at ?? ""),
+  };
+}
+async function openProjectWarrantyClaim(input: { projectId: string; summary: string; details?: string; openedOn?: string }): Promise<ProjectWarrantyClaim> {
+  guard();
+  const { data, error } = await supabase.rpc("project_warranty_claim_open", {
+    p_project_id: input.projectId,
+    p_summary: input.summary,
+    p_details: input.details ?? "",
+    p_opened_on: input.openedOn ?? new Date().toISOString().slice(0, 10),
+  });
+  if (error) {
+    if (["23514", "22023", "22001", "P0002"].includes(String(error.code ?? ""))) throw new Error(error.message ?? "Could not open the claim.");
+    fail("openProjectWarrantyClaim", error);
+  }
+  return claimFromRow(data as Row);
+}
+async function updateProjectWarrantyClaim(input: { claimId: string; status: "scheduled" | "resolved" | "rejected"; resolution?: string }): Promise<ProjectWarrantyClaim> {
+  guard();
+  const { data, error } = await supabase.rpc("project_warranty_claim_update", {
+    p_claim_id: input.claimId,
+    p_status: input.status,
+    p_resolution: input.resolution ?? "",
+  });
+  if (error) {
+    if (["23514", "22023", "22001", "P0002"].includes(String(error.code ?? ""))) throw new Error(error.message ?? "Could not update the claim.");
+    fail("updateProjectWarrantyClaim", error);
+  }
+  return claimFromRow(data as Row);
+}
+async function listProjectQcInspections(projectId: string): Promise<ProjectQcInspection[]> {
+  guard();
+  const { data, error } = await supabase
+    .from("project_qc_inspections")
+    .select("id,project_id,result,notes,inspected_by_email,revision,created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  if (error) fail("listProjectQcInspections", error);
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: String(r.id),
+    projectId: String(r.project_id),
+    result: String(r.result) === "passed" ? "passed" : "failed",
+    notes: String(r.notes ?? ""),
+    inspectedByEmail: String(r.inspected_by_email ?? ""),
+    revision: toNum(r.revision, 0),
+    createdAt: String(r.created_at ?? ""),
+  }));
+}
+async function recordProjectQcInspection(input: { projectId: string; result: "passed" | "failed"; notes?: string }): Promise<{ inspection: ProjectQcInspection; project: AdminProject | undefined }> {
+  guard();
+  const { data, error } = await supabase.rpc("project_qc_record", {
+    p_project_id: input.projectId,
+    p_result: input.result,
+    p_notes: input.notes ?? "",
+  });
+  if (error) {
+    if (String(error.code ?? "") === "42501") throw new Error("You do not have permission to record a QC inspection.");
+    throw new Error(`Could not record the QC inspection — ${error.message ?? "unknown PostgREST error"}`);
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as Row | undefined;
+  if (!row) throw new Error("The inspection was not returned by the database — reload before retrying.");
+  const inspection: ProjectQcInspection = {
+    id: String(row.id),
+    projectId: String(row.project_id ?? input.projectId),
+    result: String(row.result) === "passed" ? "passed" : "failed",
+    notes: String(row.notes ?? ""),
+    inspectedByEmail: String(row.inspected_by_email ?? ""),
+    revision: toNum(row.revision, 0),
+    createdAt: String(row.created_at ?? ""),
+  };
+  return { inspection, project: await fetchProject(input.projectId) };
+}
+async function listProjectProductionEvents(projectId: string): Promise<ProjectProductionEvent[]> {
+  guard();
+  const { data, error } = await supabase
+    .from("project_production_events")
+    .select("id,project_id,action,revision,qc_result,dispatch_vehicle,created_at")
+    .eq("project_id", projectId)
+    .order("id", { ascending: false })
+    .limit(50);
+  if (error) fail("listProjectProductionEvents", error);
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: toNum(r.id, 0),
+    projectId: String(r.project_id),
+    action: String(r.action ?? ""),
+    revision: toNum(r.revision, 0),
+    qcResult: r.qc_result == null ? null : String(r.qc_result),
+    dispatchVehicle: r.dispatch_vehicle == null ? null : String(r.dispatch_vehicle),
+    createdAt: String(r.created_at ?? ""),
+  }));
 }
 async function setProjectActive(id: string, active: boolean): Promise<AdminProject | undefined> {
   return updateProject(id, { status: active ? "published" : "archived" } as unknown as Partial<NewProjectInput>);
@@ -3684,6 +4042,7 @@ async function adjustStock(input: { productId: string; type: StockMovementType; 
 }
 async function listStockMovements(params?: { productId?: string; limit?: number }): Promise<AdminStockMovement[]> {
   guard();
+  await requireProcurementRead();
   const limit = Math.max(1, Math.min(500, params?.limit ?? 50));
   let q = supabase.from("stock_movements").select("*").order("created_at", { ascending: false }).limit(limit);
   if (params?.productId) q = q.eq("product_id", params.productId);
@@ -3827,6 +4186,23 @@ async function getPage(idOrSlug: string): Promise<AdminPage | undefined> {
     .eq(isNum ? "id" : "slug", isNum ? Number(idOrSlug) : idOrSlug).maybeSingle();
   if (error) fail("getPage", error);
   return data ? loadPage(data as Row, true) : undefined;
+}
+
+/** Public preview reads only the immutable published snapshot, never draft rows. */
+export async function getPublishedPage(slug: string): Promise<AdminPage | undefined> {
+  guard();
+  const { data, error } = await supabase.rpc("published_page", { p_slug: slug });
+  if (error) fail("published_page", error);
+  if (!data) return undefined;
+  const snap = asObj(data);
+  const blocks = Array.isArray(snap.blocks) ? snap.blocks as Row[] : [];
+  const publishedAt = typeof snap.published_at === "string" ? snap.published_at : null;
+  return {
+    id: String(snap.id), slug: String(snap.slug), title: String(snap.title),
+    kind: snap.kind === "chrome" ? "chrome" : "page", folderId: null,
+    status: "published", doc: rowToDoc(snap, blocks), seo: rowToSeo(snap),
+    updatedAt: publishedAt ?? "", publishedAt, version: 1, history: [],
+  };
 }
 async function createPage(input: { title: string; slug?: string; starter?: string; kind?: AdminPage["kind"] }): Promise<AdminPage> {
   guard();
@@ -4115,6 +4491,21 @@ export const supabaseAdminApi: AdminApi = {
   listProjects,
   createProject,
   updateProject,
+  saveProjectPractice,
+  linkProjectOrder,
+  unlinkProjectOrder,
+  getOrderProduction,
+  getProjectPostDispatch,
+  recordProjectHandover,
+  openProjectWarranty,
+  cancelProjectWarranty,
+  listWarrantyRegister,
+  listProjectWarrantyClaims,
+  openProjectWarrantyClaim,
+  updateProjectWarrantyClaim,
+  listProjectQcInspections,
+  recordProjectQcInspection,
+  listProjectProductionEvents,
   setProjectActive,
   deleteProject,
   listProjectCostCodes,

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
+import { isSupabaseMode } from "@/config/env";
 import type { AdminProduct, AdminQuote, AdminQuoteTemplate, AdminQuoteVersion, PaymentMethod, QuoteStatus } from "@/api/types";
 import {
   formatPKR, formatDate, timeAgo, paymentLabel,
@@ -238,7 +239,7 @@ export default function AdminQuotes() {
     try {
       const order = await api.convertQuote(convertTarget.id, convertMethod);
       if (order) {
-        toast.success(`${convertTarget.id} converted → ${order.id} (${paymentLabel(order.paymentMethod)}). Stock deducts on dispatch as usual.`);
+        toast.success(`${convertTarget.id} converted → ${order.id} (${paymentLabel(order.paymentMethod)}).`);
         setConvertTarget(null);
         await load();
       } else {
@@ -406,9 +407,9 @@ export default function AdminQuotes() {
       </div>
 
       <p className="rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-[11px] leading-5 text-muted-foreground">
-        Quotes never touch stock or WhatsApp. Drafted from a B2B / quote lead (Leads → “Create quote”) or built from scratch —
+        Drafted from a B2B / quote lead (Leads → “Create quote”) or built from scratch —
         catalogue lines, free lines, discount % and validity. Converting creates a <span className="font-semibold text-foreground">pending order</span> via the
-        normal order path (channel: manual) and carries the discount onto the order; stock deducts on dispatch as usual.
+        normal order path (channel: manual) and carries the discount onto the order. Only accepted quotes can be converted. {isSupabaseMode ? "Supabase deducts stock for matched catalogue lines at conversion." : "In demo mode, stock deducts on dispatch."}
       </p>
 
       <SectionCard title="Quotes">
@@ -470,7 +471,7 @@ export default function AdminQuotes() {
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)} disabled={t.status === "converted"} aria-label={`Edit ${t.id}`} title={t.status === "converted" ? "Converted — locked" : "Edit quote"}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setConvertMethod("cod"); setConvertTarget(t); }} disabled={t.status === "converted"} aria-label={`Convert ${t.id} to order`} title="Convert to order">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setConvertMethod("cod"); setConvertTarget(t); }} disabled={t.status !== "accepted"} aria-label={`Convert ${t.id} to order`} title={t.status === "accepted" ? "Convert to order" : "Only accepted quotes can be converted"}>
                           <PackageCheck className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(t)} disabled={t.status === "converted"} aria-label={`Delete ${t.id}`} title="Delete quote">
@@ -808,8 +809,7 @@ export default function AdminQuotes() {
           <div className="space-y-3 py-1 text-sm">
             <p className="text-xs leading-5 text-muted-foreground">
               A <span className="font-semibold text-foreground">pending order</span> will be created via the normal order path
-              (channel: manual) — it appears in Orders immediately, the quote's discount carries onto the order, and stock
-              deducts on dispatch. The quote will be locked as converted.
+              (channel: manual) — it appears in Orders immediately, the quote's discount carries onto the order, and the quote will be locked as converted. {isSupabaseMode ? "Stock for matched catalogue lines is deducted now." : "In demo mode, stock deducts on dispatch."}
             </p>
             <div className="rounded-lg bg-secondary p-3 text-xs">
               <p className="font-semibold">{convertTarget?.customerName}{convertTarget?.company ? ` · ${convertTarget.company}` : ""} · {convertTarget?.items.length} line(s) · {formatPKR(convertTarget?.total ?? 0)}</p>

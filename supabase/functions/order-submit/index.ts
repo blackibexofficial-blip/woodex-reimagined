@@ -4,29 +4,35 @@
 //   POST { items: [{ productId, quantity }], name, email?, phone, address?, city,
 //          notes?, paymentMethod, channelId?, clientRef?, cfTurnstileToken? } ->
 //   200 { ok: true, order: <AdminOrder-shaped JSON> }
-//   400 on validation failure; 409 on insufficient stock; 429 rate-limit; 500 otherwise.
+//   400 on validation failure; 409 on insufficient stock; 413 for a body over
+//   64 KiB; 429 rate-limit; 500 otherwise.
 //
 // Prices and totals are computed INSIDE Postgres by public.order_submit
 // (catalog re-read, SELECT ... FOR UPDATE stock atomicity, client_ref replay
 // idempotency). Nothing sent by the client is trusted — including the
 // subtotal/total the browser may display for convenience.
 //
-// Anti-abuse: Turnstile challenge verified before any RPC when TURNSTILE_SECRET is
-// set (fail-open when unset, fail-closed 503 on siteverify transport errors), plus a
-// fixed-window caller-key limit inside the RPC (migration 0005). Global budgets
-// (WAF/Upstash) remain the owner's decision — see docs/08-master-plan/ANTI-ABUSE-DECISION.md. Anon may call this ONLY because the
-// RPC is self-verifying — PostgREST never exposes the orders tables for
-// direct writes.
+// Anti-abuse: INTAKE_ABUSE_MODE=strict requires TURNSTILE_SECRET; unset or legacy
+// mode preserves the old missing-secret fail-open behavior. Invalid modes fail
+// closed. Configured verification errors fail closed; a fixed-window caller-key
+// limit is inside the RPC (migration 0005). Global budgets
+// (WAF/Upstash) remain the owner's decision — see docs/08-master-plan/ANTI-ABUSE-DECISION.md.
+// Migration 0015 restricts order_submit RPC execution to service_role; browser
+// roles must use this function so the challenge and validation cannot be bypassed.
 //
 // NOT verified against a hosted project (no Supabase egress in the authoring
 // environment). EF logic = thin pass-through; correctness lives in the RPC
 // (rehearsed under pglite, 20261107000003).
 import { createClient } from "npm:@supabase/supabase-js@^2.57.4";
 import { verifyTurnstileToken } from "../_shared/turnstile.mjs";
+import { readIntakeJson } from "../_shared/intake-json.mjs";
+import { resolveIntakePolicy } from "../_shared/intake-policy.mjs";
+import { publicOrderReceipt } from "../_shared/order-response.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const TURNSTILE_SECRET = Deno.env.get("TURNSTILE_SECRET");
+const INTAKE_POLICY = resolveIntakePolicy(Deno.env.get("INTAKE_ABUSE_MODE"), TURNSTILE_SECRET);
 
 const json = (body: Record<string, unknown>, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -41,9 +47,14 @@ Deno.serve(async (req) => {
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
     return json({ error: "server is missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY" }, 500);
   }
+  if (!INTAKE_POLICY.ok) {
+    console.error("order-submit: intake security configuration unavailable");
+    return json({ error: "order intake temporarily unavailable — please try again later" }, 503);
+  }
 
-  let b: Record<string, unknown> = {};
-  try { b = await req.json(); } catch { return json({ error: "invalid JSON" }, 400); }
+  const payload = await readIntakeJson(req);
+  if (!payload.ok) return json({ error: payload.status === 413 ? "request too large" : "invalid JSON object" }, payload.status);
+  const b = payload.body;
 
   const items = Array.isArray(b.items)
     ? b.items
@@ -56,10 +67,9 @@ Deno.serve(async (req) => {
   if (items.length === 0) return json({ error: "at least one valid line is required" }, 400);
 
   // ---- Turnstile gate (anti-bot) ----
-  // Unconfigured (TURNSTILE_SECRET unset) -> fail OPEN with a log, same posture as the
-  // fixed-window limiter. Configured -> token REQUIRED and verified before any RPC;
-  // Cloudflare transport errors fail CLOSED (503) so a blip never waves bots through
-  // a cash-on-delivery checkout.
+  // The policy guard requires a nonblank secret in strict mode. Legacy mode
+  // deliberately preserves fail-open when the secret is unset; configured
+  // challenges and provider transport errors fail closed.
   if (!TURNSTILE_SECRET) {
     console.warn("order-submit: TURNSTILE_SECRET not set — challenge gate disabled (fail-open)");
   } else {
@@ -117,5 +127,12 @@ Deno.serve(async (req) => {
     console.error("order_submit rpc failed", msg);
     return json({ error: "could not create the order" }, 500);
   }
-  return json({ ok: true, order: data }, 200);
+  // The SQL replay result contains the original buyer's contact details.
+  // Never return those to the caller merely because it supplied a clientRef.
+  try {
+    return json({ ok: true, order: publicOrderReceipt(data) }, 200);
+  } catch {
+    console.error("order_submit returned an invalid receipt");
+    return json({ error: "could not create the order" }, 500);
+  }
 });

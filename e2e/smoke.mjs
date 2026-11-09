@@ -82,7 +82,7 @@ async function adminSuite(browser) {
   const analyticsText = await bodyText();
   ok(`analytics renders charts (${svgCount} recharts surfaces)`, svgCount >= 4);
   const lowerText = analyticsText.toLowerCase();
-  ok("analytics shows KPI strip", lowerText.includes("revenue (30d)") && lowerText.includes("cancellation rate"));
+  ok("analytics shows sampled KPI strip", lowerText.includes("order value in sample") && lowerText.includes("cancellation rate"));
   ok("analytics shows 30-day series labels", /Order volume/.test(analyticsText));
 
   await page.goto(`${ADMIN}/categories`, { waitUntil: "networkidle2", timeout: 60000 });
@@ -234,7 +234,7 @@ async function adminSuite(browser) {
   }
 
   await page.goto(`${ADMIN}/dashboard`, { waitUntil: "networkidle2", timeout: 60000 });
-  await waitText("Revenue — last 30 days", 20000);
+  await waitText("Order value — last 30 days", 20000);
   ok("dashboard still renders", true);
   // ── notification bell — present on every admin route; popover lists the four queues ──
   const bell = await page.waitForSelector('button[aria-haspopup="dialog"][aria-controls]', { timeout: 10000 }).catch(() => null);
@@ -387,8 +387,18 @@ async function adminSuite(browser) {
   ok("actuals tab opens with the seeded ledger lines (Walnut panelling · PO-1044)", actualsTabbed && actBody.includes("walnut panelling") && actBody.includes("po-1044"));
   ok("actuals grand total renders the seeded ledger spend (4,958,000)", actBody.includes("4,958,000"));
 
-  // /admin/products — redesigned catalog grid (KPI strip + full-page editor)
+  // The BOQ change above is intentionally unsaved; acknowledge the production
+  // workspace's unload warning instead of leaving the navigation hanging.
+  let workspaceUnloadWarning = false;
+  const handleWorkspaceUnload = async (dialog) => {
+    if (dialog.type() === "beforeunload") { workspaceUnloadWarning = true; await dialog.accept(); }
+    else await dialog.dismiss();
+  };
+  page.on("dialog", handleWorkspaceUnload);
   await page.goto(`${ADMIN}/products`, { waitUntil: "networkidle2", timeout: 60000 });
+  page.off("dialog", handleWorkspaceUnload);
+  ok("production workspace warns before discarding unsaved changes", workspaceUnloadWarning);
+  // /admin/products — redesigned catalog grid (KPI strip + full-page editor)
   await page.waitForFunction(() => document.body.innerText.toLowerCase().includes("avg. price"), { timeout: 15000 }).catch(() => {});
   const catBody = (await bodyText()).toLowerCase();
   ok("products catalog renders the KPI strip (avg. price · subcategories)", catBody.includes("avg. price") && catBody.includes("subcategories"));
@@ -434,7 +444,17 @@ async function adminSuite(browser) {
   await clickByText("button", "UI kit");
   await waitText("Divider line", 10000);
   ok("UI kit tab lists elements", true);
+  // The inserted block is intentionally unsaved. Accept the editor's unload warning
+  // so this smoke test can discard the synthetic edit and continue to the lab.
+  let unloadWarning = false;
+  const handleUnload = async (dialog) => {
+    if (dialog.type() === "beforeunload") { unloadWarning = true; await dialog.accept(); }
+    else await dialog.dismiss();
+  };
+  page.on("dialog", handleUnload);
   await page.goto(`${BASE}/lab/home`, { waitUntil: "networkidle2", timeout: 60000 });
+  page.off("dialog", handleUnload);
+  ok("editor warns before discarding an unsaved block", unloadWarning);
   await waitText("Design For Your Workspace", 15000);
   ok("/lab/home renders the built page", true);
   const labMeta = await page.evaluate(() => ({

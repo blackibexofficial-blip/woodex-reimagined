@@ -4,9 +4,11 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar,
 } from "recharts";
 import {
-  Banknote, ShoppingCart, Receipt, Clock3, ClipboardList, AlertTriangle, ArrowRight, CalendarDays, PackageX, Sigma, Inbox, Globe,
+  Banknote, ShoppingCart, Receipt, Clock3, ClipboardList, AlertTriangle, ArrowRight, PackageX, Sigma, Inbox, Globe,
 } from "lucide-react";
 import { getAdminApi } from "@/api";
+import { config, isDemoMode } from "@/config/env";
+import { Button } from "@/components/ui/button";
 import type { AdminOrder, AdminProduct, DashboardStats, RevenuePoint } from "@/api/types";
 import {
   formatPKR, formatNumber, formatDateTime, timeAgo, OrderStatusBadge, SectionCard, StatCard, SectionSkeleton,
@@ -18,13 +20,25 @@ export default function AdminDashboard() {
   const [series, setSeries] = useState<RevenuePoint[]>([]);
   const [recentOrders, setRecentOrders] = useState<AdminOrder[]>([]);
   const [lowStock, setLowStock] = useState<AdminProduct[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  const bagisto = config.apiMode === "bagisto";
+  const supabase = config.apiMode === "supabase";
 
   useEffect(() => {
     let alive = true;
+    setLoaded(false);
+    setError(false);
+    setStats(null);
+    setSeries([]);
+    setRecentOrders([]);
+    setLowStock([]);
     (async () => {
       const [s, rev, orders, productsRes] = await Promise.all([
         api.getDashboardStats(),
-        api.getRevenueSeries(30),
+        // Bagisto currently returns fabricated zero points; do not present them as data.
+        bagisto ? Promise.resolve([]) : api.getRevenueSeries(30),
         api.listOrders({ perPage: 6, page: 1 }),
         api.listProducts({ perPage: 50, page: 1 }),
       ]);
@@ -33,51 +47,61 @@ export default function AdminDashboard() {
       setSeries(rev);
       setRecentOrders(orders.items);
       setLowStock(productsRes.items.filter((p) => p.inStock && p.stock < 10).slice(0, 5));
-    })().catch(console.error);
+      setLoaded(true);
+    })().catch((e) => { console.error(e); if (alive) { setError(true); setLoaded(true); } });
     return () => { alive = false; };
-  }, [api]);
+  }, [api, bagisto, refresh]);
+
+  if (error) return <div role="alert" className="space-y-3"><p>Dashboard data is unavailable. No totals have been confirmed.</p><Button variant="outline" onClick={() => setRefresh((v) => v + 1)}>Try again</Button></div>;
+  const unavailable = bagisto ? "Unavailable" : "…";
 
   return (
     <div className="space-y-6">
+      <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+        <p className="font-semibold">{isDemoMode ? "Browser-local demo figures" : "Figures are preliminary and backend-dependent"}</p>
+        <p>Order values are not revenue or payments received. Amounts are formatted in PKR; verify the source currency. Data may be incomplete or unavailable. See Analytics for a bounded, date-filtered sample.</p>
+        {bagisto && <p>Bagisto order totals are based on at most one 100-order page; several signals and the trend are unavailable.</p>}
+        {supabase && <p>Supabase month-to-date totals include cancelled orders and may be limited by backend row limits. Its trend excludes cancelled orders.</p>}
+      </div>
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Revenue (MTD)" value={stats ? formatPKR(stats.revenueMtd) : "…"} sub={stats ? `${formatPKR(stats.revenueToday)} today` : undefined} icon={Banknote} tone="emerald" />
+        <StatCard label="Order value (MTD)" value={stats ? formatPKR(stats.revenueMtd) : "…"} sub={stats ? `${formatPKR(stats.revenueToday)} today · ${supabase ? "incl. cancelled" : "excl. cancelled"}` : undefined} icon={Banknote} tone="emerald" />
         <StatCard label="Orders (MTD)" value={stats ? formatNumber(stats.ordersMtd) : "…"} sub={stats ? `${stats.ordersToday} today` : undefined} icon={ShoppingCart} tone="blue" />
-        <StatCard label="Avg. order value" value={stats ? formatPKR(stats.averageOrderValue) : "…"} sub="month to date" icon={Receipt} tone="violet" />
-        <StatCard label="Pending fulfilment" value={stats ? String(stats.pendingOrders) : "…"} sub="pending + processing" icon={Clock3} tone="amber" />
+        <StatCard label="Avg. order value" value={stats ? formatPKR(stats.averageOrderValue) : "…"} sub={supabase ? "MTD · incl. cancelled" : "MTD · excl. cancelled"} icon={Receipt} tone="violet" />
+        <StatCard label="Open orders" value={stats ? String(stats.pendingOrders) : "…"} sub={supabase ? "excl. delivered, closed, cancelled" : "pending + processing"} icon={Clock3} tone="amber" />
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-2">
-        <StatCard label="New leads" value={stats ? String(stats.newLeads) : "…"} sub="quote + B2B awaiting contact" icon={ClipboardList} tone="blue" />
-        <StatCard label="Low stock" value={stats ? String(stats.lowStockProducts) : "…"} sub="in-stock items under 10 units" icon={AlertTriangle} tone="rose" />
+        <StatCard label={supabase ? "Leads created (7d)" : "New leads"} value={bagisto ? unavailable : stats ? String(stats.newLeads) : "…"} sub={supabase ? "all leads created in last 7 days" : bagisto ? "not supplied by this adapter" : "demo leads with new status"} icon={ClipboardList} tone="blue" />
+        <StatCard label="Low stock" value={bagisto ? unavailable : stats ? String(stats.lowStockProducts) : "…"} sub={supabase ? "per-product threshold" : bagisto ? "not supplied by this adapter" : "in-stock items under 10 units"} icon={AlertTriangle} tone="rose" />
       </div>
 
       {/* control center — legacy "ecommerce overview" (Backlog #2); same query as the KPI strip, zero extra RPCs */}
       <SectionCard
         title="Pipeline control center"
-        action={<Link to="/admin/analytics" className="inline-flex items-center gap-1 text-xs font-medium text-hon-green-dark hover:text-hon-green-dark">Full analytics <ArrowRight className="h-3.5 w-3.5" /></Link>}
+        action={<Link to="/admin/analytics" className="inline-flex items-center gap-1 text-xs font-medium text-hon-green-dark hover:text-hon-green-dark">Sample analytics <ArrowRight className="h-3.5 w-3.5" /></Link>}
       >
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
             {
               to: "/admin/quotes", label: "Open pipeline", icon: Sigma, tone: "text-violet-600",
-              value: stats ? formatNumber(stats.openQuotes) : "…",
-              sub: stats ? `${formatPKR(stats.pipelineValue)} across open quotes` : "pipeline value",
+              value: bagisto ? unavailable : stats ? formatNumber(stats.openQuotes) : "…",
+              sub: bagisto ? "not supplied by this adapter" : stats ? `${formatPKR(stats.pipelineValue)} across open quotes` : "pipeline value",
             },
             {
               to: "/admin/invoices", label: "Outstanding invoices", icon: Receipt, tone: "text-amber-600",
-              value: stats ? formatNumber(stats.outstandingInvoices) : "…",
-              sub: "Issued + Partially paid — finance partner required to post",
+              value: bagisto ? unavailable : stats ? formatNumber(stats.outstandingInvoices) : "…",
+              sub: bagisto ? "not supplied by this adapter" : "Issued + Partially paid · count, not amount",
             },
             {
               to: "/admin/returns", label: "Needs attention", icon: Inbox, tone: "text-rose-600",
-              value: stats ? formatNumber(stats.overdueReturns) : "…",
-              sub: stats ? `returns awaiting handling · ${stats.newLeads} new leads to call` : "returns + leads aging",
+              value: bagisto ? unavailable : stats ? formatNumber(stats.overdueReturns) : "…",
+              sub: bagisto ? "not supplied by this adapter" : "requested returns · not an ageing calculation",
             },
             {
-              to: "/admin/pages", label: "Storefront pages live", icon: Globe, tone: "text-emerald-600",
-              value: stats ? formatNumber(stats.publishedPages) : "…",
-              sub: "pages with a published snapshot",
+              to: "/admin/pages", label: "Published page records", icon: Globe, tone: "text-emerald-600",
+              value: bagisto ? unavailable : stats ? formatNumber(stats.publishedPages) : "…",
+              sub: bagisto ? "not supplied by this adapter" : supabase ? "pages with a stored published snapshot" : "demo pages with published status",
             },
           ].map(({ to, label, icon: Icon, tone, value, sub }) => (
             <Link
@@ -98,12 +122,16 @@ export default function AdminDashboard() {
 
       {/* revenue chart */}
       <SectionCard
-        title="Revenue — last 30 days"
+        title="Order value — last 30 days"
         action={<Link to="/admin/orders" className="inline-flex items-center gap-1 text-xs font-medium text-hon-green-dark hover:text-hon-green-dark">All orders <ArrowRight className="h-3.5 w-3.5" /></Link>}
       >
         <div className="h-64 w-full">
-          {series.length === 0 ? (
+          {bagisto ? (
+            <p className="p-4 text-sm text-muted-foreground">Trend unavailable for this adapter; zero-filled placeholder data is not shown.</p>
+          ) : !loaded ? (
             <SectionSkeleton rows={4} />
+          ) : series.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">No trend data returned.</p>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
@@ -120,7 +148,7 @@ export default function AdminDashboard() {
                 <Tooltip
                   cursor={{ stroke: "#629924" }}
                   contentStyle={{ borderRadius: 12, border: "1px solid #E0E0E0", fontSize: 12 }}
-                  formatter={(value: number, name: string) => [name === "revenue" ? formatPKR(value) : formatNumber(value), name === "revenue" ? "Revenue" : "Orders"]}
+                  formatter={(value: number, name: string) => [name === "revenue" ? formatPKR(value) : formatNumber(value), name === "revenue" ? "Order value" : "Orders"]}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#629924" strokeWidth={2.5} fill="url(#rev)" name="revenue" />
               </AreaChart>
@@ -136,7 +164,7 @@ export default function AdminDashboard() {
           className="xl:col-span-3"
           action={<Link to="/admin/orders" className="inline-flex items-center gap-1 text-xs font-medium text-hon-green-dark hover:text-hon-green-dark">View all <ArrowRight className="h-3.5 w-3.5" /></Link>}
         >
-          {recentOrders.length === 0 ? <SectionSkeleton /> : (
+          {!loaded ? <SectionSkeleton /> : recentOrders.length === 0 ? <p className="py-6 text-sm text-muted-foreground">No orders returned.</p> : (
             <div className="overflow-x-auto -mx-5 -mb-5">
               <table className="w-full text-sm">
                 <thead>
@@ -173,10 +201,10 @@ export default function AdminDashboard() {
           className="xl:col-span-2"
           action={<Link to="/admin/products" className="inline-flex items-center gap-1 text-xs font-medium text-hon-green-dark hover:text-hon-green-dark">All products <ArrowRight className="h-3.5 w-3.5" /></Link>}
         >
-          {lowStock.length === 0 ? (
+          {!loaded ? <SectionSkeleton /> : lowStock.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8 text-center">
               <PackageX className="h-7 w-7 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Everything is comfortably stocked. 🎉</p>
+              <p className="text-sm text-muted-foreground">No matching low-stock items in the first 50 products returned.</p>
             </div>
           ) : (
             <ul className="divide-y divide-muted">
@@ -194,9 +222,7 @@ export default function AdminDashboard() {
               ))}
             </ul>
           )}
-          <div className="mt-4 flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 text-[11px] text-muted-foreground">
-            <CalendarDays className="h-4 w-4 shrink-0" /> Reorder from the factory on TPL Sheikh Zayed Rd — lead time 7–14 days.
-          </div>
+          <p className="mt-4 text-xs text-muted-foreground">Sample: first 50 returned products, in stock and below 10 units; at most five shown. Thresholds can differ from the KPI.</p>
         </SectionCard>
       </div>
     </div>

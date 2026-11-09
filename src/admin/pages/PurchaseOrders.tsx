@@ -34,6 +34,7 @@ export default function AdminPurchaseOrders() {
   const [items, setItems] = useState<AdminPurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<AdminSupplier[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PurchaseOrderStatus | "all">("all");
 
@@ -77,8 +78,11 @@ export default function AdminPurchaseOrders() {
       ]);
       setItems(res.items);
       setSuppliers(sup);
-    } catch {
-      toast.error("Could not load purchase orders.");
+      setLoadError(null);
+    } catch (error) {
+      setItems([]);
+      setSuppliers([]);
+      setLoadError(error instanceof Error ? error.message : "Could not load purchase orders.");
     } finally {
       setLoading(false);
     }
@@ -288,6 +292,8 @@ export default function AdminPurchaseOrders() {
       <SectionCard title="Purchase Orders">
         {loading ? (
           <SectionSkeleton />
+        ) : loadError ? (
+          <p role="alert" className="p-4 text-sm text-destructive">{loadError}</p>
         ) : items.length === 0 ? (
           <EmptyState
             icon={PackagePlus}

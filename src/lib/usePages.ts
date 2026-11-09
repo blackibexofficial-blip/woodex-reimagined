@@ -5,6 +5,8 @@
  */
 import { useEffect, useState } from "react";
 import { getAdminApi } from "@/api";
+import { isSupabaseMode } from "@/config/env";
+import { getPublishedPage } from "@/api/supabase";
 import type { AdminPage } from "@/api/types";
 
 export function usePagePreview(slug: string | undefined): { page: AdminPage | null; ready: boolean } {
@@ -23,8 +25,10 @@ export function usePagePreview(slug: string | undefined): { page: AdminPage | nu
     }
     getAdminApi()
       .getPage(slug)
-      .then((doc) => {
-        if (on) setPage(doc ?? null);
+      .then(async (doc) => {
+        // Editors may preview drafts; everyone else receives the published snapshot only.
+        const result = doc ?? (isSupabaseMode ? await getPublishedPage(slug) : undefined);
+        if (on) setPage(result ?? null);
       })
       .catch(() => {
         if (on) setPage(null); // demo seed absent / bagisto 501 — treated as "no page"

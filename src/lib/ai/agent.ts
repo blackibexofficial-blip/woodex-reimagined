@@ -11,8 +11,9 @@
  *
  *   ONLINE (opt-in, owner action) — `supabase/functions/ai-agent` accepts the
  *   retrieved snippets as `grounding` and asks an OpenAI-compatible model to
- *   phrase them. It stays dark until `AI_AGENT_API_KEY` is set on the
- *   function. This module never calls the network; ChatInbox sets the draft
+ *   phrase them. Its client-supplied facts are NOT trusted server grounding;
+ *   hosted use should remain disabled pending grounding, rate and privacy controls.
+ *   This module never calls the network; ChatInbox sets the draft
  *   into the composer for a human to review and send.
  *
  * Hard rules (mirrors docs/08-master-plan/MASTER-TODO.md):

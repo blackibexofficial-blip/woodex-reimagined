@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getAdminApi } from "@/api";
 import type { AdminPriceList } from "@/api/types";
 import {
@@ -31,8 +31,16 @@ export interface CartItem {
 export const cartLineKey = (i: Pick<CartItem, "id" | "color" | "variantKey">): string =>
   i.variantKey ?? `${i.id}::${i.color ?? ""}`;
 
+interface CartSnapshot {
+  serialized: string;
+  revision: number;
+}
+
 interface CartContextType {
   items: CartItem[];
+  snapshotCart: () => CartSnapshot;
+  isCartSnapshotCurrent: (snapshot: CartSnapshot) => boolean;
+  clearCartIfUnchanged: (snapshot: CartSnapshot) => void;
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
   removeItem: (lineKey: string) => void;
   updateQuantity: (lineKey: string, quantity: number) => void;
@@ -64,6 +72,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return [];
     }
   });
+  // Increment before scheduling edits so even same-tick edits invalidate a checkout snapshot.
+  const revision = useRef(0);
   const [isOpen, setIsOpen] = useState(false);
   const [tradeSession, setTradeSession] = useState<TradeSession | null>(() => readTradeSession());
   const [priceLists, setPriceLists] = useState<AdminPriceList[]>([]);
@@ -112,6 +122,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const addItem = useCallback((item: Omit<CartItem, "quantity"> & { quantity?: number }) => {
+    revision.current++;
     setItems((prev) => {
       const key = cartLineKey(item);
       const existing = prev.find((i) => cartLineKey(i) === key);
@@ -126,10 +137,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const removeItem = useCallback((key: string) => {
+    revision.current++;
     setItems((prev) => prev.filter((i) => cartLineKey(i) !== key));
   }, []);
 
   const updateQuantity = useCallback((key: string, quantity: number) => {
+    revision.current++;
     if (quantity <= 0) {
       setItems((prev) => prev.filter((i) => cartLineKey(i) !== key));
     } else {
@@ -140,8 +153,32 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const clearCart = useCallback(() => {
+    revision.current++;
     setItems([]);
   }, []);
+
+  // Associate the version with this rendered item array, not a possibly newer
+  // queued edit, so an edit followed immediately by submit fails the check.
+  const renderedSnapshot = useMemo((): CartSnapshot => ({
+    serialized: JSON.stringify(items),
+    revision: revision.current,
+  }), [items]);
+  const snapshotCart = useCallback((): CartSnapshot => renderedSnapshot, [renderedSnapshot]);
+
+  const isCartSnapshotCurrent = useCallback((snapshot: CartSnapshot): boolean => {
+    if (revision.current !== snapshot.revision) return false;
+    // Another tab may have written a different cart. Fail conservatively if
+    // storage is unavailable or differs. This is not an atomic cross-tab lock.
+    try { return localStorage.getItem("woodex-cart") === snapshot.serialized; }
+    catch { return false; }
+  }, []);
+
+  const clearCartIfUnchanged = useCallback((snapshot: CartSnapshot) => {
+    setItems((current) => {
+      if (JSON.stringify(current) !== snapshot.serialized || !isCartSnapshotCurrent(snapshot)) return current;
+      return [];
+    });
+  }, [isCartSnapshotCurrent]);
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = items.reduce((sum, i) => sum + effectiveUnitPrice(i) * i.quantity, 0);
@@ -150,7 +187,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, retailTotal, tradeSavings, tradeSession, refreshTradeLists, signInTrade, signOutTrade, effectiveUnitPrice, tradeDiscountFor, isOpen, setIsOpen }}
+      value={{ items, addItem, removeItem, updateQuantity, clearCart, snapshotCart, isCartSnapshotCurrent, clearCartIfUnchanged, totalItems, totalPrice, retailTotal, tradeSavings, tradeSession, refreshTradeLists, signInTrade, signOutTrade, effectiveUnitPrice, tradeDiscountFor, isOpen, setIsOpen }}
     >
       {children}
     </CartContext.Provider>

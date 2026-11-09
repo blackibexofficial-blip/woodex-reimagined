@@ -1,3 +1,4 @@
+import { safeBuilderHref } from "./safe-url";
 /**
  * WOODEX Puck block registry (Wave 2).
  *
@@ -118,11 +119,11 @@ const legacyBlocks: Config["components"] = {
         <div className="container mx-auto px-4 pb-14 text-center">
           {variant === "outline" ? (
             <Button variant="outline" className="px-8" asChild>
-              <a href={String(href || "#")}>{String(label)}</a>
+              <a href={safeBuilderHref(String(href || "#"))}>{String(label)}</a>
             </Button>
           ) : (
             <Button className="bg-accent px-8 text-accent-foreground hover:bg-hon-green-dark" asChild>
-              <a href={String(href || "#")}>{String(label)}</a>
+              <a href={safeBuilderHref(String(href || "#"))}>{String(label)}</a>
             </Button>
           )}
         </div>
