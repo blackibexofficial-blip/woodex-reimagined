@@ -60,7 +60,7 @@ export default function AdminQuotePrint() {
                 This quotation expired on {formatDate(quote.validUntil)} — request a refreshed quotation.
               </div>
             )}
-            <QuoteA4Sheet quote={quote} tDoc={tDoc} vars={vars} storeLogo={settings?.storeLogo} />
+            <QuoteA4Sheet quote={quote} tDoc={tDoc} vars={vars} storeLogo={settings?.storeLogo ?? undefined} />
           </>
         )}
       </A4Shell>

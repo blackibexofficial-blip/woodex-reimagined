@@ -8,7 +8,7 @@
  * order path deliberately has no discount control because NewOrderInput
  * cannot carry one; the invoice path issues through a quote, which can.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Loader2, Minus, Plus, Search, Trash2, ChevronRight } from "lucide-react";
 import { getAdminApi } from "@/api";
@@ -69,10 +69,12 @@ interface Props {
   submitNote: string;
   backTo: string;
   backLabel: string;
+  submitWarning?: ReactNode;
+  submitBlocked?: boolean;
   onSubmit: (payload: SaleDocumentPayload) => Promise<void>;
 }
 
-export default function SaleDocumentForm({ mode, title, subtitle, submitLabel, submitNote, backTo, backLabel, onSubmit }: Props) {
+export default function SaleDocumentForm({ mode, title, subtitle, submitLabel, submitNote, backTo, backLabel, submitWarning, submitBlocked = false, onSubmit }: Props) {
   const api = useMemo(() => getAdminApi(), []);
   const navigate = useNavigate();
 
@@ -87,6 +89,7 @@ export default function SaleDocumentForm({ mode, title, subtitle, submitLabel, s
   const [shipping, setShipping] = useState("0");
   const [discountPct, setDiscountPct] = useState("0");
   const [busy, setBusy] = useState(false);
+  const submitLock = useRef(false);
 
   /* catalogue picker */
   const [catQuery, setCatQuery] = useState("");
@@ -157,7 +160,7 @@ export default function SaleDocumentForm({ mode, title, subtitle, submitLabel, s
   const removeLine = (index: number) => setLines((prev) => prev.filter((_, i) => i !== index));
 
   const submit = async () => {
-    if (busy) return;
+    if (submitLock.current || submitBlocked) return;
     if (!name.trim() || !phone.trim() || !city.trim()) {
       toast.error("Customer name, phone and city are required.");
       return;
@@ -170,6 +173,7 @@ export default function SaleDocumentForm({ mode, title, subtitle, submitLabel, s
       toast.error("Document total must be greater than zero.");
       return;
     }
+    submitLock.current = true;
     setBusy(true);
     try {
       await onSubmit({
@@ -187,6 +191,7 @@ export default function SaleDocumentForm({ mode, title, subtitle, submitLabel, s
         discountPct: discountPctNum,
       });
     } finally {
+      submitLock.current = false;
       setBusy(false);
     }
   };
@@ -371,7 +376,8 @@ export default function SaleDocumentForm({ mode, title, subtitle, submitLabel, s
               </div>
             </div>
             <div className="border-t px-5 py-4">
-              <Button onClick={submit} disabled={busy} className="h-11 w-full bg-hon-green-dark text-sm font-bold text-white hover:bg-hon-green-dark">
+              {submitWarning}
+              <Button onClick={submit} disabled={busy || submitBlocked} className="h-11 w-full bg-hon-green-dark text-sm font-bold text-white hover:bg-hon-green-dark">
                 {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {submitLabel}
                 {!busy && <ChevronRight className="ml-1 h-4 w-4" />}
