@@ -194,7 +194,7 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
   };
 
   /* BOQ */
-  const addBoqRow = () => touch((d) => { d.boq.push({ id: uid(), section: d.boq.at(-1)?.section ?? "General", item: "", qty: 1, unit: "sqft", rate: 0 }); });
+  const addBoqRow = () => touch((d) => { d.boq.push({ id: uid(), section: d.boq[d.boq.length - 1]?.section ?? "General", item: "", qty: 1, unit: "sqft", rate: 0 }); });
   const setBoq = (id: string, patch: Partial<ProjectBoqRow>) => touch((d) => { Object.assign(d.boq.find((r) => r.id === id) ?? {}, patch); });
   const removeBoq = (id: string) => touch((d) => { d.boq = d.boq.filter((r) => r.id !== id); });
   const boqBySection = useMemo(() => {
