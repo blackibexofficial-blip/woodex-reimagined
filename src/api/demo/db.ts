@@ -3927,11 +3927,15 @@ export const demoAdminApi: AdminApi = {
     return created;
   },
 
-  async updateProject(id, patch) {
+  async updateProject(id, patch, expectedRevision) {
     let updated: AdminProject | undefined;
     update((db) => {
       const proj = (db.projects ??= []).find((x) => x.id === id);
       if (!proj) return;
+      // Mirrors 00034: the caller saves against the revision it read.
+      if (expectedRevision !== undefined && (proj.revision ?? 0) !== expectedRevision) {
+        throw new Error(`This project changed elsewhere (revision ${proj.revision ?? 0}, your copy ${expectedRevision}). Reload before saving.`);
+      }
       if (patch.title !== undefined) proj.title = patch.title.trim() || proj.title;
       if (patch.client !== undefined) proj.client = patch.client.trim();
       if (patch.category !== undefined) proj.category = patch.category.trim();
@@ -4402,24 +4406,31 @@ export const demoAdminApi: AdminApi = {
       .map((e) => ({ ...e }));
   },
 
-  async setProjectActive(id, active) {
+  async setProjectActive(id, active, expectedRevision) {
     let updated: AdminProject | undefined;
     update((db) => {
       const proj = (db.projects ??= []).find((x) => x.id === id);
       if (!proj) return;
+      if (expectedRevision !== undefined && (proj.revision ?? 0) !== expectedRevision) {
+        throw new Error(`This project changed elsewhere (revision ${proj.revision ?? 0}, your copy ${expectedRevision}). Reload before saving.`);
+      }
       proj.active = active;
+      proj.revision = (proj.revision ?? 0) + 1;
       proj.updatedAt = new Date().toISOString();
       updated = { ...proj, furnitureUsed: [...proj.furnitureUsed], testimonial: proj.testimonial ? { ...proj.testimonial } : undefined };
     });
     return updated;
   },
 
-  async deleteProject(id) {
+  async deleteProject(id, expectedRevision) {
     let ok = false;
     update((db) => {
       const arr = (db.projects ??= []);
       const i = arr.findIndex((x) => x.id === id);
       if (i === -1) return;
+      if (expectedRevision !== undefined && (arr[i].revision ?? 0) !== expectedRevision) {
+        throw new Error(`This project changed elsewhere (revision ${arr[i].revision ?? 0}, your copy ${expectedRevision}). Reload the list before deleting.`);
+      }
       arr.splice(i, 1);
       // relational ledger rows cascade with the job (mirrors migration 0013 ON DELETE CASCADE)
       db.costCodes = (db.costCodes ?? []).filter((c) => c.projectId !== id);

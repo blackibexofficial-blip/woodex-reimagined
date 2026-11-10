@@ -25,7 +25,9 @@ try {
     create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text,owner text,created_at timestamptz default now(),updated_at timestamptz default now(),metadata jsonb);
     alter table storage.objects enable row level security;`);
   const dir=path.join(root,'supabase/migrations'), candidate='20261108000021_project_dispatch_qc_guard.sql';
-  for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.sql')&&f!==candidate&&!f.startsWith('20261108000022')&&!f.startsWith('20261108000023')).sort()) await db.exec(fs.readFileSync(path.join(dir,f),'utf8'));
+  // 00022/00023 build the revision + shape layer this suite deliberately omits, and
+  // 00034 (the revision guard) needs 00022's `revision` column to exist.
+  for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.sql')&&f!==candidate&&!f.startsWith('20261108000022')&&!f.startsWith('20261108000023')&&!f.startsWith('20261108000034')).sort()) await db.exec(fs.readFileSync(path.join(dir,f),'utf8'));
   const legacy={title:'Legacy',practice:{production:{qc:{result:'pending'},dispatch:{vehicle:'OLD-VEHICLE'},stages:[]}}};
   await q("insert into public.projects(id,status,payload) values ('legacy','draft',$1::jsonb)",[JSON.stringify(legacy)]);
   await db.exec(fs.readFileSync(path.join(dir,candidate),'utf8'));
