@@ -1929,6 +1929,8 @@ export interface AdminPage {
   seo?: AdminPageSeo;
   updatedAt: string;
   publishedAt: string | null;
+  /** Optimistic-concurrency token (00035): pass it back when saving or publishing. */
+  revision?: number;
   version: number;
   history: AdminPageHistoryEntry[];
 }
@@ -2199,9 +2201,10 @@ export interface AdminApi {
   listPages(kind?: "page" | "chrome"): Promise<AdminPage[]>;
   getPage(idOrSlug: string): Promise<AdminPage | undefined>;
   createPage(input: NewPageInput): Promise<AdminPage>;
-  updatePage(id: string, patch: UpdatePageInput): Promise<AdminPage | undefined>;
-  publishPage(id: string): Promise<AdminPage | undefined>;
-  unpublishPage(id: string): Promise<AdminPage | undefined>;
+  /** Pass the revision you loaded so a stale tab cannot overwrite a colleague. */
+  updatePage(id: string, patch: UpdatePageInput, expectedRevision?: number): Promise<AdminPage | undefined>;
+  publishPage(id: string, expectedRevision?: number): Promise<AdminPage | undefined>;
+  unpublishPage(id: string, expectedRevision?: number): Promise<AdminPage | undefined>;
   duplicatePage(id: string): Promise<AdminPage | undefined>;
   deletePage(id: string): Promise<boolean>;
   revertPage(id: string, version: number): Promise<AdminPage | undefined>;

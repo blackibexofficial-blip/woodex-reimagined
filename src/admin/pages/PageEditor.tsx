@@ -96,7 +96,9 @@ export default function AdminPageEditor() {
     const revision = editRevision.current;
     setSaving(true);
     try {
-      const updated = await api.updatePage(page.id, { title, doc, seo });
+      // Send the revision this editor loaded (00035): a colleague's newer save is
+      // refused with a conflict instead of being overwritten.
+      const updated = await api.updatePage(page.id, { title, doc, seo }, page.revision);
       if (!updated) { toast.error("Could not save the draft."); return false; }
       setPage(updated);
       if (editRevision.current !== revision) {
@@ -174,7 +176,9 @@ export default function AdminPageEditor() {
     try {
       if (dirty && !(await saveSnapshot())) return;
       const revision = editRevision.current;
-      const updated = publish ? await api.publishPage(page.id) : await api.unpublishPage(page.id);
+      const updated = publish
+        ? await api.publishPage(page.id, page.revision)
+        : await api.unpublishPage(page.id, page.revision);
       if (!updated) { toast.error("Publish failed."); return; }
       setPage(updated);
       if (editRevision.current === revision) {

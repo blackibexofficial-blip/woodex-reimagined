@@ -4286,6 +4286,7 @@ const loadPage = async (r: Row, withHistory: boolean): Promise<AdminPage> => {
     seo: rowToSeo(r),
     updatedAt: r.updated_at,
     publishedAt: r.published_at ?? null,
+    revision: r.revision == null ? 0 : Number(r.revision),
     version: Math.max(toNum(r.version_latest), versions[0]?.version ? toNum(versions[0].version) : 1),
     history: withHistory ? pageHistory(versions) : [],
   };
@@ -4342,7 +4343,7 @@ async function createPage(input: { title: string; slug?: string; starter?: strin
   });
   return loadPage(data as Row, true);
 }
-async function updatePage(id: string, patch: { title?: string; slug?: string; folderId?: string | null; doc?: AdminPageDoc; seo?: AdminPageSeo }): Promise<AdminPage | undefined> {
+async function updatePage(id: string, patch: { title?: string; slug?: string; folderId?: string | null; doc?: AdminPageDoc; seo?: AdminPageSeo }, expectedRevision?: number): Promise<AdminPage | undefined> {
   guard();
   if (patch.folderId !== undefined) {
     isNotWired("updatePage.folderId", "page folders have no table in the converged schema (Wave 4 folder tree).");
@@ -4365,24 +4366,48 @@ async function updatePage(id: string, patch: { title?: string; slug?: string; fo
     p_theme: (theme ?? asObj(null)) as Json,
     p_blocks: (blocks ?? cur.doc.content) as unknown as Json,
     p_seo: (seo ?? {}) as unknown as Json,
+    ...(expectedRevision == null ? {} : { p_expected_revision: expectedRevision }),
   });
-  if (e2) fail("page_save", e2);
+  if (e2) {
+    if (String(e2.code ?? "") === "40001") {
+      throw new Error(
+        `This page changed elsewhere while you were editing (${e2.message ?? "revision conflict"}). Reload the editor before saving — your changes are still on screen.`,
+      );
+    }
+    fail("page_save", e2);
+  }
   return getPage(cur.id);
 }
-async function publishPage(id: string): Promise<AdminPage | undefined> {
+/** Publish also carries the token (00035): a stale tab cannot publish a draft it
+ *  never read. */
+async function publishPage(id: string, expectedRevision?: number): Promise<AdminPage | undefined> {
   guard();
   const cur = await getPage(id);
   if (!cur) return undefined;
-  const { error } = await supabase.rpc("page_publish", { p_id: Number(cur.id), p_publish: true });
-  if (error) fail("page_publish", error);
+  const { error } = await supabase.rpc("page_publish", {
+    p_id: Number(cur.id),
+    p_publish: true,
+    ...(expectedRevision == null ? {} : { p_expected_revision: expectedRevision }),
+  });
+  if (error) {
+    if (String(error.code ?? "") === "40001") throw new Error(`This page changed elsewhere (${error.message ?? "revision conflict"}). Reload before publishing.`);
+    fail("page_publish", error);
+  }
   return getPage(cur.id);
 }
-async function unpublishPage(id: string): Promise<AdminPage | undefined> {
+async function unpublishPage(id: string, expectedRevision?: number): Promise<AdminPage | undefined> {
   guard();
   const cur = await getPage(id);
   if (!cur) return undefined;
-  const { error } = await supabase.rpc("page_publish", { p_id: Number(cur.id), p_publish: false });
-  if (error) fail("page_publish(unpublish)", error);
+  const { error } = await supabase.rpc("page_publish", {
+    p_id: Number(cur.id),
+    p_publish: false,
+    ...(expectedRevision == null ? {} : { p_expected_revision: expectedRevision }),
+  });
+  if (error) {
+    if (String(error.code ?? "") === "40001") throw new Error(`This page changed elsewhere (${error.message ?? "revision conflict"}). Reload before unpublishing.`);
+    fail("page_publish(unpublish)", error);
+  }
   return getPage(cur.id);
 }
 async function duplicatePage(id: string): Promise<AdminPage | undefined> {
