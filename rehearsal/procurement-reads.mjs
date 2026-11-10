@@ -50,7 +50,7 @@ try {
   }
   await db.exec(`insert into public.products(id,payload,price,stock_qty) values ('proc-test-product','{"name":"Synthetic"}',100,10);
     insert into public.suppliers(id,name,payload) values ('proc-supplier','Synthetic supplier','{"privateNote":"internal"}');
-    insert into public.purchase_orders(id,supplier_id,items,total,notes) values ('proc-po','proc-supplier','[]',200,'synthetic cost');
+    insert into public.purchase_orders(id,supplier_id,items,total,notes) values ('proc-po','proc-supplier','[{"name":"Synthetic board","qty":2,"unitCost":100}]'::jsonb,200,'synthetic cost');
     insert into public.stock_movements(product_id,delta,reason,note) values ('proc-test-product',1,'inbound','synthetic movement');`);
   const tables = ['suppliers','purchase_orders','stock_movements'];
   for (let i = 0; i < roleNames.length; i++) {

@@ -2469,6 +2469,35 @@ const rowToPO = (r: Row): AdminPurchaseOrder => {
     ...(r.received_at ? { receivedAt: r.received_at } : {}),
   };
 };
+/* The receipt ledger (00032) is the source of truth for what actually arrived.
+   Lines also carry a legacy `receivedQuantity`, so take the larger of the two
+   rather than double-counting after the migration is applied. */
+type ReceiptLedgerLine = { line?: number; qty?: number };
+async function receiptTotals(poIds: string[]): Promise<Map<string, number[]>> {
+  const totals = new Map<string, number[]>();
+  const ids = [...new Set(poIds.filter(Boolean))];
+  if (!ids.length) return totals;
+  const { data, error } = await supabase.from("purchase_order_receipts").select("po_id, lines").in("po_id", ids);
+  if (error) return totals;            // ledger not deployed yet: stored values stand
+  for (const row of (data ?? []) as Array<{ po_id: string; lines: unknown }>) {
+    const sums = totals.get(String(row.po_id)) ?? [];
+    for (const line of (Array.isArray(row.lines) ? row.lines : []) as ReceiptLedgerLine[]) {
+      const idx = Number(line?.line);
+      const qty = toNum(line?.qty);
+      if (!Number.isFinite(idx) || idx < 0 || qty <= 0) continue;
+      sums[idx] = (sums[idx] ?? 0) + qty;
+    }
+    totals.set(String(row.po_id), sums);
+  }
+  return totals;
+}
+function applyReceiptTotals(po: AdminPurchaseOrder, sums: number[] | undefined): AdminPurchaseOrder {
+  if (!sums || !sums.length) return po;
+  return {
+    ...po,
+    lines: po.lines.map((l, i) => ({ ...l, receivedQuantity: Math.max(toNum(l.receivedQuantity), sums[i] ?? 0) })),
+  };
+}
 const poLinesInput = (lines: NewPurchaseOrderLineInput[]): AdminPurchaseOrder["lines"] =>
   lines.map((l, i) => ({
     id: `line-${Date.now()}-${i}`,
@@ -2492,14 +2521,18 @@ async function listPurchaseOrders(params?: ListParams & { status?: AdminPurchase
   if (q) rows = rows.filter((r) => String(r.id).toLowerCase().includes(q) || String(r.supplier?.name ?? "").toLowerCase().includes(q));
   if (params?.status && params.status !== "all") rows = rows.filter((r) => String(r.status) === PO_STATUS_DB[params.status!]);
   const total = rows.length;
-  return pagenate(rows.slice((page - 1) * perPage, page * perPage).map(rowToPO), total, page, perPage);
+  const pageRows = rows.slice((page - 1) * perPage, page * perPage);
+  const sums = await receiptTotals(pageRows.map((r) => String(r.id)));
+  return pagenate(pageRows.map((r) => applyReceiptTotals(rowToPO(r), sums.get(String(r.id)))), total, page, perPage);
 }
 async function getPurchaseOrder(id: string): Promise<AdminPurchaseOrder | undefined> {
   guard();
   await requireProcurementRead();
   const { data, error } = await supabase.from("purchase_orders").select("*, supplier:suppliers(name)").eq("id", id).maybeSingle();
   if (error) fail("getPurchaseOrder", error);
-  return data ? rowToPO({ ...(data as unknown as Row), supplier_name: (data as unknown as Row).supplier?.name }) : undefined;
+  if (!data) return undefined;
+  const po = rowToPO({ ...(data as unknown as Row), supplier_name: (data as unknown as Row).supplier?.name });
+  return applyReceiptTotals(po, (await receiptTotals([po.id])).get(po.id));
 }
 async function createPurchaseOrder(input: NewPurchaseOrderInput): Promise<AdminPurchaseOrder> {
   guard();
@@ -2541,41 +2574,41 @@ async function updatePurchaseOrder(id: string, patch: AdminPurchaseOrderPatch): 
 }
 async function setPurchaseOrderStatus(id: string, status: PurchaseOrderStatus): Promise<AdminPurchaseOrder | undefined> {
   guard();
+  // Cancelling carries a reason and refuses an order that has already taken
+  // goods; every other transition is a plain status write.
+  if (status === "cancelled") {
+    const { error } = await supabase.rpc("purchase_order_cancel", {
+      p_po_id: id,
+      p_reason: "Cancelled from the purchase orders screen",
+    });
+    if (error) fail("setPurchaseOrderStatus", error);
+    return getPurchaseOrder(id);
+  }
   const { error } = await supabase.from("purchase_orders").update({ status: PO_STATUS_DB[status] }).eq("id", id);
   if (error) fail("setPurchaseOrderStatus", error);
   return getPurchaseOrder(id);
 }
+/* Receiving is one RPC (00032): it locks the purchase order, refuses
+   over-receipt, writes the receipt ledger, raises `grn` stock movements and
+   sets Partial/Received. The old client-side loop read-modify-wrote `items`
+   and asked for the reason `po_receipt`, which the stock_movements CHECK
+   constraint rejects — so on Supabase this path used to fail on the first
+   product line. */
 async function receivePurchaseOrder(id: string, receipts: PurchaseOrderReceipt[]): Promise<AdminPurchaseOrder | undefined> {
   guard();
   const po = await getPurchaseOrder(id);
   if (!po) return undefined;
-  const lines = po.lines.map((l) => ({ ...l }));
-  for (const receipt of receipts ?? []) {
-    const line = lines.find((l) => l.id === receipt.lineId);
-    if (!line) continue;
-    const room = Math.max(0, line.quantity - line.receivedQuantity);
-    const take = Math.min(room, Math.max(0, Math.round(toNum(receipt.quantity))));
-    if (take <= 0) continue;
-    line.receivedQuantity += take;
-    if (line.productId) {
-      const { error } = await supabase.rpc("inventory_apply", {
-        p_product_id: line.productId,
-        p_delta: take,
-        p_reason: "po_receipt",
-        p_note: `PO ${id}`,
-      });
-      if (error) throw new Error(`Supabase: stock receipt for ${line.productId} failed — PO ${id} stays unposted for that line: ${error.message}`);
-    }
-  }
-  const allReceived = lines.every((l) => l.receivedQuantity >= l.quantity);
-  const anyReceived = lines.some((l) => l.receivedQuantity > 0);
-  const nextStatus = allReceived ? "Received" : anyReceived ? "Partial" : PO_STATUS_DB[po.status];
-  const { error: e2 } = await supabase.from("purchase_orders").update({
-    items: lines as unknown as Json,
-    status: nextStatus,
-    ...(allReceived ? { received_at: new Date().toISOString() } : {}),
-  }).eq("id", id);
-  if (e2) fail("receivePurchaseOrder", e2);
+  const wanted = (receipts ?? []).flatMap((r) => {
+    const index = po.lines.findIndex((l) => l.id === r.lineId);
+    const qty = Math.max(0, Math.round(toNum(r.quantity)));
+    return index >= 0 && qty > 0 ? [{ line: index, qty }] : [];
+  });
+  const { error } = await supabase.rpc("purchase_order_receive", {
+    p_po_id: po.id,
+    p_lines: wanted.length ? (wanted as unknown as Json) : null,
+    p_note: null,
+  });
+  if (error) fail("receivePurchaseOrder", error);
   return getPurchaseOrder(id);
 }
 async function deletePurchaseOrder(id: string): Promise<boolean> {

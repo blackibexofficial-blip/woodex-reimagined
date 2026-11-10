@@ -1218,6 +1218,33 @@ export type Database = {
           }
         ]
       }
+      purchase_order_receipts: {
+        Row: {
+          id: number
+          po_id: string
+          lines: Json
+          note: string | null
+          received_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          po_id: string
+          lines?: Json
+          note?: string | null
+          received_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          po_id?: string
+          lines?: Json
+          note?: string | null
+          received_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       purchase_orders: {
         Row: {
           id: string
@@ -2108,6 +2135,27 @@ export type Database = {
         Returns: Database['public']['Tables']['invoices']['Row']
       }
       // Hand-added for local migrations 00030/00031; regenerate against staging before deployment.
+      // Hand-added for local migration 00032 (goods receiving).
+      purchase_order_receive: {
+        Args: { p_po_id: string; p_lines?: Json | null; p_note?: string | null }
+        Returns: Database['public']['Tables']['purchase_orders']['Row']
+      }
+      purchase_order_cancel: {
+        Args: { p_po_id: string; p_reason: string }
+        Returns: Database['public']['Tables']['purchase_orders']['Row']
+      }
+      purchase_order_lines: {
+        Args: { p_po_id: string }
+        Returns: {
+          line_index: number
+          label: string
+          product_id: string | null
+          qty: number
+          unit_cost: number
+          received: number
+          remaining: number
+        }[]
+      }
       invoice_from_order: {
         Args: { p_order_id: number }
         Returns: Database['public']['Tables']['invoices']['Row']
