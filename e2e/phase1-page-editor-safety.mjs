@@ -86,6 +86,22 @@ try {
   await page.waitForFunction(()=>!window.testHold);
   await page.waitForFunction(()=>document.body.textContent.includes('newer editor changes remain unsaved'));
   check('edits made during publish remain unsaved, not silently cleared', (await stored()).status === 'published' && (await stored()).title === 'Change during publish save' && await page.$eval('input[aria-label="Page title"]', el=>el.value)==='Edited while publishing' && await page.evaluate(()=>document.body.textContent.includes('unsaved changes')));
+  // Server-side page revisions (M6 CMS-002, migration 00035): demo parity for the
+  // stale-save and stale-publish refusals the editor now surfaces.
+  const revisionChecks = await page.evaluate(async () => {
+    const api = (await import('/src/api/demo/db.ts')).demoAdminApi;
+    const pg = await api.createPage({ title: 'Revision page', starter: 'blank' });
+    const first = await api.updatePage(pg.id, { title: 'Revision page v2' }, pg.revision ?? 0);
+    const conflict = async (fn) => { try { await fn(); return ''; } catch (e) { return e instanceof Error ? e.message : String(e); } };
+    const staleSave = await conflict(() => api.updatePage(pg.id, { title: 'Stale page' }, pg.revision ?? 0));
+    const stalePublish = await conflict(() => api.publishPage(pg.id, pg.revision ?? 0));
+    const fresh = await api.getPage(pg.id);
+    return { firstRevision: first?.revision, staleSave, stalePublish, titleNow: fresh?.title };
+  });
+  check('a page save bumps the revision', revisionChecks.firstRevision === 1);
+  check('a stale page save is refused instead of overwriting', /changed elsewhere/i.test(revisionChecks.staleSave));
+  check('a stale publish is refused', /changed elsewhere/i.test(revisionChecks.stalePublish));
+  check('the refused writes left the newer title in place', revisionChecks.titleNow === 'Revision page v2');
   check('no uncaught browser errors',errors.length===0); if(errors.length) console.error(errors);
   console.log(`Page editor safety: ${passed} passed, ${failed} failed (demo, synthetic fixtures)`); if(failed)process.exitCode=1;
 } catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();}

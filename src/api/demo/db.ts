@@ -3608,6 +3608,7 @@ export const demoAdminApi: AdminApi = {
         seo: {},
         updatedAt: new Date().toISOString(),
         publishedAt: null,
+        revision: 0,
         version: 1,
         history: [],
       };
@@ -3616,13 +3617,17 @@ export const demoAdminApi: AdminApi = {
     return clonePage(created);
   },
 
-  async updatePage(id, patch) {
+  async updatePage(id, patch, expectedRevision) {
     const rows = loadDb().pages ?? [];
     const existing = rows.find((pg) => pg.id === id);
     if (!existing) return undefined;
     let updated!: AdminPage;
     update((db) => {
       const target = db.pages.find((pg) => pg.id === id)!;
+      // Mirrors 00035: the editor saves against the revision it read.
+      if (expectedRevision !== undefined && (target.revision ?? 0) !== expectedRevision) {
+        throw new Error(`This page changed elsewhere (revision ${target.revision ?? 0}, your copy ${expectedRevision}). Reload the editor before saving.`);
+      }
       const nextSlug = patch.slug !== undefined ? uniquePageSlug(db.pages, slugifyPage(patch.slug), target.id) : target.slug;
       const nextFolderId =
         patch.folderId !== undefined
@@ -3637,6 +3642,7 @@ export const demoAdminApi: AdminApi = {
         folderId: nextFolderId,
         ...(patch.doc !== undefined ? { doc: cloneDoc(patch.doc) } : {}),
         ...(patch.seo !== undefined ? { seo: { ...target.seo, ...patch.seo } } : {}),
+        revision: (target.revision ?? 0) + 1,
         updatedAt: new Date().toISOString(),
       };
       db.pages = db.pages.map((pg) => (pg.id === id ? updated : pg));
@@ -3644,11 +3650,14 @@ export const demoAdminApi: AdminApi = {
     return clonePage(updated);
   },
 
-  async publishPage(id) {
+  async publishPage(id, expectedRevision) {
     let updated: AdminPage | undefined;
     update((db) => {
       const target = db.pages.find((pg) => pg.id === id);
       if (!target) return;
+      if (expectedRevision !== undefined && (target.revision ?? 0) !== expectedRevision) {
+        throw new Error(`This page changed elsewhere (revision ${target.revision ?? 0}, your copy ${expectedRevision}). Reload before publishing.`);
+      }
       const now = new Date().toISOString();
       const version = (target.version ?? 1) + 1;
       const entry = { version, publishedAt: now, slug: target.slug, title: target.title, doc: cloneDoc(target.doc), seo: cloneDoc(target.seo ?? {}) };
@@ -3657,6 +3666,7 @@ export const demoAdminApi: AdminApi = {
         status: "published",
         publishedAt: now,
         updatedAt: now,
+        revision: (target.revision ?? 0) + 1,
         version,
         history: [entry, ...(target.history ?? [])].slice(0, 20),
       };
@@ -3665,12 +3675,15 @@ export const demoAdminApi: AdminApi = {
     return updated ? clonePage(updated) : undefined;
   },
 
-  async unpublishPage(id) {
+  async unpublishPage(id, expectedRevision) {
     let updated: AdminPage | undefined;
     update((db) => {
       const target = db.pages.find((pg) => pg.id === id);
       if (!target) return;
-      updated = { ...target, status: "draft", updatedAt: new Date().toISOString() };
+      if (expectedRevision !== undefined && (target.revision ?? 0) !== expectedRevision) {
+        throw new Error(`This page changed elsewhere (revision ${target.revision ?? 0}, your copy ${expectedRevision}). Reload before unpublishing.`);
+      }
+      updated = { ...target, status: "draft", revision: (target.revision ?? 0) + 1, updatedAt: new Date().toISOString() };
       db.pages = db.pages.map((pg) => (pg.id === id ? updated! : pg));
     });
     return updated ? clonePage(updated) : undefined;

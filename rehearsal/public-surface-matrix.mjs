@@ -58,6 +58,8 @@ const ROLE_DENIED = new Set([
   'internal_stock_move',
   // 00034 trigger: keeps a client from stamping its own project revision.
   'enforce_project_revision',
+  // 00035 trigger: same for the CMS page token.
+  'stamp_page_revision',
 ]);
 
 const GUARD = /has_cap\s*\(|require_cap\s*\(|has_role\s*\(|auth\.uid\s*\(\s*\)|is_owner/i;
