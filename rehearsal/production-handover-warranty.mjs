@@ -152,7 +152,14 @@ try {
   const beforeProjects = await scalar("select count(*) from public.projects");
   // 00026 depends on warranties, so its objects go first when rehearsing this
   // migration's rollback in a database that already has the claims layer.
-  await db.exec(`drop function if exists public.project_warranty_claim_update(uuid, text, text);
+  // 00033 layers a richer update/assign/register on top of these objects.
+  await db.exec(`drop function if exists public.project_warranty_register(integer);
+    drop function if exists public.project_warranty_claim_assign(uuid, uuid);
+    drop function if exists public.project_warranty_claim_update(uuid, text, text, numeric, text, jsonb);
+    drop function if exists public.internal_stock_move(text, integer, text, text);
+    drop function if exists public.project_warranty_open(text, integer, text, text, integer);
+    drop function if exists public.project_post_dispatch(text);
+    drop function if exists public.project_warranty_claim_update(uuid, text, text);
     drop function if exists public.project_warranty_claim_open(text, text, text, date);
     drop table if exists public.project_warranty_claims;
     drop function if exists public.project_post_dispatch(text);

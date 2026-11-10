@@ -54,6 +54,8 @@ const ROLE_DENIED = new Set([
   'assign_invoice_ref', 'enforce_invoice_money', 'invoice_paid_from_payments', 'sync_invoice_totals',
   // 00032 trigger: keeps purchase order totals honest.
   'enforce_purchase_order_totals',
+  // 00033 internal helper: the stock writer behind definer warranty RPCs.
+  'internal_stock_move',
 ]);
 
 const GUARD = /has_cap\s*\(|require_cap\s*\(|has_role\s*\(|auth\.uid\s*\(\s*\)|is_owner/i;

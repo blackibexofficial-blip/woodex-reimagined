@@ -1368,6 +1368,8 @@ export interface ProjectWarranty {
   /** YYYY-MM-DD — the installation date, not the day it was typed. */
   startsOn: string;
   endsOn: string;
+  /** Calendar days a claim may stay open before it counts as a breach (1–90). */
+  slaDays?: number;
   cancelledAt?: string;
   cancelReason?: string;
   createdAt: string;
@@ -1386,6 +1388,12 @@ export interface WarrantyRegisterRow {
   expiringSoon: boolean;
   openClaims: number;
   totalClaims: number;
+  /** Open claims already past their promised date (00033). */
+  slaBreached?: number;
+  /** Earliest deadline among the open claims. */
+  nextClaimDue?: string;
+  /** Email of the seat owning the soonest open claim. */
+  assignedTo?: string;
   deliveryOn?: string;
   installationOn?: string;
   dispatchVehicle?: string;
@@ -1393,6 +1401,8 @@ export interface WarrantyRegisterRow {
 }
 
 export type ProjectWarrantyClaimStatus = "open" | "scheduled" | "resolved" | "rejected";
+/** How a claim was settled (migration 00033). A replacement moves stock. */
+export type ProjectWarrantyResolutionKind = "repair" | "replacement" | "refund" | "goodwill" | "none";
 export interface ProjectWarrantyClaim {
   id: string;
   projectId: string;
@@ -1402,10 +1412,24 @@ export interface ProjectWarrantyClaim {
   status: ProjectWarrantyClaimStatus;
   /** YYYY-MM-DD; never future, never before the warranty start. */
   openedOn: string;
+  /** Promised date stamped from the warranty SLA when the claim was opened. */
+  dueOn?: string;
+  /** PKR spent settling the claim (0 until it is resolved). */
+  cost: number;
+  resolutionKind?: ProjectWarrantyResolutionKind;
+  /** Staff seat that owns the claim. */
+  assignedTo?: string;
   resolution: string;
   closedAt?: string;
   openedBy?: string;
   createdAt: string;
+}
+/** A staff seat that can own work (migration 00033). */
+export interface StaffSeat {
+  userId: string;
+  email: string;
+  role: string;
+  name: string;
 }
 
 /** What happened after dispatch, plus the derived warranty state (never typed). */
@@ -2208,14 +2232,27 @@ export interface AdminApi {
   /** Delivery/installation records and the warranty (candidate 00025). */
   getProjectPostDispatch(projectId: string): Promise<ProjectPostDispatch>;
   recordProjectHandover(input: { projectId: string; kind: ProjectHandoverKind; happenedOn: string; lead?: string; notes?: string; signedBy?: string }): Promise<ProjectHandover>;
-  openProjectWarranty(input: { projectId: string; months: number; coverage?: string; exclusions?: string }): Promise<ProjectWarranty>;
+  openProjectWarranty(input: { projectId: string; months: number; coverage?: string; exclusions?: string; /** Claim deadline promise in calendar days (1–90, default 7). */ slaDays?: number }): Promise<ProjectWarranty>;
   cancelProjectWarranty(input: { projectId: string; reason?: string }): Promise<ProjectWarranty>;
   /** Warranty claims (candidate 00026) — only against a live warranty. */
   listProjectWarrantyClaims(projectId: string): Promise<ProjectWarrantyClaim[]>;
   /** Warranty register: jobs with a warranty or a claim, derived state and counts. */
   listWarrantyRegister(daysAhead?: number): Promise<WarrantyRegisterRow[]>;
   openProjectWarrantyClaim(input: { projectId: string; summary: string; details?: string; openedOn?: string }): Promise<ProjectWarrantyClaim>;
-  updateProjectWarrantyClaim(input: { claimId: string; status: "scheduled" | "resolved" | "rejected"; resolution?: string }): Promise<ProjectWarrantyClaim>;
+  updateProjectWarrantyClaim(input: {
+    claimId: string;
+    status: "scheduled" | "resolved" | "rejected";
+    resolution?: string;
+    /** Settled cost in PKR; requires a resolution kind and a resolved claim. */
+    cost?: number;
+    resolutionKind?: ProjectWarrantyResolutionKind;
+    /** Stock replacement; only with resolutionKind = "replacement". */
+    replacement?: { productId: string; qty: number };
+  }): Promise<ProjectWarrantyClaim>;
+  /** Give the claim a real owner (a seat in user_roles). */
+  assignProjectWarrantyClaim(input: { claimId: string; userId: string }): Promise<ProjectWarrantyClaim>;
+  /** Staff seats available to own a claim. */
+  listStaffSeats(role?: string): Promise<StaffSeat[]>;
   listProjectQcInspections(projectId: string): Promise<ProjectQcInspection[]>;
   /** Records an identity-stamped inspection and derives the job's QC result. */
   recordProjectQcInspection(input: { projectId: string; result: "passed" | "failed"; notes?: string }): Promise<{ inspection: ProjectQcInspection; project: AdminProject | undefined }>;
