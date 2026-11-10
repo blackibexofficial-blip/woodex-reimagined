@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, Eye, History, Loader2, MessageCircle, Phone, Plus, Printer, Save, ShieldCheck, ShoppingCart, Undo2 } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Download, Eye, History, Loader2, MessageCircle, Phone, Plus, Printer, Receipt, Save, ShieldCheck, ShoppingCart, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
 import type { AdminOrder, AdminOrderEvent, OrderStatus, OrderProduction } from "@/api/types";
@@ -67,6 +67,7 @@ export default function AdminOrders() {
   const [production, setProduction] = useState<OrderProduction | null>(null);
   const [productionLoading, setProductionLoading] = useState(false);
   const [startingJob, setStartingJob] = useState(false);
+  const [raisingInvoice, setRaisingInvoice] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query), 250);
@@ -112,6 +113,23 @@ export default function AdminOrders() {
   }, [selected?.id, api]);
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+
+  /* Raise the bill for a finished job. The RPC is idempotent: an order that
+     already has an active invoice returns that invoice instead of a second one. */
+  const raiseInvoice = async (order: AdminOrder) => {
+    if (raisingInvoice) return;
+    setRaisingInvoice(true);
+    try {
+      const invoice = await api.createInvoiceFromOrder(order.id);
+      toast.success(`Invoice ${invoice.ref ?? invoice.id} raised for ${order.id}`);
+      setSelected(null);
+      navigate("/admin/invoices");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not raise the invoice for this order.");
+    } finally {
+      setRaisingInvoice(false);
+    }
+  };
 
   const changeStatus = async (order: AdminOrder, next: OrderStatus) => {
     setSavingStatus(true);
@@ -428,6 +446,18 @@ export default function AdminOrders() {
             </div>
           )}
           <DialogFooter>
+            {selected && (
+              <Button
+                variant="outline"
+                className="border-emerald-300 text-emerald-900 hover:bg-emerald-50"
+                onClick={() => void raiseInvoice(selected)}
+                disabled={raisingInvoice}
+                title="Raise the invoice for this job (finance)"
+              >
+                {raisingInvoice ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Receipt className="mr-1.5 h-4 w-4" />}
+                {raisingInvoice ? "Raising…" : "Raise invoice"}
+              </Button>
+            )}
             {selected?.status === "delivered" && (
               <>
                 <Button variant="outline" asChild className="border-amber-300 text-amber-900 hover:bg-amber-50">

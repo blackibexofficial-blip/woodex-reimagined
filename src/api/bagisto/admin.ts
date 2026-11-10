@@ -485,6 +485,9 @@ export const bagistoAdminApi: AdminApi = {
   async recordInvoicePayment(): Promise<AdminInvoice | undefined> {
     throw new BagistoApiError(501, "Invoice payment recording is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
   },
+  async createInvoiceFromOrder(): Promise<AdminInvoice> {
+    throw new BagistoApiError(501, "Order→invoice issuing is not wired for Bagisto yet. Use VITE_API_MODE=demo.");
+  },
   async listSiteVisits(): Promise<AdminSiteVisit[]> {
     throw new BagistoApiError(501, "Site visits are not wired for Bagisto yet. Use VITE_API_MODE=demo.");
   },

@@ -1932,6 +1932,19 @@ async function convertQuoteToInvoice(quoteId: string): Promise<AdminInvoice> {
   return rowToAdminInvoice(row as Row);
 }
 
+/* Order → invoice. The RPC builds the invoice to match the order total (the
+   residual rides as tax) and returns the existing invoice if one is already
+   active, so a double click cannot raise two bills. */
+async function createInvoiceFromOrder(orderId: string): Promise<AdminInvoice> {
+  guard();
+  const num = parseOrderId(orderId);
+  const { data, error } = await supabase.rpc("invoice_from_order", { p_order_id: num });
+  if (error) fail("createInvoiceFromOrder", error);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error("invoice_from_order returned nothing.");
+  return rowToAdminInvoice(row as Row);
+}
+
 async function recordInvoicePayment(invoiceId: string, input: NewInvoicePaymentInput): Promise<AdminInvoice | undefined> {
   guard();
   const num = parseInvoiceId(invoiceId);
@@ -4371,6 +4384,8 @@ export const supabaseAdminApi: AdminApi = {
   getInvoice,
   listInvoicePayments,
   convertQuoteToInvoice,
+
+  createInvoiceFromOrder,
   recordInvoicePayment,
   listTasks,
   createTask,
