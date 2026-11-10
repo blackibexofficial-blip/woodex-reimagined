@@ -55,7 +55,7 @@ try {
     catch (e) { throw new Error(`${file}: ${e.message}`); }
   }
   await q('insert into auth.users(id,email) values ($1,$2),($3,$4),($5,$6)', [editor, 'qa.editor@example.test', inspector, 'qa.inspector@example.test', viewer, 'qa.viewer@example.test']);
-  await q("insert into public.user_roles(user_id,role) values ($1,'editor'),($2,'editor'),($3,'viewer')", [editor, inspector, viewer]);
+  await q("insert into public.user_roles(user_id,role) values ($1,'editor'),($2,'owner'),($3,'viewer')", [editor, inspector, viewer]);
 
   const mk = async (id) => q('insert into public.projects(id,status,payload) values ($1,$2,$3::jsonb)', [id, 'draft', JSON.stringify({
     title: id.toUpperCase(), practice: { boq: [], milestones: [], files: [], production: { stages, qc: pending, dispatch: noDispatch } },

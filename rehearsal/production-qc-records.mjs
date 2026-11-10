@@ -32,6 +32,8 @@ const editor = '11111111-1111-1111-1111-111111111111';
 const sales = '33333333-3333-3333-3333-333333333333';
 const viewer = '22222222-2222-2222-2222-222222222222';
 const inspector = '44444444-4444-4444-4444-444444444444';
+const owner = '55555555-5555-5555-5555-555555555555';
+const owner2 = '66666666-6666-6666-6666-666666666666';
 const blankStages = [
   { id: 's1', stage: 'material_prep', pct: 100, note: '' },
   { id: 's2', stage: 'fabrication', pct: 60, note: 'CNC booked' },
@@ -59,11 +61,11 @@ try {
     catch (e) { throw new Error(`${file}: ${e.message}`); }
   }
 
-  await q('insert into auth.users(id,email) values ($1,$2),($3,$4),($5,$6),($7,$8)', [
+  await q('insert into auth.users(id,email) values ($1,$2),($3,$4),($5,$6),($7,$8),($9,$10),($11,$12)', [
     editor, 'qa.editor@example.test', sales, 'qa.sales@example.test', viewer, 'qa.viewer@example.test',
-    inspector, 'qa.inspector@example.test',
+    inspector, 'qa.inspector@example.test', owner, 'qa.owner@example.test', owner2, 'qa.owner2@example.test',
   ]);
-  await q("insert into public.user_roles(user_id,role) values ($1,'editor'),($2,'sales'),($3,'viewer'),($4,'editor')", [editor, sales, viewer, inspector]);
+  await q("insert into public.user_roles(user_id,role) values ($1,'editor'),($2,'sales'),($3,'viewer'),($4,'editor'),($5,'owner'),($6,'owner')", [editor, sales, viewer, inspector, owner, owner2]);
   await q("insert into public.projects(id,status,payload) values ('job-a','draft',$1::jsonb)", [
     JSON.stringify({ title: 'Synthetic job A', practice: practiceWith({ result: 'pending', defectNote: '', inspectedBy: '', inspectedAt: '' }) }),
   ]);
@@ -109,8 +111,13 @@ try {
   check('stale revision is rejected instead of overwriting', staleCode === '40001');
   check('stale rejection leaves the stored payload intact', await scalar("select payload#>>'{practice,production,stages,1,note}' from public.projects where id='job-a'") === 'CNC booked');
 
-  // ── separation of duties ──────────────────────────────────────────────────
-  // The editor moves a stage, so they become the last stage editor.
+  // ── owners only may pass (D-04) ──────────────────────────────────────────
+  const editorPass = await errorCode(() => q("select * from public.project_qc_record('job-a','passed','editor tries to sign off')"));
+  check('an editor cannot record a QC pass', editorPass === '42501');
+  const editorFail = await errorCode(() => q("select * from public.project_qc_record('job-a','failed','editor flags a defect')"));
+  check('an editor may still record a failure', editorFail === null);
+
+  // ── separation of duties (applies to owners too) ─────────────────────────
   const editedStages = blankStages.map((st) => st.stage === 'fabrication' ? { ...st, pct: 75 } : { ...st });
   const revBeforeStageEdit = Number(await scalar("select revision from public.projects where id='job-a'"));
   await q("select * from public.project_practice_save('job-a',$1::jsonb,$2)", [JSON.stringify(practiceWith({ result: 'pending' }, blankDispatch, editedStages)), revBeforeStageEdit]);
@@ -118,47 +125,50 @@ try {
     await scalar("select production_updated_by::text from public.projects where id='job-a'") === editor);
   const inspectionsBeforeSelfPass = Number(await scalar("select count(*) from public.project_qc_inspections where project_id='job-a'"));
   const revBeforeSelfPass = Number(await scalar("select revision from public.projects where id='job-a'"));
-  const selfPass = await errorCode(() => q("select * from public.project_qc_record('job-a','passed','my own work')"));
-  check('the last stage editor cannot record the pass', selfPass === '42501');
-  check('the refused self-pass stores nothing and keeps QC pending',
+  const qcBeforeSelfPass = await scalar("select payload#>>'{practice,production,qc,result}' from public.projects where id='job-a'");
+  const editorSelfPass = await errorCode(() => q("select * from public.project_qc_record('job-a','passed','my own work')"));
+  check('the last stage editor cannot record the pass', editorSelfPass === '42501');
+  check('the refused self-pass stores nothing and leaves the stored QC alone',
     Number(await scalar("select count(*) from public.project_qc_inspections where project_id='job-a'")) === inspectionsBeforeSelfPass &&
-    await scalar("select payload#>>'{practice,production,qc,result}' from public.projects where id='job-a'") === 'pending' &&
+    await scalar("select payload#>>'{practice,production,qc,result}' from public.projects where id='job-a'") === qcBeforeSelfPass &&
     Number(await scalar("select revision from public.projects where id='job-a'")) === revBeforeSelfPass);
-  const selfFail = await errorCode(() => q("select * from public.project_qc_record('job-a','failed','my own defect')"));
-  check('the last stage editor may still record a failure', selfFail === null);
-  check('a failure keeps the editor flagged as the stage editor',
-    await scalar("select production_updated_by::text from public.projects where id='job-a'") === editor);
 
-  await role('authenticated', inspector);
-  const independentPass = await errorCode(() => q("select * from public.project_qc_record('job-a','passed','independent check')"));
-  check('another capability holder can record the pass', independentPass === null);
+  await role('authenticated', owner);
+  const ownerPass = await errorCode(() => q("select * from public.project_qc_record('job-a','passed','independent check')"));
+  check('an owner can record the pass', ownerPass === null);
   check('the pass does not rewrite the stage-editor stamp',
     await scalar("select production_updated_by::text from public.projects where id='job-a'") === editor);
-  const inspectorStageEdit = await q("select * from public.project_practice_save('job-a',$1::jsonb,$2)", [
+
+  const ownerStageEdit = await q("select * from public.project_practice_save('job-a',$1::jsonb,$2)", [
     JSON.stringify(practiceWith({ result: 'passed' }, blankDispatch, editedStages.map((st) => st.stage === 'fabrication' ? { ...st, pct: 80 } : st))),
     Number(await scalar("select revision from public.projects where id='job-a'")),
   ]);
-  check('the inspector can save stages too', inspectorStageEdit.rows.length === 1);
-  const inspectorSelfPass = await errorCode(() => q("select * from public.project_qc_record('job-a','passed','still me')"));
-  check('the inspector cannot pass after editing stages themselves', inspectorSelfPass === '42501');
-  await role('authenticated', editor);
-  const editorPassAfterInspector = await errorCode(() => q("select * from public.project_qc_record('job-a','passed','editor checks inspector work')"));
-  check('the other person can pass after the roles swap', editorPassAfterInspector === null);
+  check('an owner can save stages too', ownerStageEdit.rows.length === 1);
+  const ownerSelfPass = await errorCode(() => q("select * from public.project_qc_record('job-a','passed','still me')"));
+  check('an owner cannot pass after editing the stages themselves', ownerSelfPass === '42501');
+  const ownerSelfFail = await errorCode(() => q("select * from public.project_qc_record('job-a','failed','owner flags own defect')"));
+  check('an owner may still flag their own work as failed', ownerSelfFail === null);
+
+  await role('authenticated', owner2);
+  const secondOwnerPass = await errorCode(() => q("select * from public.project_qc_record('job-a','passed','second owner signs off')"));
+  check('a second owner can pass after the roles swap', secondOwnerPass === null);
+  check('the second owner is not the stored stage editor',
+    await scalar("select production_updated_by::text from public.projects where id='job-a'") === owner);
 
   // ── inspection recording ──────────────────────────────────────────────────
   await role('postgres');
   await q("insert into public.projects(id,status,payload) values ('job-empty','draft',$1::jsonb)", [JSON.stringify({ title: 'No production yet' })]);
-  await role('authenticated', editor);
+  await role('authenticated', owner2);
   check('inspection without production data is refused', (await errorCode(() => q("select * from public.project_qc_record('job-empty','passed','x')"))) === '23514');
   check('invalid inspection result is refused', (await errorCode(() => q("select * from public.project_qc_record('job-a','approved','x')"))) === '22023');
   check('over-long inspection notes are refused', (await errorCode(() => q("select * from public.project_qc_record('job-a','passed',$1)", ['x'.repeat(2001)]))) === '22001');
 
   const inspectionsBeforePass = Number(await scalar("select count(*) from public.project_qc_inspections where project_id='job-a'"));
   const inspection = (await q("select * from public.project_qc_record('job-a','passed','Final inspection — brass edges clean')")).rows[0];
-  check('editor records an identity-stamped pass', inspection?.result === 'passed' && inspection?.inspected_by_email === 'qa.editor@example.test');
+  check('a second owner records an identity-stamped pass', inspection?.result === 'passed' && inspection?.inspected_by_email === 'qa.owner2@example.test');
   check('inspection revision matches the stored project revision', Number(inspection?.revision) === Number(await scalar("select revision from public.projects where id='job-a'")));
   check('payload QC is derived from the inspection', await scalar("select payload#>>'{practice,production,qc,result}' from public.projects where id='job-a'") === 'passed');
-  check('payload inspector identity comes from auth, not the client', await scalar("select payload#>>'{practice,production,qc,inspectedBy}' from public.projects where id='job-a'") === 'qa.editor@example.test');
+  check('payload inspector identity comes from auth, not the client', await scalar("select payload#>>'{practice,production,qc,inspectedBy}' from public.projects where id='job-a'") === 'qa.owner2@example.test');
   check('inspection history is readable by the editor', Number(await scalar("select count(*) from public.project_qc_inspections where project_id='job-a'")) === inspectionsBeforePass + 1);
 
   const revNow = Number(await scalar("select revision from public.projects where id='job-a'"));
@@ -167,7 +177,7 @@ try {
     revNow,
   ]);
   check('a client cannot downgrade a recorded pass through save', await scalar("select payload#>>'{practice,production,qc,result}' from public.projects where id='job-a'") === 'passed');
-  check('client-supplied inspector fields are ignored', await scalar("select payload#>>'{practice,production,qc,inspectedBy}' from public.projects where id='job-a'") === 'qa.editor@example.test');
+  check('client-supplied inspector fields are ignored', await scalar("select payload#>>'{practice,production,qc,inspectedBy}' from public.projects where id='job-a'") === 'qa.owner2@example.test');
   check('dispatch data saves once a pass is recorded', Number(savedWithDispatch.rows.length) === 1 && await scalar("select payload#>>'{practice,production,dispatch,vehicle}' from public.projects where id='job-a'") === 'TEST-VAN');
 
   // failed inspection while dispatch data exists must roll back atomically

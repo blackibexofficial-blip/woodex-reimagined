@@ -68,7 +68,18 @@ implemented (00022) and is not reopened here. Open sub-question:
 
 Pick C if a one-person workshop must dispatch on the same day it last touched the stages.
 
-Answer: `______`
+**Answer (2026-11-09): "Owners only" — a pass requires `my_role() = 'owner'`.**
+Implemented as `20261108000029_qc_pass_owner_only.sql`: the pass branch now demands the owner role
+before anything else, while a **failure** stays open to `page.manage` (flagging your own defect is
+not an approval). The separation-of-duties rule is unchanged and still applies to owners: an owner
+who last edited the stages cannot pass their own work either.
+
+Consequences to plan around:
+- A workshop with one owner and no second person cannot pass and dispatch on the same day — that is
+  the intended cost of the decision, not a bug. (It also rules out option C's override.)
+- The local demo adapter is **not** restricted: it still lets the demo QC seat record a pass, because
+  the demo is a UI rehearsal, not a security boundary. The database is authoritative in Supabase mode.
+- `page.manage` still governs reading the QC trail and saving the practice workspace.
 
 ### D-05 · Finance definitions — blocks DASH-001, FIN-001
 
@@ -139,7 +150,7 @@ These are what the code and docs assume today if an answer is missing. They are 
 | D-01 | A — Supabase as record, Bagisto retired | adapters, matrix rows marked Blocked |
 | D-02 | A — no order/dispatch coupling | orders page shows job progress only |
 | D-03 | 24 months, `page.manage` may read, no off-box copy | audit rows kept, no export job |
-| D-04 | A — `page.manage` remains the QC capability | 00022 as shipped |
+| D-04 | **decided: owners only for a pass, `page.manage` for a failure** | 00029 |
 | D-05 | booked revenue, `Asia/Karachi`, refunds separate, PKR | dashboard labels say "sample", not revenue |
 | D-06 | off / 90 days / off / no cap | hosted AI stays disabled |
 | D-07 | fixed slots, manual approval, 48 h cancellation | booking module untouched |

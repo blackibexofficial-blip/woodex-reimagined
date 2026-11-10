@@ -54,7 +54,7 @@ try {
     catch (e) { throw new Error(`${file}: ${e.message}`); }
   }
   await q('insert into auth.users(id,email) values ($1,$2),($3,$4)', [editor, 'qa.editor@example.test', inspector, 'qa.inspector@example.test']);
-  await q("insert into public.user_roles(user_id,role) values ($1,'editor'),($2,'editor')", [editor, inspector]);
+  await q("insert into public.user_roles(user_id,role) values ($1,'editor'),($2,'owner')", [editor, inspector]);
 
   const insert = async (id, payload) => errorCode(() => q('insert into public.projects(id,status,payload) values ($1,$2,$3::jsonb)', [id, 'draft', JSON.stringify(payload)]));
 
@@ -83,8 +83,9 @@ try {
   // Dispatch shape checks run on a job with a recorded pass, because the 00021
   // gate independently refuses populated dispatch data while QC is pending.
   await q("insert into public.projects(id,status,payload) values ('job-passed','draft',$1::jsonb)", [JSON.stringify({ title: 'Passed', practice: practiceWith({ stages: blankStages, qc: { ...pending }, dispatch: { ...blankDispatch } }) })]);
-  await role('authenticated', editor);
+  await role('authenticated', inspector);
   await q("select * from public.project_qc_record('job-passed','passed','ready')");
+  await role('authenticated', editor);
   const updateDispatch = async (dispatch) => errorCode(() => q("update public.projects set payload=jsonb_set(payload,'{practice,production,dispatch}',$1::jsonb) where id='job-passed'", [JSON.stringify(dispatch)]));
   check('an unknown dispatch field holding a plain value is tolerated', (await updateDispatch({ ...blankDispatch, future: 'free text' })) === null);
   check('an unknown dispatch field holding an object is rejected', (await updateDispatch({ ...blankDispatch, future: { nested: true } })) === '23514');
@@ -110,8 +111,11 @@ try {
   check('an unchanged legacy shape does not block unrelated edits', legacyTitleEdit === null);
   const legacyProdEdit = await errorCode(() => q("update public.projects set payload=jsonb_set(payload,'{practice,production,stages,0,pct}',to_jsonb(50)) where id='job-legacy-shape'"));
   check('editing a malformed legacy stage is rejected until repaired', legacyProdEdit === '23514');
+  // Only an owner may record a pass (00029), so the shape guard is reached as one.
+  await role('authenticated', inspector);
   const legacyInspection = await errorCode(() => q("select * from public.project_qc_record('job-legacy-shape','passed','x')"));
   check('an inspection on a malformed legacy payload is rejected', legacyInspection === '23514');
+  await role('authenticated', editor);
 
   const repair = await q("select * from public.project_practice_save('job-legacy-shape',$1::jsonb,$2)", [
     JSON.stringify(practiceWith({ stages: blankStages, qc: { ...pending }, dispatch: { ...blankDispatch } })),
