@@ -1010,7 +1010,7 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                   </ul>
                 )}
                 <p className="mt-1.5 text-[10px] text-muted-foreground">
-                  The QC result is derived from recorded inspections{isSupabaseMode ? " on the server" : " in this demo store"}. Dispatch inputs stay locked and saving dispatch data is refused until a pass is recorded. Separation of duties is enforced: the person who last changed the production stages cannot record the pass, though they may record a failure.
+                  The QC result is derived from recorded inspections{isSupabaseMode ? " on the server" : " in this demo store"}. Dispatch inputs stay locked and saving dispatch data is refused until a pass is recorded. Separation of duties is enforced: the person who last changed the production stages cannot record the pass, though they may record a failure.{isSupabaseMode ? " Only an owner may sign a job off — anyone else recording a pass is refused by the database." : ""}
                 </p>
               </div>
 

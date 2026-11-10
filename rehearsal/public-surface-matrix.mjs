@@ -50,6 +50,8 @@ const ANON_CALLABLE_ALLOWED = new Set([
 const ROLE_DENIED = new Set([
   'enforce_project_dispatch_qc', 'enforce_project_production_shape',
   'ai_usage_reserve', 'bootstrap_owner', 'lead_rate_limit_hit', 'order_submit', 'page_snapshot',
+  // 00030 internal helpers: triggers and the one writer of invoices.paid.
+  'assign_invoice_ref', 'enforce_invoice_money', 'invoice_paid_from_payments', 'sync_invoice_totals',
 ]);
 
 const GUARD = /has_cap\s*\(|require_cap\s*\(|has_role\s*\(|auth\.uid\s*\(\s*\)|is_owner/i;

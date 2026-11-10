@@ -59,7 +59,7 @@ try {
   await q('insert into auth.users(id,email) values ($1,$2),($3,$4),($5,$6)', [
     editor, 'qa.editor@example.test', viewer, 'qa.viewer@example.test', inspector, 'qa.inspector@example.test',
   ]);
-  await q("insert into public.user_roles(user_id,role) values ($1,'editor'),($2,'viewer'),($3,'editor')", [editor, viewer, inspector]);
+  await q("insert into public.user_roles(user_id,role) values ($1,'editor'),($2,'viewer'),($3,'owner')", [editor, viewer, inspector]);
 
   await q("insert into public.orders(id, customer, items, stage) overriding system value values (1042,'Synthetic Buyer','[]'::jsonb,'production'), (1043,'Second Buyer','[]'::jsonb,'intake'), (1044,'Cancelled Buyer','[]'::jsonb,'cancelled')");
   await db.exec("select setval(pg_get_serial_sequence('public.orders','id'), 1044, true)");
