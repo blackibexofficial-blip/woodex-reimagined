@@ -753,6 +753,20 @@ function copyStoredPractice(p: ProjectPractice | undefined): ProjectPractice | u
 
 /** Demo has no real auth; label records with the demo session email. Clearly
  *  synthetic — this is browser-local data, never a staff identity proof. */
+/** Demo stand-in for `staff_seats` (00033): no auth.users in the browser store. */
+const DEMO_SEATS = [
+  { userId: "admin@woodex.pk", email: "admin@woodex.pk", role: "owner", name: "Demo Owner" },
+  { userId: "qc@woodex.test", email: "qc@woodex.test", role: "owner", name: "Demo QC" },
+  { userId: "editor@woodex.test", email: "editor@woodex.test", role: "editor", name: "Demo Editor" },
+];
+
+/** Calendar-day arithmetic on a YYYY-MM-DD string. */
+function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 function demoActorEmail(): string {
   try {
     const raw = localStorage.getItem("woodex.admin.session");
@@ -4102,12 +4116,14 @@ export const demoAdminApi: AdminApi = {
     return out;
   },
 
-  async openProjectWarranty({ projectId, months, coverage, exclusions }) {
+  async openProjectWarranty({ projectId, months, coverage, exclusions, slaDays }) {
     let out;
     update((db) => {
       const proj = (db.projects ?? []).find((p) => p.id === projectId);
       if (!proj) throw new Error("Project not found");
       if (!Number.isInteger(months) || months < 1 || months > 120) throw new Error("Warranty months must be between 1 and 120");
+      const sla = slaDays == null ? 7 : slaDays;
+      if (!Number.isInteger(sla) || sla < 1 || sla > 90) throw new Error("The claim SLA must be between 1 and 90 days");
       const cover = (coverage ?? "").trim();
       const excl = (exclusions ?? "").trim();
       if (cover.length > 2000 || excl.length > 2000) throw new Error("Warranty text is limited to 2000 characters");
@@ -4126,6 +4142,7 @@ export const demoAdminApi: AdminApi = {
         exclusions: excl,
         startsOn: installation.happenedOn,
         endsOn: end.toISOString().slice(0, 10),
+        slaDays: sla,
         createdAt: new Date().toISOString(),
       };
       (db.warranties ??= []).push(row);
@@ -4166,6 +4183,10 @@ export const demoAdminApi: AdminApi = {
       if (!warranty && claims.length === 0) continue;
       const state = !warranty ? "none" : warranty.cancelledAt ? "cancelled" : warranty.endsOn < today ? "expired" : "active";
       const daysLeft = warranty ? Math.round((Date.parse(`${warranty.endsOn}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000) : undefined;
+      const live = claims.filter((c) => c.status === "open" || c.status === "scheduled");
+      const breached = live.filter((c) => c.dueOn && c.dueOn < today).length;
+      const nextDue = live.map((c) => c.dueOn).filter(Boolean).sort()[0];
+      const owner = live.slice().sort((a, b) => String(a.dueOn ?? "9999").localeCompare(String(b.dueOn ?? "9999"))).find((c) => c.assignedTo);
       const handovers = (db.handovers ?? []).filter((h) => h.projectId === proj.id);
       rows.push({
         projectId: proj.id,
@@ -4177,8 +4198,11 @@ export const demoAdminApi: AdminApi = {
         endsOn: warranty?.endsOn,
         daysLeft,
         expiringSoon: state === "active" && daysLeft !== undefined && daysLeft <= daysAhead,
-        openClaims: claims.filter((c) => c.status === "open" || c.status === "scheduled").length,
+        openClaims: live.length,
         totalClaims: claims.length,
+        slaBreached: breached,
+        nextClaimDue: nextDue,
+        assignedTo: owner?.assignedTo,
         deliveryOn: handovers.find((h) => h.kind === "delivery")?.happenedOn,
         installationOn: handovers.find((h) => h.kind === "installation")?.happenedOn,
         dispatchVehicle: proj.practice?.production?.dispatch.vehicle?.trim() || undefined,
@@ -4187,6 +4211,7 @@ export const demoAdminApi: AdminApi = {
     }
     const rank = { active: 1, expired: 2, cancelled: 3, none: 4 };
     return rows.sort((a, b) =>
+      ((b.slaBreached ? 1 : 0) - (a.slaBreached ? 1 : 0)) ||
       (rank[a.warrantyState] - rank[b.warrantyState]) ||
       String(a.endsOn ?? "9999").localeCompare(String(b.endsOn ?? "9999")) ||
       a.projectId.localeCompare(b.projectId));
@@ -4226,6 +4251,8 @@ export const demoAdminApi: AdminApi = {
         details: cleanDetails,
         status: "open" as const,
         openedOn: on,
+        dueOn: addDays(on, warranty.slaDays ?? 7),
+        cost: 0,
         resolution: "",
         openedBy: demoActorEmail(),
         createdAt: now,
@@ -4238,7 +4265,7 @@ export const demoAdminApi: AdminApi = {
     return out;
   },
 
-  async updateProjectWarrantyClaim({ claimId, status, resolution }) {
+  async updateProjectWarrantyClaim({ claimId, status, resolution, cost, resolutionKind, replacement }) {
     let out;
     update((db) => {
       const claim = (db.warrantyClaims ?? []).find((c) => c.id === claimId);
@@ -4249,8 +4276,44 @@ export const demoAdminApi: AdminApi = {
       const allowed = claim.status === "open" ? ["scheduled", "resolved", "rejected"].includes(status) : claim.status === "scheduled" ? ["resolved", "rejected"].includes(status) : false;
       if (!allowed) throw new Error(`Cannot move a claim from ${claim.status} to ${status}`);
       if ((status === "resolved" || status === "rejected") && clean.length < 3) throw new Error("Resolving or rejecting a claim needs a resolution note");
+      // Money and stock only settle on a resolved claim, and a cost always says
+      // what kind of settlement it was (mirrors mig 00033).
+      const kinds = ["repair", "replacement", "refund", "goodwill", "none"];
+      if (resolutionKind != null && !kinds.includes(resolutionKind)) throw new Error("Unknown resolution kind");
+      if (cost != null && (status !== "resolved" || resolutionKind == null)) throw new Error("A cost needs a resolved claim and a resolution kind");
+      if (cost != null) {
+        if (!Number.isFinite(cost) || cost < 0) throw new Error("The cost cannot be negative");
+        if (Math.round(cost * 100) !== cost * 100) throw new Error("The cost is limited to two decimals");
+      }
+      if (replacement != null) {
+        if (resolutionKind !== "replacement") throw new Error("A replacement needs the replacement resolution kind");
+        if (!Number.isInteger(replacement.qty) || replacement.qty <= 0) throw new Error("A replacement needs a positive quantity");
+        const product = (db.products ?? []).find((p) => p.id === replacement.productId);
+        if (!product) throw new Error("Product not found");
+        if (product.stock < replacement.qty) throw new Error(`Only ${product.stock} left of ${product.name}`);
+      }
+      if (replacement != null && resolutionKind === "replacement") {
+        const product = (db.products ?? []).find((p) => p.id === replacement.productId);
+        if (product) {
+          product.stock -= replacement.qty;
+          syncFulfilment(product);
+          touchProductMeta(db, product.id);
+          db.movements.unshift({
+            id: `mov-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+            productId: product.id,
+            productName: product.name,
+            productSku: product.sku,
+            type: "outbound",
+            quantity: -replacement.qty,
+            notes: `claim ${claim.id}`,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
       claim.status = status;
       claim.resolution = clean;
+      if (resolutionKind != null) claim.resolutionKind = resolutionKind;
+      if (cost != null) claim.cost = Math.round(cost * 100) / 100;
       claim.closedAt = status === "resolved" || status === "rejected" ? new Date().toISOString() : undefined;
       const proj = (db.projects ?? []).find((p) => p.id === claim.projectId);
       if (proj) pushProductionEvent(db, proj, "warranty_claim_status");
@@ -4258,6 +4321,27 @@ export const demoAdminApi: AdminApi = {
     });
     if (!out) throw new Error("Claim not found");
     return out;
+  },
+
+  async assignProjectWarrantyClaim({ claimId, userId }) {
+    let out;
+    update((db) => {
+      const claim = (db.warrantyClaims ?? []).find((c) => c.id === claimId);
+      if (!claim) throw new Error("Claim not found");
+      if (claim.status !== "open" && claim.status !== "scheduled") throw new Error("A closed claim cannot be reassigned");
+      if (!DEMO_SEATS.some((seat) => seat.userId === userId)) throw new Error("That person is not a staff seat");
+      claim.assignedTo = userId;
+      const proj = (db.projects ?? []).find((p) => p.id === claim.projectId);
+      if (proj) pushProductionEvent(db, proj, "warranty_claim_assigned");
+      out = { ...claim };
+    });
+    if (!out) throw new Error("Claim not found");
+    return out;
+  },
+
+  async listStaffSeats(role) {
+    if (role != null && !DEMO_SEATS.some((seat) => seat.role === role)) return [];
+    return DEMO_SEATS.filter((seat) => role == null || seat.role === role).map((seat) => ({ ...seat }));
   },
 
   async listProjectQcInspections(projectId) {

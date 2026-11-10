@@ -1737,8 +1737,9 @@ export type Database = {
         }
         Relationships: []
       }
-      // Hand-added for local migration 00026 (warranty claims). Never inserted from
-      // the client — writes go through the RPCs — but reads need the table type.
+      // Hand-added for local migration 00026 (warranty claims) and 00033 (cost,
+      // resolution kind, owner and SLA deadline). Never inserted from the client —
+      // writes go through the RPCs — but reads need the table type.
       project_warranty_claims: {
         Row: {
           id: string
@@ -1748,6 +1749,10 @@ export type Database = {
           details: string
           status: string
           opened_on: string
+          due_on: string | null
+          cost: number
+          resolution_kind: string | null
+          assigned_to: string | null
           resolution: string
           closed_at: string | null
           opened_by: string | null
@@ -1763,6 +1768,10 @@ export type Database = {
           details?: string
           status?: string
           opened_on?: string
+          due_on?: string | null
+          cost?: number
+          resolution_kind?: string | null
+          assigned_to?: string | null
           resolution?: string
           closed_at?: string | null
           opened_by?: string | null
@@ -1778,6 +1787,10 @@ export type Database = {
           details?: string
           status?: string
           opened_on?: string
+          due_on?: string | null
+          cost?: number
+          resolution_kind?: string | null
+          assigned_to?: string | null
           resolution?: string
           closed_at?: string | null
           opened_by?: string | null
@@ -2229,10 +2242,11 @@ export type Database = {
         }
       }
       project_warranty_open: {
-        Args: { p_project_id: string; p_months: number; p_coverage?: string; p_exclusions?: string }
+        Args: { p_project_id: string; p_months: number; p_coverage?: string; p_exclusions?: string; p_sla_days?: number }
         Returns: {
           id: string; project_id: string; months: number; coverage: string; exclusions: string
-          starts_on: string; ends_on: string; cancelled_at: string | null; cancel_reason: string; created_at: string
+          starts_on: string; ends_on: string; sla_days: number
+          cancelled_at: string | null; cancel_reason: string; created_at: string
         }
       }
       project_warranty_cancel: {
@@ -2250,6 +2264,7 @@ export type Database = {
           warranty_starts_on: string | null; warranty_ends_on: string | null
           days_left: number | null; expiring_soon: boolean
           open_claims: number; total_claims: number
+          sla_breached: number; next_claim_due: string | null; assigned_to: string | null
           delivery_on: string | null; installation_on: string | null
           dispatch_vehicle: string | null; updated_at: string
         }[]
@@ -2258,15 +2273,35 @@ export type Database = {
         Args: { p_project_id: string; p_summary: string; p_details?: string; p_opened_on?: string }
         Returns: {
           id: string; project_id: string; warranty_id: string; summary: string; details: string; status: string
-          opened_on: string; resolution: string; closed_at: string | null; opened_by: string | null; created_at: string
+          opened_on: string; due_on: string | null; cost: number
+          resolution_kind: string | null; assigned_to: string | null
+          resolution: string; closed_at: string | null; opened_by: string | null; created_at: string
         }
       }
       project_warranty_claim_update: {
-        Args: { p_claim_id: string; p_status: string; p_resolution?: string }
+        Args: {
+          p_claim_id: string; p_status: string; p_resolution?: string
+          p_cost?: number; p_resolution_kind?: string; p_replacement?: Json
+        }
         Returns: {
           id: string; project_id: string; warranty_id: string; summary: string; details: string; status: string
-          opened_on: string; resolution: string; closed_at: string | null; opened_by: string | null; created_at: string
+          opened_on: string; due_on: string | null; cost: number
+          resolution_kind: string | null; assigned_to: string | null
+          resolution: string; closed_at: string | null; opened_by: string | null; created_at: string
         }
+      }
+      project_warranty_claim_assign: {
+        Args: { p_claim_id: string; p_user: string }
+        Returns: {
+          id: string; project_id: string; warranty_id: string; summary: string; details: string; status: string
+          opened_on: string; due_on: string | null; cost: number
+          resolution_kind: string | null; assigned_to: string | null
+          resolution: string; closed_at: string | null; opened_by: string | null; created_at: string
+        }
+      }
+      staff_seats: {
+        Args: { p_role?: string }
+        Returns: { user_id: string; email: string; role: string; name: string }[]
       }
       project_post_dispatch: {
         Args: { p_project_id: string }
@@ -2275,7 +2310,8 @@ export type Database = {
           delivery_id: string | null; delivery_on: string | null; delivery_lead: string | null; delivery_notes: string | null; delivery_signed_by: string | null; delivery_created_at: string | null
           installation_id: string | null; installation_on: string | null; installation_lead: string | null; installation_notes: string | null; installation_signed_by: string | null; installation_created_at: string | null
           warranty_id: string | null; warranty_months: number | null; warranty_coverage: string | null; warranty_exclusions: string | null
-          warranty_starts_on: string | null; warranty_ends_on: string | null; warranty_cancelled_at: string | null; warranty_cancel_reason: string | null; warranty_created_at: string | null
+          warranty_starts_on: string | null; warranty_ends_on: string | null; warranty_sla_days: number | null
+          warranty_cancelled_at: string | null; warranty_cancel_reason: string | null; warranty_created_at: string | null
           warranty_state: string
         }[]
       }

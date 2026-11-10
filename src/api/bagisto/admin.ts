@@ -983,6 +983,14 @@ export const bagistoAdminApi: AdminApi = {
     throw new BagistoApiError(501, "Warranty claims live in the Woodex Supabase schema (migration 00026), not Bagisto.");
   },
 
+  async assignProjectWarrantyClaim(): Promise<import("@/api/types").ProjectWarrantyClaim> {
+    throw new BagistoApiError(501, "Claim owners live in the Woodex Supabase schema (migration 00033), not Bagisto.");
+  },
+
+  async listStaffSeats(): Promise<import("@/api/types").StaffSeat[]> {
+    return [];
+  },
+
   async listProjectQcInspections(): Promise<import("@/api/types").ProjectQcInspection[]> {
     throw new BagistoApiError(501, "QC inspection records live in the Woodex Supabase schema (migration 00022), not Bagisto.");
   },

@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
-import { PROJECT_MILESTONE_STATUSES, PROJECT_PRODUCTION_STAGES, PROJECT_PRODUCTION_STAGE_LABELS, PROJECT_ACTUAL_SOURCES, PROJECT_ACTUAL_SOURCE_LABELS, type AdminProject, type ProjectActualLine, type ProjectActualSource, type ProjectBoqRow, type ProjectCostCode, type ProjectFileItem, type ProjectMilestone, type ProjectMilestoneStatus, type ProjectPractice, type ProjectProduction, type ProjectProductionStageKey, type ProjectQcInspection, type ProjectPostDispatch, type ProjectHandoverKind, type ProjectWarrantyClaim } from "@/api/types";
+import { PROJECT_MILESTONE_STATUSES, PROJECT_PRODUCTION_STAGES, PROJECT_PRODUCTION_STAGE_LABELS, PROJECT_ACTUAL_SOURCES, PROJECT_ACTUAL_SOURCE_LABELS, type AdminProject, type ProjectActualLine, type ProjectActualSource, type ProjectBoqRow, type ProjectCostCode, type ProjectFileItem, type ProjectMilestone, type ProjectMilestoneStatus, type ProjectPractice, type ProjectProduction, type ProjectProductionStageKey, type ProjectQcInspection, type ProjectPostDispatch, type ProjectHandoverKind, type ProjectWarrantyClaim, type ProjectWarrantyResolutionKind, type StaffSeat, type AdminProduct } from "@/api/types";
 import { normalizePractice } from "@/lib/projectPractice";
 import { useAdminAuth } from "@/admin/auth";
 import { formatPKR, SectionSkeleton } from "@/admin/components";
@@ -92,10 +92,17 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
   const [warrantyCoverage, setWarrantyCoverage] = useState("");
   const [warrantyExclusions, setWarrantyExclusions] = useState("");
   const [warrantyReason, setWarrantyReason] = useState("");
+  const [warrantySlaDays, setWarrantySlaDays] = useState("7");
   const [claims, setClaims] = useState<ProjectWarrantyClaim[]>([]);
   const [claimSummary, setClaimSummary] = useState("");
   const [claimDetails, setClaimDetails] = useState("");
   const [claimResolutions, setClaimResolutions] = useState<Record<string, string>>({});
+  const [claimCosts, setClaimCosts] = useState<Record<string, string>>({});
+  const [claimKinds, setClaimKinds] = useState<Record<string, ProjectWarrantyResolutionKind>>({});
+  const [claimReplaceQty, setClaimReplaceQty] = useState<Record<string, string>>({});
+  const [claimReplaceProduct, setClaimReplaceProduct] = useState<Record<string, string>>({});
+  const [seats, setSeats] = useState<StaffSeat[]>([]);
+  const [catalogue, setCatalogue] = useState<AdminProduct[] | null>(null);
   const { user } = useAdminAuth();
   /** Separation of duties: whoever last moved the stages cannot record the pass. */
   const lastStageEditor = project.productionUpdatedBy;
@@ -126,6 +133,32 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
       .catch(() => { if (active) setClaims([]); });
     return () => { active = false; };
   }, [api, project.id]);
+  // Claim owners come from staff_seats (00033); the list is guarded, so a viewer
+  // simply gets nothing rather than an error banner.
+  useEffect(() => {
+    let active = true;
+    void api.listStaffSeats()
+      .then((rows) => { if (active) setSeats(rows); })
+      .catch(() => { if (active) setSeats([]); });
+    return () => { active = false; };
+  }, [api]);
+  /** The catalogue is only needed when someone settles a claim with a replacement. */
+  const ensureCatalogue = async () => {
+    if (catalogue) return catalogue;
+    try {
+      const res = await api.listProducts({ perPage: 100 });
+      setCatalogue(res.items);
+      return res.items;
+    } catch {
+      setCatalogue([]);
+      return [] as AdminProduct[];
+    }
+  };
+  const seatEmail = (id?: string) => {
+    if (!id) return "";
+    const seat = seats.find((s) => s.userId === id);
+    return seat ? seat.name || seat.email : id;
+  };
 
   const loadPost = async () => {
     try { setPost(await api.getProjectPostDispatch(project.id)); }
@@ -425,7 +458,13 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
     if (postBusy) return;
     setPostBusy(true);
     try {
-      await api.openProjectWarranty({ projectId: project.id, months: Number(warrantyMonths), coverage: warrantyCoverage, exclusions: warrantyExclusions });
+      await api.openProjectWarranty({
+        projectId: project.id,
+        months: Number(warrantyMonths),
+        coverage: warrantyCoverage,
+        exclusions: warrantyExclusions,
+        slaDays: Number(warrantySlaDays) || 7,
+      });
       await loadPost();
       setWarrantyCoverage(""); setWarrantyExclusions("");
       toast.success("Warranty opened from the installation date.");
@@ -462,12 +501,39 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
     if (postBusy) return;
     setPostBusy(true);
     try {
-      await api.updateProjectWarrantyClaim({ claimId: claim.id, status, resolution: claimResolutions[claim.id] ?? "" });
+      const kind = claimKinds[claim.id];
+      const costText = (claimCosts[claim.id] ?? "").trim();
+      const qtyText = (claimReplaceQty[claim.id] ?? "").trim();
+      await api.updateProjectWarrantyClaim({
+        claimId: claim.id,
+        status,
+        resolution: claimResolutions[claim.id] ?? "",
+        ...(status === "resolved" && costText !== "" ? { cost: Number(costText) } : {}),
+        ...(status === "resolved" && kind ? { resolutionKind: kind } : {}),
+        // A replacement names a catalogue product; the server takes the stock.
+        ...(status === "resolved" && kind === "replacement" && qtyText !== "" && claimReplaceProduct[claim.id]
+          ? { replacement: { productId: claimReplaceProduct[claim.id], qty: Number(qtyText) } }
+          : {}),
+      });
       await reloadClaims();
       setClaimResolutions((prev) => ({ ...prev, [claim.id]: "" }));
+      setClaimCosts((prev) => ({ ...prev, [claim.id]: "" }));
+      setClaimReplaceQty((prev) => ({ ...prev, [claim.id]: "" }));
+      setClaimReplaceProduct((prev) => ({ ...prev, [claim.id]: "" }));
       toast.success(`Claim ${status}.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not update the claim.");
+    } finally { setPostBusy(false); }
+  };
+  const assignClaim = async (claim: ProjectWarrantyClaim, userId: string) => {
+    if (postBusy || !userId) return;
+    setPostBusy(true);
+    try {
+      await api.assignProjectWarrantyClaim({ claimId: claim.id, userId });
+      await reloadClaims();
+      toast.success("Claim owner updated.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not assign the claim.");
     } finally { setPostBusy(false); }
   };
 
@@ -742,6 +808,7 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                         <Input aria-label="Warranty months" type="number" min={1} max={120} value={warrantyMonths} onChange={(e) => setWarrantyMonths(e.target.value)} className={`${inputCls} w-24`} />
                         <Input aria-label="Warranty coverage" placeholder="Covered (structure, hardware…)" value={warrantyCoverage} onChange={(e) => setWarrantyCoverage(e.target.value)} className={`${inputCls} w-64`} />
                         <Input aria-label="Warranty exclusions" placeholder="Exclusions (damage, misuse…)" value={warrantyExclusions} onChange={(e) => setWarrantyExclusions(e.target.value)} className={`${inputCls} w-64`} />
+                        <Input aria-label="Claim SLA days" title="Calendar days a claim may stay open before it counts as a breach" type="number" min={1} max={90} value={warrantySlaDays} onChange={(e) => setWarrantySlaDays(e.target.value)} className={`${inputCls} w-24`} />
                         <Button
                           size="sm"
                           aria-label="Open warranty"
@@ -786,6 +853,13 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                             <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${claim.status === "resolved" ? "border-emerald-200 bg-emerald-100 text-emerald-800" : claim.status === "rejected" ? "border-rose-200 bg-rose-100 text-rose-800" : claim.status === "scheduled" ? "border-sky-200 bg-sky-100 text-sky-800" : "border-amber-300 bg-amber-100 text-amber-900"}`}>{claim.status}</span>
                             <span className="font-semibold text-foreground">{claim.summary}</span>
                             <span className="text-muted-foreground">opened {claim.openedOn}{claim.openedBy ? ` by ${claim.openedBy}` : ""}</span>
+                            {claim.dueOn && (
+                              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${claim.status !== "open" && claim.status !== "scheduled" ? "border-border text-muted-foreground" : claim.dueOn < todayIso() ? "border-rose-200 bg-rose-100 text-rose-800" : "border-slate-200 bg-slate-100 text-slate-700"}`} title="Promised by the warranty SLA">
+                                {claim.status !== "open" && claim.status !== "scheduled" ? "due" : claim.dueOn < todayIso() ? "overdue" : "due"} {claim.dueOn}
+                              </span>
+                            )}
+                            {claim.assignedTo && <span className="text-muted-foreground">owner {seatEmail(claim.assignedTo)}</span>}
+                            {claim.cost > 0 && <span className="font-medium text-foreground">{formatPKR(claim.cost)}{claim.resolutionKind ? ` · ${claim.resolutionKind}` : ""}</span>}
                           </div>
                           {claim.details && <p className="mt-1 text-muted-foreground">{claim.details}</p>}
                           {claim.resolution && <p className="mt-1 font-medium text-foreground">Resolution: {claim.resolution}</p>}
@@ -798,8 +872,73 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
                                 onChange={(e) => setClaimResolutions((prev) => ({ ...prev, [claim.id]: e.target.value }))}
                                 className={`${inputCls} w-56`}
                               />
+                              {seats.length > 0 && (
+                                <Select value={claim.assignedTo ?? ""} onValueChange={(v) => void assignClaim(claim, v)}>
+                                  <SelectTrigger aria-label={`Claim owner for ${claim.summary}`} className="h-7 w-44 text-[11px]">
+                                    <SelectValue placeholder="Assign owner" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {seats.map((seat) => (
+                                      <SelectItem key={seat.userId} value={seat.userId} className="text-[11px]">
+                                        {seat.name || seat.email} · {seat.role}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
                               {claim.status === "open" && (
                                 <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" aria-label={`Schedule claim ${claim.summary}`} disabled={postBusy} onClick={() => void moveClaim(claim, "scheduled")}>Schedule</Button>
+                              )}
+                              <Select
+                                value={claimKinds[claim.id] ?? ""}
+                                onValueChange={(v) => {
+                                  setClaimKinds((prev) => ({ ...prev, [claim.id]: v as ProjectWarrantyResolutionKind }));
+                                  if (v === "replacement") void ensureCatalogue();
+                                }}
+                              >
+                                <SelectTrigger aria-label={`Settlement kind for ${claim.summary}`} className="h-7 w-32 text-[11px]">
+                                  <SelectValue placeholder="Kind" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(["repair", "replacement", "refund", "goodwill", "none"] as ProjectWarrantyResolutionKind[]).map((k) => (
+                                    <SelectItem key={k} value={k} className="text-[11px]">{k}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                aria-label={`Claim cost for ${claim.summary}`}
+                                placeholder="Cost (PKR)"
+                                inputMode="decimal"
+                                value={claimCosts[claim.id] ?? ""}
+                                onChange={(e) => setClaimCosts((prev) => ({ ...prev, [claim.id]: e.target.value }))}
+                                className={`${inputCls} w-24`}
+                              />
+                              {claimKinds[claim.id] === "replacement" && (
+                                <>
+                                  <Select
+                                    value={claimReplaceProduct[claim.id] ?? ""}
+                                    onValueChange={(v) => setClaimReplaceProduct((prev) => ({ ...prev, [claim.id]: v }))}
+                                  >
+                                    <SelectTrigger aria-label={`Replacement product for ${claim.summary}`} className="h-7 w-40 text-[11px]">
+                                      <SelectValue placeholder="Product" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {(catalogue ?? []).map((prod) => (
+                                        <SelectItem key={prod.id} value={prod.id} className="text-[11px]">
+                                          {prod.name} · {prod.stock} left
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    aria-label={`Replacement quantity for ${claim.summary}`}
+                                    placeholder="Qty"
+                                    inputMode="numeric"
+                                    value={claimReplaceQty[claim.id] ?? ""}
+                                    onChange={(e) => setClaimReplaceQty((prev) => ({ ...prev, [claim.id]: e.target.value }))}
+                                    className={`${inputCls} w-16`}
+                                  />
+                                </>
                               )}
                               <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold" aria-label={`Resolve claim ${claim.summary}`} disabled={postBusy} onClick={() => void moveClaim(claim, "resolved")}>Resolve</Button>
                               <Button size="sm" variant="outline" className="h-7 text-[11px] font-bold text-destructive" aria-label={`Reject claim ${claim.summary}`} disabled={postBusy} onClick={() => void moveClaim(claim, "rejected")}>Reject</Button>

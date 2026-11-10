@@ -76,6 +76,7 @@ export default function AdminWarrantyRegister() {
     active: rows.filter((r) => r.warrantyState === "active").length,
     expiring: rows.filter((r) => r.expiringSoon).length,
     openClaims: rows.reduce((sum, r) => sum + r.openClaims, 0),
+    breached: rows.reduce((sum, r) => sum + (r.slaBreached ?? 0), 0),
   };
 
   return (
@@ -92,11 +93,12 @@ export default function AdminWarrantyRegister() {
         </Button>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-4">
         {[
           { label: "Active warranties", value: counts.active, tone: "text-emerald-700" },
           { label: "Expiring in 60 days", value: counts.expiring, tone: "text-amber-700" },
           { label: "Open claims", value: counts.openClaims, tone: counts.openClaims > 0 ? "text-rose-700" : "text-foreground" },
+          { label: "Past the claim SLA", value: counts.breached, tone: counts.breached > 0 ? "text-rose-700" : "text-foreground" },
         ].map(({ label, value, tone }) => (
           <div key={label} className="rounded-xl border border-border bg-card p-3">
             <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
@@ -133,6 +135,7 @@ export default function AdminWarrantyRegister() {
                   <TableHead>Warranty</TableHead>
                   <TableHead>Ends</TableHead>
                   <TableHead>Claims</TableHead>
+                  <TableHead>SLA</TableHead>
                   <TableHead>Handover</TableHead>
                   <TableHead className="text-right">Updated</TableHead>
                 </TableRow>
@@ -170,6 +173,18 @@ export default function AdminWarrantyRegister() {
                         </span>
                       )}
                     </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs">
+                      {(row.slaBreached ?? 0) > 0 ? (
+                        <span className="inline-flex rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-rose-800" aria-label="Claims past their SLA">
+                          {row.slaBreached} past due
+                        </span>
+                      ) : row.nextClaimDue ? (
+                        <span className="text-muted-foreground">due {fmtDay(row.nextClaimDue)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                      {row.assignedTo && <p className="mt-1 text-[11px] text-muted-foreground">owner {row.assignedTo}</p>}
+                    </TableCell>
                     <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                       {row.installationOn ? <>installed {fmtDay(row.installationOn)}</> : row.deliveryOn ? <>delivered {fmtDay(row.deliveryOn)}</> : "—"}
                     </TableCell>
@@ -188,7 +203,7 @@ export default function AdminWarrantyRegister() {
           </div>
         )}
         <p className="mt-3 text-[11px] text-muted-foreground">
-          States are derived from the recorded dates, not typed. “Expiring soon” uses a 60-day window; claims are counted while they are open or scheduled.
+          States are derived from the recorded dates, not typed. “Expiring soon” uses a 60-day window; claims are counted while they are open or scheduled, and a claim counts as past due once its promised date (the warranty\'s claim SLA) has gone by.
         </p>
       </SectionCard>
     </div>

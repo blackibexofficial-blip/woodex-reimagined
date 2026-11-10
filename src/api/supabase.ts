@@ -88,6 +88,8 @@ import type {
   ProjectWarranty,
   ProjectHandoverKind,
   ProjectWarrantyClaim,
+  ProjectWarrantyResolutionKind,
+  StaffSeat,
   WarrantyRegisterRow,
 } from "@/api/types";
 import { BUILTIN_TEMPLATES, isBuiltinTemplateId, DEFAULT_QUOTE_TEMPLATE, clampAdvancePct } from "@/api/quote-templates";
@@ -3368,6 +3370,7 @@ async function getProjectPostDispatch(projectId: string): Promise<ProjectPostDis
     id: String(r.warranty_id), projectId, months: Number(r.warranty_months ?? 0),
     coverage: iso(r.warranty_coverage), exclusions: iso(r.warranty_exclusions),
     startsOn: iso(r.warranty_starts_on), endsOn: iso(r.warranty_ends_on),
+    slaDays: r.warranty_sla_days == null ? undefined : Number(r.warranty_sla_days),
     cancelledAt: r.warranty_cancelled_at ? iso(r.warranty_cancelled_at) : undefined,
     cancelReason: iso(r.warranty_cancel_reason) || undefined,
     createdAt: iso(r.warranty_created_at),
@@ -3395,11 +3398,13 @@ async function recordProjectHandover(input: { projectId: string; kind: ProjectHa
     notes: String(r.notes ?? ""), signedBy: String(r.signed_by ?? ""), createdAt: String(r.created_at ?? new Date().toISOString()),
   };
 }
-async function openProjectWarranty(input: { projectId: string; months: number; coverage?: string; exclusions?: string }): Promise<ProjectWarranty> {
+async function openProjectWarranty(input: { projectId: string; months: number; coverage?: string; exclusions?: string; slaDays?: number }): Promise<ProjectWarranty> {
   guard();
   const { data, error } = await supabase.rpc("project_warranty_open", {
     p_project_id: input.projectId, p_months: input.months,
     p_coverage: input.coverage ?? "", p_exclusions: input.exclusions ?? "",
+    // The claim promise is set once, when the warranty is opened (default 7 days).
+    ...(input.slaDays == null ? {} : { p_sla_days: input.slaDays }),
   });
   if (error) {
     if (["23514", "23505", "22023", "22001", "P0002"].includes(String(error.code ?? ""))) throw new Error(error.message ?? "Could not open the warranty.");
@@ -3421,6 +3426,7 @@ function warrantyFromRow(r: Row, projectId: string): ProjectWarranty {
     id: String(r.id ?? ""), projectId, months: Number(r.months ?? 0),
     coverage: String(r.coverage ?? ""), exclusions: String(r.exclusions ?? ""),
     startsOn: String(r.starts_on ?? ""), endsOn: String(r.ends_on ?? ""),
+    slaDays: r.sla_days == null ? undefined : Number(r.sla_days),
     cancelledAt: r.cancelled_at ? String(r.cancelled_at) : undefined,
     cancelReason: r.cancel_reason ? String(r.cancel_reason) : undefined,
     createdAt: String(r.created_at ?? new Date().toISOString()),
@@ -3450,6 +3456,9 @@ async function listWarrantyRegister(daysAhead = 60): Promise<WarrantyRegisterRow
     expiringSoon: Boolean(r.expiring_soon),
     openClaims: Number(r.open_claims ?? 0),
     totalClaims: Number(r.total_claims ?? 0),
+    slaBreached: Number(r.sla_breached ?? 0),
+    nextClaimDue: iso(r.next_claim_due),
+    assignedTo: iso(r.assigned_to),
     deliveryOn: iso(r.delivery_on),
     installationOn: iso(r.installation_on),
     dispatchVehicle: iso(r.dispatch_vehicle),
@@ -3460,7 +3469,7 @@ async function listProjectWarrantyClaims(projectId: string): Promise<ProjectWarr
   guard();
   const { data, error } = await supabase
     .from("project_warranty_claims")
-    .select("id,project_id,warranty_id,summary,details,status,opened_on,resolution,closed_at,opened_by,created_at")
+    .select("id,project_id,warranty_id,summary,details,status,opened_on,due_on,cost,resolution_kind,assigned_to,resolution,closed_at,opened_by,created_at")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });
   if (error) {
@@ -3478,6 +3487,10 @@ function claimFromRow(r: Row): ProjectWarrantyClaim {
     details: String(r.details ?? ""),
     status: String(r.status ?? "open") as ProjectWarrantyClaim["status"],
     openedOn: String(r.opened_on ?? ""),
+    dueOn: r.due_on == null ? undefined : String(r.due_on),
+    cost: Number(r.cost ?? 0),
+    resolutionKind: (r.resolution_kind ?? undefined) as ProjectWarrantyClaim["resolutionKind"],
+    assignedTo: r.assigned_to ? String(r.assigned_to) : undefined,
     resolution: String(r.resolution ?? ""),
     closedAt: r.closed_at ? String(r.closed_at) : undefined,
     openedBy: r.opened_by ? String(r.opened_by) : undefined,
@@ -3498,18 +3511,57 @@ async function openProjectWarrantyClaim(input: { projectId: string; summary: str
   }
   return claimFromRow(data as Row);
 }
-async function updateProjectWarrantyClaim(input: { claimId: string; status: "scheduled" | "resolved" | "rejected"; resolution?: string }): Promise<ProjectWarrantyClaim> {
+async function updateProjectWarrantyClaim(input: {
+  claimId: string;
+  status: "scheduled" | "resolved" | "rejected";
+  resolution?: string;
+  cost?: number;
+  resolutionKind?: ProjectWarrantyResolutionKind;
+  replacement?: { productId: string; qty: number };
+}): Promise<ProjectWarrantyClaim> {
   guard();
   const { data, error } = await supabase.rpc("project_warranty_claim_update", {
     p_claim_id: input.claimId,
     p_status: input.status,
     p_resolution: input.resolution ?? "",
+    ...(input.cost == null ? {} : { p_cost: input.cost }),
+    ...(input.resolutionKind == null ? {} : { p_resolution_kind: input.resolutionKind }),
+    ...(input.replacement == null ? {} : { p_replacement: input.replacement }),
   });
   if (error) {
     if (["23514", "22023", "22001", "P0002"].includes(String(error.code ?? ""))) throw new Error(error.message ?? "Could not update the claim.");
     fail("updateProjectWarrantyClaim", error);
   }
   return claimFromRow(data as Row);
+}
+/** Give a claim a real owner. The seat must exist in user_roles (00033). */
+async function assignProjectWarrantyClaim(input: { claimId: string; userId: string }): Promise<ProjectWarrantyClaim> {
+  guard();
+  const { data, error } = await supabase.rpc("project_warranty_claim_assign", {
+    p_claim_id: input.claimId,
+    p_user: input.userId,
+  });
+  if (error) {
+    if (["23514", "22023", "P0002"].includes(String(error.code ?? ""))) throw new Error(error.message ?? "Could not assign the claim.");
+    fail("assignProjectWarrantyClaim", error);
+  }
+  return claimFromRow(data as Row);
+}
+/** Seats that can own a claim (emails live in auth.users, so this is an RPC). */
+async function listStaffSeats(role?: string): Promise<StaffSeat[]> {
+  guard();
+  const { data, error } = await supabase.rpc("staff_seats", role ? { p_role: role } : {});
+  if (error) {
+    if (String(error.code ?? "") === "42883" || /does not exist|schema cache/i.test(error.message ?? "")) return [];
+    if (String(error.code ?? "") === "22023") throw new Error(error.message ?? "Unknown role.");
+    fail("listStaffSeats", error);
+  }
+  return ((data ?? []) as Row[]).map((r) => ({
+    userId: String(r.user_id ?? ""),
+    email: String(r.email ?? ""),
+    role: String(r.role ?? ""),
+    name: String(r.name ?? ""),
+  }));
 }
 async function listProjectQcInspections(projectId: string): Promise<ProjectQcInspection[]> {
   guard();
@@ -4551,6 +4603,8 @@ export const supabaseAdminApi: AdminApi = {
   listProjectWarrantyClaims,
   openProjectWarrantyClaim,
   updateProjectWarrantyClaim,
+  assignProjectWarrantyClaim,
+  listStaffSeats,
   listProjectQcInspections,
   recordProjectQcInspection,
   listProjectProductionEvents,
