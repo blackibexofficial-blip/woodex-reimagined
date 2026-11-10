@@ -5355,6 +5355,38 @@ export const demoAdminApi: AdminApi = {
     return updated;
   },
 
+  /* Order → invoice, mirroring migration 00031: one active invoice per order,
+     the tax line carries the residual so subtotal - discount + tax + shipping
+     equals the order total, and a zero/broken order is refused rather than
+     rounded. */
+  async createInvoiceFromOrder(orderId: string) {
+    let created: AdminInvoice | undefined;
+    update((db) => {
+      const o = (db.orders ?? []).find((x) => x.id === orderId);
+      if (!o) throw new Error(`Order ${orderId} not found.`);
+      const invoices = (db.invoices ??= []);
+      const existing = invoices.find((i) => i.orderId === o.id && i.status !== "Cancelled");
+      if (existing) { created = withInvoiceBalance(existing); return; }   // idempotency — mirrors the RPC
+      const total = Math.round(o.total);
+      if (total <= 0) throw new Error("This order has nothing to bill — price it first.");
+      const subtotal = Math.max(0, Math.round(o.subtotal ?? 0));
+      const discount = Math.max(0, Math.round(o.discountAmount ?? 0));
+      const shipping = Math.max(0, Math.round(o.shipping ?? 0));
+      if (discount > subtotal) throw new Error("This order's discount is larger than its subtotal — correct the order first.");
+      const tax = total - (subtotal - discount + shipping);
+      if (tax < 0) throw new Error("This order's total is below its own parts — correct the order first.");
+      const now = new Date().toISOString();
+      created = {
+        id: nextInvoiceId(invoices), orderId: o.id, customer: o.customerName, city: o.city,
+        items: o.items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity, image: it.image })),
+        subtotal, discount, tax, shipping, total, paid: 0, balance: total,
+        status: "Issued", notes: `Raised from order ${o.id}.`, createdAt: now, updatedAt: now,
+      };
+      invoices.push(created);
+    });
+    return created!;
+  },
+
   async deleteQuoteTemplate(id: string) {
     if (isBuiltinTemplateId(id)) return false;
     let ok = false;

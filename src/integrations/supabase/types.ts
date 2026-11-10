@@ -2107,6 +2107,32 @@ export type Database = {
         Args: { p_invoice_id: number; p_amount: number; p_method?: string; p_reference?: string }
         Returns: Database['public']['Tables']['invoices']['Row']
       }
+      // Hand-added for local migrations 00030/00031; regenerate against staging before deployment.
+      invoice_from_order: {
+        Args: { p_order_id: number }
+        Returns: Database['public']['Tables']['invoices']['Row']
+      }
+      invoice_void: {
+        Args: { p_invoice_id: number; p_reason: string }
+        Returns: Database['public']['Tables']['invoices']['Row']
+      }
+      invoice_register: {
+        Args: { p_days_ahead?: number }
+        Returns: {
+          invoice_id: number
+          ref: string | null
+          customer: string
+          order_id: number | null
+          total: number
+          paid: number
+          balance: number
+          status: string
+          state: string
+          due: string | null
+          days_overdue: number
+          days_to_due: number
+        }[]
+      }
       client_merge: {
         Args: { p_into: number; p_from: number }
         Returns: Database['public']['Tables']['clients']['Row']

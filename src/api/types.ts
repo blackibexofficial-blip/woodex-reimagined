@@ -2022,6 +2022,9 @@ export interface AdminApi {
   setTaskDone(id: string, done: boolean): Promise<AdminTask | undefined>;
 
   convertQuoteToInvoice(quoteId: string): Promise<AdminInvoice>;
+  /** Raise the invoice for a finished job (order). Idempotent: an order that already has an
+   * active invoice returns that invoice. Cap: finance.manage (RPC contract). */
+  createInvoiceFromOrder(orderId: string): Promise<AdminInvoice>;
   /** Cap: finance.manage (RPC contract). Atomically appends the payment and recomputes Paid/Partially paid/Issued. */
   recordInvoicePayment(invoiceId: string, input: NewInvoicePaymentInput): Promise<AdminInvoice | undefined>;
   /** Requires ≥1 line; same materialisation path as createOrder (channel `manual`); order carries the discount. */

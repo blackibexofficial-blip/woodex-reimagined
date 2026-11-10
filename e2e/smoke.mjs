@@ -196,6 +196,33 @@ async function adminSuite(browser) {
   await page.goto(`${ADMIN}/invoices/new`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("New invoice", 15000).catch(() => {});
   ok("New invoice wizard renders", (await bodyText()).includes("Issue invoice"));
+  // ── job → bill: the order dialog can raise its invoice ──
+  await page.goto(`${ADMIN}/orders`, { waitUntil: "networkidle2", timeout: 60000 });
+  await waitText("Orders", 15000).catch(() => {});
+  const firstRow = await page.waitForSelector("tbody tr", { timeout: 15000 }).catch(() => null);
+  ok("orders table renders a row to open", !!firstRow);
+  if (firstRow) {
+    await firstRow.click();
+    const raiseBtn = await page.waitForFunction(
+      () => [...document.querySelectorAll("button")].some((b) => /raise invoice/i.test(b.textContent || "")),
+      { timeout: 10000 },
+    ).then(() => true).catch(() => false);
+    ok("order dialog offers Raise invoice", raiseBtn);
+    if (raiseBtn) {
+      await page.evaluate(() => {
+        const b = [...document.querySelectorAll("button")].find((el) => /raise invoice/i.test(el.textContent || ""));
+        if (b) b.click();
+      });
+      const raised = await page.waitForFunction(
+        () => /raised for/i.test(document.body.innerText),
+        { timeout: 10000 },
+      ).then(() => true).catch(() => false);
+      ok("raising the invoice confirms with the invoice reference", raised);
+      await page.waitForFunction(() => location.pathname.endsWith("/admin/invoices"), { timeout: 8000 }).catch(() => {});
+      const invoiceList = await bodyText();
+      ok("the invoice list opens after raising the bill", invoiceList.toLowerCase().includes("invoice"));
+    }
+  }
   await page.goto(`${ADMIN}/quotes`, { waitUntil: "networkidle2", timeout: 60000 });
   await waitText("Open pipeline", 15000).catch(() => {});
   ok("quotes page shows the KPI pipeline strip", (await bodyText()).toLowerCase().includes("open pipeline"));
