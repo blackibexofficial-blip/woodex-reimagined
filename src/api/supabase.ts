@@ -3254,18 +3254,26 @@ async function createProject(input: NewProjectInput): Promise<AdminProject> {
   if (orderId) await linkProjectOrder(id, orderId);
   return rowToProject(data as Row);
 }
-async function updateProject(id: string, patch: Partial<NewProjectInput>): Promise<AdminProject | undefined> {
+/** Portfolio fields. The server merges the patch, validates the status and checks
+ *  the revision this tab read (00034), so a stale copy can't overwrite a colleague. */
+async function updateProject(id: string, patch: Partial<NewProjectInput>, expectedRevision?: number): Promise<AdminProject | undefined> {
   guard();
-  if ((patch as { status?: string }).status !== undefined) {
-    const { error } = await supabase.from("projects").update({ status: (patch as { status?: string }).status }).eq("id", id);
-    if (error) fail("updateProject", error);
+  const { error } = await supabase.rpc("project_update", {
+    p_id: id,
+    p_patch: patch as unknown as Json,
+    ...(expectedRevision == null ? {} : { p_expected_revision: expectedRevision }),
+  });
+  if (error) {
+    if (String(error.code ?? "") === "P0002") return undefined;
+    if (String(error.code ?? "") === "40001") {
+      throw new Error(
+        `This project changed elsewhere while you were editing (${error.message ?? "revision conflict"}). Reload before saving again — your changes are still on screen.`,
+      );
+    }
+    if (["22023", "42501"].includes(String(error.code ?? ""))) throw new Error(error.message ?? "Could not save the project.");
+    fail("updateProject", error);
   }
-  const { status, ...rest } = patch as Record<string, unknown> & { status?: string };
-  void status;
-  if (Object.keys(rest).length) await mergePayload("projects", id, { ...rest, updatedAt: new Date().toISOString() });
-  const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
-  if (error) fail("getProject", error);
-  return data ? rowToProject(data) : undefined;
+  return fetchProject(id);
 }
 async function fetchProject(id: string): Promise<AdminProject | undefined> {
   const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
@@ -3624,13 +3632,27 @@ async function listProjectProductionEvents(projectId: string): Promise<ProjectPr
     createdAt: String(r.created_at ?? ""),
   }));
 }
-async function setProjectActive(id: string, active: boolean): Promise<AdminProject | undefined> {
-  return updateProject(id, { status: active ? "published" : "archived" } as unknown as Partial<NewProjectInput>);
+async function setProjectActive(id: string, active: boolean, expectedRevision?: number): Promise<AdminProject | undefined> {
+  return updateProject(id, { status: active ? "published" : "archived" } as unknown as Partial<NewProjectInput>, expectedRevision);
 }
-async function deleteProject(id: string): Promise<boolean> {
+/** Deleting also carries the revision token (00034): a stale tab cannot delete a
+ *  job someone just worked on. */
+async function deleteProject(id: string, expectedRevision?: number): Promise<boolean> {
   guard();
-  const { error } = await supabase.from("projects").delete().eq("id", id);
-  return !error;
+  const { data, error } = await supabase.rpc("project_delete", {
+    p_id: id,
+    ...(expectedRevision == null ? {} : { p_expected_revision: expectedRevision }),
+  });
+  if (error) {
+    if (String(error.code ?? "") === "P0002") return false;
+    if (String(error.code ?? "") === "40001") {
+      throw new Error(
+        `This project changed elsewhere (${error.message ?? "revision conflict"}). Reload the list before deleting.`,
+      );
+    }
+    fail("deleteProject", error);
+  }
+  return Boolean(data);
 }
 
 /* ── project actuals ledger (0013: project_cost_codes + project_actuals) ──

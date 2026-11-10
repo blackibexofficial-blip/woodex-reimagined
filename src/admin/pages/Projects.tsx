@@ -185,7 +185,9 @@ export default function AdminProjects() {
     setFormError(null);
     try {
       if (dialog?.mode === "edit") {
-        await api.updateProject(dialog.project.id, payload);
+        // Save against the revision this dialog opened with (00034); a colleague's
+        // newer edit is refused rather than overwritten.
+        await api.updateProject(dialog.project.id, payload, dialog.project.revision);
         toast.success(`Updated “${title}”`);
       } else {
         await api.createProject(payload);
@@ -202,8 +204,10 @@ export default function AdminProjects() {
 
   const handleToggleActive = async (project: AdminProject) => {
     try {
-      await api.setProjectActive(project.id, !project.active);
-      setItems((prev) => prev.map((p) => (p.id === project.id ? { ...p, active: !p.active } : p)));
+      await api.setProjectActive(project.id, !project.active, project.revision);
+      // Keep the row's token current instead of guessing: the list is the base for
+      // the next toggle, and a stale token would be refused.
+      setItems((prev) => prev.map((p) => (p.id === project.id ? { ...p, active: !p.active, revision: (p.revision ?? 0) + 1 } : p)));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not toggle visibility");
     }
@@ -213,7 +217,7 @@ export default function AdminProjects() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const okFlag = await api.deleteProject(deleteTarget.id);
+      const okFlag = await api.deleteProject(deleteTarget.id, deleteTarget.revision);
       if (okFlag) {
         toast.success(`Deleted “${deleteTarget.title}”`);
         setDeleteTarget(null);

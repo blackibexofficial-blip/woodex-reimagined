@@ -2269,6 +2269,14 @@ export type Database = {
           dispatch_vehicle: string | null; updated_at: string
         }[]
       }
+      project_update: {
+        Args: { p_id: string; p_patch: Json; p_expected_revision?: number }
+        Returns: Database['public']['Tables']['projects']['Row']
+      }
+      project_delete: {
+        Args: { p_id: string; p_expected_revision?: number }
+        Returns: boolean
+      }
       project_warranty_claim_open: {
         Args: { p_project_id: string; p_summary: string; p_details?: string; p_opened_on?: string }
         Returns: {

@@ -56,6 +56,8 @@ const ROLE_DENIED = new Set([
   'enforce_purchase_order_totals',
   // 00033 internal helper: the stock writer behind definer warranty RPCs.
   'internal_stock_move',
+  // 00034 trigger: keeps a client from stamping its own project revision.
+  'enforce_project_revision',
 ]);
 
 const GUARD = /has_cap\s*\(|require_cap\s*\(|has_role\s*\(|auth\.uid\s*\(\s*\)|is_owner/i;

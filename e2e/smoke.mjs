@@ -425,6 +425,8 @@ async function adminSuite(browser) {
   await page.goto(`${ADMIN}/products`, { waitUntil: "networkidle2", timeout: 60000 });
   page.off("dialog", handleWorkspaceUnload);
   ok("production workspace warns before discarding unsaved changes", workspaceUnloadWarning);
+
+
   // /admin/products — redesigned catalog grid (KPI strip + full-page editor)
   await page.waitForFunction(() => document.body.innerText.toLowerCase().includes("avg. price"), { timeout: 15000 }).catch(() => {});
   const catBody = (await bodyText()).toLowerCase();
@@ -444,6 +446,52 @@ async function adminSuite(browser) {
     library: [...document.querySelectorAll("button")].some((b) => b.textContent.includes("From library")),
   }));
   ok("full-page editor renders the image manager (pin primary · Upload · From library)", imageControls.pin >= 1 && imageControls.upload && imageControls.library);
+
+  // Two tabs edit the same portfolio piece: the second save is refused (M5 PROD-007).
+  await page.goto(`${ADMIN}/projects`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForSelector('button[aria-label^="Edit "]', { timeout: 20000 });
+  const editLabel = await page.$eval('button[aria-label^="Edit "]', (b) => b.getAttribute("aria-label") ?? "");
+  const projectTitle = editLabel.replace(/^Edit /, "");
+  const openEditor = async (target) => {
+    await target.evaluate((title) => document.querySelector(`button[aria-label="Edit ${title}"]`)?.click(), projectTitle);
+    await target.waitForSelector("[role=dialog] #proj-title", { timeout: 15000 });
+  };
+  const setTitle = (target, value) => target.evaluate((v) => {
+    const input = document.querySelector("[role=dialog] #proj-title");
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    setter.call(input, v);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }, value);
+  const saveDialog = (target) => target.evaluate(() => {
+    [...document.querySelectorAll("[role=dialog] button")].find((b) => b.textContent.trim() === "Save changes")?.click();
+  });
+  await openEditor(page);
+  const tabB = await browser.newPage();
+  try {
+    await tabB.goto(`${ADMIN}/projects`, { waitUntil: "networkidle2", timeout: 60000 });
+    await tabB.waitForSelector(`button[aria-label="Edit ${projectTitle}"]`, { timeout: 20000 });
+    await openEditor(tabB);
+    await setTitle(tabB, `${projectTitle} · tab B`);
+    await saveDialog(tabB);
+    await tabB.waitForFunction(() => !document.querySelector("[role=dialog]"), { timeout: 20000 }).catch(() => {});
+    ok("the first tab's save lands and bumps the revision", await tabB.evaluate((t) => document.body.innerText.includes(t), `${projectTitle} · tab B`));
+  } finally {
+    await tabB.close();
+  }
+  await setTitle(page, `${projectTitle} · tab A`);
+  await saveDialog(page);
+  await page.waitForFunction(() => document.body.innerText.includes("changed elsewhere"), { timeout: 20000 }).catch(() => {});
+  ok("a save from the stale tab is refused, not silently applied", await page.evaluate(() => document.body.innerText.includes("changed elsewhere")));
+  // Restore the seeded title from a fresh read so later suites see the demo data intact.
+  await page.goto(`${ADMIN}/projects`, { waitUntil: "networkidle2", timeout: 60000 });
+  await page.waitForSelector(`button[aria-label="Edit ${projectTitle} · tab B"]`, { timeout: 20000 });
+  const restoredLabel = await page.$eval('button[aria-label^="Edit "]', (b) => b.getAttribute("aria-label") ?? "");
+  await page.evaluate((label) => document.querySelector(`button[aria-label="${label}"]`)?.click(), restoredLabel);
+  await page.waitForSelector("[role=dialog] #proj-title", { timeout: 15000 });
+  await setTitle(page, projectTitle);
+  await saveDialog(page);
+  await page.waitForFunction(() => !document.querySelector("[role=dialog]"), { timeout: 20000 }).catch(() => {});
+  ok("the current revision still saves, and the demo title is restored", await page.evaluate((t) => document.body.innerText.includes(t), projectTitle));
 
   // --- Wave 2: Library rail + Layers outline + lab render ---
   const clickRail = (text) =>

@@ -2216,7 +2216,8 @@ export interface AdminApi {
   deleteMaterial(id: string): Promise<boolean>;
   listProjects(): Promise<AdminProject[]>;
   createProject(input: NewProjectInput): Promise<AdminProject>;
-  updateProject(id: string, patch: Partial<NewProjectInput>): Promise<AdminProject | undefined>;
+  /** Portfolio fields; pass the revision you read so a stale tab cannot overwrite. */
+  updateProject(id: string, patch: Partial<NewProjectInput>, expectedRevision?: number): Promise<AdminProject | undefined>;
   /**
    * Practice save with a revision check (migration 00022 candidate in Supabase mode;
    * demo mirrors the same conflict rule). QC fields are owned by recorded
@@ -2257,8 +2258,8 @@ export interface AdminApi {
   /** Records an identity-stamped inspection and derives the job's QC result. */
   recordProjectQcInspection(input: { projectId: string; result: "passed" | "failed"; notes?: string }): Promise<{ inspection: ProjectQcInspection; project: AdminProject | undefined }>;
   listProjectProductionEvents(projectId: string): Promise<ProjectProductionEvent[]>;
-  setProjectActive(id: string, active: boolean): Promise<AdminProject | undefined>;
-  deleteProject(id: string): Promise<boolean>;
+  setProjectActive(id: string, active: boolean, expectedRevision?: number): Promise<AdminProject | undefined>;
+  deleteProject(id: string, expectedRevision?: number): Promise<boolean>;
   /** Cost-code master per project (migration 0013). Writes require crm.manage. */
   listProjectCostCodes(projectId: string): Promise<ProjectCostCode[]>;
   upsertProjectCostCode(input: { projectId: string; code: string; boqSection?: string | null; description?: string }): Promise<ProjectCostCode>;

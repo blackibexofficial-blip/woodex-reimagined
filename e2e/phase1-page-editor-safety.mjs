@@ -51,6 +51,13 @@ try {
   let confirms=0, accept=false; page.on('dialog', async d=>{confirms++; if(accept) await d.accept(); else await d.dismiss();});
   await page.click('a[aria-label="Back to Pages"]');
   check('canceling Back preserves the unsaved editor', confirms>0 && await page.$('input[aria-label="Page title"]')!==null);
+  // Sidebar navigation used to throw the draft away silently (M5 PROD-007).
+  const editorPath = page.url();
+  const sidebarConfirms = confirms;
+  await page.evaluate(() => document.querySelector('a[href$="/admin/orders"]')?.click());
+  await new Promise(r => setTimeout(r, 400));
+  check('a sidebar link asks before discarding unsaved edits', confirms === sidebarConfirms + 1 && page.url() === editorPath);
+  check('dismissing the sidebar prompt keeps the editor open', await page.$('input[aria-label="Page title"]') !== null);
   await page.click('button[title="Version history"]');
   const priorConfirms = confirms;
   await button('Restore as draft');

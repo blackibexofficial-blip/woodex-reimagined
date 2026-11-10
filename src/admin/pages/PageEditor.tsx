@@ -9,6 +9,7 @@ import { normalizeLinkedStyles, scanHmTokens } from "@/pages-builder/inspector";
 import type { Data } from "@puckeditor/core";
 import { toast } from "sonner";
 import { getAdminApi } from "@/api";
+import { useUnsavedChanges } from "@/admin/unsavedChanges";
 import type { AdminPage, AdminPageDoc, AdminPageSeo } from "@/api/types";
 import { analysePageSeo, seoPublishViolations, summarizeSeoViolations } from "@/lib/seo/publish-gate";
 import SeoPanel from "./SeoPanel";
@@ -119,12 +120,8 @@ export default function AdminPageEditor() {
     try { await saveSnapshot(); } finally { operationInFlight.current = false; }
   }, [saveSnapshot]);
 
-  useEffect(() => {
-    if (!dirty && !saving && !publishing && !restoring) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, saving, publishing, restoring]);
+  // Sidebar links and reloads warn too, not just the editor's own back button.
+  useUnsavedChanges(dirty || saving || publishing || restoring);
 
   // Puck owns canvas state between saves. Feeding it a fresh `data` identity on every
   // keystroke makes its fields panel remount (resetting our Style/Advanced tab state and
@@ -281,8 +278,8 @@ export default function AdminPageEditor() {
       {/* Meta bar */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
         <Link to="/admin/pages" onClick={(event) => {
+          // The shared unsaved-changes guard handles the "leave anyway?" prompt.
           if (operationInFlight.current) { event.preventDefault(); toast.error("Wait for the current page operation to finish."); }
-          else if (dirty && !window.confirm("You have unsaved changes. Leave without saving?")) event.preventDefault();
         }} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Back to Pages">
           <ArrowLeft className="h-4 w-4" />
         </Link>

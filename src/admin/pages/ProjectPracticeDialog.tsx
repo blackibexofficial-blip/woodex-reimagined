@@ -9,6 +9,7 @@ import { getAdminApi } from "@/api";
 import { PROJECT_MILESTONE_STATUSES, PROJECT_PRODUCTION_STAGES, PROJECT_PRODUCTION_STAGE_LABELS, PROJECT_ACTUAL_SOURCES, PROJECT_ACTUAL_SOURCE_LABELS, type AdminProject, type ProjectActualLine, type ProjectActualSource, type ProjectBoqRow, type ProjectCostCode, type ProjectFileItem, type ProjectMilestone, type ProjectMilestoneStatus, type ProjectPractice, type ProjectProduction, type ProjectProductionStageKey, type ProjectQcInspection, type ProjectPostDispatch, type ProjectHandoverKind, type ProjectWarrantyClaim, type ProjectWarrantyResolutionKind, type StaffSeat, type AdminProduct } from "@/api/types";
 import { normalizePractice } from "@/lib/projectPractice";
 import { useAdminAuth } from "@/admin/auth";
+import { useUnsavedChanges } from "@/admin/unsavedChanges";
 import { formatPKR, SectionSkeleton } from "@/admin/components";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -296,12 +297,9 @@ export default function ProjectPracticeDialog({ project, onClose, onSaved }: { p
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  useEffect(() => {
-    if (!dirty && !saving && !uploading && !recording) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, saving, uploading, recording]);
+  // The dialog refuses to close while dirty; this covers reloads and any link that
+  // escapes the modal (the shared guard asks before navigating).
+  useUnsavedChanges(dirty || saving || uploading || recording);
 
   const requestClose = () => {
     if (saveInFlight.current || uploadInFlight.current || recording) {
