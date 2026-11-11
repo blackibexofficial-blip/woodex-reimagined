@@ -1,12 +1,15 @@
 /**
- * Storefront-side read hook for the Pages builder (Wave 1):
- * fetches a page document by slug from the demo DB (or, later, Bagisto puck_data).
- * Any status renders — the LabPreview badge distinguishes published vs draft.
+ * Storefront-side read hook for the Pages builder (Wave 1).
+ *
+ * Supabase mode: staff read the draft through `page_preview` (00036, `page.manage`
+ * only) and everyone else falls back to `published_page`, which serves the immutable
+ * snapshot. Demo mode: the local store stands in for both.
+ * The LabPreview badge says which one you are looking at.
  */
 import { useEffect, useState } from "react";
 import { getAdminApi } from "@/api";
 import { isSupabaseMode } from "@/config/env";
-import { getPublishedPage } from "@/api/supabase";
+import { getPagePreview, getPublishedPage } from "@/api/supabase";
 import type { AdminPage } from "@/api/types";
 
 export function usePagePreview(slug: string | undefined): { page: AdminPage | null; ready: boolean } {
@@ -23,11 +26,17 @@ export function usePagePreview(slug: string | undefined): { page: AdminPage | nu
         on = false;
       };
     }
-    getAdminApi()
-      .getPage(slug)
-      .then(async (doc) => {
-        // Editors may preview drafts; everyone else receives the published snapshot only.
-        const result = doc ?? (isSupabaseMode ? await getPublishedPage(slug) : undefined);
+    const load = async () => {
+      if (isSupabaseMode) {
+        // Staff preview the draft through page_preview (00036); anyone else can only
+        // ever read the published snapshot. Both paths are server-enforced.
+        const draft = await getPagePreview(slug).catch(() => undefined);
+        return draft ?? (await getPublishedPage(slug));
+      }
+      return getAdminApi().getPage(slug);
+    };
+    load()
+      .then((result) => {
         if (on) setPage(result ?? null);
       })
       .catch(() => {

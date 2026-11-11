@@ -4325,6 +4325,29 @@ export async function getPublishedPage(slug: string): Promise<AdminPage | undefi
     updatedAt: publishedAt ?? "", publishedAt, version: 1, history: [],
   };
 }
+/** Signed-in preview of the *draft* (00036). Only a `page.manage` seat can read it —
+ *  everyone else gets 42501 and must fall back to the published snapshot. */
+export async function getPagePreview(slug: string): Promise<AdminPage | undefined> {
+  guard();
+  const { data, error } = await supabase.rpc("page_preview", { p_slug: slug });
+  if (error) {
+    if (["42501", "42883"].includes(String(error.code ?? "")) || /does not exist|schema cache/i.test(error.message ?? "")) return undefined;
+    fail("page_preview", error);
+  }
+  if (!data) return undefined;
+  const snap = asObj(data);
+  const blocks = Array.isArray(snap.blocks) ? snap.blocks as Row[] : [];
+  const publishedAt = typeof snap.published_at === "string" ? snap.published_at : null;
+  return {
+    id: String(snap.id), slug: String(snap.slug), title: String(snap.title),
+    kind: snap.kind === "chrome" ? "chrome" : "page", folderId: null,
+    status: snap.status === "published" ? "published" : "draft",
+    doc: rowToDoc(snap, blocks), seo: rowToSeo(snap),
+    updatedAt: "", publishedAt,
+    revision: snap.revision == null ? undefined : Number(snap.revision),
+    version: 1, history: [],
+  };
+}
 async function createPage(input: { title: string; slug?: string; starter?: string; kind?: AdminPage["kind"] }): Promise<AdminPage> {
   guard();
   const slug = (input.slug && pageTitleToSlug(input.slug)) || pageTitleToSlug(input.title);

@@ -102,6 +102,29 @@ try {
   check('a stale page save is refused instead of overwriting', /changed elsewhere/i.test(revisionChecks.staleSave));
   check('a stale publish is refused', /changed elsewhere/i.test(revisionChecks.stalePublish));
   check('the refused writes left the newer title in place', revisionChecks.titleNow === 'Revision page v2');
+  // Publish pipeline in the browser (M6 CMS-001): /lab/:slug badges the real state,
+  // and unpublishing hides the page from the public route without losing the draft.
+  const labSlug = 'safety-test-page';
+  const badge = () => page.evaluate(() => document.body.innerText);
+  await page.goto(`${base}/lab/${labSlug}`, {waitUntil:'networkidle2', timeout:60000});
+  await page.waitForFunction(() => document.body.innerText.includes('PUBLISHED') || document.body.innerText.includes('DRAFT'), {timeout:20000}).catch(()=>{});
+  check('the lab route shows the published page with the PUBLISHED badge', (await badge()).includes('PUBLISHED — from the Pages workspace'));
+  const flip = async (action) => page.evaluate(async ({slug, action}) => {
+    const api = (await import('/src/api/demo/db.ts')).demoAdminApi;
+    const pg = await api.getPage(slug);
+    if (action === 'unpublish') await api.unpublishPage(pg.id);
+    else await api.publishPage(pg.id);
+    return pg.title;
+  }, {slug: labSlug, action});
+  const draftTitle = await flip('unpublish');
+  await page.reload({waitUntil:'networkidle2'});
+  await page.waitForFunction(() => document.body.innerText.includes('DRAFT'), {timeout:20000}).catch(()=>{});
+  const offBody = await badge();
+  check('unpublishing flips the badge to DRAFT and keeps the draft readable', offBody.includes('DRAFT — not published') && !offBody.includes('Page not found') && Boolean(draftTitle));
+  await flip('publish');
+  await page.reload({waitUntil:'networkidle2'});
+  await page.waitForFunction(() => document.body.innerText.includes('PUBLISHED'), {timeout:20000}).catch(()=>{});
+  check('republishing restores the PUBLISHED badge', (await badge()).includes('PUBLISHED — from the Pages workspace'));
   check('no uncaught browser errors',errors.length===0); if(errors.length) console.error(errors);
   console.log(`Page editor safety: ${passed} passed, ${failed} failed (demo, synthetic fixtures)`); if(failed)process.exitCode=1;
 } catch(e){console.error(e);process.exitCode=1;}finally{await browser.close();}
