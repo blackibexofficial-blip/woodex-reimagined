@@ -55,13 +55,14 @@
     "test:production-warranty-register": "node rehearsal/production-warranty-register.mjs",
     "test:warranty-register": "node e2e/phase1-warranty-register.mjs",
     "test:public-surface": "node rehearsal/public-surface-matrix.mjs",
-    "test:sql-all": "npm run test:rehearsal && npm run test:p0-safety && npm run test:phase1-workflows && npm run test:procurement-reads && npm run test:settings-reads && npm run test:cms-snapshot-boundary && npm run test:production-qc-boundary && npm run test:production-qc-records && npm run test:production-shape-guard && npm run test:production-order-linkage && npm run test:production-handover-warranty && npm run test:production-warranty-claims && npm run test:production-warranty-register && npm run test:invoice-money && npm run test:invoice-order-register && npm run test:purchase-order-integrity && npm run test:warranty-claim-cost && npm run test:project-revision && npm run test:page-revision && npm run test:public-surface",
+    "test:sql-all": "npm run test:rehearsal && npm run test:p0-safety && npm run test:phase1-workflows && npm run test:procurement-reads && npm run test:settings-reads && npm run test:cms-snapshot-boundary && npm run test:production-qc-boundary && npm run test:production-qc-records && npm run test:production-shape-guard && npm run test:production-order-linkage && npm run test:production-handover-warranty && npm run test:production-warranty-claims && npm run test:production-warranty-register && npm run test:invoice-money && npm run test:invoice-order-register && npm run test:purchase-order-integrity && npm run test:warranty-claim-cost && npm run test:project-revision && npm run test:page-revision && npm run test:cms-publish-pipeline && npm run test:public-surface",
     "test:invoice-money": "node rehearsal/invoice-money.mjs",
     "test:invoice-order-register": "node rehearsal/invoice-order-register.mjs",
     "test:purchase-order-integrity": "node rehearsal/purchase-order-integrity.mjs",
     "test:warranty-claim-cost": "node rehearsal/warranty-claim-cost-sla.mjs",
     "test:project-revision": "node rehearsal/project-revision-guard.mjs",
-    "test:page-revision": "node rehearsal/page-revision-guard.mjs"
+    "test:page-revision": "node rehearsal/page-revision-guard.mjs",
+    "test:cms-publish-pipeline": "node rehearsal/cms-publish-pipeline.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

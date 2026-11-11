@@ -2338,6 +2338,10 @@ export type Database = {
         Args: { p_id: number; p_title: string; p_seo_title?: string | null; p_seo_desc?: string | null; p_theme?: Json; p_blocks?: Json; p_seo?: Json; p_expected_revision?: number }
         Returns: Database['public']['Tables']['pages']['Row']
       }
+      page_preview: {
+        Args: { p_slug: string }
+        Returns: Json
+      }
       page_publish: {
         Args: { p_id: number; p_publish?: boolean; p_expected_revision?: number }
         Returns: Database['public']['Tables']['pages']['Row']
