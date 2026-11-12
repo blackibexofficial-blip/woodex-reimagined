@@ -20,6 +20,20 @@ LIVE project; do the flip against a STAGING copy first and keep prod untouched u
 - `psql` or the Supabase SQL Editor, and `supabase` CLI logged in.
 - A verified backup/restore path you trust (staging is disposable; prod is not).
 
+> **2026-11-13 update — staging creation BLOCKED by plan limit.** Attempting to
+> create `woodex-reimagined-staging` (free plan, ap-southeast-1, org `woodex`)
+> was rejected: org member `blackibexofficial-blip` has reached the **2 active
+> free project** limit. The account currently exposes exactly one project —
+> "woodex commad center" (`azdexktqvobrhwjiskrq`, ap-southeast-1,
+> ACTIVE_HEALTHY) — which the owner has not positively identified (treated as
+> production until ruled otherwise). Note also that `supabase/config.toml`
+> references `ewbflgbshdstfxqretay`, a ref that does **not** exist in this
+> account. Owner decision required: upgrade the org to Pro (unlocks free staging
+> + branches), pause ANOTHER free project (owner action — I will not choose or
+> pause projects unilaterally), use a database branch of the existing project
+> (only if it is not production-critical and branching is plan-enabled), or skip
+> staging (hosted stays UNVERIFIED).
+
 ## 1. Apply migrations IN ORDER on staging (SQL Editor or `supabase db push`)
 `supabase/migrations/` in lexicographic order — 14 files:
 
