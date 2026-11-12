@@ -41,7 +41,7 @@ const ANON_POLICY_ALLOWED = new Set([
  * check: pure public read projections and the public write entry points that
  * are rate-limited instead. */
 const ANON_CALLABLE_ALLOWED = new Set([
-  'page_snapshot', 'published_page', 'published_projects', 'storefront_page_snapshot',
+  'page_snapshot', 'published_page', 'published_page_index', 'published_projects', 'storefront_page_snapshot',
   'bump_project_revision', 'has_cap', 'has_role', 'my_caps', 'my_role', 'require_cap',
   'catalog_overrides', // anon read of id/price/stock only — the same rows `products` exposes
 ]);

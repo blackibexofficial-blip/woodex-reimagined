@@ -1,5 +1,11 @@
+# The builder preview (/lab/*), the approved-snapshot experiment (/p/*) and the
+# admin surface are noindex in JS and absent from the sitemap; this keeps crawlers
+# out before they ever fetch them. See M6 SEO-001 / decision D-01 (option A).
 User-agent: Googlebot
 Allow: /
+Disallow: /lab/
+Disallow: /p/
+Disallow: /admin
 
 User-agent: Bingbot
 Allow: /
@@ -12,5 +18,8 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /lab/
+Disallow: /p/
+Disallow: /admin
 
 Sitemap: https://woodex.pk/sitemap.xml

@@ -9,7 +9,8 @@
  *   lazy      — SPA client-side navigation into lazy route chunks (3 checks)
  *   chat      — live chat bubble + offline capture + admin inbox round trip (12 checks)
  *
- * Total: 64 checks (35 admin + 13 seo + 3 lazy + 1 no-console admin rail + 7 vault/other). Run: bun run e2e
+ * Total: 123 checks. The seo block also guards the sitemap and robots.txt
+ * (published-only URLs, no /lab, /p or /admin entries, real lastmod). Run: bun run e2e
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -581,6 +582,25 @@ async function seoSuite(browser) {
   ok("blog article JSON-LD present (headline + Person author)", Boolean(article?.headline && article?.author?.["@type"] === "Person"));
   ok("blog breadcrumb JSON-LD present", blog.ld.some((d) => d["@type"] === "BreadcrumbList"));
   ok("product page also carries site-wide schema", prod.ld.map((d) => d["@type"]).includes("Organization"));
+
+  // Sitemap + robots (M6 SEO-001, decision D-01 option A): only URLs a stranger
+  // can open — no builder preview, no snapshot experiment, no admin surface.
+  const assets = await page.evaluate(async () => {
+    const read = async (path) => {
+      const res = await fetch(path, { cache: "no-store" });
+      return res.ok ? { body: await res.text(), status: res.status } : { body: "", status: res.status };
+    };
+    return { sitemap: await read("/sitemap.xml"), robots: await read("/robots.txt") };
+  });
+  const sitemap = assets.sitemap.body;
+  const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  ok("sitemap.xml is served as a urlset", assets.sitemap.status === 200 && sitemap.includes('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'));
+  ok("sitemap lists no preview or admin URL", locs.length > 100 && !locs.some((l) => /\/(lab|p|admin)(\/|$)/.test(l)));
+  ok("every sitemap URL is absolute on the canonical host", locs.every((l) => l.startsWith("https://woodex.pk/")));
+  ok("sitemap has no duplicate URLs", new Set(locs).size === locs.length);
+  ok("sitemap does not stamp every URL with the build date", (sitemap.match(/<lastmod>/g) ?? []).length < locs.length / 2 && !sitemap.includes("<lastmod>" + new Date().toISOString().slice(0, 10) + "</lastmod><changefreq>weekly</changefreq><priority>0.8"));
+  ok("robots.txt keeps crawlers out of the workshop",
+    assets.robots.status === 200 && ["/lab/", "/p/", "/admin"].every((p) => assets.robots.body.includes(`Disallow: ${p}`)));
   ok("no console/page errors (seo flow)", logs.length === 0);
   await page.close();
 }
