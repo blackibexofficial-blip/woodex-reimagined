@@ -6,6 +6,7 @@
  * interface is served by src/api/bagisto/* instead — no UI changes required.
  */
 import { idbDeleteMany, idbGetAll, idbPutMany } from "@/api/demo/mediaStore";
+import { site } from "@/config/site";
 import { DEFAULT_TEAM } from "@/lib/team";
 import { deriveClientCategory } from "@/lib/clientCategory";
 import { products, categoryGroups } from "@/data/products";
@@ -248,11 +249,11 @@ const BUSINESSES: Array<{ company: string; name: string; email: string; phone: s
 const DEFAULT_SETTINGS: StoreSettings = {
   storeName: "WOODEX",
   tagline: "Premium Office & Home Furniture",
-  phone: "+92 300 1234567",
-  whatsapp: "+92 300 1234567",
-  email: "hello@woodex.pk",
-  address: "Showroom & Factory, 12-km Sheikh Zayed Road",
-  city: "Lahore",
+  phone: site.phone,
+  whatsapp: site.whatsappDisplay,
+  email: site.email,
+  address: `Showroom & Factory, ${site.address.line1}`,
+  city: site.address.city,
   currency: "PKR",
   deliveryNote: "Free delivery inside city limits on orders above Rs 150,000. 3–5 working days anywhere in Pakistan.",
   taxRate: 0,

@@ -8,6 +8,7 @@ import type { AdminQuote, AdminQuoteTemplate, StoreSettings } from "@/api/types"
 import { findTemplate, renderBlock, dimSpec, DEFAULT_QUOTE_TEMPLATE } from "@/api/quote-templates";
 import { A4Shell, A4Chrome, A4Notice } from "@/admin/components/documents/A4";
 import QuoteA4Sheet from "@/admin/components/documents/QuoteA4Sheet";
+import { site } from "@/config/site";
 
 /** Chrome-free printable quotation — mounted at /admin/quote/:id outside the admin layout. */
 export default function AdminQuotePrint() {
@@ -40,7 +41,7 @@ export default function AdminQuotePrint() {
   const hb = new Map(tDoc.header.map((b) => [b.type, b]));
   const fb = new Map(tDoc.footer.map((b) => [b.type, b]));
   const vars = { ref: quote?.id ?? "", version: quote?.version ?? 1, validUntil: quote ? formatDate(quote.validUntil) : "", customer: quote?.customerName ?? "" };
-  const bill = settings ?? { storeName: "WOODEX", tagline: "Premium Office & Home Furniture", phone: "+92 300 1234567", whatsapp: "+92 300 1234567", email: "hello@woodex.pk", address: "Showroom & Factory, 12-km Sheikh Zayed Road", city: "Lahore", currency: "PKR", deliveryNote: "", taxRate: 0 };
+  const bill = settings ?? { storeName: "WOODEX", tagline: "Premium Office & Home Furniture", phone: site.phone, whatsapp: site.whatsappDisplay, email: site.email, address: `Showroom & Factory, ${site.address.line1}`, city: site.address.city, currency: "PKR", deliveryNote: "", taxRate: 0 };
   const itemQty = quote?.items.reduce((s, i) => s + i.quantity, 0) ?? 0;
   const expired = quote && ["draft", "review", "approval", "revised", "sent"].includes(quote.status) && new Date(quote.validUntil).getTime() < Date.now();
 

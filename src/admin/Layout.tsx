@@ -1,76 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
-import {
-  ContactRound, Armchair, Receipt, ChevronDown, ClipboardCheck, GitMerge, LayoutDashboard, BarChart3, Package, Tags, ShoppingCart, Users, ClipboardList, MessagesSquare, FileText,
-  Image, Settings, LogOut, ArrowLeft, Menu, X, Megaphone, Store, Warehouse, ListChecks, Briefcase, Newspaper, Wrench, Undo2, ArrowLeftRight, ShieldCheck, FileEdit, ScrollText, Truck, PackagePlus, LayoutTemplate, PenTool, Monitor, FileUp,
-} from "lucide-react";
+import { Armchair, ChevronDown, Menu, X, LogOut, ArrowLeft, Store } from "lucide-react";
 import { useAdminAuth } from "@/admin/auth";
 import { isDemoMode, isSupabaseConfigured } from "@/config/env";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAdminApi } from "@/api";
 import NotificationBell from "@/admin/components/layout/NotificationBell";
-
-const NAV_GROUPS: Array<{
-  label: string;
-  items: Array<{ to: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }>;
-}> = [
-  {
-    label: "Overview",
-    items: [
-      { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-    ],
-  },
-  {
-    label: "Commerce",
-    items: [
-      { to: "/admin/products", label: "Products", icon: Package },
-      { to: "/admin/taxonomy", label: "Taxonomy", icon: Tags },
-      { to: "/admin/homepage", label: "Homepage", icon: LayoutTemplate },
-      { to: "/admin/showrooms", label: "Showrooms", icon: Store },
-      { to: "/admin/projects", label: "Projects", icon: Briefcase },
-      { to: "/admin/bulk-editor", label: "Bulk Editor", icon: ListChecks },
-      { to: "/admin/inventory", label: "Inventory", icon: Warehouse },
-      { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
-      { to: "/admin/drafts", label: "Drafts", icon: FileEdit },
-      { to: "/admin/quotes", label: "Quotes", icon: ScrollText },
-      { to: "/admin/invoices", label: "Invoices", icon: Receipt },
-      { to: "/admin/returns", label: "Returns", icon: Undo2 },
-      { to: "/admin/exchanges", label: "Exchanges", icon: ArrowLeftRight },
-      { to: "/admin/claims", label: "Claims", icon: ShieldCheck },
-      { to: "/admin/customers", label: "Customers", icon: Users },
-      { to: "/admin/clients", label: "Clients", icon: ContactRound },
-      { to: "/admin/client-merge", label: "Merge review", icon: GitMerge },
-    ],
-  },
-  {
-    label: "Purchasing",
-    items: [
-      { to: "/admin/suppliers", label: "Suppliers", icon: Truck },
-      { to: "/admin/purchase-orders", label: "Purchase Orders", icon: PackagePlus },
-      { to: "/admin/transfers", label: "Transfers", icon: ArrowLeftRight },
-    ],
-  },
-  {
-    label: "Engage",
-    items: [
-      { to: "/admin/leads", label: "Leads", icon: ClipboardList },
-      { to: "/admin/chat", label: "Live Chat", icon: MessagesSquare },
-      { to: "/admin/tasks", label: "Tasks", icon: ClipboardCheck },
-      { to: "/admin/campaigns", label: "Campaigns", icon: Megaphone },
-      { to: "/admin/blog", label: "Blog", icon: Newspaper },
-      { to: "/admin/services", label: "Services", icon: Wrench },
-      { to: "/admin/content", label: "Content", icon: FileText },
-      { to: "/admin/warranty", label: "Warranty", icon: ShieldCheck },
-      { to: "/admin/custom-design", label: "Custom Design", icon: PenTool },
-      { to: "/admin/virtual-showroom", label: "Virtual Showroom", icon: Monitor },
-      { to: "/admin/pages", label: "Pages", icon: FileText },
-      { to: "/admin/media", label: "Media", icon: Image },
-    ],
-  },
-  { label: "System", items: [{ to: "/admin/import", label: "Import data", icon: FileUp }, { to: "/admin/settings", label: "Settings", icon: Settings }] },
-];
+import { NAV_GROUPS, findActiveGroup } from "@/admin/nav-registry";
 
 function pageTitle(pathname: string) {
   const seg = pathname.split("/")[2] ?? "dashboard";
@@ -107,7 +44,7 @@ export default function AdminLayout() {
 
   /* Auto-open the group owning the active route (never force-closes what the user opened). */
   useEffect(() => {
-    const active = NAV_GROUPS.find((g) => g.items.some((i) => location.pathname === i.to || location.pathname.startsWith(i.to + "/")));
+    const active = findActiveGroup(location.pathname);
     if (!active) return;
     setOpenGroups((prev) => (prev.includes(active.label) ? prev : [...prev, active.label]));
   }, [location.pathname]);

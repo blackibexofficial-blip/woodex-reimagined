@@ -5,6 +5,7 @@ import { getAdminApi } from "@/api";
 import { useAdminAuth } from "@/admin/auth";
 import { formatPKR, formatDateTime, paymentLabel, OrderStatusBadge } from "@/admin/components";
 import type { AdminOrder, StoreSettings } from "@/api/types";
+import { site } from "@/config/site";
 
 /** Chrome-free printable invoice — mounted at /admin/invoice/:id outside the admin layout. */
 export default function AdminInvoice() {
@@ -28,7 +29,7 @@ export default function AdminInvoice() {
 
   if (!user) return <Navigate to="/admin/login" replace />;
 
-  const bill = settings ?? { storeName: "WOODEX", tagline: "Premium Office & Home Furniture", phone: "+92 300 1234567", whatsapp: "+92 300 1234567", email: "hello@woodex.pk", address: "Showroom & Factory, 12-km Sheikh Zayed Road", city: "Lahore", currency: "PKR", deliveryNote: "", taxRate: 0 };
+  const bill = settings ?? { storeName: "WOODEX", tagline: "Premium Office & Home Furniture", phone: site.phone, whatsapp: site.whatsappDisplay, email: site.email, address: `Showroom & Factory, ${site.address.line1}`, city: site.address.city, currency: "PKR", deliveryNote: "", taxRate: 0 };
   const itemQty = order?.items.reduce((s, i) => s + i.quantity, 0) ?? 0;
 
   return (
