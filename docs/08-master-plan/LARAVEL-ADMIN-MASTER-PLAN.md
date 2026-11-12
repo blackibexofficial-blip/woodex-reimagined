@@ -477,6 +477,11 @@ restore drill fails; policy matrix cannot be made green; owner withdraws the MyS
 
 ## 17. Recommendation
 
+> **Revised 2026-11-11 — read §18 first.** The recommendation below was written before
+> the real Woodex Interior dashboard (`woodex420/woodex-2030`) was analysed. §18 records
+> the evidence, the three options, and the revised call (converge now, hold Laravel until
+> the convergence plan is done and the hosting facts justify PHP).
+
 Build it, in this order: **Phase 0 (verify the host) → Phase 1 (auth + policy matrix) →
 Phase 3 (Website Studio)**. Studio first among the business domains is deliberate — it is
 the only domain whose contract is already proven end-to-end today (revision tokens,
@@ -509,3 +514,110 @@ grant, trigger and refusal reason becomes a Pest test in the Laravel port. The P
 database stays live and authoritative for any domain not yet flipped, and becomes
 read-only 30 days after the last domain cutover. They are not "thrown away" — they are
 the acceptance criteria.
+
+---
+
+# 18. Addendum — reuse analysis: the real "Woodex Interior" dashboard (2026-11-11)
+
+> **Why this section exists.** The owner supplied a Google Drive copy of the Woodex
+> Interior dashboard. The link requires a signed-in Google account, so it could not be
+> downloaded here. The same codebase is public at
+> **`github.com/woodex420/woodex-2030`** (default branch `main`, pushed 2026-11-12),
+> and this analysis is of that repository — `apps/dashboard`, `apps/storefront`,
+> `apps/api`, `scripts/`, `docs/`. If the Drive archive is a *newer private* snapshot,
+> it needs "anyone with the link" sharing before it can be reviewed.
+
+## 18.1 What that repository actually contains
+
+| Surface | Evidence | Scale |
+|---|---|---|
+| `apps/dashboard` | 41 pages, `components/layout/{AppShell,Sidebar,Topbar,PageHeader}.tsx`, `lib/{api,auth,preview,router-paths}.ts` | **12,548** lines of pages, 76 TS/TSX files |
+| `apps/api` | `server.mjs` (8,912 lines), `db-adapters.mjs`, `public-routes.mjs`, `shop-data.mjs` | **71** endpoint patterns, Node ≥ 22, `node:sqlite` + Postgres adapters |
+| Migrations | `scripts/migrations/001…018` **with rollback files**, `scripts/schema.postgres.sql`, `pg-migrate.mjs`, `apply-postgres-schema.mjs` | 18 migrations |
+| Auth | `lib/auth.ts` + `server.mjs:1598` `ROLE_CAPS`, `capsFor(method,path)`, bearer token, 401 → signed-out, capability checks per route | 5-ish roles, `*`, `quote.view-move`, `order.view-move`, `catalog.view`, `users.manage` |
+| Tests | 43 scripts: `test-{c rm,finance,inventory,procurement,bills,production,delivery,support,credentials,throttle,integrity,audit-log,audit-schema,block-coverage,public-surface,stock-ledger,restore-drill}.mjs`, 4 Playwright e2e, `qa-full`, `secret-scan`, `check-migration-coverage`, `docs:verify` | Node-script harness + Playwright |
+| Deploy | `start:hostinger` (`node --experimental-sqlite apps/api/server.mjs`), `vercel.json`, `build-vercel.mjs`, `check-deploy-config` | Vercel + Hostinger static |
+| Storefront | 116 files / **7,499** lines, 20+ routes incl. `PublishedPage.tsx` | parallel to ours |
+
+Their own tracker (`docs/WOODEX_2030_MASTER_IMPLEMENTATION_TRACKER.md`) marks many
+modules **Verified**, with the rule "a status may only move to Verified when a named
+command passes and its output is quoted". That is a serious codebase, not a mock.
+
+## 18.2 Head-to-head against this repository
+
+| Dimension | This repo (`woodex-reimagined`) | Woodex 2030 |
+|---|---|---|
+| Dashboard | 50 pages, **18,748** lines, typed adapter 13,744 lines | 41 pages, 12,548 lines + 8,912-line API |
+| Data authority | **Postgres/Supabase**: RLS on 61 tables, capability-gated definer RPCs, 38 migrations | Node API + SQLite/Postgres, 18 migrations, authz **in application code** |
+| Security evidence | public-surface matrix (9 checks), 24 SQL suites, role denial in every suite | `test-public-surface`, `test-credentials`, `test-throttle` scripts |
+| CMS / builder | **Puck editor, 40 sections + 17 elements, publish snapshots, preview tokens, revision tokens, sitemap index** | `Website.tsx`, blocks + `test-block-coverage`, page versions/rollback |
+| Modules they have, we lack | — | Credit notes · Payment schedules · Goods receipts · Supplier invoices · Warehouses · Stock ledger · Stock reservations · Production/BOM · Dispatch runs · Expenses · Trial balance · Companies · Meetings · Throttle · Support |
+| Modules we have, they lack or are thinner | Puck studio · Warranty + claims + register · Returns/exchanges/drafts · SEO panel · Taxonomy · Bulk editor · Import · Print documents (order/quote/invoice/PO/return/exchange) · Project practice · Virtual showroom | — |
+| Browser coverage | 123 smoke checks + 6 focused suites | 4 Playwright flows |
+| Hosting story | Vercel static + Supabase | Vercel + Hostinger (static + Node API) |
+
+## 18.3 Options, scored
+
+| Option | What it means | Cost | What it destroys | Verdict |
+|---|---|---|---|---|
+| **A. Swap wholesale** | Deploy 2030 dashboard + Node API as the admin; retire this repo's admin and Postgres tier | 8–12 d to stabilise, then re-prove everything | 38 migrations, 24 SQL suites, RLS posture, Puck publish pipeline, 123 e2e checks — and it still isn't Laravel | **Reject** |
+| **B. Converge here** (recommended) | Keep this repo as the single deployable and single data authority; adopt 2030's shell + port its 14 missing module UIs onto our adapter, adding their backend domains as migrations 00039+ | 45–65 agent-days, phased | nothing; both codebases keep their strengths | **Recommend** |
+| **C. Laravel rebuild** (§1–§17 above) | New PHP tier, MySQL, port every domain | 100–135 agent-days, no user-visible feature for ~20 | the Node API work too, if it is ever adopted | **Hold** |
+
+**Why B over C now.** The evidence for "we lack a backend" has changed: 2030 has an
+8,912-line API with 71 endpoints, idempotent-looking auth, 18 reversible migrations and
+43 verification scripts. The bottleneck is no longer "there is no server" — it is
+**which server is authoritative and which UI is better**. Building a third tier (Laravel)
+before settling that would be the most expensive way to answer it. §5's MySQL warning
+still applies in full if C is chosen later: **RLS would be lost and must be re-earned in
+Pest**, which is a week of work on its own.
+
+**Why not A.** This repo carries guarantees 2030 does not: database-enforced draft
+privacy, `SECURITY DEFINER` refusals on 40+ RPCs, a publish pipeline proven by 26 + 31 +
+39 + 19 checks, and 123 browser regressions. Swapping would trade proven safety for
+unproven breadth, and would put two write authorities on the same business facts —
+precisely what spec §10.1 forbids.
+
+## 18.4 The convergence plan (option B)
+
+| Step | Work | Reuse from 2030 | Effort | Exit evidence |
+|---|---|---|---|---|
+| **R1** | Import the shell: `AppShell`, `Sidebar`, `Topbar`, `PageHeader`, design tokens, permission-aware nav (progressive disclosure, no "Soon" links) | verbatim React, rewired to our router + auth | 3–5 d | all 47 routes render in the new shell; 123 e2e still green |
+| **R2** | Port the 14 missing module UIs onto `getAdminApi()`, one PR per module, demo adapter first | page components + layout patterns + empty/error states | 20–26 d | each module: list/detail/create, permission denial, save+reload browser check |
+| **R3** | Add the missing backend domains as migrations `00039+`, each with a rehearsal suite | their SQL shapes as the spec (credit notes, payment schedules, goods receipts, supplier invoices, warehouses, stock ledger/reservations, production/BOM, expenses/trial balance, companies/meetings, throttle) | 25–35 d | `test:sql-all` grows per domain; every table RLS-on with capability guards |
+| **R4** | Fold their verification scripts' *cases* into our suites (they encode real bug classes: integrity constraints, audit log schema, block coverage, public surface, restore drill) | script logic, not code | 8–10 d | parity table in `docs/07` |
+| **R5** | Decide the server tier only after R1–R4 | — | 1 d | a written answer to §16's questions |
+| **R6** | Storefront: adopt their route inventory where ours is thinner (`OrderStatus`, `ProjectDetail`, `RoomPackages`), keep our design system and SEO contract | page structure | 8–12 d | route parity list + sitemap/published-only contract intact |
+
+**Sequencing guard:** R1 and R2 must not land in the same week as an R3 migration —
+UI churn plus schema churn in one release is how the "stale dist" and ordering failures
+happened before.
+
+## 18.5 What to take verbatim, adapt, or refuse
+
+* **Take verbatim:** `components/layout/*`, `components/ui/*`, the table/filter/empty-state
+  patterns, `PageHeader`, and the sidebar's permission-aware grouping.
+* **Adapt (rewire, do not copy):** every page's data calls — they must go through
+  `getAdminApi()` so demo, Supabase and (later) Laravel modes all work; their
+  `lib/api.ts` hook shapes are a good model but our adapter owns the contract.
+* **Refuse:** their bearer-token auth as a *security* model (ours is RLS + capabilities
+  and must stay server-side), their `node:sqlite` runtime as a production authority on
+  shared hosting (single-file locks, backup story weaker than Postgres), and any page that
+  hardcodes metrics — spec §10.5 forbids it.
+
+## 18.6 Revised recommendation
+
+1. **Do not build Laravel yet.** Keep §1–§17 as the target-costed plan, but the trigger
+   for starting it is now explicit: *the convergence plan is complete and the business
+   still needs PHP/MySQL for hosting reasons.* Nothing in 2030 makes Laravel cheaper.
+2. **Do converge (option B).** Single deployable here, single write authority here,
+   2030's breadth ported module by module, their verification cases absorbed into our
+   gates.
+3. **Do resolve the two open UI gaps first** — BLD-002's three missing viewport controls
+   and the 13-of-57 public preflight — because R1/R2 will touch the same canvas and the
+   same publish path.
+4. **D-01 stays unanswered until §16's seven facts arrive.** Whichever tier wins, the
+   owner's hosting facts and topology determine the cookie/session design.
+
+*If the Drive archive differs from `woodex420/woodex-2030@main`, say so and share it
+publicly; this addendum is written against the public repository.*
