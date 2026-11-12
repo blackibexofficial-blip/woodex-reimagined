@@ -102,6 +102,24 @@ try {
   check('a stale page save is refused instead of overwriting', /changed elsewhere/i.test(revisionChecks.staleSave));
   check('a stale publish is refused', /changed elsewhere/i.test(revisionChecks.stalePublish));
   check('the refused writes left the newer title in place', revisionChecks.titleNow === 'Revision page v2');
+  // Block persistence contract (M6 BLD-003) in the demo adapter: identity must
+  // survive the round trip, and no two blocks may claim the same one.
+  const blockIds = await page.evaluate(async id => {
+    const api = (await import('/src/api/demo/db.ts')).demoAdminApi;
+    const current = await api.getPage(id);
+    const content = [
+      { type: 'Heading', props: { id: 'e2e-hero', title: 'Identity survives' } },
+      { type: 'Paragraph', props: { id: 'e2e-body', text: 'Second block' } },
+    ];
+    await api.updatePage(id, { doc: { ...current.doc, content } });
+    const first = (await api.getPage(id)).doc.content.map(b => b?.props?.id);
+    const second = (await api.getPage(id)).doc.content.map(b => b?.props?.id);
+    return { first, second };
+  }, item.id);
+  check('blocks saved through the adapter keep their identity', blockIds.first.join(',') === 'e2e-hero,e2e-body');
+  check('block identities are unique and stable across reloads',
+    new Set(blockIds.first).size === blockIds.first.length && blockIds.first.join(',') === blockIds.second.join(','));
+
   // Publish pipeline in the browser (M6 CMS-001): /lab/:slug badges the real state,
   // and unpublishing hides the page from the public route without losing the draft.
   const labSlug = 'safety-test-page';
