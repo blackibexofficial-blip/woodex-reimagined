@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { getAdminApi } from "@/api";
 import NotificationBell from "@/admin/components/layout/NotificationBell";
 import { NAV_GROUPS, findActiveGroup } from "@/admin/nav-registry";
+import CommandPalette from "@/admin/components/layout/CommandPalette";
 
 function pageTitle(pathname: string) {
   const seg = pathname.split("/")[2] ?? "dashboard";
@@ -182,9 +183,23 @@ export default function AdminLayout() {
             <button className="rounded-md p-2 text-muted-foreground hover:bg-muted" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
               <Menu className="h-5 w-5" />
             </button>
-            <h1 className="text-sm font-semibold text-foreground sm:text-base">{pageTitle(location.pathname)}</h1>
+            {/* 2030 §4 topbar: breadcrumb (workspace context) + page title */}
+            {(() => {
+              const group = findActiveGroup(location.pathname);
+              return (
+                <nav aria-label="Breadcrumb">
+                  <ol className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground sm:text-xs">
+                    <li><Link to="/admin/dashboard" className="hover:text-foreground">Admin</Link></li>
+                    {group && (<><li aria-hidden="true" className="select-none">›</li><li>{group.label}</li></>)}
+                    <li aria-hidden="true" className="select-none">›</li>
+                    <li><h1 aria-current="page" className="text-sm font-semibold text-foreground sm:text-base">{pageTitle(location.pathname)}</h1></li>
+                  </ol>
+                </nav>
+              );
+            })()}
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <CommandPalette />
             <span className="hidden text-xs text-muted-foreground md:inline">{today}</span>
             <span
               className={cn(

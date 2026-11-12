@@ -68,6 +68,17 @@ async function adminSuite(browser) {
     page.click('form button[type="submit"]'),
   ]);
   ok("demo sign-in reaches /admin/dashboard", true);
+  // ── command palette (2030 shell §3) ──
+  await page.click('[data-testid="command-palette-trigger"]');
+  await page.waitForSelector('[cmdk-root]', { timeout: 8000 });
+  ok("command palette opens via the topbar trigger", true);
+  await page.type('[cmdk-input]', 'quotes', { delay: 15 });
+  await page.waitForSelector('[cmdk-item]', { timeout: 8000 });
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => location.pathname === '/admin/quotes', { timeout: 15000 }).catch(() => {});
+  ok("command palette navigates to /admin/quotes on Enter", await page.evaluate(() => location.pathname === '/admin/quotes'));
+  await page.keyboard.press('Escape'); // belt-and-braces: ensure palette closed before next block
+  await page.goto(`${ADMIN}/dashboard`, { waitUntil: 'networkidle2', timeout: 60000 });
   await waitText("Pipeline control center", 20000);
   ok("dashboard shows the pipeline control-center card", true);
   const cc = (await bodyText()).toLowerCase();

@@ -63,6 +63,10 @@ Doc 05 §2 proposes canonical groups (Workspace, Customers, Sales, Commerce, Ope
 | Canonical navigation registry extracted (2030 §3 foundation) | `src/admin/nav-registry.ts` (typed, stable ids, keywords); `Layout.tsx` renders from it; `findActiveGroup` helper replaces inline scan | `npm run test:nav` → **8/8 PASS** (5 groups · 36 items · unique ids/routes · all routes resolve in `AdminApp.tsx` · keywords ≥2) |
 | Brand-facts sync — audit **B-07** (demo `DEFAULT_SETTINGS` + document fallbacks said `hello@woodex.pk` / "12-km Sheikh Zayed Rd" vs canonical `src/config/site.ts`) | demo `db.ts` + `Invoice.tsx` + `Quote.tsx` fallbacks now derive from `site.*`; storefront quotation presets (`WI-10204`, Zainab Tower letterhead) deliberately untouched — owner-approved artefact | grep: stale strings gone (except the intentional factory-reorder reminder on `Dashboard.tsx`); tsc/build/e2e re-run |
 | AGENTS.md addendum (2030 read order, this adaptation doc, gates) | repo-root `AGENTS.md` | review |
+| Command palette wired (2030 §3): Ctrl/⌘+K toggle + topbar trigger; searches registry labels/keywords/groups + 3 verified quick-create actions (`/admin/orders/new`, `/admin/invoices/new`, `/admin/products/new`) | `src/admin/components/layout/CommandPalette.tsx` | e2e ×2 (opens, navigates); **110/110** total |
+| Topbar breadcrumb — Admin › group › current page (`h1` preserved) | `src/admin/Layout.tsx` | a11y **0/54** (`--fail`) |
+
+> a11y gate caught two regressions from the first cut of these (`serious:label-content-name-mismatch` from an `aria-label` contradicting visible text; `moderate:page-has-heading-one` from replacing the h1) — both fixed in the same change; final state **0 violations / 54 routes**.
 
 ## 5. Decision deltas requiring the owner (before the code they gate)
 
