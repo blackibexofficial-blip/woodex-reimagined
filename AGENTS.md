@@ -10,3 +10,11 @@
 - Backend deployment: Bagisto on cPanel/VPS → `backend/` (runbook + Docker reference; integration contract in docs/07-admin-integration/); Supabase alternative → `backend/supabase/` (migrations + edge functions imported from the reference module). Keep both paths working.
 - Do not ship VITE_BAGISTO_ADMIN_TOKEN in public builds; see docs/07-admin-integration §5.
 - Contact & location facts (phone/WhatsApp/email/address/hours) live ONLY in `src/config/site.ts` — import `site` / `waLink` / `absUrl` from there; never hardcode numbers, emails, addresses or the canonical origin in pages/components. Canonical + JSON-LD are injected by `src/components/RouteHead.tsx` on every route; page-specific schema (Product/Article/Breadcrumb/FAQ) via `JsonLd` + `src/data/seoContent.ts` builders. `sitemap.xml` is generated from data by `scripts/generate-sitemap.ts` (runs on `bun run build`) — don't hand-edit it.
+
+## WOODEX 2030 program (read order for any 2030 work)
+1. `docs/2030/12-DECISION-LOG.md` — decisions (repo-specific deltas: `docs/2030/ADAPTATION-FIT-GAP.md`).
+2. `docs/2030/01-MASTER-PRD.md` — product contract; `08-AGENT-OPERATING-INSTRUCTIONS.md` — agent rules (binding for this repo's 2030 work).
+3. `docs/2030/ADAPTATION-FIT-GAP.md` — how the package maps onto THIS codebase (Estate rows 1–11, decision deltas owed by the owner).
+4. `docs/WOODEX_TECHNICAL_AUDIT.md` — engineering audit (hosted state = UNVERIFIED; demo default).
+Evidence honesty rule: hosted claims stay UNVERIFIED until the staging flip (docs/08-master-plan/STAGING-FLIP-RUNBOOK.md, owner-run). No brand/IA/token changes without the owner's word — see ADAPTATION-FIT-GAP.md §5.
+Gates: `npm run test:nav` (sidebar registry ↔ AdminApp routes) · `npm run test:print` (A4 print documents) · `npm run test:rehearsal` · `npm run e2e` · `node e2e/a11y.mjs --fail`.
