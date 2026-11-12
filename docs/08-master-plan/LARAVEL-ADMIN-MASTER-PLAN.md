@@ -519,6 +519,12 @@ the acceptance criteria.
 
 # 18. Addendum — reuse analysis: the real "Woodex Interior" dashboard (2026-11-11)
 
+> **Superseded on 2026-11-11 by `LARAVEL-PLATFORM-AUDIT.md`.** This section analysed
+> `woodex420/woodex-2030` (React + Node). The owner's actual Laravel platform already
+> exists at `woodex420/woodexinterior/platform` — 83 migrations, 137 Livewire components,
+> 216 tests — and the audit of that tree replaces the conclusions below. §1–§17 remain a
+> cost model for a build that is no longer needed.
+
 > **Why this section exists.** The owner supplied a Google Drive copy of the Woodex
 > Interior dashboard. The link requires a signed-in Google account, so it could not be
 > downloaded here. The same codebase is public at
