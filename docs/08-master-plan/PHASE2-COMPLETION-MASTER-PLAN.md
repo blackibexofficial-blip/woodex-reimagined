@@ -9,7 +9,8 @@ untracked files in the working tree. Root migrations `00001–00027`; `00021–0
 local candidates. Feature matrix: **265 triaged rows — 0 Complete**, 197 In Progress, 29 Testing,
 25 Not Started, 15 Blocked.
 
-Related documents: `docs/01`–`docs/10`, `docs/04_WOODEX_REMAINING_WORK_MASTER_PROMPT.md`
+Related documents: `docs/08-master-plan/LARAVEL-ADMIN-MASTER-PLAN.md` (target Laravel/MySQL
+tier — report only, not started), `docs/01`–`docs/10`, `docs/04_WOODEX_REMAINING_WORK_MASTER_PROMPT.md`
 (task backlog), `docs/02_WOODEX_FEATURE_COMPLETION_MATRIX.md` (row-level triage),
 `docs/08-master-plan/PHASE1-STAGING-APPLY-CHECKLIST.md` (apply/rollback runbook for 00021–00027).
 
