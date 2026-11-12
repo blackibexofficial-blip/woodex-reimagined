@@ -56,8 +56,21 @@ async function waitForServer(url, timeoutMs = 45000) {
  * IPv4 to match BASE under verbatim-DNS CI resolvers), waits for it, runs `fn`, and always tears the server down.
  */
 export async function withServer(fn) {
-  if (!fs.existsSync(path.join(ROOT, "dist", "index.html"))) {
-    console.log("[e2e] dist/ missing — running `bun run build` first…");
+  const distIndex = path.join(ROOT, "dist", "index.html");
+  // A stale dist/ used to be reused silently, so a suite could pass against an
+  // artefact built before the change under test. Images, robots and the sitemap
+  // are generated at build time, so treat a newer input than dist/ as "rebuild".
+  const buildInputs = [
+    "public/robots.txt",
+    "public/sitemap.xml",
+    "src/lib/sitemap.ts",
+    "scripts/generate-sitemap.ts",
+    "index.html",
+  ].map((rel) => path.join(ROOT, rel));
+  const distTime = fs.existsSync(distIndex) ? fs.statSync(distIndex).mtimeMs : 0;
+  const stale = distTime > 0 && buildInputs.some((file) => fs.existsSync(file) && fs.statSync(file).mtimeMs > distTime);
+  if (!fs.existsSync(distIndex) || stale) {
+    console.log(`[e2e] dist/ ${stale ? "is stale" : "missing"} — running \`bun run build\` first…`);
     const build = spawn("bun", ["run", "build"], { cwd: ROOT, stdio: "inherit" });
     await new Promise((resolve, reject) => build.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`build failed (${code})`)))));
   }
